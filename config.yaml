@@ -23,6 +23,44 @@ paths:
   templates_db:    "./data/templates.db"     # NEU Build 117 — Bug 3.3
   translations_db: "./data/translations.db"  # NEU Build 329 — KI-Uebersetzungen (read-only ATTACH)
 
+  # --------------------------------------------------------------------------
+  # WEITERE PFADE, die der Code liest — bis Build 640 hier NICHT genannt.
+  #
+  # Befund aus der Erhebung zu Ticket 60e4236e (Build 640): Diese vier Einträge
+  # werden ausgewertet, standen aber in keiner ausgelieferten config.yaml. Wer
+  # sie setzen wollte, musste sie im Quelltext finden. Sie sind deshalb hier
+  # AUSKOMMENTIERT aufgenommen: sichtbar und erklärt, aber ohne Vorbelegung —
+  # jeder greift ohne Eintrag auf sein bisheriges Verhalten zurück.
+  # --------------------------------------------------------------------------
+
+  # Zentrale Siegel-DB freigegebener Berichte (Build 377). Nur der auditierte
+  # Freigabepfad schreibt hier; Lesen (verify) ist frei. Steht seit Build 377 in
+  # den Coded Defaults, war aber in der config.yaml nie erwähnt.
+  # Beleg: management/reports/seal_check.py, management/server/management_app.py
+  #approved_reports_db: "./data/approved_reports.db"
+
+  # Volltext-Suchindex. Er liegt NEBEN den Beweismitteln, nicht darin — ein
+  # Hilfsmittel, das jederzeit gelöscht werden darf. Ohne Eintrag: neben der
+  # coordinator.db ('search_index.db'), und der Rückfall wird protokolliert.
+  # Beleg: management/server/management_app.py, _search_index_pfad()
+  #search_index_db: "./data/search_index.db"
+
+  # Steuerdatenbank der Migrationsflotte (migration_fleet_admin). OHNE EINTRAG
+  # UND OHNE '--migration-db' BRICHT DAS WERKZEUG AB — es gibt hier keinen
+  # Vorgabewert, und das ist Absicht: eine Migration soll nicht versehentlich
+  # gegen eine erfundene Steuerdatei laufen.
+  # Beleg: management/migration_fleet/migration_fleet_admin.py, Z. 60-75
+  #migration_db: "./data/migration.db"
+
+  # Sicherungsziel der Migrationsflotte. Ohne Eintrag und ohne '--backup-dir'
+  # verweigert der Companion die Ausführung über das Tor 'KEIN_BACKUP_DIR' —
+  # eine Migration ohne Sicherung findet nicht statt.
+  # NICHT ZU VERWECHSELN mit 'backup.dest_dir' weiter unten: das ist die
+  # laufende Datensicherung (backup_admin), dies hier die einmalige Sicherung
+  # vor einer Migration.
+  # Beleg: management/migration_fleet/migration_fleet_admin.py, Z. 78-94
+  #backup_dir: "./backups/migration/"
+
 # =============================================================================
 # Datenbank-Journalmodus (NEU Build 408).
 #
@@ -209,6 +247,31 @@ ad:
 #
 #   # tools/maintenance_kill.py: Wartezeit auf das Selbstbeenden in Sekunden (30).
 #   kill_wait_timeout_seconds: 30
+#
+#   # ------------------------------------------------------------------------
+#   # NACHTRAG BUILD 640 — KORREKTUR AM EIGENEN BLOCK VON BUILD 638.
+#   #
+#   # Die beiden folgenden Einträge werden vom SERVER (main.py) gelesen und
+#   # existierten schon vor Build 638. Der Block oben ist in Build 638
+#   # geschrieben worden, ohne sie zu nennen — er belegte damit den Namensraum
+#   # 'maintenance' und sah aus, als beschreibe er ihn vollständig. Wer den
+#   # Abschnitt einkommentiert und die beiden vergisst, ändert nichts (die
+#   # Vorgabewerte im Code greifen weiter), aber er hätte es nicht wissen
+#   # können. Die Lücke ist bei der Erhebung zu Ticket 60e4236e aufgefallen.
+#   #
+#   # Sie gehören NICHT zu den Wartungswerkzeugen, sondern zum Verhalten des
+#   # laufenden Servers, wenn ein Wartungsfenster gesetzt wird.
+#   # ------------------------------------------------------------------------
+#
+#   # Wie lange der Server beim Ruhigstellen auf das Auslaufen offener
+#   # Anfragen wartet, bevor er bestätigt (30 Sekunden).
+#   # Beleg: main.py, _QUIESCE_DRAIN_TIMEOUT_S
+#   drain_timeout_sec: 30
+#
+#   # In welchem Abstand der laufende Server nachsieht, ob ein Wartungsfenster
+#   # gesetzt oder aufgehoben wurde (3 Sekunden).
+#   # Beleg: main.py, _MAINT_POLL_SEC
+#   poll_interval_sec: 3
 # =============================================================================
 
 hosts_management:
@@ -222,3 +285,54 @@ dashboard:
   ampel:
     amber_idle_days: 7
     red_idle_days: 21
+
+# =============================================================================
+# SCHWELLENWERTE DER FALLSTEUERUNG (hier aufgenommen: Build 640).
+#
+# Befund aus der Erhebung zu Ticket 60e4236e: Die folgenden drei Abschnitte
+# werden vom Code ausgewertet, standen aber in keiner ausgelieferten
+# config.yaml und auch nicht in den Coded Defaults des ConfigLoaders. Ihre
+# Vorgabewerte leben in den jeweiligen Datenklassen. Wer sie ändern wollte,
+# musste sie im Quelltext finden.
+#
+# Alle drei sind AUSKOMMENTIERT aufgenommen — ein eingetragener Wert wäre eine
+# fachliche Festlegung, die niemand bestellt hat. Ohne Eintrag gilt weiterhin
+# genau das, was bisher galt.
+#
+# ALLE DREI SIND AUSFALLSICHER GEBAUT: Ein unlesbarer oder unsinniger Wert
+# führt NICHT zum Abbruch, sondern still zurück auf die Vorgabe (jeweils
+# 'except Exception: return d'). Das ist bei Schwellenwerten einer Anzeige
+# vertretbar — es heißt aber auch, dass ein Tippfehler hier NICHT auffällt.
+# Wer einen Wert setzt, prüft die Wirkung an der Sicht nach.
+# =============================================================================
+
+# Eskalationsregeln der Fallsteuerung (rein lesende Auswertung).
+# Beleg: management/cases/escalation.py, escalation_thresholds_from_config()
+#escalation:
+#   # Offener Fall, Ampel rot UND so viele Tage ohne Aktivität -> 'überfällig'
+#   # (Schwere: hoch). Vorgabe 30.
+#   red_overdue_days: 30
+#   # Zugewiesener Fall im Status 'open' und so viele Tage ohne Aktivität ->
+#   # 'unbearbeitet' (Schwere: mittel). Vorgabe 14. Greift NICHT, wenn die
+#   # Regel darüber für denselben Fall schon angeschlagen hat.
+#   stale_open_days: 14
+#   # Unzugewiesener Rückstau ab dieser Zahl -> systemische Meldung. Vorgabe 10.
+#   backlog_high: 10
+
+# Überlastwarnung der Personalsicht.
+# Beleg: management/workload/overload.py, overload_thresholds_from_config()
+#workload:
+#   overload:
+#     # Aktive Fälle (open + in_progress) je Ermittler:in. Vorgabe 10.
+#     max_active_cases: 10
+#     # Rote Fälle je Ermittler:in. Vorgabe 3.
+#     max_red_cases: 3
+#     # Unzugewiesener Rückstau ab dieser Größe. Vorgabe 5.
+#     backlog_alert: 5
+
+# Aufbewahrungsfrist der Fallakten (rein lesende Anzeige von Kandidaten; es
+# wird nichts gelöscht).
+# Beleg: management/ops/retention.py, retention_thresholds_from_config()
+#retention:
+#   # Aufbewahrungsfrist in Tagen. Vorgabe 730 (zwei Jahre).
+#   retention_days: 730

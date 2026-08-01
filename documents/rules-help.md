@@ -74,9 +74,24 @@ Der CLI-Katalog beantwortete bis Build 638 die Frage „wie rufe ich es auf?" �
 
 Ohne die Unterscheidung von `None` und `KONFIG_KEINE` wäre „wir haben nichts gefunden" von „wir haben nicht gesucht" nicht zu trennen — und die Fehlliste würde eine Lücke als erledigt ausweisen. Beide Ausgaben (Konsole und Vollhilfe) drucken alle drei Zustände aus; ein fehlender Abschnitt ließe den Leser raten.
 
-*Durchsetzung:* `fehlliste_cli_konfiguration()` gegen `cli_ohne_konfiguration` in `tests/hilfe_fehlliste_stand.json` (nur schrumpfen, KF08) sowie `tests/test_help_cli_konfiguration.py` KF01–KF11. **KF06** weist einen erfundenen Schlüssel ab, **KF07** eine Fundstelle, die auf eine nicht vorhandene Datei zeigt.
+*Durchsetzung:* `fehlliste_cli_konfiguration()` gegen `cli_ohne_konfiguration` in `tests/hilfe_fehlliste_stand.json` sowie `tests/test_help_cli_konfiguration.py` KF01–KF13.
 
-**Stand Build 639: 3 von 66 Werkzeugen erhoben.** Die übrigen 63 stehen namentlich im Stand und in `python tools/hilfe.py stand`. Das ist der ehrliche Anfang und kein erledigtes Ticket.
+**Seit Build 641 ist die Fehlliste leer, und KF08 hält sie leer.** Die Prüfung hat damit ihre Aufgabe gewechselt — wie CK07 in Build 620 und BD10 in Build 637: Solange die Liste Einträge hatte, konnte sie nur verlangen, dass es nicht schlechter wird. Jetzt gilt der Satz selbst, ohne Einschränkung und ohne Ausnahmeliste. Wer künftig ein Werkzeug aufnimmt und die Auskunft vergisst, fällt im nächsten Regressionslauf auf.
+
+Vier Prüfungen tragen die Ehrlichkeit der Angabe, und sie greifen in beide Richtungen:
+
+- **KF06** weist einen *erfundenen* Schlüssel ab: er muss in `config.yaml` stehen (auch auskommentiert) oder in den Coded Defaults.
+- **KF07** weist eine Fundstelle ab, die auf eine nicht vorhandene Datei zeigt.
+- **KF12** prüft `KONFIG_KEINE` gegen den Quelltext. Das ist die billigste Angabe im ganzen Katalog — sie kostet keine Recherche und sieht aus wie Arbeit. Ein Werkzeug, das den `ConfigLoader` importiert oder `yaml.safe_load` aufruft, kann nicht „liest keinen Eintrag" sein.
+- **KF13** prüft die Gegenrichtung: Das Blatt des genannten Schlüssels muss in einer der genannten Belegdateien wirklich vorkommen. Das schlägt den Fall, dass ein Eintrag samt Fundstelle aus einem anderen Werkzeug herüberkopiert wurde.
+
+**Was diese Prüfungen nicht leisten:** ob eine Bedeutung fachlich richtig beschrieben ist. Das bleibt die Vier-Augen-Lesung.
+
+### Ein Nebenbefund, der zur Regel geworden ist
+
+Die Erhebung hat zutage gefördert, dass `config.yaml` **rund die Hälfte dessen nicht erwähnte, was der Code tatsächlich liest** — darunter drei ganze Abschnitte (`escalation.*`, `workload.overload.*`, `retention.*`), vier Pfade (`paths.migration_db`, `paths.backup_dir`, `paths.search_index_db`, `paths.approved_reports_db`) und zwei Einträge des Servers im Namensraum `maintenance`. Wer sie setzen wollte, musste sie im Quelltext finden.
+
+Sie stehen seit Build 640 auskommentiert und erklärt in `config.yaml`. **Ein Eintrag, den der Code liest, gehört in die ausgelieferte `config.yaml`** — auskommentiert, wenn eine Vorbelegung eine fachliche Festlegung wäre, aber sichtbar.
 
 ## Gliederung eines Vollhilfe-Kapitels
 

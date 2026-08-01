@@ -1,0 +1,7 @@
+7836f18cd32188c935613ab6c9766af2  config.yaml
+bbac85e0b38e3ab8ef04c257846ec377  management/help/cli_katalog.py
+b9df14de8f7659928ff02d61343e7503  documents/rules-help.md
+f219ebca45ac33e1d0e1c1b484cc2d5b  tests/test_help_cli_konfiguration.py
+518bc411c9a269d3139d21a6e9b31956  tests/hilfe_fehlliste_stand.json
+968d790c0f0b7365c9a43da306e3ca73  issue-tracker/eingang_claude_Build641.json
+fcbc556aab1034da6fdbf3629aac0bc7  build.json

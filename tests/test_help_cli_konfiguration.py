@@ -26,8 +26,16 @@
 # KF07 - jede Fundstelle nennt eine Datei, die es gibt
 # KF08 - die Fehlliste ist abgeleitet und schrumpft nur
 # KF09 - die drei in Build 638/639 erfassten Werkzeuge sind erfasst
+# KF10 - backup_admin nennt die im Ticket ausdruecklich verlangten Eintraege
+# KF11 - db.journal_mode wird bei backup_admin NICHT behauptet (Gegenprobe)
+# KF12 - 'liest keinen Eintrag' wird am Quelltext gegengeprueft (Build 641)
+# KF13 - jede Fundstelle enthaelt den genannten Eintrag wirklich (Build 641)
 #
-# Version: v0.8.639 - Build: 639 - 2026-08-01
+# BUILD 641: Die Erhebung ist vollstaendig - 66 von 66 Werkzeugen. KF08 ist
+# damit von einer Fehlliste zu einer SPERRE geworden: kein Werkzeug ohne
+# Auskunft ueber config.yaml, ohne Einschraenkung und ohne Ausnahmeliste.
+#
+# Version: v0.8.641 - Build: 641 - 2026-08-01
 # =============================================================================
 
 import json
@@ -244,17 +252,111 @@ def test_kf08_fehlliste_ist_abgeleitet_und_schrumpft_nur():
     dem eingecheckten Stand nur schrumpfen. Ein NEUER Eintrag heisst: ein
     Werkzeug ist ohne diese Auskunft hinzugekommen, oder eine bestehende
     Auskunft ist verlorengegangen. Beides ist ein Befund.
+
+    BUILD 641 - DIE PRUEFUNG WECHSELT IHRE AUFGABE, wie CK07 es in Build 620
+    getan hat. Solange die Liste Eintraege hatte, konnte sie nur verlangen,
+    dass es nicht schlechter wird. Seit die Erhebung vollstaendig ist, gilt
+    der Satz selbst: KEIN WERKZEUG OHNE AUSKUNFT UEBER config.yaml.
+
+    Unterschieden wird am STANDBUILD und nicht am Zufall einer leeren Liste:
+    Bis Build 640 hiesse eine leere eingecheckte Liste 'sie wurde nie
+    gefuehrt' - eine stille Unwahrheit. Ab Standbuild 641 heisst sie das
+    Gegenteil. Der Schrumpfvergleich darunter bleibt in Kraft; er ist das
+    zweite Netz, falls die erste Bedingung je gelockert wird.
     """
     with open(STAND, encoding="utf-8") as fh:
         stand = json.load(fh)
     eingecheckt = set(stand.get("cli_ohne_konfiguration", []))
-    assert eingecheckt, (
-        "Die eingecheckte Liste 'cli_ohne_konfiguration' ist leer. Ab Build "
-        "639 wird sie gefuehrt; leer hiesse, fuer JEDES Werkzeug sei "
-        "erhoben, was es aus config.yaml liest.")
-    neu = sorted(set(fehlliste_cli_konfiguration()) - eingecheckt)
+    aktuell = set(fehlliste_cli_konfiguration())
+
+    if stand.get("stand_build", 0) < 641:
+        assert eingecheckt, (
+            "Die eingecheckte Liste 'cli_ohne_konfiguration' ist leer. Bis "
+            "Build 640 hiesse das, dass sie nie gefuehrt wurde.")
+    else:
+        assert not aktuell, (
+            "Der Stand ist ab Build 641 eingecheckt, aber es gibt wieder "
+            "Werkzeuge ohne Auskunft ueber config.yaml: %s. Wer ein Werkzeug "
+            "aufnimmt, traegt im selben Build ein, welche Eintraege es liest "
+            "- oder KONFIG_KEINE, wenn es keine liest."
+            % ", ".join(sorted(aktuell)))
+
+    neu = sorted(aktuell - eingecheckt)
     assert not neu, (
         "Die Konfigurations-Fehlliste ist GEWACHSEN um: %s." % ", ".join(neu))
+
+
+def test_kf12_konfig_keine_wird_am_quelltext_gegengeprueft():
+    """
+    KF12, DIE GEGENPROBE ZUR BEQUEMEN ANTWORT (NEU Build 641).
+
+    'KONFIG_KEINE' ist die billigste Angabe im ganzen Katalog: Sie kostet
+    keine Recherche und sieht aus wie Arbeit. Genau deshalb wird sie gegen
+    den Quelltext geprueft - ein Werkzeug, das den ConfigLoader importiert,
+    kann nicht 'liest keinen Eintrag' sein.
+
+    WAS DIESE PRUEFUNG NICHT LEISTET: Sie findet keinen Zugriff, der ohne
+    das Wort 'ConfigLoader' auskommt - repair_block_types.py etwa liest die
+    config.yaml unmittelbar mit yaml.safe_load. Deshalb steht daneben die
+    zweite Bedingung. Beide zusammen sind kein Beweis, aber sie fangen den
+    Fall ab, um den es geht: die aus Bequemlichkeit gesetzte Leerangabe.
+    """
+    verdaechtig = re.compile(r'^\s*[^#\n]*\byaml\.safe_load\s*\(', re.MULTILINE)
+    geprueft = 0
+    for e in CLI_KATALOG:
+        if e.konfiguration_geprueft() and not e.hat_konfiguration():
+            geprueft += 1
+            quelle = open(os.path.join(WURZEL, e.pfad),
+                          encoding="utf-8", errors="replace").read()
+            assert "ConfigLoader" not in quelle, (
+                "%s ist als 'liest keinen Eintrag aus config.yaml' gefuehrt, "
+                "importiert aber den ConfigLoader (%s)."
+                % (e.schluessel, e.pfad))
+            assert not verdaechtig.search(quelle), (
+                "%s ist als 'liest keinen Eintrag aus config.yaml' gefuehrt, "
+                "ruft aber yaml.safe_load auf (%s). Bitte nachsehen, WAS "
+                "dort gelesen wird." % (e.schluessel, e.pfad))
+    # Eine Gegenprobe, die nichts prueft, belegt nichts (TE5).
+    assert geprueft >= 15, (
+        "Es sind nur %d Werkzeuge mit KONFIG_KEINE geprueft worden - "
+        "erwartet werden mindestens 15. Ist die Angabe verlorengegangen?"
+        % geprueft)
+
+
+def test_kf13_erhobene_werkzeuge_nennen_ihre_quelle_im_quelltext():
+    """
+    KF13, DIE GEGENRICHTUNG (NEU Build 641).
+
+    Bei jedem Werkzeug MIT Eintraegen muss der genannte Schluessel - oder
+    zumindest sein Blatt - auch tatsaechlich in einer der genannten
+    Belegdateien vorkommen. Das schlaegt den Fall, dass ein Eintrag aus einem
+    anderen Werkzeug herueberkopiert wurde und die Fundstelle mitgereist ist.
+
+    Geprueft wird gegen das BLATT ('coordinator_db') und nicht gegen den
+    vollen Schluessel: Mehrere Werkzeuge setzen ihn zusammen ('paths.' + key,
+    cfg.get("paths", {}).get("coordinator_db")), und eine Pruefung auf den
+    vollen Schluessel wuerde genau diese Schreibweisen zu Unrecht melden.
+    """
+    datei = re.compile(r"[\w./_-]+\.py")
+    for e in CLI_KATALOG:
+        if not e.hat_konfiguration():
+            continue
+        for k in e.konfiguration:
+            blatt = k.schluessel.split(".")[-1]
+            gefunden = False
+            for d in datei.findall(k.beleg):
+                pfad = os.path.join(WURZEL, d)
+                if not os.path.isfile(pfad):
+                    continue
+                if blatt in open(pfad, encoding="utf-8",
+                                 errors="replace").read():
+                    gefunden = True
+                    break
+            assert gefunden, (
+                "%s / %s: Das Blatt '%s' kommt in keiner der genannten "
+                "Belegdateien vor (%s). Entweder stimmt die Fundstelle nicht, "
+                "oder der Eintrag gehoert zu einem anderen Werkzeug."
+                % (e.schluessel, k.schluessel, blatt, k.beleg))
 
 
 def test_kf09_die_erhobenen_werkzeuge_bleiben_erhoben():

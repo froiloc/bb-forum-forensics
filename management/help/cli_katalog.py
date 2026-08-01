@@ -170,6 +170,14 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
         hinweis="Der Normalweg ist die Cockpit-Sicht; dies ist der "
                 "Betriebsweg fuer Skripte und Nachpflege.",
+        # Build 640 (Welle 1): geprueft am Quelltext.
+        # Aufloesung: Argument --coordinator-db > paths.coordinator_db > Abbruch.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Fall-Datenbank, mit der das Werkzeug arbeitet.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad waere schlimmer als ein Abbruch.",
+               "management/cases/cases_admin.py, _resolve_db_path() Z. 41-54", "--coordinator-db"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.cases.cases_admin --subject-id 1 --coordinator-db ./data/coordinator.db",
@@ -204,6 +212,14 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Einen Eintrag von Hand ergaenzen. Die automatisch "
                "gespiegelten Ereignisse entstehen nicht hier."),
         ),
+        # Build 640 (Welle 1): geprueft am Quelltext.
+        # Aufloesung: Argument --coordinator-db > paths.coordinator_db > Abbruch.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Fall-Datenbank, mit der das Werkzeug arbeitet.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad waere schlimmer als ein Abbruch.",
+               "management/case_events/case_events_admin.py, _resolve_db_path() Z. 41-62", "--coordinator-db"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.case_events.case_events_admin list --subject-id 1 --coordinator-db ./data/coordinator.db",
@@ -231,6 +247,35 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         datenbanken=("coordinator.db (lesend, mode=ro)",),
         betrieb="Der Betrieb darf weiterlaufen; die Verbindung nimmt keine "
                 "Schreibsperre.",
+        # Build 640 (Welle 1): geprueft an escalation_admin.py Z. 35-62 und
+        # escalation.py Z. 141-155. Die drei Schwellen stehen seit Build 640
+        # AUSKOMMENTIERT in config.yaml - vorher waren sie nur im Quelltext zu
+        # finden, obwohl der Code sie liest (Befund der Erhebung).
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Fall-Datenbank, aus der der Fallzustand gelesen wird.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab.",
+               "management/cases/escalation_admin.py, _resolve_db_path() Z. 35-46",
+               "--coordinator-db"),
+            _k("escalation.red_overdue_days",
+               "Offener Fall, Ampel rot UND so viele Tage ohne Aktivitaet: "
+               "Regel R1 'ueberfaellig', Schwere hoch.",
+               "30 Tage",
+               "management/cases/escalation.py, escalation_thresholds_from_config() Z. 141-153"),
+            _k("escalation.stale_open_days",
+               "Zugewiesener Fall im Status 'open' und so viele Tage ohne "
+               "Aktivitaet: Regel R2 'unbearbeitet', Schwere mittel. Greift "
+               "NICHT, wenn R1 fuer denselben Fall schon angeschlagen hat - "
+               "keine Doppelmeldung.",
+               "14 Tage",
+               "management/cases/escalation.py, escalation_thresholds_from_config() Z. 141-153"),
+            _k("escalation.backlog_high",
+               "Unzugewiesener Rueckstau ab dieser Zahl: Regel R3, eine "
+               "systemische Meldung ohne Fallbezug.",
+               "10 Faelle",
+               "management/cases/escalation.py, escalation_thresholds_from_config() Z. 141-153"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.cases.escalation_admin --coordinator-db ./data/coordinator.db",
@@ -258,6 +303,14 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         art="lesend",
         datenbanken=("coordinator.db (lesend, mode=ro)",),
         betrieb="Der Betrieb darf weiterlaufen.",
+        # Build 640 (Welle 1): geprueft am Quelltext.
+        # Aufloesung: Argument --coordinator-db > paths.coordinator_db > Abbruch.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Fall-Datenbank, mit der das Werkzeug arbeitet.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad waere schlimmer als ein Abbruch.",
+               "management/cases/handover_admin.py, _resolve_db_path() Z. 35-46", "--coordinator-db"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.cases.handover_admin --coordinator-db ./data/coordinator.db",
@@ -283,6 +336,14 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         art="lesend",
         datenbanken=("coordinator.db (lesend, mode=ro)",),
         betrieb="Der Betrieb darf weiterlaufen.",
+        # Build 640 (Welle 1): geprueft am Quelltext.
+        # Aufloesung: Argument --coordinator-db > paths.coordinator_db > Abbruch.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Fall-Datenbank, mit der das Werkzeug arbeitet.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad waere schlimmer als ein Abbruch.",
+               "management/cases/next_actions_admin.py, _resolve_db_path() Z. 34-45", "--coordinator-db"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.cases.next_actions_admin --coordinator-db ./data/coordinator.db",
@@ -316,6 +377,30 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Eigenstaendiges HTML mit Erzeugungsvermerk (--out)."),
         ),
         ausgabe="HTML-Datei bei export-html (--out).",
+        # Build 640 (Welle 1): geprueft an dashboard_admin.py Z. 40-70/147-150
+        # und dashboard_repo.py Z. 103-150. BEMERKENSWERT: Die Ampel-Schwellen
+        # sind der einzige bisher gefundene Fall, in dem ein unsinniger Wert
+        # NICHT still auf die Vorgabe zurueckfaellt, sondern zum Abbruch fuehrt.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Fall-Datenbank, aus der die Uebersicht gebildet wird.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab.",
+               "management/dashboard/dashboard_admin.py, _resolve_db_path() Z. 55-70",
+               "--coordinator-db"),
+            _k("dashboard.ampel.amber_idle_days",
+               "Ab so vielen Tagen ohne Fall-Aktivitaet wird die Ampel GELB.",
+               "7 Tage - die Verwendung des Vorgabewerts wird protokolliert",
+               "management/dashboard/dashboard_repo.py, ampel_thresholds_from_config() Z. 103-150"),
+            _k("dashboard.ampel.red_idle_days",
+               "Ab so vielen Tagen ohne Fall-Aktivitaet wird die Ampel ROT. "
+               "ACHTUNG: Ein nicht ganzzahliger Wert oder eine unsinnige "
+               "Staffelung (gelb >= rot, gelb < 1) fuehrt zum ABBRUCH mit "
+               "Klartext - hier faellt anders als bei den uebrigen Schwellen "
+               "NICHTS still auf die Vorgabe zurueck.",
+               "21 Tage - die Verwendung des Vorgabewerts wird protokolliert",
+               "management/dashboard/dashboard_repo.py, ampel_thresholds_from_config() Z. 103-150"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.dashboard.dashboard_admin list --coordinator-db ./data/coordinator.db",
@@ -350,6 +435,13 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             _b("zeigen", "lesend", "Hinterlegte Fassungen listen."),
             _b("rechnen", "lesend", "Eine Fristeinschaetzung nachrechnen."),
         ),
+        # Build 640 (Welle 1): geprueft am ganzen Quelltext von
+        # limitation_admin.py - kein ConfigLoader, kein '--config', kein
+        # Zugriff auf config.yaml. Die Verjaehrungsparameter kommen aus einer
+        # EIGENEN Datei (management/deadlines/limitation_params.json, ueber
+        # '--params' austauschbar); sie sind Rechtsstoff und gehoeren
+        # ausdruecklich nicht in die Betriebskonfiguration.
+        konfiguration=KONFIG_KEINE,
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python tools/../management/deadlines/limitation_admin.py pruefen  (bzw. python -m management.deadlines.limitation_admin pruefen)",
@@ -385,6 +477,16 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Die Stichprobe nachrechnen. Exit 1 bedeutet Abweichung - "
                "das ist ein Befund, kein Programmfehler."),
         ),
+        # Build 640 (Welle 1): geprueft am ganzen Quelltext von qs_admin.py -
+        # kein ConfigLoader, kein '--config'.
+        #
+        # BEFUND, der zur Auskunft gehoert: Der Rueckfallwert fuer '--db' ist
+        # die fest verdrahtete Zeichenkette _VORGABE_DB = "data/coordinator.db"
+        # (Z. 54), NICHT 'paths.coordinator_db' aus config.yaml. Wer die
+        # coordinator.db anderswo liegen hat, MUSS hier '--db' angeben - eine
+        # Standortfestlegung in config.yaml hilft ihm bei diesem einen Werkzeug
+        # nicht. Das ist kein Fehler dieses Katalogs, aber es gehoert gesagt.
+        konfiguration=KONFIG_KEINE,
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.qs.qs_admin liste --db ./data/coordinator.db",
@@ -423,6 +525,14 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             _b("coverage", "lesend",
                "Abdeckung je Fall, samt der nie bewerteten. Exit 2 meldet "
                "solche blinden Flecken, damit ein Skript sie sieht."),
+        ),
+        # Build 640 (Welle 1): geprueft am Quelltext.
+        # Aufloesung: Argument --db > paths.coordinator_db > Abbruch.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Fall-Datenbank, mit der das Werkzeug arbeitet.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad waere schlimmer als ein Abbruch.",
+               "management/results/results_admin.py, Z. 45-55", "--db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -466,6 +576,14 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
         hinweis="Jeder Aufruf verlangt --actor. Es gibt keinen lesenden "
                 "Unterbefehl; zum Ansehen dient results_admin catalog.",
+        # Build 640 (Welle 1): geprueft am Quelltext.
+        # Aufloesung: Argument --db > paths.coordinator_db > Abbruch.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Fall-Datenbank, mit der das Werkzeug arbeitet.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad waere schlimmer als ein Abbruch.",
+               "management/results/catalog_admin.py, Z. 54-64", "--db"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.results.catalog_admin --db ./data/coordinator.db add-scale --code x --label X --actor KENNUNG",
@@ -500,6 +618,16 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             _b("list", "lesend", "Personen auflisten."),
             _b("create", "schreibend", "Person anlegen."),
             _b("update", "schreibend", "Stammdaten aendern."),
+        ),
+        # Build 640 (Welle 2): geprueft am Quelltext. Aufloesung:
+        # Argument --coordinator-db > paths.coordinator_db > Abbruch mit Klartext.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Datenbank mit den Personen und ihren Rollen.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
+               "waere schlimmer als ein Abbruch.",
+               "management/person/person_admin.py, _resolve_db_path() Z. 62-78", "--coordinator-db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -545,6 +673,16 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         hinweis="Dies ist die einzige Stelle, an der die Zuordnung Rolle -> "
                 "Recht gepflegt wird; die Cockpit-Sicht 'Rechte / Policy' "
                 "zeigt sie nur an.",
+        # Build 640 (Welle 2): geprueft am Quelltext. Aufloesung:
+        # Argument --coordinator-db > paths.coordinator_db > Abbruch mit Klartext.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Datenbank, in der Rollen und Rechte gefuehrt werden.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
+               "waere schlimmer als ein Abbruch.",
+               "management/rbac/rbac_admin.py, _resolve_db_path() Z. 62-78", "--coordinator-db"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.rbac.rbac_admin catalog",
@@ -579,6 +717,16 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
         hinweis="Braucht Zugriff auf das Verzeichnis (LDAP); die Abfrage "
                 "kann dauern.",
+        # Build 640 (Welle 2): geprueft am Quelltext. Aufloesung:
+        # Argument --db > paths.coordinator_db > Abbruch mit Klartext.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Datenbank, in die der Abgleich mit dem Verzeichnisdienst schreibt.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
+               "waere schlimmer als ein Abbruch.",
+               "management/ad_sync/ad_sync_admin.py, Z. 58-72", "--db"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.ad_sync.ad_sync_admin --db ./data/coordinator.db preview",
@@ -626,6 +774,16 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Abwesenheit stilllegen."),
             _b("list-availability", "lesend", "Abwesenheiten auflisten."),
         ),
+        # Build 640 (Welle 2): geprueft am Quelltext. Aufloesung:
+        # Argument --coordinator-db > paths.coordinator_db > Abbruch mit Klartext.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Datenbank mit den Kapazitaetsangaben je Person.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
+               "waere schlimmer als ein Abbruch.",
+               "management/capacity/capacity_admin.py, _resolve_db_path() Z. 38-52", "--coordinator-db"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.capacity.capacity_admin list-reasons --coordinator-db ./data/coordinator.db",
@@ -662,6 +820,16 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Einen Schritt setzen. 'offen' setzt ihn zurueck und "
                "entfernt die Zeile."),
         ),
+        # Build 640 (Welle 2): geprueft am Quelltext. Aufloesung:
+        # Argument --db > paths.coordinator_db > Abbruch mit Klartext.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Datenbank, in der die Einarbeitung gefuehrt wird.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
+               "waere schlimmer als ein Abbruch.",
+               "management/onboarding/onboarding_admin.py, Z. 43-57", "--db"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.onboarding.onboarding_admin steps --kind onboarding",
@@ -697,6 +865,16 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Eigenstaendiges HTML mit Erzeugungsvermerk (--out)."),
         ),
         ausgabe="HTML-Datei bei export-html (--out).",
+        # Build 640 (Welle 2): geprueft am Quelltext. Aufloesung:
+        # Argument --coordinator-db > paths.coordinator_db > Abbruch mit Klartext.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Datenbank, aus der die Betreuungsuebersicht gebildet wird.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
+               "waere schlimmer als ein Abbruch.",
+               "management/support_overview/support_overview_admin.py, _resolve_db_path() Z. 60-71", "--coordinator-db"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.support_overview.support_overview_admin list --coordinator-db ./data/coordinator.db",
@@ -732,6 +910,33 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Eigenstaendiges HTML mit Erzeugungsvermerk (--out)."),
         ),
         ausgabe="HTML-Datei bei export-html (--out).",
+        # Build 640 (Welle 2): geprueft an workload_admin.py Z. 44-62/176 und
+        # dashboard_repo.py Z. 103-150. Die Ampel-Schwellen sind BEWUSST
+        # dieselben wie in der Fallsteuerung - "so ist die Farbsemantik
+        # konsistent" (Dateikopf Z. 19). Zwei Werkzeuge, EIN Eintrag: haette
+        # jedes seinen eigenen, wuerde dieselbe Farbe zwei Dinge bedeuten.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Datenbank, aus der die Auslastung je Person gebildet wird.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab.",
+               "management/workload/workload_admin.py, _resolve_db_path() Z. 54-64",
+               "--coordinator-db"),
+            _k("dashboard.ampel.amber_idle_days",
+               "Ab so vielen Tagen ohne Fall-Aktivitaet gilt ein Fall als GELB "
+               "- dieselbe Schwelle wie in der Fallsteuerung, damit dieselbe "
+               "Farbe ueberall dasselbe heisst.",
+               "7 Tage",
+               "management/workload/workload_admin.py Z. 176; Auswertung in "
+               "management/dashboard/dashboard_repo.py Z. 103-150"),
+            _k("dashboard.ampel.red_idle_days",
+               "Ab so vielen Tagen ohne Fall-Aktivitaet gilt ein Fall als ROT. "
+               "Ein unsinniger Wert fuehrt hier wie in der Fallsteuerung zum "
+               "ABBRUCH und nicht zum stillen Rueckfall.",
+               "21 Tage",
+               "management/workload/workload_admin.py Z. 176; Auswertung in "
+               "management/dashboard/dashboard_repo.py Z. 103-150"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.workload.workload_admin list --coordinator-db ./data/coordinator.db",
@@ -758,6 +963,32 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         art="lesend",
         datenbanken=("coordinator.db (lesend, mode=ro)",),
         betrieb="Der Betrieb darf weiterlaufen.",
+        # Build 640 (Welle 2): geprueft an overload_admin.py Z. 26-63 und
+        # overload.py Z. 33-38/152-168. Die drei Grenzwerte stehen seit Build
+        # 640 AUSKOMMENTIERT in config.yaml - vorher waren sie nur im
+        # Quelltext zu finden, obwohl der Code sie liest (Befund der Erhebung).
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Datenbank, aus der Fallbestand und Rueckstau gelesen werden.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab.",
+               "management/workload/overload_admin.py, _resolve_db_path() Z. 35-47",
+               "--coordinator-db"),
+            _k("workload.overload.max_active_cases",
+               "Aktive Faelle (Status offen oder in Arbeit) je Ermittler:in, "
+               "ab denen die Ueberlastwarnung anschlaegt.",
+               "10 Faelle",
+               "management/workload/overload.py, overload_thresholds_from_config() Z. 152-168"),
+            _k("workload.overload.max_red_cases",
+               "Rote Faelle je Ermittler:in, ab denen gewarnt wird.",
+               "3 Faelle",
+               "management/workload/overload.py, overload_thresholds_from_config() Z. 152-168"),
+            _k("workload.overload.backlog_alert",
+               "Unzugewiesener Rueckstau ab dieser Groesse - eine systemische "
+               "Meldung, die keiner einzelnen Person zuzurechnen ist.",
+               "5 Faelle",
+               "management/workload/overload.py, overload_thresholds_from_config() Z. 152-168"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.workload.overload_admin --coordinator-db ./data/coordinator.db",
@@ -787,6 +1018,25 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "evidence_<uid>.db (lesend, mode=ro)"),
         betrieb="Der Betrieb darf weiterlaufen; die Fall-Datenbanken werden "
                 "ausschliesslich lesend geoeffnet.",
+        # Build 640 (Welle 3): geprueft an annotation_stats_admin.py Z. 26-60.
+        # ZWEI Pfade, und sie verhalten sich VERSCHIEDEN - deshalb stehen sie
+        # einzeln und nicht als ein Eintrag "die Pfade".
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Datenbank, aus der die Faelle und ihre Zuordnung gelesen "
+               "werden.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab.",
+               "management/stats/annotation_stats_admin.py, _resolve_db_path() Z. 36-47",
+               "--coordinator-db"),
+            _k("paths.evidence_db_dir",
+               "Das Verzeichnis der evidence_<uid>.db, aus denen die "
+               "Annotationen je Fall gezaehlt werden.",
+               "./data/evidence/ - hier gibt es einen Rueckfallwert, anders "
+               "als beim Pfad darueber.",
+               "management/stats/annotation_stats_admin.py, _resolve_evidence_dir() Z. 50-60",
+               "--evidence-dir"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.stats.annotation_stats_admin "
@@ -829,6 +1079,16 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         art="lesend",
         datenbanken=("coordinator.db (lesend, mode=ro)",),
         betrieb="Der Betrieb darf weiterlaufen.",
+        # Build 640 (Welle 3): geprueft am Quelltext. Aufloesung:
+        # Argument --coordinator-db > paths.coordinator_db > Abbruch mit Klartext.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Datenbank, aus der die Vorausschau gerechnet wird.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
+               "waere schlimmer als ein Abbruch.",
+               "management/stats/forecast_admin.py, _resolve_db_path() Z. 35-47", "--coordinator-db"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.stats.forecast_admin "
@@ -868,6 +1128,16 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         betrieb="Fuer den Stapelbetrieb gedacht und ohne Browsersitzung "
                 "lauffaehig; der Betrieb darf weiterlaufen.",
         ausgabe="HTML- oder PDF-Datei (--out).",
+        # Build 640 (Welle 3): geprueft am Quelltext. Aufloesung:
+        # Argument --coordinator-db > paths.coordinator_db > Abbruch mit Klartext.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Datenbank, aus der der Vorausschau-Bericht gebildet wird.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
+               "waere schlimmer als ein Abbruch.",
+               "management/stats/forecast_report_admin.py, _resolve_db_path() Z. 59-71", "--coordinator-db"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.stats.forecast_report_admin "
@@ -908,6 +1178,16 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         art="lesend",
         datenbanken=("coordinator.db (lesend, mode=ro)",),
         betrieb="Der Betrieb darf weiterlaufen.",
+        # Build 640 (Welle 3): geprueft am Quelltext. Aufloesung:
+        # Argument --coordinator-db > paths.coordinator_db > Abbruch mit Klartext.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Datenbank, aus der der Terminplan gebildet wird.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
+               "waere schlimmer als ein Abbruch.",
+               "management/stats/gantt_admin.py, _resolve_db_path() Z. 34-46", "--coordinator-db"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.stats.gantt_admin "
@@ -951,6 +1231,12 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Eigenstaendiges Glossar-HTML erzeugen (--out)."),
         ),
         ausgabe="HTML-Datei bei export-html (--out).",
+        # Build 640 (Welle 3): geprueft am ganzen Quelltext - kein
+        # ConfigLoader, kein '--config'. '--coordinator-db' ist OPTIONAL und
+        # dient nur dem Beleg im Protokollbuch; ohne die Angabe laeuft das
+        # Werkzeug und schreibt keinen Beleg. Ein Rueckfall auf
+        # 'paths.coordinator_db' findet NICHT statt.
+        konfiguration=KONFIG_KEINE,
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.stats.glossary_admin check",
@@ -994,6 +1280,16 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         datenbanken=("coordinator.db (lesend, mode=ro)",),
         betrieb="Der Betrieb darf weiterlaufen.",
         ausgabe="HTML- oder PDF-Datei (--out).",
+        # Build 640 (Welle 3): geprueft am Quelltext. Aufloesung:
+        # Argument --coordinator-db > paths.coordinator_db > Abbruch mit Klartext.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Datenbank, aus der der Sachstandsbericht gebildet wird.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
+               "waere schlimmer als ein Abbruch.",
+               "management/stats/status_report_admin.py, _resolve_db_path() Z. 45-57", "--coordinator-db"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.stats.status_report_admin "
@@ -1040,6 +1336,16 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         hinweis="Der Erzeugungsvermerk nennt den Stand der Belegkette; vor "
                 "einem produktiven Lauf sind die Pruefsummen der "
                 "eingesetzten Dateien zu bestaetigen.",
+        # Build 640 (Welle 3): geprueft am Quelltext. Aufloesung:
+        # Argument --coordinator-db > paths.coordinator_db > Abbruch mit Klartext.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Datenbank, aus der die Ausgabedatei gebildet wird.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
+               "waere schlimmer als ein Abbruch.",
+               "management/export/export_admin.py, _resolve_db_path() Z. 62-75", "--coordinator-db"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.export.export_admin "
@@ -1104,6 +1410,16 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
         hinweis="Eine Freigabe endet NICHT von selbst - es gibt keine Frist. "
                 "Sie besteht, bis sie widerrufen wird.",
+        # Build 640 (Welle 3): geprueft am Quelltext. Aufloesung:
+        # Argument --db > paths.coordinator_db > Abbruch mit Klartext.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Datenbank, in der die Fallfreigabe belegt wird.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
+               "waere schlimmer als ein Abbruch.",
+               "management/external/case_release_admin.py, Z. 45-59", "--db"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.external.case_release_admin --db ./data/coordinator.db list",
@@ -1141,6 +1457,16 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             _b("answer", "schreibend", "Antwort eingegangen."),
             _b("close", "schreibend", "Endgueltig abschliessen."),
             _b("kinds", "lesend", "Katalog der Vorgangsarten."),
+        ),
+        # Build 640 (Welle 3): geprueft am Quelltext. Aufloesung:
+        # Argument --db > paths.coordinator_db > Abbruch mit Klartext.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Datenbank, in der die externen Stellen gefuehrt werden.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
+               "waere schlimmer als ein Abbruch.",
+               "management/external/external_admin.py, Z. 56-70", "--db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -1183,6 +1509,11 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
         ausgabe="Dateien im Ausschleus-Verzeichnis (Kopien, Manifest, "
                 "UEBERGABE.txt).",
+        # Build 640 (Welle 3): geprueft am ganzen Quelltext - kein
+        # ConfigLoader, kein '--config'. Wie bei glossary_admin ist
+        # '--coordinator-db' optional und dient nur dem Beleg; ein Rueckfall
+        # auf 'paths.coordinator_db' findet NICHT statt.
+        konfiguration=KONFIG_KEINE,
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.export.ausschleus_admin verify --dir ./ausschleusung",
@@ -1220,6 +1551,48 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
         hinweis="NICHT fuer den Produktivbetrieb. Die Daten des Pakets sind "
                 "erfunden.",
+        # Build 640 (Welle 3): geprueft an lkae_admin.py, _prod_paths() Z. 34-52.
+        #
+        # DIESER EINTRAG IST EIN SONDERFALL und deshalb ausfuehrlich erklaert:
+        # Das Werkzeug liest diese sechs Pfade NICHT, um sie zu benutzen,
+        # sondern um sie zu MEIDEN. Sie bilden die Sperrliste, gegen die das
+        # Zielverzeichnis des Demo-Pakets geprueft wird - ein Demo-Paket darf
+        # niemals in einen Produktivpfad gebaut werden.
+        #
+        # FOLGE FUER DEN BETRIEB, die man kennen muss: Ist die config.yaml
+        # nicht lesbar, faellt der Schutz auf './data/coordinator.db' und
+        # './data/' zurueck (Z. 48-51) - er ist dann SCHWAECHER als sonst,
+        # nicht abgeschaltet. Wer die Produktivdaten anderswo liegen hat und
+        # eine unlesbare config.yaml, hat hier keinen wirksamen Schutz mehr.
+        # Das Werkzeug sagt es auf der Fehlerausgabe; es bricht aber nicht ab.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Teil der Sperrliste: Das Zielverzeichnis des Demo-Pakets darf "
+               "nicht auf diesen Pfad zeigen.",
+               "bei unlesbarer config.yaml faellt die Sperrliste auf "
+               "'./data/coordinator.db' und './data/' zurueck",
+               "management/distribution/lkae_admin.py, _prod_paths() Z. 34-52"),
+            _k("paths.evidence_db_dir",
+               "Teil der Sperrliste (Beweismittel).",
+               "siehe oben - gemeinsamer Rueckfall der ganzen Liste",
+               "management/distribution/lkae_admin.py, _prod_paths() Z. 34-52"),
+            _k("paths.forensic_db_dir",
+               "Teil der Sperrliste (forensische Daten).",
+               "siehe oben - gemeinsamer Rueckfall der ganzen Liste",
+               "management/distribution/lkae_admin.py, _prod_paths() Z. 34-52"),
+            _k("paths.assets_db_dir",
+               "Teil der Sperrliste (Anlagen).",
+               "siehe oben - gemeinsamer Rueckfall der ganzen Liste",
+               "management/distribution/lkae_admin.py, _prod_paths() Z. 34-52"),
+            _k("paths.templates_db",
+               "Teil der Sperrliste (Vorlagen).",
+               "siehe oben - gemeinsamer Rueckfall der ganzen Liste",
+               "management/distribution/lkae_admin.py, _prod_paths() Z. 34-52"),
+            _k("paths.default_db",
+               "Teil der Sperrliste (gemeinsame Vorgaben).",
+               "siehe oben - gemeinsamer Rueckfall der ganzen Liste",
+               "management/distribution/lkae_admin.py, _prod_paths() Z. 34-52"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.distribution.lkae_admin verify --target ./lkae-paket",
@@ -1256,6 +1629,26 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             _b("decide", "schreibend",
                "Entscheidung erfassen. 'uebernommen' und 'fremdzustaendig' "
                "sind ENDGUELTIG."),
+        ),
+        # Build 640 (Welle 4): geprueft an promotion_admin.py Z. 46-80.
+        # ZWEIERLEI VERHALTEN in EINEM Werkzeug, deshalb einzeln aufgefuehrt:
+        # der coordinator.db-Pfad bricht ohne Angabe ab, die drei
+        # Datenverzeichnisse haben Rueckfallwerte.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Datenbank, in der die Uebernahme belegt wird.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab.",
+               "management/ops/promotion_admin.py, Z. 53-65", "--db"),
+            _k("paths.forensic_db_dir",
+               "Verzeichnis der forensic_<uid>.db.", "./data/forensic/",
+               "management/ops/promotion_admin.py, _data_dirs() Z. 68-80"),
+            _k("paths.evidence_db_dir",
+               "Verzeichnis der evidence_<uid>.db.", "./data/evidence/",
+               "management/ops/promotion_admin.py, _data_dirs() Z. 68-80"),
+            _k("paths.assets_db_dir",
+               "Verzeichnis der assets_<uid>.db.", "./data/assets/",
+               "management/ops/promotion_admin.py, _data_dirs() Z. 68-80"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -1294,6 +1687,11 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "Material fuer die Weitergabe vorbereitet, muss das Ergebnis "
                 "MIT DEN AUGEN gegenlesen; die beiden Warnungen unten sind "
                 "nicht theoretisch, sie sind gemessen.",
+        # Build 640 (Welle 6): geprueft am ganzen Quelltext -
+        # kein ConfigLoader, kein '--config', kein Zugriff auf config.yaml.
+        # Das Werkzeug liest eine HTML-Datei und schreibt eine neue daneben; es
+        # beruehrt keinen Bestand und keine Datenbank.
+        konfiguration=KONFIG_KEINE,
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python tools/anon_html.py probe.html "
@@ -1596,6 +1994,30 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         datenbanken=("keine - die Dateien werden nur gezaehlt und gemessen, "
                      "nicht geoeffnet",),
         betrieb="Der Betrieb darf weiterlaufen.",
+        # Build 640 (Welle 4): geprueft an storage_admin.py Z. 25-33/60-75.
+        # Dieses Werkzeug liest die MEISTEN Pfade von allen - es will ja
+        # wissen, was der Bestand insgesamt belegt. JEDER hat einen
+        # Rueckfallwert; das Werkzeug bricht nie ab, weil ein Pfad fehlt.
+        konfiguration=(
+            _k("paths.forensic_db_dir", "Verzeichnis der forensic_<uid>.db.",
+               "./data/forensic/", "management/ops/storage_admin.py, Z. 66",
+               "--forensic-dir"),
+            _k("paths.evidence_db_dir", "Verzeichnis der evidence_<uid>.db.",
+               "./data/evidence/", "management/ops/storage_admin.py, Z. 67",
+               "--evidence-dir"),
+            _k("paths.assets_db_dir", "Verzeichnis der assets_<uid>.db.",
+               "./data/assets/", "management/ops/storage_admin.py, Z. 68",
+               "--assets-dir"),
+            _k("paths.coordinator_db", "Wird in der Groessenaufstellung "
+               "mitgezaehlt.", "./data/coordinator.db",
+               "management/ops/storage_admin.py, Z. 70"),
+            _k("paths.default_db", "Wird in der Groessenaufstellung "
+               "mitgezaehlt.", "./data/default.db",
+               "management/ops/storage_admin.py, Z. 71"),
+            _k("paths.templates_db", "Wird in der Groessenaufstellung "
+               "mitgezaehlt.", "./data/templates.db",
+               "management/ops/storage_admin.py, Z. 72"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.ops.storage_admin --forensic-dir ./data/forensic --evidence-dir ./data/evidence --assets-dir ./data/assets",
@@ -1625,6 +2047,24 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         hinweis="LOESCHT NICHTS und kann nichts loeschen. Die Ausgabe ist "
                 "ein Pruefvorschlag; das Loeschen von Beweismitteln ist eine "
                 "Entscheidung ausserhalb dieser Anlage.",
+        # Build 640 (Welle 4): geprueft an retention_admin.py Z. 28-47/71 und
+        # retention.py Z. 41-42/113-125. Die Frist steht seit Build 640
+        # AUSKOMMENTIERT in config.yaml - vorher war sie nur im Quelltext zu
+        # finden, obwohl der Code sie liest (Befund der Erhebung).
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Datenbank, aus der die Aufbewahrungskandidaten gelesen "
+               "werden.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab.",
+               "management/ops/retention_admin.py, _resolve_db_path() Z. 37-48",
+               "--coordinator-db"),
+            _k("retention.retention_days",
+               "Aufbewahrungsfrist in Tagen. Was aelter ist, erscheint als "
+               "KANDIDAT - geloescht wird nichts.",
+               "730 Tage (zwei Jahre)",
+               "management/ops/retention.py, retention_thresholds_from_config() Z. 113-125"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.ops.retention_admin --coordinator-db ./data/coordinator.db",
@@ -1672,6 +2112,25 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "einen Fehltreffer der Kurzpruefung aufzuloesen. Der Lauf "
                 "erzeugt bewusst KEINEN Beleg: er ist keine "
                 "Ermittlungshandlung; die Handlung ist die Abfrage.",
+        # Build 640 (Welle 4): geprueft an index_cli.py Z. 68-88/185-190.
+        #
+        # BEFUND, der in die Auskunft gehoert: Die beiden Pfade dieses
+        # Werkzeugs werden UNTERSCHIEDLICH aufgeloest. Das Beweismittel-
+        # Verzeichnis kommt aus config.yaml; der Ort des Suchindex NICHT - er
+        # ist der fest verdrahtete Vorgabewert von '--index-db'
+        # (STANDARD_INDEX_PFAD, Z. 69). Der SERVER dagegen liest fuer denselben
+        # Index 'paths.search_index_db' (management_app.py, _search_index_pfad).
+        # Wer den Index also per config.yaml verlegt, verlegt ihn NUR fuer den
+        # Server - dieses Werkzeug arbeitet dann weiter am alten Ort, ohne dass
+        # es das meldet.
+        konfiguration=(
+            _k("paths.evidence_db_dir",
+               "Das Verzeichnis der evidence_<uid>.db, aus denen der Index "
+               "gebaut wird.",
+               "./data/evidence/ - und der Rueckfall wird protokolliert, nicht "
+               "still genommen",
+               "management/search/index_cli.py, Z. 68-88", "--evidence-dir"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.search.index_cli --status",
@@ -1904,6 +2363,12 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         hinweis="Der Katalog sagt, WOZU ein Werkzeug da ist. Die "
                 "vollstaendige Liste der Optionen sagt das Werkzeug selbst - "
                 "ein hier abgeschriebener Optionsblock wuerde veralten.",
+        # Build 640 (Welle 6): geprueft am ganzen Quelltext -
+        # kein ConfigLoader, kein '--config'. Das ist hier eine
+        # EIGENSCHAFT und kein Versaeumnis: Das Werkzeug liest nichts ausser dem
+        # Katalog aus dem Paket und ist damit in jedem Betriebszustand gefahrlos
+        # aufrufbar, auch mitten in einer Migration (Dateikopf tools/hilfe.py).
+        konfiguration=KONFIG_KEINE,
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python tools/hilfe.py suche sicherung",
@@ -1958,6 +2423,11 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "Fassung - OHNE Rechtefilter, wie der ganze Rest. Die Sperre "
                 "gilt fuer die ausgelieferte Hilfe unter /help, nicht fuer "
                 "die Redaktion des Bestands.",
+        # Build 640 (Welle 6): geprueft am ganzen Quelltext -
+        # kein ConfigLoader, kein '--config'. Wie 'hilfe':
+        # es liest das Hilferegister aus dem Paket und schreibt eine HTML-Datei
+        # nach '--ziel'. Keine Datenbank, kein Bestand.
+        konfiguration=KONFIG_KEINE,
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python tools/hilfe_lektorat.py --ziel ./lektorat.html",
@@ -2018,6 +2488,11 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         hinweis="Bei relativen Pfaden ist ein gleichmaessig verschobener "
                 "Baum in sich stimmig - dieser Fehler ist ausschliesslich "
                 "von der Wurzel aus sichtbar.",
+        # Build 640 (Welle 6): geprueft am ganzen Quelltext -
+        # kein ConfigLoader, kein '--config'. Es
+        # vergleicht Pruefsummen gegen MD5SUMS_Build<N>.txt und braucht dafuer
+        # nur die build.json und den Bestand selbst.
+        konfiguration=KONFIG_KEINE,
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python tools/pruefe_auslieferung.py",
@@ -2078,6 +2553,15 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         hinweis="DER EINZIGE Weg fuer die coordinator.db. tools/migrate-dbs.py "
                 "verweist ausdruecklich hierher: zwei Wege, die dasselbe "
                 "schreiben, waeren zwei Wahrheiten ueber den Beleg.",
+        # Build 640 (Welle 4): geprueft an migrate.py Z. 49-62/72-75.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Datenbank, auf die die Migrationen angewandt werden.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab. Bei einem Werkzeug, das das Schema "
+               "aendert, waere ein erratener Pfad besonders teuer.",
+               "management/migrate.py, Z. 49-62", "--coordinator-db"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.migrate --coordinator-db "
@@ -2137,6 +2621,16 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
         hinweis="Die versiegelte forensic-Datenbank bleibt unberuehrt. Das "
                 "ist keine Vorsichtsmassnahme, sondern eine Grenze.",
+        # Build 640 (Welle 6): geprueft am ganzen Quelltext -
+        # kein ConfigLoader, kein '--config'.
+        # BEFUND MIT VORGESCHICHTE, der hierher gehoert: Der Dateikopf (Z. 278-295)
+        # haelt fest, dass in Build 586 auf 'paths.migration_db' verwiesen wurde,
+        # obwohl dieser Eintrag in der config.yaml nicht steht und die migration.db
+        # auf dieser Anlage nie in Betrieb war - der Befehl brach ab. Massgeblich
+        # ist das Register IN der jeweiligen Datenbank (schema_migrations), nicht
+        # eine Steuerdatei daneben. Dieses Werkzeug liest deshalb bewusst nichts
+        # aus der config.yaml.
+        konfiguration=KONFIG_KEINE,
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python tools/migrate-dbs.py --data-dir ./data",
@@ -2208,6 +2702,29 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         hinweis="Der Beleg laeuft hier NICHT ueber das Protokollbuch: "
                 "Beweis-Datenbanken fuehren keines. Der forensische Beleg "
                 "ist das verkettete Laufbuch.",
+        # Build 640 (Welle 4): geprueft an migration_fleet_admin.py Z. 59-94.
+        # BEIDE Eintraege standen bis Build 640 in KEINER ausgelieferten
+        # config.yaml, obwohl das Werkzeug sie liest - wer sie setzen wollte,
+        # musste sie im Quelltext finden (Befund der Erhebung). Sie sind
+        # seither dort auskommentiert aufgenommen.
+        konfiguration=(
+            _k("paths.migration_db",
+               "Die Steuerdatenbank der Migrationsflotte.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne '--migration-db' "
+               "bricht das Werkzeug ab. Absicht: eine Migration soll nicht "
+               "gegen eine erfundene Steuerdatei laufen.",
+               "management/migration_fleet/migration_fleet_admin.py, "
+               "_resolve_migration_db_path() Z. 59-75", "--migration-db"),
+            _k("paths.backup_dir",
+               "Das Sicherungsziel VOR einer Migration. Nicht zu verwechseln "
+               "mit 'backup.dest_dir' - das ist die laufende Datensicherung.",
+               "KEIN Vorgabewert. Ohne Eintrag und ohne '--backup-dir' "
+               "verweigert der Companion die Ausfuehrung ueber das Tor "
+               "'KEIN_BACKUP_DIR': eine Migration ohne Sicherung findet nicht "
+               "statt.",
+               "management/migration_fleet/migration_fleet_admin.py, "
+               "_resolve_backup_dir() Z. 78-94", "--backup-dir"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.migration_fleet."
@@ -2250,6 +2767,27 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         hinweis="Anlass war ein Fall, in dem zwei Migrationen nie gelaufen "
                 "waren: die Folge war kein Fehler, sondern Stille. "
                 "Exit 1 heisst 'Migration fehlt', Exit 2 'Datei unbrauchbar'.",
+        # Build 640 (Welle 5): geprueft an templates_db_status.py Z. 135-162.
+        #
+        # BESONDERHEIT, die man kennen muss: Dieses Werkzeug liest die
+        # config.yaml WEDER ueber den ConfigLoader NOCH ueber einen
+        # YAML-Parser. Es sucht zeilenweise nach der Zeichenfolge
+        # 'templates_db:' und nimmt, was dahinter steht (Z. 135-147) - der
+        # Kommentar nennt als Grund, ohne YAML-Abhaengigkeit auszukommen.
+        #
+        # WAS DARAUS FOLGT: Die Suche kennt keine Abschnitte. Stuende
+        # 'templates_db:' irgendwo anders in der Datei, naehme das Werkzeug
+        # diesen Wert. Auskommentierte Zeilen werden uebersprungen, die
+        # Einrueckung wird nicht geprueft. Fuer eine reine Statusanzeige ist
+        # das tragbar; ein Werkzeug, das schreibt, duerfte so nicht bauen.
+        konfiguration=(
+            _k("paths.templates_db",
+               "Die Vorlagen-Datenbank, deren Migrationsstand angezeigt wird.",
+               "./data/templates.db - dieses Werkzeug hat als einziges der "
+               "Vorlagen-Werkzeuge einen Rueckfallwert und bricht nicht ab.",
+               "management/templates_db_status.py, _db_aus_config() Z. 135-162",
+               "--templates-db"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python management/templates_db_status.py "
@@ -2283,6 +2821,15 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "dieses Skript laeuft eigenstaendig.",
         hinweis="EINMALIGE Altmigration. Mehrfaches Ausfuehren ist "
                 "unschaedlich - ist die Kennung vorhanden, geschieht nichts.",
+        # Build 640 (Welle 5): geprueft am Quelltext. Aufloesung:
+        # Argument --templates-db > paths.templates_db > Abbruch mit Klartext.
+        konfiguration=(
+            _k("paths.templates_db",
+               "Die Vorlagen-Datenbank, auf die die Migration angewandt wird.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab.",
+               "management/migrate_templates_module_key.py, Z. 105-120", "--templates-db"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.migrate_templates_module_key --templates-db ./data/templates.db",
@@ -2315,6 +2862,22 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
         hinweis="EINMALIGE Altmigration. Mehrfaches Ausfuehren ist "
                 "unschaedlich.",
+        # Build 640 (Welle 5): geprueft an migrate_templates_full_templates.py
+        # Z. 414-425. BESONDERHEIT: Dieses Skript liest die config.yaml mit
+        # 'yaml.safe_load' UNMITTELBAR und nicht ueber den ConfigLoader - der
+        # Kommentar im Quelltext nennt als Grund, das Skript ohne den
+        # Paket-Import lauffaehig zu halten. Folge fuer den Betrieb: Die Coded
+        # Defaults des ConfigLoaders greifen hier NICHT. Fehlt der Eintrag in
+        # der Datei, bricht es ab - auch wenn der ConfigLoader einen Wert
+        # geliefert haette.
+        konfiguration=(
+            _k("paths.templates_db",
+               "Die Vorlagen-Datenbank, auf die die Migration angewandt wird.",
+               "KEIN Vorgabewert. Der Eintrag muss in der DATEI stehen; die "
+               "Coded Defaults des ConfigLoaders greifen hier nicht.",
+               "management/migrate_templates_full_templates.py, Z. 414-425",
+               "--templates-db"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.migrate_templates_full_templates --templates-db ./data/templates.db --dry-run",
@@ -2345,6 +2908,15 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "anzulegen. Das Skript legt selbst keines an.",
         hinweis="EINMALIGE Altmigration. Ist die Regel bereits erweitert, "
                 "geschieht nichts.",
+        # Build 640 (Welle 5): geprueft am Quelltext. Aufloesung:
+        # Argument --templates-db > paths.templates_db > Abbruch mit Klartext.
+        konfiguration=(
+            _k("paths.templates_db",
+               "Die Vorlagen-Datenbank, auf die die Migration angewandt wird.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab.",
+               "management/migrate_templates_audit_check.py, Z. 109-124", "--templates-db"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.migrate_templates_audit_check --templates-db ./data/templates.db",
@@ -2375,6 +2947,15 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         hinweis="EINMALIGE Altmigration - und die einzige mit einem "
                 "loeschenden Schritt: die alte Tabelle wird entfernt. Das "
                 "geschieht in EINER Transaktion und verlustfrei.",
+        # Build 640 (Welle 5): geprueft am Quelltext. Aufloesung:
+        # Argument --templates-db > paths.templates_db > Abbruch mit Klartext.
+        konfiguration=(
+            _k("paths.templates_db",
+               "Die Vorlagen-Datenbank, auf die die Migration angewandt wird.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab.",
+               "management/migrate_templates_placeholders.py, Z. 276-291", "--templates-db"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.migrate_templates_placeholders --templates-db ./data/templates.db",
@@ -2404,6 +2985,15 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "abschaltet, und prueft die Datei danach nach.",
         hinweis="EINMALIGE Altmigration. Ist die Spalte vorhanden, geschieht "
                 "nichts.",
+        # Build 640 (Welle 5): geprueft am Quelltext. Aufloesung:
+        # Argument --templates-db > paths.templates_db > Abbruch mit Klartext.
+        konfiguration=(
+            _k("paths.templates_db",
+               "Die Vorlagen-Datenbank, auf die die Migration angewandt wird.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab.",
+               "management/migrate_templates_ci.py, Z. 116-131", "--templates-db"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python management/migrate_templates_ci.py --templates-db ./data/templates.db",
@@ -2442,6 +3032,18 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
         hinweis="Zweifelsfaelle werden NICHT angefasst, sondern als unklar "
                 "gemeldet.",
+        # Build 640 (Welle 5): geprueft an repair_block_types.py Z. 183-192.
+        # Liest die config.yaml unmittelbar mit 'yaml.safe_load', nicht ueber
+        # den ConfigLoader - die Coded Defaults greifen hier also nicht.
+        konfiguration=(
+            _k("paths.evidence_db_dir",
+               "Das Verzeichnis der evidence_<uid>.db, in denen die verlorenen "
+               "Bausteinarten wiederhergestellt werden.",
+               "KEIN Vorgabewert. Der Eintrag muss in der DATEI stehen; sonst "
+               "bricht das Werkzeug mit 'paths.evidence_db_dir fehlt' ab.",
+               "management/repair_block_types.py, _resolve_evidence_dir() Z. 183-192",
+               "--evidence-dir"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.repair_block_types --evidence-dir ./data/evidence",
@@ -2484,6 +3086,15 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "WARTUNGSFENSTER' fort.",
         hinweis="Die Herkunft jeder uebernommenen Zeile wird im Ziel "
                 "vermerkt.",
+        # Build 640 (Welle 5): geprueft an consolidate_default_db.py Z. 56-70.
+        konfiguration=(
+            _k("paths.default_db",
+               "Die gemeinsame Vorgaben-Datenbank, in die zusammengefuehrt "
+               "wird.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne '--target' bricht das "
+               "Werkzeug mit Klartext ab.",
+               "management/consolidate_default_db.py, Z. 56-70", "--target"),
+        ),
         tiefe=CliTiefe(
             exit_codes=((0, "erledigt, auch mit aufgeloesten Konflikten"),
                         (1, "harter Fehler - der ganze Lauf wurde "
@@ -2532,6 +3143,15 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "nach dem Vorgang verglichen. Weicht er ab, ist das ein "
                 "Siegelbruch und der Lauf bricht hart ab - er wird NICHT "
                 "uebersprungen.",
+        # Build 640 (Welle 6): geprueft am ganzen Quelltext -
+        # kein ConfigLoader, kein '--config'.
+        # BEMERKENSWERT, weil es ueberrascht: Dieses Werkzeug stempelt den
+        # Journalmodus um, wertet aber 'db.journal_mode' aus der config.yaml NICHT
+        # aus. Der Zielmodus kommt ausschliesslich aus '--to', das Verzeichnis aus
+        # '--data-dir'. Das ist folgerichtig - es ist das Werkzeug fuer den
+        # EINMALIGEN Umstempelvorgang, und der soll genau das tun, was auf der
+        # Kommandozeile steht, und nicht das, was in einer Datei steht.
+        konfiguration=KONFIG_KEINE,
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python tools/convert_journal_mode.py --data-dir ./data",
@@ -2612,6 +3232,10 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "bereits auffaelligen Datei. Auf WAL-gestempelte Dateien "
                 "wird nicht geschrieben; die brauchen zuerst "
                 "tools/convert_journal_mode.py.",
+        # Build 640 (Welle 6): geprueft am ganzen Quelltext -
+        # kein ConfigLoader, kein '--config'.
+        # Die zu behandelnde Datenbank wird als Pfad uebergeben.
+        konfiguration=KONFIG_KEINE,
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python tools/forensic_index_upgrade.py --forensic-dir "
@@ -2651,6 +3275,10 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         hinweis="Exit 2 meldet eine Luecke, Exit 3 eine Version, die das "
                 "Paket nicht kennt. Beides ist ein Befund, kein "
                 "Programmfehler.",
+        # Build 640 (Welle 6): geprueft am ganzen Quelltext -
+        # kein ConfigLoader, kein '--config'.
+        # Es liest die Migrationsdateien aus dem Paket.
+        konfiguration=KONFIG_KEINE,
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python tools/pruefe_migrationskette.py --db "
@@ -2683,6 +3311,10 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "Datei wirklich eine Kopie ist - der Schutz ist "
                 "organisatorisch. '--seed' fuellt Testzeilen ein und gehoert "
                 "NICHT auf eine Kopie mit echten Daten.",
+        # Build 640 (Welle 6): geprueft am ganzen Quelltext -
+        # kein ConfigLoader, kein '--config'.
+        # Ein Machbarkeitsnachweis gegen einen uebergebenen Wegwerf-Bestand.
+        konfiguration=KONFIG_KEINE,
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python tools/poc_m019_weg_a.py /tmp/kopie.db",
@@ -2713,6 +3345,22 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         betrieb="Im laufenden Betrieb gefahrlos. Mit --url muss der Dienst "
                 "laufen und die aufrufende Person das Leserecht haben.",
         hinweis="Diagnose, nicht Teil des Produktivsystems.",
+        # Build 640 (Welle 6): geprueft an tools/diag_limitation_laufzeit.py, Z. 109-115/588-596.
+        # Alle drei Pfade sind ausfallsicher: ist die config.yaml nicht
+        # lesbar, gilt still der Vorgabewert ('except Exception: return
+        # vorgabe'). Bei einer MESSUNG ist das vertretbar - sie veraendert
+        # nichts und meldet ohnehin, welchen Bestand sie angesehen hat.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Datenbank, aus der die Faelle fuer die Messung stammen.",
+               "./data/coordinator.db", "tools/diag_limitation_laufzeit.py, Z. 109-115/588-596", "--coordinator-db"),
+            _k("paths.forensic_db_dir",
+               "Verzeichnis der forensic_<uid>.db.", "./data/forensic/",
+               "tools/diag_limitation_laufzeit.py, Z. 109-115/588-596", "--forensic-dir"),
+            _k("paths.evidence_db_dir",
+               "Verzeichnis der evidence_<uid>.db.", "./data/evidence/",
+               "tools/diag_limitation_laufzeit.py, Z. 109-115/588-596", "--evidence-dir"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python tools/diag_limitation_laufzeit.py "
@@ -2763,6 +3411,22 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "(alle lesend, mode=ro)",),
         betrieb="Im laufenden Betrieb gefahrlos.",
         hinweis="Diagnose, nicht Teil des Produktivsystems.",
+        # Build 640 (Welle 6): geprueft an tools/diag_matrix_laufzeit.py, Z. 83-90/298-306.
+        # Alle drei Pfade sind ausfallsicher: ist die config.yaml nicht
+        # lesbar, gilt still der Vorgabewert ('except Exception: return
+        # vorgabe'). Bei einer MESSUNG ist das vertretbar - sie veraendert
+        # nichts und meldet ohnehin, welchen Bestand sie angesehen hat.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Datenbank, aus der die Faelle fuer die Messung stammen.",
+               "./data/coordinator.db", "tools/diag_matrix_laufzeit.py, Z. 83-90/298-306", "--coordinator-db"),
+            _k("paths.forensic_db_dir",
+               "Verzeichnis der forensic_<uid>.db.", "./data/forensic/",
+               "tools/diag_matrix_laufzeit.py, Z. 83-90/298-306", "--forensic-dir"),
+            _k("paths.evidence_db_dir",
+               "Verzeichnis der evidence_<uid>.db.", "./data/evidence/",
+               "tools/diag_matrix_laufzeit.py, Z. 83-90/298-306", "--evidence-dir"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python tools/diag_matrix_laufzeit.py --coordinator-db "
@@ -2809,6 +3473,11 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "Probedateien",),
         betrieb="Legt Probedateien und eine Protokolldatei im "
                 "Datenverzeichnis an und raeumt die Probedateien wieder weg.",
+        # Build 640 (Welle 6): geprueft am ganzen Quelltext -
+        # kein ConfigLoader, kein '--config'.
+        # Die Diagnose misst ein VERZEICHNIS, das uebergeben wird - sie soll
+        # gerade nicht dorthin sehen, wo der Bestand liegt.
+        konfiguration=KONFIG_KEINE,
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python tools/diag_sqlite_netdrive.py --data-dir "
@@ -2864,6 +3533,10 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "veraendert; die grosse default.db wird nur gelesen",),
         betrieb="Braucht Platz in Groesse der gewaehlten Datenbank fuer die "
                 "Kopie; die Kopie wird danach entfernt.",
+        # Build 640 (Welle 6): geprueft am ganzen Quelltext -
+        # kein ConfigLoader, kein '--config'.
+        # Wie die erste Fassung: das zu messende Verzeichnis wird uebergeben.
+        konfiguration=KONFIG_KEINE,
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python tools/diag_sqlite_netdrive2.py --data-dir ./data "
@@ -2930,6 +3603,10 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "Arbeitsspeicher",),
         betrieb="Ueberall gefahrlos; es wird keine Datei angefasst.",
         hinweis="Ein BELEG, kein Produktivcode. Ohne Argumente aufzurufen.",
+        # Build 640 (Welle 6): geprueft am ganzen Quelltext -
+        # kein ConfigLoader, kein '--config'.
+        # Die zu untersuchenden Datenbanken werden als Pfade uebergeben.
+        konfiguration=KONFIG_KEINE,
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python tools/diag_migrationsluecke.py",
@@ -2973,6 +3650,14 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         betrieb="Der Normalbetrieb. Mit --maintenance ist der Start NUR bei "
                 "aktivem Wartungsfenster erlaubt.",
         hinweis="Keine Schreibpfade: der Dienst liest.",
+        # Build 640 (Welle 6): geprueft an management.py Z. 48-86.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Datenbank, mit der der Verwaltungsserver arbeitet.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht der "
+               "Start mit Klartext ab.",
+               "management.py, Z. 70-86", "--coordinator-db"),
+        ),
         tiefe=CliTiefe(
             exit_codes=((0, "sauber beendet"),
                         (1, "kein coordinator.db-Pfad, Datei nicht gefunden, "
@@ -3023,6 +3708,141 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         hinweis="Die versiegelte forensic-Datenbank wird IMMER nur lesend "
                 "geoeffnet. Jeder Fehler beim Start fuehrt zum harten "
                 "Abbruch - kein stiller Betrieb unter unklaren Bedingungen.",
+        # Build 640 (Welle 6): geprueft an main.py Z. 330-380/570-590/750-870
+        # sowie an den Bauteilen, die main.py mit der geladenen Konfiguration
+        # versorgt (core/mode_resolver.py, core/logger.py, core/hosts_manager.py,
+        # core/browser_launcher.py, db/journal_policy.py, core/validation_rules.py).
+        #
+        # DIES IST DER GROESSTE EINTRAG DES KATALOGS, und das ist richtig so:
+        # main.py ist das einzige Werkzeug, das die Konfiguration als GANZES
+        # auswertet. Jedes andere liest ein oder zwei Eintraege.
+        #
+        # NICHT AUFGEFUEHRT sind Eintraege, die erst der Verwaltungsserver
+        # (management/server/management_app.py) liest - etwa
+        # 'paths.search_index_db' oder 'ad.ldap.*'. Sie gehoeren zu dessen
+        # Betrieb und nicht zum Start dieses Servers.
+        konfiguration=(
+            _k("server.mode",
+               "Der Startmodus: 'job' (Auftrag aus der Fall-Datenbank), 'cli' "
+               "(Beschuldigter per Argument) oder 'support' (nur lesend, alle "
+               "Schreibvorgaenge in eine fluechtige Datenbank). Ein anderer "
+               "Wert bricht den Start ab.",
+               "job", "core/config_loader.py, _DEFAULTS und _validate(); "
+               "Auswertung in core/mode_resolver.py", "--mode"),
+            _k("server.host",
+               "Adresse, auf der der Server lauscht. In der Zielumgebung die "
+               "Adresse, auf die der Hostname des Originalforums zeigt.",
+               "127.0.0.2", "main.py, Z. 577", "--host"),
+            _k("server.port",
+               "Port des Servers. Muss zwischen 1 und 65535 liegen; sonst "
+               "bricht der Start ab.",
+               "8080 (Coded Default des ConfigLoaders: 80)",
+               "main.py, Z. 581; Pruefung in core/config_loader.py, _validate()",
+               "--port"),
+            _k("paths.coordinator_db",
+               "Die Fall-Datenbank: Auftragslage, Personen, Rechte.",
+               "./data/coordinator.db",
+               "main.py, _build_config_overrides(); Auswertung in "
+               "core/mode_resolver.py", "--coordinator-db"),
+            _k("paths.forensic_db_dir",
+               "Verzeichnis der forensic_<uid>.db. Der DATEINAME wird aus der "
+               "subject_id gebildet und ist NICHT einstellbar.",
+               "./data/forensic/",
+               "main.py, _build_config_overrides(); core/mode_resolver.py",
+               "--forensic-db-dir"),
+            _k("paths.evidence_db_dir",
+               "Verzeichnis der evidence_<uid>.db - der Beweismittel.",
+               "./data/evidence/",
+               "main.py, _build_config_overrides(); core/mode_resolver.py",
+               "--evidence-db-dir"),
+            _k("paths.assets_db_dir",
+               "Verzeichnis der assets_<uid>.db.", "./data/assets/",
+               "core/mode_resolver.py"),
+            _k("paths.default_db",
+               "Die gemeinsame Vorgaben-Datenbank.", "./data/default.db",
+               "main.py, _build_config_overrides(); core/mode_resolver.py",
+               "--default-db"),
+            _k("paths.templates_db",
+               "Die Vorlagen-Datenbank fuer die Berichte.",
+               "./data/templates.db", "core/config_loader.py, _DEFAULTS"),
+            _k("paths.translations_db",
+               "Die Uebersetzungen - nur lesend angebunden.",
+               "./data/translations.db", "core/config_loader.py, _DEFAULTS"),
+            _k("db.journal_mode",
+               "Journalmodus, den der Server auf neuen Datenbanken setzt. "
+               "'wal' ist VERBOTEN und fuehrt zum harten Startabbruch mit "
+               "Klartext (Build 499, PROD-Vorfall Citrix). 'auto' setzt seit "
+               "Build 499 unmittelbar den Rueckfallwert - es wird kein WAL "
+               "mehr versucht.",
+               "auto (in der ausgelieferten config.yaml hart 'delete')",
+               "db/journal_policy.py, resolve_mode() Z. 228-247"),
+            _k("db.journal_mode_fallback",
+               "Der Modus, auf den 'auto' faellt. Zulaessig sind delete, "
+               "truncate und persist.",
+               "delete", "db/journal_policy.py, resolve_fallback() Z. 249-262"),
+            _k("logging.level",
+               "Umfang der Protokollierung: 'info' oder 'debug'. Ein anderer "
+               "Wert bricht den Start ab.",
+               "info", "main.py, Z. 365; Pruefung in core/config_loader.py, "
+               "_validate()", "--debug"),
+            _k("logging.logfile",
+               "Datei, in die protokolliert wird.",
+               "./logs/forensic_server.log", "main.py, Z. 366 und Z. 689"),
+            _k("logging.max_bytes",
+               "Groesse, ab der die Protokolldatei umgebrochen wird. Stand "
+               "bis Build 640 nur in den Coded Defaults und in keiner "
+               "ausgelieferten config.yaml.",
+               "10485760 (10 MiB)", "main.py, Z. 367; core/logger.py Z. 111"),
+            _k("logging.backup_count",
+               "Wie viele umgebrochene Protokolldateien aufgehoben werden. "
+               "Stand bis Build 640 nur in den Coded Defaults.",
+               "5", "main.py, Z. 368; core/logger.py Z. 112"),
+            _k("maintenance.drain_timeout_sec",
+               "Wie lange der Server beim Ruhigstellen auf das Auslaufen "
+               "offener Anfragen wartet, bevor er das Wartungsfenster "
+               "bestaetigt.",
+               "30 Sekunden", "main.py, Z. 758"),
+            _k("maintenance.poll_interval_sec",
+               "In welchem Abstand der laufende Server nachsieht, ob ein "
+               "Wartungsfenster gesetzt oder aufgehoben wurde.",
+               "3 Sekunden", "main.py, Z. 867"),
+            _k("browser.path",
+               "Programmpfad des zu startenden Browsers. Wird NUR ausgewertet, "
+               "wenn der Server mit '--open-browser' gestartet wird. Leer "
+               "heisst: selbst erkennen, sonst der Systemstandard.",
+               "leer (Auto-Erkennung)", "core/browser_launcher.py"),
+            _k("hosts_management.enabled",
+               "Ob der Server den Hostnamen des Originalforums in die "
+               "hosts-Datei eintraegt.",
+               "false", "core/hosts_manager.py"),
+            _k("hosts_management.forum_hostname",
+               "Der einzutragende Hostname. Stand bis Build 640 nur in den "
+               "Coded Defaults.",
+               "leer", "core/hosts_manager.py, Z. 98"),
+            _k("hosts_management.target_ip",
+               "Die Adresse, auf die der Hostname zeigen soll. Stand bis "
+               "Build 640 nur in den Coded Defaults.",
+               "127.0.0.2", "core/hosts_manager.py, Z. 99"),
+            _k("support.temp_db",
+               "Wohin die Schreibvorgaenge im Nur-Lese-Betrieb gehen: "
+               "'memory' oder 'file'. Steht in keiner ausgelieferten "
+               "config.yaml, wird aber ausgewertet und geprueft.",
+               "memory", "core/config_loader.py, _validate(); "
+               "db/connection_manager.py Z. 380"),
+            _k("validation.rules",
+               "Formatregeln fuer die Eingabefelder der Berichte (Muster, "
+               "Normalisierung, Klartext-Hinweis). Eine NEUE Spurennummern-"
+               "Form wird hier aufgenommen, ohne Code-Aenderung und ohne "
+               "Aenderung an der Vorlagen-Datenbank - danach Server neu "
+               "starten.",
+               "keine Regeln", "core/validation_rules.py"),
+            _k("url_patterns.asset_prefixes",
+               "Pfad-Vorsilben, unter denen der Server Beiwerk (Stil, Bilder) "
+               "ausliefert statt Forenseiten. Steht in keiner ausgelieferten "
+               "config.yaml.",
+               "/forum/style/, /forum/img/, /forum/extensions/",
+               "server/router.py, Z. 68; core/config_loader.py, _DEFAULTS"),
+        ),
         tiefe=CliTiefe(
             exit_codes=((0, "sauber beendet"),
                         (1, "Konfiguration, Protokollierung, Systembenutzer, "
@@ -3068,6 +3888,12 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         datenbanken=("keine der Produktivdatenbanken; die Tests arbeiten mit "
                      "eigenen Wegwerfdaten",),
         betrieb="Vor jeder Uebergabe zu fahren.",
+        # Build 640 (Welle 6): geprueft am ganzen Quelltext -
+        # kein ConfigLoader, kein '--config'.
+        # Der Testlauf ist von der Betriebskonfiguration unabhaengig - das ist
+        # Absicht: eine Pruefung, die sich aus der Konfiguration bedient, prueft
+        # nicht mehr denselben Gegenstand auf jeder Anlage.
+        konfiguration=KONFIG_KEINE,
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python run_tests.py",
@@ -3109,6 +3935,11 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         datenbanken=("keine",),
         betrieb="Vor der Inbetriebnahme. Schreibt ins Dateisystem, nicht in "
                 "Datenbanken.",
+        # Build 640 (Welle 6): geprueft am ganzen Quelltext -
+        # kein ConfigLoader, kein '--config'. Die Einrichtung
+        # legt die config.yaml erst an bzw. setzt sie voraus; sie kann sie noch
+        # nicht auswerten.
+        konfiguration=KONFIG_KEINE,
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python install.py --target dev --os linux",
@@ -3157,6 +3988,11 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         datenbanken=("keine",),
         betrieb="Laeuft auf einem Rechner MIT Internetzugang - nicht auf der "
                 "Anlage.",
+        # Build 640 (Welle 6): geprueft am ganzen Quelltext -
+        # kein ConfigLoader, kein '--config'.
+        # Es packt den Auslieferungsstand; die Zielkonfiguration entsteht erst
+        # auf der Zielanlage.
+        konfiguration=KONFIG_KEINE,
         tiefe=CliTiefe(
             exit_codes=((0, "durchgelaufen - AUCH DANN, wenn der "
                             "Rad-Download vollstaendig gescheitert ist"),
@@ -3198,6 +4034,13 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         hinweis="ABGEKUENDIGT: hat keine regulaere Verwendung mehr und wird "
                 "mittelfristig entfernt. Der Eintrag steht hier, damit das "
                 "Werkzeug nicht unbemerkt liegen bleibt.",
+        # Build 640 (Welle 6): geprueft am ganzen Quelltext -
+        # kein ConfigLoader, kein '--config'.
+        # Der Vorgabepfad ist die fest verdrahtete Zeichenkette DEFAULT_DB_PATH =
+        # './data/coordinator.db' (Z. 67). Der Kommentar daneben nennt sie
+        # 'passend zu config.yaml' - GELESEN wird die Datei aber nicht. Wer die
+        # coordinator.db anderswo liegen hat, muss den Pfad hier uebergeben.
+        konfiguration=KONFIG_KEINE,
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python setup_coordinator_dev.py --db "

@@ -3631,12 +3631,12 @@
       "description": "Es ist hilfreich gewisse zentrale Einstellungspunkte zu kennen. Beispielsweise für `backup_admin` wäre es hilfreich, wenn die Konfiguration in `config.yaml` die genutzt wird erklärt würde.",
       "expected_behavior": "Auch Konfigurationsmöglichkeiten in `config.yaml` werden erklärt.",
       "actual_behavior": "`config.yaml` wird derzeit nicht erwähnt.",
-      "status": "resolved",
+      "status": "in_progress",
       "priority": "high",
       "severity": "trivial",
       "assigned_to": "Claude",
       "related_to": [],
-      "resolved_in_version": "0.8.641",
+      "resolved_in_version": null,
       "target_version": null,
       "environment": {
         "python_version": "3.14",
@@ -3669,28 +3669,6 @@
           "old_value": "open",
           "new_value": "in_progress",
           "comment": "Mechanismus und Ausgabe stehen (0.8.639); die Erhebung laeuft (3 von 66). Bewusst NICHT 'resolved'."
-        },
-        {
-          "timestamp": "2026-08-01T16:30:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "ABGESCHLOSSEN in Build 0.8.641. Die Erhebung ist VOLLSTAENDIG: 66 von 66 Werkzeugen. Sechs Wellen ueber die Builds 640 und 641.\\n\\nZAHLEN: 46 Werkzeuge lesen mindestens einen Eintrag aus config.yaml, 20 lesen KEINEN (KONFIG_KEINE - eine Antwort, kein Platzhalter). Zusammen 66; die Fehlliste ist leer.\\n\\nDIE PRUEFUNG HAT IHRE AUFGABE GEWECHSELT, wie CK07 in Build 620 und BD10 in Build 637. Solange die Liste Eintraege hatte, konnte KF08 nur verlangen, dass es nicht schlechter wird. Jetzt gilt der Satz selbst: KEIN WERKZEUG OHNE AUSKUNFT UEBER config.yaml, ohne Einschraenkung und ohne Ausnahmeliste. Unterschieden wird am Standbuild (641), nicht am Zufall einer leeren Liste.\\n\\nZWEI NEUE GEGENPROBEN, weil eine unbelegte Angabe hier besonders billig zu haben waere: KF12 prueft KONFIG_KEINE gegen den Quelltext - wer den ConfigLoader importiert oder yaml.safe_load aufruft, kann nicht 'liest keinen Eintrag' sein. KF13 prueft die Gegenrichtung: das Blatt des genannten Schluessels muss in einer der genannten Belegdateien wirklich vorkommen; das schlaegt den aus einem anderen Werkzeug herueberkopierten Eintrag samt mitgereister Fundstelle.\\n\\nDER GROESSTE BEFUND DER ERHEBUNG - und der eigentliche Gewinn dieses Tickets: DIE AUSGELIEFERTE config.yaml ERWAEHNTE RUND DIE HAELFTE DESSEN NICHT, WAS DER CODE LIEST. Vollstaendig, mit Fundstelle:\\n  * DREI GANZE ABSCHNITTE fehlten: 'escalation.*' (red_overdue_days, stale_open_days, backlog_high - escalation.py Z. 141-153), 'workload.overload.*' (max_active_cases, max_red_cases, backlog_alert - overload.py Z. 152-168), 'retention.*' (retention_days - retention.py Z. 113-125). Ihre Vorgabewerte lebten in den jeweiligen Datenklassen.\\n  * VIER PFADE fehlten: paths.migration_db und paths.backup_dir (migration_fleet_admin Z. 59-94 - beide OHNE Vorgabewert, das Werkzeug bricht ohne sie ab bzw. verweigert ueber das Tor KEIN_BACKUP_DIR), paths.search_index_db (management_app, _search_index_pfad), paths.approved_reports_db (seit Build 377 nur in den Coded Defaults).\\n  * ZWEI EINTRAEGE DES SERVERS im Namensraum 'maintenance': drain_timeout_sec (main.py Z. 758) und poll_interval_sec (main.py Z. 867).\\n\\nDIE LETZTEN BEIDEN SIND EINE KORREKTUR AN MEINEM EIGENEN BUILD 638. Der dort angelegte Abschnitt 'maintenance' belegte den Namensraum und sah aus, als beschreibe er ihn vollstaendig - er nannte diese beiden nicht. Wer ihn einkommentiert und sie vergisst, aendert nichts (die Vorgabewerte im Code greifen weiter), aber er haette es nicht wissen koennen. Der Nachtrag steht ausdruecklich als Korrektur im Block.\\n\\nALLE fehlenden Eintraege sind in Build 640 AUSKOMMENTIERT und erklaert in config.yaml aufgenommen - mit Fundstelle, Vorgabewert und dem Hinweis, dass die drei Schwellenwert-Abschnitte AUSFALLSICHER gebaut sind ('except Exception: return d'): ein Tippfehler faellt dort NICHT auf, sondern faellt still auf die Vorgabe zurueck. Wer einen Wert setzt, prueft die Wirkung an der Sicht nach.\\n\\nWEITERE BEFUNDE, die ohne diese Erhebung nicht sichtbar geworden waeren:\\n  * qs_admin faellt fuer '--db' auf die fest verdrahtete Zeichenkette 'data/coordinator.db' zurueck (Z. 54) und NICHT auf paths.coordinator_db. Wer die Datenbank verlegt hat, muss bei diesem einen Werkzeug '--db' angeben.\\n  * index_cli und der Verwaltungsserver loesen den ORT DES SUCHINDEX VERSCHIEDEN auf: der Server liest paths.search_index_db, das Werkzeug nimmt den fest verdrahteten STANDARD_INDEX_PFAD. Wer den Index per config.yaml verlegt, verlegt ihn nur fuer den Server - das Werkzeug arbeitet weiter am alten Ort und meldet es nicht.\\n  * templates_db_status liest die config.yaml WEDER ueber den ConfigLoader NOCH ueber einen YAML-Parser, sondern sucht zeilenweise nach der Zeichenfolge 'templates_db:' (Z. 135-147). Die Suche kennt keine Abschnitte. Fuer eine Statusanzeige tragbar; ein schreibendes Werkzeug duerfte so nicht bauen.\\n  * migrate_templates_full_templates und repair_block_types lesen die Datei unmittelbar mit yaml.safe_load - die Coded Defaults des ConfigLoaders greifen dort NICHT.\\n  * setup_coordinator_dev nennt seinen Vorgabepfad im Kommentar 'passend zu config.yaml', LIEST die Datei aber nicht.\\n  * convert_journal_mode wertet 'db.journal_mode' NICHT aus - der Zielmodus kommt ausschliesslich aus '--to'. Das ist folgerichtig fuer ein Werkzeug des einmaligen Umstempelns, ueberrascht aber.\\n  * lkae_admin liest sechs paths.*-Eintraege NICHT, um sie zu benutzen, sondern um sie zu MEIDEN (Sperrliste gegen ein Demo-Paket in Produktivpfaden). Bei unlesbarer config.yaml faellt der Schutz auf './data/' zurueck - er ist dann SCHWAECHER, nicht abgeschaltet.\\n\\nNICHT ERLEDIGT, ausdruecklich: Die fachliche Richtigkeit der rund 150 Einzelbeschreibungen ist NICHT maschinell geprueft - nur Vollzaehligkeit, Auffindbarkeit der Schluessel und Existenz der Fundstellen. Die Vier-Augen-Lesung steht aus. Ebenso unveraendert offen: die rund fuenfzehn Werkzeuge, die ihre Vorrangregel je fuer sich bauen, sind NICHT auf den SettingResolver aus Build 638 umgestellt (siehe 15429c75).\\n\\nREGELWERK: documents/rules-help.md, Abschnitt 'Kein Werkzeug ohne Auskunft ueber config.yaml' - jetzt mit dem Satz, dass ein Eintrag, den der Code liest, in die ausgelieferte config.yaml gehoert."
-        },
-        {
-          "timestamp": "2026-08-01T16:30:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "in_progress",
-          "new_value": "resolved",
-          "comment": "Erhebung vollstaendig (66/66) in 0.8.641; KF08 ist von der Fehlliste zur Sperre geworden."
-        },
-        {
-          "timestamp": "2026-08-01T16:30:00+00:00",
-          "author": "Claude",
-          "action": "version_update",
-          "old_value": "",
-          "new_value": "0.8.641",
-          "comment": "resolved_in_version gesetzt."
         }
       ]
     },
