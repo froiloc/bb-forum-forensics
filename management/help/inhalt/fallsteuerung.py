@@ -23,7 +23,16 @@
 # REGEL H-0: kein Falldatum, kein echter Kontoname, keine echte UID. Die
 #   Beispiele stammen aus dem fiktiven Raum (pruefung.FIKTIVE_UIDS).
 #
-# Version: v0.8.592 - Build: 592 - 2026-07-31
+# BUILD 633 (Vorgang 17200856, Welle B1): 'assignment' und 'cases' hatten
+#   zusammen elf Bedienelemente und keinen einzigen Text dazu - darunter der
+#   ganze Sammelmodus der Zuweisung und die zweistufige Aufnahme in der
+#   Fall-Erkennung. Nachgetragen: zwoelf Kontexthilfen (elf Elemente, aber
+#   zwei Texte fuer die beiden Auswahlfelder des Steuerkopfs, die aus
+#   DERSELBEN Fabrik stammen) sowie im Kapitel 'assignment' der Unterschied
+#   zwischen "(nicht aendern)" und "(nicht zugewiesen)" - der steht seit
+#   Build 534 als Warnung im Quelltext, aber nirgends fuer die Anwendung.
+#
+# Version: v0.8.633 - Build: 633 - 2026-08-01
 # =============================================================================
 
 from __future__ import annotations
@@ -37,6 +46,10 @@ from management.help.modell import Abschnitt, Kontexthilfe, Sichthilfe
 # setzt seine Anker seit Build 548 unter diesem Namen. Die Zuordnung steht in
 # management/help/anker_katalog.py; hier wird sie nur benutzt.
 _P = "overview"
+
+#: Redaktionsstand der in Welle B1 (Build 633) nachredigierten Kapitel.
+#: 'faelle' bleibt beim Stand seiner eigenen Redaktion.
+_STAND_B1 = 633
 
 FAELLE = Sichthilfe(
     sicht="faelle",
@@ -298,7 +311,7 @@ ASSIGNMENT = Sichthilfe(
         "geht sofort an den auditierten Schreibpfad und erzeugt einen Beleg "
         "im Protokollbuch."
     ),
-    stand=596,
+    stand=_STAND_B1,
     abschnitte=(
         Abschnitt(
             "zweck", "Zweck und Motivation",
@@ -345,6 +358,21 @@ ASSIGNMENT = Sichthilfe(
                 "Nach einer bestätigten Einzeländerung wird nur "
                 "die betroffene Zeile aufgefrischt. Sortierung, Filter, "
                 "Bildlauf und Auswahl bleiben stehen.",
+                "EIN UNTERSCHIED, DER LEICHT ZU ÜBERSEHEN IST: Im Steuerkopf "
+                "bedeutet „(nicht ändern)“, dass die bestehende Zuweisung "
+                "bleibt. „(nicht zugewiesen)“ ist etwas ganz anderes — es "
+                "ENTZIEHT die Zuweisung. Die beiden Einträge stehen "
+                "untereinander in derselben Liste; lesen Sie im Zweifel "
+                "zweimal.",
+                "Was Sie in einer ZEILE einstellen, geht der Auswahl im "
+                "Steuerkopf vor. Und wer eine Zelle im Sammelmodus bearbeitet, "
+                "wählt die Zeile damit aus — eine Vormerkung an einer nicht "
+                "ausgewählten Zeile fiele beim Absenden sonst stillschweigend "
+                "unter den Tisch.",
+                "Ausgewählte Fälle, für die weder im Steuerkopf noch in der "
+                "Zeile ein Änderungswunsch steht, werden über der Tabelle "
+                "gezählt und benannt. Sie werden nicht mitgeschrieben — aber "
+                "auch nicht verschwiegen.",
             ),
         ),
         Abschnitt(
@@ -398,6 +426,61 @@ ASSIGNMENT = Sichthilfe(
             "jede Änderung in dieser Sicht sofort geschrieben und im "
             "Protokollbuch belegt wird. Es gibt keinen Entwurfsmodus.",
             verweis="assignment#grenzen"),
+
+        # ------------------------------------------------------------------
+        # Die sechs Bedienelemente (Build 633, Vorgang 17200856, Welle B1).
+        # Sieben Texte fuer sechs Elemente: die beiden Auswahlfelder des
+        # Steuerkopfs entstehen in DERSELBEN Fabrik (_select), meinen aber
+        # Verschiedenes und bekommen deshalb je einen eigenen Text.
+        # ------------------------------------------------------------------
+        Kontexthilfe(
+            "assignment.bedienung.sammelmodus", "Sammelzuweisung",
+            "Schaltet den Sammelmodus ein und wieder aus. Eingeschaltet "
+            "erscheinen eine Kästchenspalte und darüber der Steuerkopf mit "
+            "Ermittler, Priorität, „Absenden“ und „Abbrechen“. Beim "
+            "Ausschalten wird die Auswahl verworfen — geschrieben ist dann "
+            "nichts.",
+            verweis="assignment#sammelmodus"),
+        Kontexthilfe(
+            "assignment.bedienung.fallauswahl", "Fall auswählen",
+            "Nimmt diesen Fall in die Sammelzuweisung auf. Das Kästchen "
+            "allein ändert nichts; geschrieben wird erst mit „Absenden“.",
+            verweis="assignment#sammelmodus"),
+        Kontexthilfe(
+            "assignment.bedienung.auswahl_umkehren", "Auswahl umkehren",
+            "Kehrt die Auswahl der derzeit SICHTBAREN Zeilen um — nicht aller "
+            "Fälle. Das ist Absicht: Wer nach „ohne Zuweisung“ filtert und "
+            "umkehrt, meint die Zeilen vor sich und nicht die dahinter.",
+            verweis="assignment#sammelmodus"),
+        Kontexthilfe(
+            "assignment.bedienung.sammel_person", "Ermittler (Sammelmodus)",
+            "Die Person, der alle ausgewählten Fälle zugewiesen werden. "
+            "„(nicht ändern)“ lässt die bestehende Zuweisung stehen; das ist "
+            "etwas anderes als „nicht zugewiesen“, was die Zuweisung "
+            "ENTZIEHT. Eine Angabe in der Zeile selbst geht der Kopfauswahl "
+            "vor.",
+            verweis="assignment#sammelmodus"),
+        Kontexthilfe(
+            "assignment.bedienung.sammel_prioritaet",
+            "Priorität (Sammelmodus)",
+            "Die Priorität, die alle ausgewählten Fälle erhalten. „(nicht "
+            "ändern)“ lässt die bestehende stehen. Auch hier gilt: eine "
+            "Angabe in der Zeile geht der Kopfauswahl vor.",
+            verweis="assignment#sammelmodus"),
+        Kontexthilfe(
+            "assignment.bedienung.sammel_absenden", "Absenden",
+            "Schreibt die Sammelzuweisung — für jeden Fall einzeln und für "
+            "jeden mit eigenem Beleg. Die Zahl in der Beschriftung ist die "
+            "der ausgewählten Fälle. Ausgewählte Fälle OHNE Änderungswunsch "
+            "werden über der Tabelle benannt und nicht stillschweigend "
+            "übergangen.",
+            verweis="assignment#sammelmodus"),
+        Kontexthilfe(
+            "assignment.bedienung.sammel_abbrechen", "Abbrechen",
+            "Beendet den Sammelmodus und verwirft Auswahl und Vormerkungen. "
+            "Es wird nichts geschrieben; bereits abgesendete Zuweisungen "
+            "bleiben selbstverständlich bestehen.",
+            verweis="assignment#sammelmodus"),
     ),
 )
 
@@ -411,7 +494,7 @@ CASES = Sichthilfe(
         "auch feststellen, welche es gibt. Die Aufnahme neu erkannter Fälle "
         "ist ein Schreibvorgang und wird protokolliert."
     ),
-    stand=596,
+    stand=_STAND_B1,
     abschnitte=(
         Abschnitt(
             "zweck", "Zweck und Motivation",
@@ -437,6 +520,11 @@ CASES = Sichthilfe(
             (
                 "Überschrift, Zählzeile, die Angabe der geprüften "
                 "Verzeichnisse, darunter der Warnbereich und die Tabelle.",
+                "Über der Tabelle steht der Zustandsfilter mit den Zahlen je "
+                "Zustand; unter ihr das Aktionsfeld mit „Ausgewählte "
+                "aufnehmen“. Drücken Sie dort, erscheint darunter die "
+                "Rückfrage mit der Auflistung der betroffenen Fälle — erst "
+                "deren Bestätigung schreibt.",
             ),
         ),
         Abschnitt(
@@ -515,6 +603,42 @@ CASES = Sichthilfe(
             "Angabe bliebe unklar, worauf sich eine Aussage wie „kein Fall "
             "gefunden“ überhaupt bezieht.",
             verweis="cases#grenzen"),
+
+        # ------------------------------------------------------------------
+        # Die fuenf Bedienelemente (Build 633, Vorgang 17200856, Welle B1).
+        # ------------------------------------------------------------------
+        Kontexthilfe(
+            "cases.bedienung.zustandsfilter", "Zustand",
+            "Zeigt nur Fälle eines Zustands; in Klammern steht jeweils die "
+            "Anzahl. Der Filter verbirgt Zeilen, ändert aber nichts am "
+            "Abgleich — und der Warnbereich über der Tabelle bleibt in jedem "
+            "Fall stehen.",
+            verweis="cases#grenzen"),
+        Kontexthilfe(
+            "cases.bedienung.fallauswahl", "Fall aufnehmen",
+            "Wählt diesen Fall zur Aufnahme in die Fallakte aus. Das Kästchen "
+            "steht nur an Fällen im Zustand „neu“ mit Benutzernamen — genau "
+            "an denen, die auch angenommen würden.",
+            verweis="cases#zustaende"),
+        Kontexthilfe(
+            "cases.bedienung.aufnehmen", "Ausgewählte aufnehmen",
+            "Öffnet die Rückfrage zur Aufnahme; die Zahl in der Beschriftung "
+            "ist die der ausgewählten Fälle. Dieser Knopf schreibt noch "
+            "nichts — die Aufnahme läuft bewusst über zwei Stufen, damit ein "
+            "Fehlklick keine Fallakte verändert.",
+            verweis="cases#ablaeufe"),
+        Kontexthilfe(
+            "cases.bedienung.bestaetigen", "Ja, aufnehmen",
+            "Führt die Aufnahme aus. Prüfen Sie vorher die Auflistung "
+            "darüber: sie nennt jeden Fall einzeln. Die Rückmeldung nennt "
+            "danach die aufgenommenen UND die übersprungenen Fälle, jeden mit "
+            "Grund.",
+            verweis="cases#grenzen"),
+        Kontexthilfe(
+            "cases.bedienung.abbrechen", "Abbrechen",
+            "Schließt die Rückfrage. Es wird nichts geschrieben; die Auswahl "
+            "bleibt bestehen.",
+            verweis="cases#ablaeufe"),
     ),
 )
 

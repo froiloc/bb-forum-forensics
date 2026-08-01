@@ -45,7 +45,13 @@
 //   aus dem beschlagnahmten Forum und sind grundsaetzlich fremdbestimmt.
 //
 // Build 469: Schluesselumstellung user_id -> subject_id (M019)
-// Version: v0.7.469 · Build: 469 · 2026-07-20
+// Build 633 (Vorgang 17200856, Welle B1): HILFE-MARKEN fuer alle fuenf
+//   Bedienelemente dieser Sicht - vorher trug keines eine. Die Texte stehen
+//   in management/help/inhalt/fallsteuerung.py. Die Kennung steht LITERAL im
+//   Quelltext und wird NICHT zusammengesetzt; nur so sehen die
+//   Paritaetspruefungen SP01/SP02 und die Erhebung in
+//   tests/_bedienelemente.py beide Seiten.
+// Version: v0.8.633 · Build: 633 · 2026-08-01
 // =============================================================================
 
 (function () {
@@ -338,6 +344,9 @@
 
         var sel = doc.createElement('select');
         sel.id = 'aiw-cases-filter';
+        // Build 633 (Vorgang 17200856): Hilfe-Marke, LITERAL gesetzt.
+        // Text in management/help/inhalt/fallsteuerung.py.
+        sel.setAttribute('data-hilfe-id', 'cases.bedienung.zustandsfilter');
         var optAll = doc.createElement('option');
         optAll.value = '';
         optAll.text = 'alle Zustaende (' + rows.length + ')';
@@ -402,6 +411,7 @@
         btn.className = 'aiw-btn aiw-cases-btn';
         btn.disabled = true;
         btn.textContent = 'Ausgewaehlte aufnehmen (0)';
+        btn.setAttribute('data-hilfe-id', 'cases.bedienung.aufnehmen');
         panel.appendChild(btn);
 
         var confirmBox = doc.createElement('div');
@@ -479,6 +489,7 @@
             yes.className = 'aiw-btn aiw-cases-btn';
             yes.textContent = 'Ja, ' + ids.length
                 + ' Fall/Faelle aufnehmen';
+            yes.setAttribute('data-hilfe-id', 'cases.bedienung.bestaetigen');
             yes.addEventListener('click', function () {
                 closeConfirm();
                 setResult('Nehme auf \u2026', null);
@@ -495,6 +506,7 @@
             no.id = 'aiw-cases-confirm-no';
             no.className = 'aiw-btn aiw-cases-btn';
             no.textContent = 'Abbrechen';
+            no.setAttribute('data-hilfe-id', 'cases.bedienung.abbrechen');
             no.addEventListener('click', function () {
                 closeConfirm();
                 setResult('Abgebrochen. Es wurde nichts geschrieben.', false);
@@ -543,6 +555,8 @@
                 box.setAttribute('data-subject-id', String(d.subject_id));
                 box.setAttribute('aria-label',
                     'Fall ' + d.subject_id + ' aufnehmen');
+                box.setAttribute('data-hilfe-id',
+                    'cases.bedienung.fallauswahl');
                 box.addEventListener('click', function (e) {
                     e.stopPropagation();   // kein Zeilen-Klick-Nebeneffekt
                 });

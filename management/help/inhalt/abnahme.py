@@ -27,7 +27,16 @@
 #   in die Ermittlungsdaten des Falls. Eine Hilfe, die eine Schreibstelle
 #   verschweigt, ist schlechter als keine.
 #
-# Version: v0.8.632 - Build: 632 - 2026-08-01
+# BUILD 633 (Welle B1, Schritt 2): dasselbe Bild im Lektorat - sechs
+#   Bedienelemente, kein Text. Und dieselbe Art Luecke im Kapitel: es
+#   erwaehnte das KOMMENTARFORMULAR mit keinem Wort, obwohl das die einzige
+#   Schreibstelle der Sicht ist, und auch nicht, dass "Als Vorlage
+#   uebernehmen" an einem ANDEREN Recht haengt (Vorlagenredaktion) - wer es
+#   nicht hat, sieht den Knopf nicht und sucht den Fehler bei sich.
+#   Nachgetragen: sieben Kontexthilfen (sechs Elemente, aber zwei Texte fuer
+#   die beiden Abschluss-Knoepfe) und ein Abschnitt 'kommentare'.
+#
+# Version: v0.8.633 - Build: 633 - 2026-08-01
 # =============================================================================
 
 from __future__ import annotations
@@ -43,6 +52,10 @@ _STAND = 598
 #: verschwieg, dass in dieser Sicht neben dem Entscheiden auch BEWERTET werden
 #: kann. Beides ist hier nachgetragen; deshalb ein eigener Redaktionsstand.
 _STAND_APPROVAL = 632
+
+#: Dasselbe fuer das Lektorat in Build 633: sechs Bedienelemente ohne Text, und
+#: das Kapitel erwaehnte weder das Kommentarformular noch den Uebernahmeknopf.
+_STAND_LECTORATE = 633
 
 # Die vier Zustaende eines Vermerks - woertlich die Beschriftungen der
 # Oberflaeche. Sie stehen in allen drei Kapiteln gleich, damit niemand zwei
@@ -260,7 +273,7 @@ LECTORATE = Sichthilfe(
         "Vermerke Ihnen vorgelegt werden; er steht als Klartext über der "
         "Auswahl."
     ),
-    stand=_STAND,
+    stand=_STAND_LECTORATE,
     abschnitte=(
         Abschnitt(
             "zweck", "Zweck und Motivation",
@@ -280,6 +293,11 @@ LECTORATE = Sichthilfe(
                 "bestimmt, welche Vermerke erscheinen; er wird über der "
                 "Auswahl benannt, damit eine kurze Liste nicht wie ein leerer "
                 "Arbeitstag aussieht.",
+                "Eine Schaltfläche hängt an einem ANDEREN Recht: „Als Vorlage "
+                "übernehmen“ erscheint nur mit dem Recht zur Redaktion von "
+                "Dokumentvorlagen. Fehlt es Ihnen, fehlt der Knopf — das ist "
+                "kein Fehler und kein Zeichen dafür, dass mit dem Vermerk "
+                "etwas nicht stimmt.",
             ),
         ),
         Abschnitt(
@@ -288,6 +306,11 @@ LECTORATE = Sichthilfe(
                 "Überschrift, darunter die Angabe des Umfangs, darunter die "
                 "Auswahl der vorgelegten Vermerke. Ist einer gewählt, "
                 "erscheint darunter sein Text.",
+                "Unter dem Text stehen die BELEGE, auf die er sich stützt — "
+                "rein lesend. Daneben die KOMMENTARE: die vorhandenen "
+                "Anmerkungen aller Gegenlesenden und darüber das Formular, "
+                "mit dem Sie eine eigene hinzufügen. Das Formular ist die "
+                "einzige Stelle dieser Sicht, an der etwas geschrieben wird.",
             ),
         ),
         Abschnitt(
@@ -302,14 +325,37 @@ LECTORATE = Sichthilfe(
             ),
         ),
         Abschnitt(
+            "kommentare", "Kommentare schreiben und abschließen",
+            (
+                "Ein Kommentar besteht aus dem Text, der Sache, um die es "
+                "geht. Zwei weitere Angaben sind freiwillig und lohnen sich "
+                "beide: die BLOCK-KENNUNG, mit der Sie die Stelle benennen, "
+                "auf die Sie sich beziehen, und ein ÄNDERUNGSVORSCHLAG mit "
+                "der Formulierung, die Sie für besser halten. Ein Vorschlag "
+                "erspart der verfassenden Person das Raten und Ihnen den "
+                "zweiten Durchgang.",
+                "Sichtbar sind die Kommentare ALLER Gegenlesenden zu diesem "
+                "Vermerk, nicht nur die eigenen. Das ist gewollt: zwei "
+                "Personen sollen nicht zweimal dasselbe anmerken.",
+                "Abschließen dürfen Sie nur EIGENE offene Kommentare, und "
+                "zwar auf zwei Arten: „Als erledigt“ heißt, die Sache ist "
+                "geklärt; „Verwerfen“ heißt, die Anmerkung war unbegründet. "
+                "Beide Wege schließen den Kommentar, sagen aber Verschiedenes "
+                "— und beides bleibt lesbar. Ein Kommentar wird nicht "
+                "gelöscht.",
+            ),
+        ),
+        Abschnitt(
             "ablaeufe", "Arbeitsabläufe",
             (),
             liste=(
                 "Gegenlesen: Vermerk aus der Auswahl wählen, Text lesen, "
-                "Anmerkungen setzen.",
-                "Eine Stelle genau bezeichnen: die Anmerkung an der "
-                "betreffenden Textstelle setzen statt am Ende — die "
-                "verfassende Person muss sonst raten.",
+                "Kommentare schreiben.",
+                "Eine Stelle genau bezeichnen: die Block-Kennung eintragen "
+                "statt die Anmerkung ans Ende zu hängen — die verfassende "
+                "Person muss sonst raten.",
+                "Aufräumen: eigene Kommentare, die erledigt oder gegenstandslos "
+                "sind, abschließen. Was offen bleibt, gilt als offen.",
                 "Nach dem Gegenlesen: der Vermerk bleibt „eingereicht“. Über "
                 "Freigabe oder Zurückweisung entscheidet die Chef-Freigabe.",
             ),
@@ -326,6 +372,13 @@ LECTORATE = Sichthilfe(
                 "Vorgelegt sind ausschließlich Vermerke im Zustand "
                 "„eingereicht“. Ein Entwurf ist noch nicht zum Gegenlesen "
                 "bestimmt — dass er hier fehlt, ist kein Mangel.",
+                "EIN KOMMENTAR WIRD NICHT GELÖSCHT. Er lässt sich abschließen "
+                "— als erledigt oder als verworfen —, und beides bleibt "
+                "lesbar. Wer eine Anmerkung spurlos verschwinden lassen "
+                "könnte, könnte auch den Verlauf des Gegenlesens verändern.",
+                "Die Belege unter dem Text sind REIN LESEND. Sie werden dort "
+                "gezeigt, damit Sie die Aussagen am Beleg prüfen können; "
+                "gesetzt und geändert werden sie in der Fallarbeit.",
             ),
         ),
         Abschnitt(
@@ -387,6 +440,59 @@ LECTORATE = Sichthilfe(
             "lectorate.werkzeug.trefferzahl", "Trefferanzeige",
             "Nennt, wie viele Zeilen sichtbar sind; bei gesetztem Filter "
             "„sichtbar von gesamt“."),
+
+        # ------------------------------------------------------------------
+        # Die sechs Bedienelemente (Build 633, Vorgang 17200856, Welle B1).
+        # Sieben Texte fuer sechs Elemente: die beiden Abschluss-Knoepfe
+        # entstehen in EINER Schleife, sagen aber Verschiedenes und bekommen
+        # deshalb je einen eigenen Text.
+        # ------------------------------------------------------------------
+        Kontexthilfe(
+            "lectorate.bedienung.als_vorlage", "Als Vorlage übernehmen",
+            "Erzeugt aus dem gewählten Vermerk den Entwurf einer "
+            "Dokumentvorlage und wechselt in die Vorlagenredaktion; die "
+            "fallbezogenen Werte werden dabei entfernt. Der Knopf wird erst "
+            "aktiv, wenn ein Vermerk gewählt ist, und erscheint nur mit dem "
+            "Recht zur Vorlagenredaktion.",
+            verweis="lectorate#rechte"),
+        Kontexthilfe(
+            "lectorate.bedienung.kommentartext", "Kommentar",
+            "Ihre Anmerkung zum Vermerk — die einzige Pflichtangabe des "
+            "Formulars. Schreiben Sie die Sache, nicht das Urteil: Der Text "
+            "geht an die verfassende Person und ist für sie die "
+            "Arbeitsanweisung.",
+            verweis="lectorate#kommentare"),
+        Kontexthilfe(
+            "lectorate.bedienung.textstelle", "Block-Kennung",
+            "Bezeichnet den Abschnitt des Vermerks, auf den sich Ihr "
+            "Kommentar bezieht. Freiwillig, aber sehr empfohlen: ohne diese "
+            "Angabe muss die verfassende Person die gemeinte Stelle suchen.",
+            verweis="lectorate#kommentare"),
+        Kontexthilfe(
+            "lectorate.bedienung.vorschlag", "Änderungsvorschlag",
+            "Die Formulierung, die Sie an dieser Stelle für besser halten — "
+            "freiwillig. Ein Vorschlag ist keine Änderung: übernommen wird er "
+            "erst von der verfassenden Person am Entwurf.",
+            verweis="lectorate#kommentare"),
+        Kontexthilfe(
+            "lectorate.bedienung.kommentar_hinzufuegen",
+            "Kommentar hinzufügen",
+            "Trägt den Kommentar ein. Ohne Text geschieht nichts; die anderen "
+            "beiden Felder dürfen leer bleiben. Der Kommentar ist danach für "
+            "alle Gegenlesenden dieses Vermerks sichtbar.",
+            verweis="lectorate#kommentare"),
+        Kontexthilfe(
+            "lectorate.bedienung.erledigt", "Als erledigt",
+            "Schließt Ihren Kommentar mit dem Vermerk ab, dass die Sache "
+            "geklärt ist. Er bleibt lesbar. Der Knopf steht nur an eigenen, "
+            "noch offenen Kommentaren.",
+            verweis="lectorate#kommentare"),
+        Kontexthilfe(
+            "lectorate.bedienung.verwerfen", "Verwerfen",
+            "Schließt Ihren Kommentar mit dem Vermerk ab, dass er "
+            "gegenstandslos war — etwa weil Sie sich geirrt haben. Auch das "
+            "bleibt lesbar; gelöscht wird ein Kommentar nie.",
+            verweis="lectorate#kommentare"),
     ),
 )
 

@@ -35,6 +35,10 @@
 # BD05 - GEGENPROBE: sie erkennt beide Schreibweisen der Marke
 # BD05c- GEGENPROBE (Build 632): auch eine UMGEBROCHENE Marke - die
 #        zeilenweise Suche uebersah sie und zaehlte zu hoch
+# BD05d- GEGENPROBE (Build 633): die FABRIKREGEL - ein zurueckgegebenes
+#        Element wird beim Abnehmer markiert und gilt dann als erklaert
+# BD05e- GEGENPROBE dazu: EINE unmarkierte Abnahmestelle genuegt, und das
+#        Element bleibt offen. Sonst waere die Fabrikregel ein Schlupfloch
 # BD06 - 'releases' und 'handover' sind vollstaendig und bleiben es
 # BD07 - jede Ausnahme ist begruendet und gibt es wirklich (TE6)
 # BD08 - der Stand nennt sein Verfahren UND seine Grenzen (TE4)
@@ -45,7 +49,7 @@
 #   '_grenzen' des Standes. Am gerenderten Baum misst UX11, aber nur fuer die
 #   acht Sichten seines REGISTERs.
 #
-# Version: v0.8.632 - Build: 632 - 2026-08-01
+# Version: v0.8.633 - Build: 633 - 2026-08-01
 # =============================================================================
 
 import json
@@ -216,6 +220,58 @@ class BedienelementeTests(unittest.TestCase):
             "die Erhebung meldete das Element faelschlich als offen.")
         self.assertEqual("probe.bedienung.bewertungsvermerk",
                          b.elemente[0].marke)
+
+    _FABRIK = ("(function () {\n"
+               "    function _feld(doc, cls) {\n"
+               "        var sel = doc.createElement('select');\n"
+               "        sel.className = cls;\n"
+               "        return sel;\n"
+               "    }\n"
+               "    function zeichne(doc) {\n"
+               "        var oben = _feld(doc, 'a');\n"
+               "%s"
+               "        var unten = _feld(doc, 'b');\n"
+               "%s"
+               "        return [oben, unten];\n"
+               "    }\n"
+               "})();\n")
+    _M_OBEN = ("        oben.setAttribute('data-hilfe-id',\n"
+               "            'probe.bedienung.oben');\n")
+    _M_UNTEN = ("        unten.setAttribute('data-hilfe-id',\n"
+                "            'probe.bedienung.unten');\n")
+
+    def test_bd05d_die_fabrikregel_findet_die_marke_am_abnehmer(self):
+        """
+        BUILD 633, ZWEITE MESSKORREKTUR. Eine Fabrik gibt ihr Element
+        ZURUECK; markiert wird es erst beim Abnehmer - und dort auch
+        verschieden, weil zwei Aufrufer zwei verschiedene Bedienelemente
+        meinen. Der echte Fall ist '_select' in cockpit_assignment.js
+        (Ermittler und Prioritaet des Sammel-Steuerkopfs).
+
+        Bis Build 632 galt so ein Element als unerklaert - wieder die
+        alarmierende Richtung: die Zahl war zu hoch fuer Code, der alles
+        richtig macht.
+        """
+        b = untersuche(_js(self._FABRIK % (self._M_OBEN, self._M_UNTEN)))
+        self.assertEqual(1, b.gesamt)
+        self.assertEqual(
+            1, b.erklaert,
+            "Die Marke am Abnehmer der Fabrik wurde nicht gefunden.")
+
+    def test_bd05e_eine_unmarkierte_abnahmestelle_genuegt(self):
+        """
+        UND DIE REGEL BLEIBT STRENG. Markiert der eine Aufrufer und der
+        andere nicht, dann gibt es eine stumme Schaltflaeche - und das
+        Element bleibt offen. Ohne diesen Gegentest waere die Fabrikregel
+        ein Schlupfloch: eine Marke irgendwo, und zehn Abnehmer gelten als
+        erklaert.
+        """
+        b = untersuche(_js(self._FABRIK % (self._M_OBEN, "")))
+        self.assertEqual(1, b.gesamt)
+        self.assertEqual(
+            0, b.erklaert,
+            "Eine unmarkierte Abnahmestelle wurde uebersehen - die "
+            "Fabrikregel waere damit ein Schlupfloch.")
 
     def test_bd05b_alle_vier_arten_werden_erfasst(self):
         p = _js("(function () {\n"

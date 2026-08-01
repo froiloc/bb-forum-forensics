@@ -122,3 +122,7 @@ Zwei Fallstricke, beide in Build 632 aufgetreten und beide leicht zu vermeiden:
 
 - Die Marke muss **innerhalb desselben Funktionsrumpfs** stehen wie das `createElement` — die Erhebung sucht nur bis zum Beginn der nächsten Funktion. Steht direkt hinter dem Element eine Hilfsfunktion, gehört die Marke davor.
 - Die Kennung steht **literal** im Quelltext, nie zusammengesetzt. Ein Umbruch nach dem Komma ist erlaubt (Gegenprobe BD05c), eine berechnete Kennung nicht: SP01/SP02 sähen sie nicht.
+
+Baut eine **Fabrik** das Element und gibt es zurück, gehört die Marke an die *Abnahmestelle* und nicht in die Fabrik — zwei Aufrufer meinen zwei verschiedene Bedienelemente und brauchen zwei Texte. Die Erhebung folgt diesem Weg seit Build 633, verlangt dabei aber, dass **jede** Abnahmestelle markiert ist; eine einzige unmarkierte, und das Element gilt als offen (Gegenproben BD05d/BD05e).
+
+Entstehen zwei Schaltflächen in **einer Schleife** und sagen Verschiedenes, dann bekommen sie zwei literale Zweige statt einer gerechneten Kennung — so gelöst bei „Als erledigt“ / „Verwerfen“ im Lektorat.

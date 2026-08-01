@@ -34,7 +34,10 @@
 #   1. Ein Element, das eine Fabrik erzeugt (z. B. in cockpit_tablekit.js),
 #      wird hier nicht gezaehlt. Es taucht in der Sichtdatei gar nicht auf.
 #   2. Ein Element, das ueber eine andere Variable weitergereicht und erst
-#      dort markiert wird, gilt hier als unmarkiert.
+#      dort markiert wird, gilt hier als unmarkiert. TEILWEISE BEHOBEN in
+#      Build 633: den haeufigsten Fall - eine Fabrik, die ihr Element
+#      ZURUECKGIBT und deren Aufrufer es markieren - erkennt die Suche jetzt
+#      (siehe 'Die Fabrikregel' unten). Andere Weiterreichungen nicht.
 #   3. Formulare in Dialogen, die erst auf Klick entstehen, werden gezaehlt,
 #      wenn sie im Quelltext stehen - was richtig ist -, aber ihre
 #      Verschachtelung sieht die Suche nicht.
@@ -48,6 +51,18 @@
 #   Beide werden erkannt. Gesucht wird die Marke AB der Zeile, in der das
 #   Element entsteht, bis zum Ende der umgebenden Funktion - Elemente werden
 #   im Bestand durchgehend erzeugt, konfiguriert und dann eingehaengt.
+#
+# DIE FABRIKREGEL (Build 633, nachgebessert): Ein Element, das seine Funktion
+#   mit 'return' verlaesst, wird nicht dort markiert, wo es entsteht - es
+#   bekommt seine Marke an der Abnahmestelle, und zwar an jeder eine ANDERE,
+#   weil zwei Aufrufer zwei verschiedene Bedienelemente meinen. Der Anlass ist
+#   '_select' in cockpit_assignment.js: eine Fabrik mit zwei Abnahmestellen
+#   (Person und Prioritaet des Sammel-Steuerkopfs). Die Suche folgt jetzt
+#   diesem Weg: Rueckgabe erkannt -> Name der Funktion -> alle
+#   'var X = name(' im Bestand -> Marke auf X. ERKLAERT ist das Element nur,
+#   wenn JEDE Abnahmestelle eine Marke setzt; eine einzige unmarkierte genuegt,
+#   und es bleibt offen. Auch das ist eine Korrektur nach unten, die vorher in
+#   die alarmierende Richtung falsch lag.
 #
 # UEBER ZEILENGRENZEN HINWEG (Build 632, nachgebessert): Gesucht wird im
 #   ZUSAMMENHAENGENDEN Text dieses Bereichs, nicht Zeile fuer Zeile. Der
@@ -67,7 +82,7 @@
 #   BD05/BD06 haelt beide Faelle fest, damit die Suche nicht unbemerkt
 #   abdriftet.
 #
-# Version: v0.8.632 - Build: 632 - 2026-08-01
+# Version: v0.8.633 - Build: 633 - 2026-08-01
 # =============================================================================
 
 from __future__ import annotations
@@ -94,6 +109,11 @@ _ERZEUGT_OHNE = re.compile(
 _FUNKTION = re.compile(r"^\s*(?:function\s+\w+|\w+\s*[:=]\s*function|"
                        r"(?:var|let|const)\s+\w+\s*=\s*function)")
 
+#: Derselbe Beginn, aber mit dem NAMEN. Gebraucht fuer die Fabrikregel unten.
+_FUNKTIONSNAME = re.compile(
+    r"^\s*(?:function\s+(\w+)|(\w+)\s*[:=]\s*function|"
+    r"(?:var|let|const)\s+(\w+)\s*=\s*function)")
+
 
 def _marke_muster(var: str) -> re.Pattern:
     """Beide Schreibweisen, mit LITERALER Kennung."""
@@ -101,6 +121,17 @@ def _marke_muster(var: str) -> re.Pattern:
     return re.compile(
         r"%s\.setAttribute\(\s*['\"]data-hilfe-id['\"]\s*,\s*['\"]([a-z0-9_.]+)"
         r"['\"]|hilfeAnker\(\s*%s\s*,\s*['\"]([a-z0-9_.]+)['\"]" % (v, v))
+
+
+def _rueckgabe_muster(var: str) -> re.Pattern:
+    """'return sel;' - das Kennzeichen einer Fabrik."""
+    return re.compile(r"^\s*return\s+%s\s*;" % re.escape(var), re.M)
+
+
+def _aufruf_muster(funktion: str) -> re.Pattern:
+    """'var kopfPerson = _select(' - eine Abnahmestelle der Fabrik."""
+    return re.compile(
+        r"(?:var|let|const)\s+(\w+)\s*=\s*%s\(" % re.escape(funktion))
 
 
 @dataclass(frozen=True)
@@ -154,6 +185,52 @@ def untersuche(pfad: Path) -> Sichtbefund:
                 return s
         return len(zeilen)
 
+    ganzer_text = "\n".join(zeilen)
+
+    def _funktionsname(i: int) -> str:
+        """Der Name der Funktion, in der Zeile i steht ('' wenn unbenannt)."""
+        for s in reversed(starts):
+            if s <= i:
+                m = _FUNKTIONSNAME.search(zeilen[s])
+                if not m:
+                    return ""
+                return m.group(1) or m.group(2) or m.group(3) or ""
+        return ""
+
+    def _marke_ueber_fabrik(var: str, i: int, bereich: str) -> str:
+        """
+        DIE FABRIKREGEL (Build 633). Ein Element, das seine Funktion
+        ZURUECKGIBT, wird nicht dort markiert, wo es entsteht, sondern an
+        jeder Abnahmestelle - und dort auch verschieden, weil zwei Aufrufer
+        zwei verschiedene Bedienelemente meinen.
+
+        Bis Build 632 galt so ein Element als unerklaert. Das war falsch in
+        der ALARMIERENDEN Richtung: die Zahl der offenen Elemente war zu hoch,
+        und zwar fuer Code, der alles richtig macht.
+
+        Streng ist die Regel trotzdem: erklaert ist das Element nur, wenn
+        JEDE Abnahmestelle eine Marke setzt. Eine einzige unmarkierte
+        Abnahmestelle ist eine stumme Schaltflaeche - und dann bleibt das
+        Element offen. Gibt es gar keine Abnahmestelle mit Variablenzuweisung
+        (das Ergebnis wandert direkt in einen Aufruf), greift die Regel nicht;
+        dann bleibt es beim alten Befund.
+        """
+        if not _rueckgabe_muster(var).search(bereich):
+            return ""
+        fname = _funktionsname(i)
+        if not fname:
+            return ""
+        aliase = [m.group(1) for m in _aufruf_muster(fname).finditer(ganzer_text)]
+        if not aliase:
+            return ""
+        marken = []
+        for alias in aliase:
+            t = _marke_muster(alias).search(ganzer_text)
+            if not t:
+                return ""            # eine Abnahmestelle ohne Marke genuegt
+            marken.append(t.group(1) or t.group(2) or "")
+        return marken[0]
+
     gefunden: List[Element] = []
     for i, zeile in enumerate(zeilen):
         m = _ERZEUGT.search(zeile) or _ERZEUGT_OHNE.search(zeile)
@@ -168,6 +245,8 @@ def untersuche(pfad: Path) -> Sichtbefund:
         bereich = "\n".join(zeilen[i:_ende_der_funktion(i)])
         treffer = muster.search(bereich)
         marke = (treffer.group(1) or treffer.group(2) or "") if treffer else ""
+        if not marke:
+            marke = _marke_ueber_fabrik(var, i, bereich)
         gefunden.append(Element(datei=pfad.name, zeile=i + 1, art=art,
                                 variable=var, marke=marke))
     return Sichtbefund(datei=pfad.name, elemente=tuple(gefunden))

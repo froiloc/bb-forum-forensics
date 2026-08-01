@@ -61,7 +61,17 @@
  *   exakter Full-Match ueber headerFilterFunc '='. Status war bereits exakt;
  *   die Eingabezeilen-Filter (Benutzer/Titel/Verfasser) bleiben bewusst
  *   case-insensitiv/teilstring.
- * Version: v0.8.486 · Build: 486 · 2026-07-21
+ * Build 633 (Vorgang 17200856, Welle B1): HILFE-MARKEN fuer alle sechs
+ *   Bedienelemente dieser Sicht - vorher trug keines eine. Die Texte stehen
+ *   in management/help/inhalt/abnahme.py. Die Kennung steht LITERAL im
+ *   Quelltext und wird NICHT zusammengesetzt; nur so sehen die
+ *   Paritaetspruefungen SP01/SP02 und die Erhebung in
+ *   tests/_bedienelemente.py beide Seiten.
+ *   BESONDERHEIT: Die beiden Abschluss-Knoepfe eines Kommentars ('Als
+ *   erledigt' / 'Verwerfen') entstehen in EINER Schleife, sagen aber
+ *   Verschiedenes. Sie bekommen deshalb zwei literale Zweige statt einer
+ *   gerechneten Kennung - sieben Texte fuer sechs erzeugte Elemente.
+ * Version: v0.8.633 · Build: 633 · 2026-08-01
  */
 (function () {
     'use strict';
@@ -452,6 +462,10 @@
             xbtn.type = 'button';
             xbtn.className = 'aiw-lectorate-xfer';
             xbtn.textContent = 'Als Vorlage uebernehmen';
+            // Build 633 (Vorgang 17200856): Hilfe-Marke, LITERAL gesetzt.
+            // Text in management/help/inhalt/abnahme.py.
+            xbtn.setAttribute('data-hilfe-id',
+                'lectorate.bedienung.als_vorlage');
             xbtn.disabled = true;   // erst nach Berichtsauswahl
             xbtn.title = 'Aus dem gewaehlten Bericht eine Dokumentvorlage '
                 + 'erzeugen (fallbezogene Platzhalter-Werte werden entfernt).';
@@ -739,24 +753,29 @@
         ta.className = 'aiw-lectorate-com-text';
         ta.setAttribute('rows', '2');
         ta.setAttribute('placeholder', 'Kommentar zum Bericht …');
+        ta.setAttribute('data-hilfe-id', 'lectorate.bedienung.kommentartext');
         form.appendChild(ta);
 
         var blockIn = document.createElement('input');
         blockIn.type = 'text';
         blockIn.className = 'aiw-lectorate-com-block';
         blockIn.setAttribute('placeholder', 'Block-ID (optional)');
+        blockIn.setAttribute('data-hilfe-id', 'lectorate.bedienung.textstelle');
         form.appendChild(blockIn);
 
         var sug = document.createElement('textarea');
         sug.className = 'aiw-lectorate-com-suggest';
         sug.setAttribute('rows', '1');
         sug.setAttribute('placeholder', 'Aenderungsvorschlag (optional)');
+        sug.setAttribute('data-hilfe-id', 'lectorate.bedienung.vorschlag');
         form.appendChild(sug);
 
         var submit = document.createElement('button');
         submit.type = 'submit';
         submit.className = 'aiw-lectorate-com-submit';
         submit.textContent = 'Kommentar hinzufuegen';
+        submit.setAttribute('data-hilfe-id',
+            'lectorate.bedienung.kommentar_hinzufuegen');
         form.appendChild(submit);
 
         var errBox = document.createElement('div');
@@ -843,6 +862,20 @@
                         btn.className = 'aiw-lectorate-com-resolve';
                         btn.setAttribute('data-status', a[0]);
                         btn.textContent = a[1];
+                        // Build 633: Die beiden Knoepfe entstehen in EINER
+                        // Schleife, brauchen aber ZWEI Texte - sie sagen
+                        // Verschiedenes. Die Kennung darf trotzdem nicht
+                        // gerechnet werden (a[0] einzusetzen waere bequem):
+                        // weder die Paritaetspruefung SP01/SP02 noch die
+                        // Erhebung in tests/_bedienelemente.py saehe sie dann.
+                        // Deshalb zwei literale Zweige statt einer Variablen.
+                        if (a[0] === 'addressed') {
+                            btn.setAttribute('data-hilfe-id',
+                                'lectorate.bedienung.erledigt');
+                        } else {
+                            btn.setAttribute('data-hilfe-id',
+                                'lectorate.bedienung.verwerfen');
+                        }
                         btn.addEventListener('click', function () {
                             var rb = { subject_id: uid, comment_id: c.comment_id,
                                        status: a[0] };
