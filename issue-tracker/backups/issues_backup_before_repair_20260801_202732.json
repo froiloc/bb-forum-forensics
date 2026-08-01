@@ -3612,7 +3612,7 @@
       "severity": "critical",
       "assigned_to": "",
       "related_to": [
-        "651e6d84-7ebc-4905-ab21-9f324021ec1d"
+        "651e6d84"
       ],
       "resolved_in_version": "0.8.625",
       "target_version": "0.8.625",
@@ -3733,9 +3733,9 @@
       "severity": "major",
       "assigned_to": "",
       "related_to": [
-        "906ede75-a898-405c-8d80-1548e8b5b553",
-        "e9522fe2-4b99-496c-bbcf-59416dd528b7",
-        "c3f80e54-9a16-4d72-bb05-8e194a2f76d1"
+        "906ede75",
+        "e9522fe2",
+        "c3f80e54"
       ],
       "resolved_in_version": null,
       "target_version": null,
@@ -3776,7 +3776,7 @@
       "severity": "minor",
       "assigned_to": "",
       "related_to": [
-        "906ede75-a898-405c-8d80-1548e8b5b553"
+        "906ede75"
       ],
       "resolved_in_version": null,
       "target_version": null,
