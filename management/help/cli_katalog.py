@@ -144,6 +144,14 @@ _GEPRUEFT_630 = ("Build 630, 2026-08-01, gegen Wegwerf-HTML-Dateien unter "
                  "/tmp, Python 3.13, lxml")
 
 
+#: Build 642. Gefahren im Container gegen Wegwerf-Verzeichnisse unter /tmp -
+#: das Werkzeug legt sich seinen Bestand selbst an und beruehrt keinen
+#: vorhandenen. Der Lauf mit '--mit-abbruch' erzeugte eine 253-MB-Quelle und
+#: schoss das 'VACUUM INTO' nach 5.718.016 geschriebenen Byte ab.
+_GEPRUEFT_642 = ("Build 642, 2026-08-01, gegen Wegwerf-Verzeichnisse unter "
+                 "/tmp, Python 3.13")
+
+
 def _bsp(aufruf: str, wirkung: str, geprueft: str = _GEPRUEFT) -> CliBeispiel:
     """Kurzform fuer einen GEFAHRENEN Beispielaufruf."""
     return CliBeispiel(aufruf=aufruf, wirkung=wirkung, geprueft=geprueft)
@@ -176,7 +184,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             _k("paths.coordinator_db",
                "Die Fall-Datenbank, mit der das Werkzeug arbeitet.",
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad waere schlimmer als ein Abbruch.",
-               "management/cases/cases_admin.py, _resolve_db_path() Z. 41-54", "--coordinator-db"),
+               "management/cases/cases_admin.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py, db_pfad() (Build 643)", "--coordinator-db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -218,7 +226,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             _k("paths.coordinator_db",
                "Die Fall-Datenbank, mit der das Werkzeug arbeitet.",
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad waere schlimmer als ein Abbruch.",
-               "management/case_events/case_events_admin.py, _resolve_db_path() Z. 41-62", "--coordinator-db"),
+               "management/case_events/case_events_admin.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py, db_pfad() (Build 643)", "--coordinator-db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -532,7 +540,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             _k("paths.coordinator_db",
                "Die Fall-Datenbank, mit der das Werkzeug arbeitet.",
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad waere schlimmer als ein Abbruch.",
-               "management/results/results_admin.py, Z. 45-55", "--db"),
+               "management/results/results_admin.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py, db_pfad() (Build 643)", "--db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -582,7 +590,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             _k("paths.coordinator_db",
                "Die Fall-Datenbank, mit der das Werkzeug arbeitet.",
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad waere schlimmer als ein Abbruch.",
-               "management/results/catalog_admin.py, Z. 54-64", "--db"),
+               "management/results/catalog_admin.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py, db_pfad() (Build 643)", "--db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -627,7 +635,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
                "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
                "waere schlimmer als ein Abbruch.",
-               "management/person/person_admin.py, _resolve_db_path() Z. 62-78", "--coordinator-db"),
+               "management/person/person_admin.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py, db_pfad() (Build 643)", "--coordinator-db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -681,7 +689,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
                "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
                "waere schlimmer als ein Abbruch.",
-               "management/rbac/rbac_admin.py, _resolve_db_path() Z. 62-78", "--coordinator-db"),
+               "management/rbac/rbac_admin.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py, db_pfad() (Build 643)", "--coordinator-db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -725,7 +733,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
                "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
                "waere schlimmer als ein Abbruch.",
-               "management/ad_sync/ad_sync_admin.py, Z. 58-72", "--db"),
+               "management/ad_sync/ad_sync_admin.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py, db_pfad() (Build 643)", "--db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -782,7 +790,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
                "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
                "waere schlimmer als ein Abbruch.",
-               "management/capacity/capacity_admin.py, _resolve_db_path() Z. 38-52", "--coordinator-db"),
+               "management/capacity/capacity_admin.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py, db_pfad() (Build 643)", "--coordinator-db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -828,7 +836,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
                "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
                "waere schlimmer als ein Abbruch.",
-               "management/onboarding/onboarding_admin.py, Z. 43-57", "--db"),
+               "management/onboarding/onboarding_admin.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py, db_pfad() (Build 643)", "--db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -1418,7 +1426,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
                "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
                "waere schlimmer als ein Abbruch.",
-               "management/external/case_release_admin.py, Z. 45-59", "--db"),
+               "management/external/case_release_admin.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py, db_pfad() (Build 643)", "--db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -1466,7 +1474,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
                "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
                "waere schlimmer als ein Abbruch.",
-               "management/external/external_admin.py, Z. 56-70", "--db"),
+               "management/external/external_admin.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py, db_pfad() (Build 643)", "--db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -2560,7 +2568,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
                "Werkzeug mit Klartext ab. Bei einem Werkzeug, das das Schema "
                "aendert, waere ein erratener Pfad besonders teuer.",
-               "management/migrate.py, Z. 49-62", "--coordinator-db"),
+               "management/migrate.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py, db_pfad() (Build 643)", "--coordinator-db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -2828,7 +2836,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Die Vorlagen-Datenbank, auf die die Migration angewandt wird.",
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
                "Werkzeug mit Klartext ab.",
-               "management/migrate_templates_module_key.py, Z. 105-120", "--templates-db"),
+               "management/migrate_templates_module_key.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py, db_pfad() (Build 643)", "--templates-db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -2915,7 +2923,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Die Vorlagen-Datenbank, auf die die Migration angewandt wird.",
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
                "Werkzeug mit Klartext ab.",
-               "management/migrate_templates_audit_check.py, Z. 109-124", "--templates-db"),
+               "management/migrate_templates_audit_check.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py, db_pfad() (Build 643)", "--templates-db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -2954,7 +2962,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Die Vorlagen-Datenbank, auf die die Migration angewandt wird.",
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
                "Werkzeug mit Klartext ab.",
-               "management/migrate_templates_placeholders.py, Z. 276-291", "--templates-db"),
+               "management/migrate_templates_placeholders.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py, db_pfad() (Build 643)", "--templates-db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -2992,7 +3000,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Die Vorlagen-Datenbank, auf die die Migration angewandt wird.",
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
                "Werkzeug mit Klartext ab.",
-               "management/migrate_templates_ci.py, Z. 116-131", "--templates-db"),
+               "management/migrate_templates_ci.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py, db_pfad() (Build 643)", "--templates-db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -3399,6 +3407,72 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
     ),
     CliEintrag(
+        schluessel="diag_backup_verdraengung",
+        pfad="tools/diag_backup_verdraengung.py",
+        aufruf="python tools/diag_backup_verdraengung.py "
+               "--arbeitsverzeichnis VERZ [--mit-abbruch] [--behalten]",
+        titel="Nachpruefung: verdraengt eine defekte Sicherung eine gute?",
+        gruppe="Diagnose",
+        zweck="Prueft nachvollziehbar nach, ob eine defekte Sicherungskopie "
+              "eine brauchbare Generation aus der Aufbewahrung verdraengen "
+              "kann (Vorgang 651e6d84).",
+        art="lesend",
+        datenbanken=("keine - das Werkzeug legt sich seinen eigenen "
+                     "Wegwerf-Bestand an und ruehrt den Bestand nicht an",),
+        betrieb="Im laufenden Betrieb gefahrlos. Es arbeitet ausschliesslich "
+                "in einem Verzeichnis, das es selbst anlegt; ein vorhandenes, "
+                "nicht leeres Zielverzeichnis wird abgelehnt.",
+        hinweis="DIE SELBSTPROBE IST DER GRUND, DEM ERGEBNIS ZU TRAUEN. Vor "
+                "den eigentlichen Proben faehrt das Werkzeug denselben Fall "
+                "gegen den Stand VOR Build 625 und verlangt, dass der Fehler "
+                "sich dort ZEIGT. Tut er es nicht, ist die Nachpruefung blind "
+                "und meldet das, statt Entwarnung zu geben. Ein 'BESTANDEN' "
+                "von einer Probe, die nichts messen kann, ist schlimmer als "
+                "kein Ergebnis - es beendet die Suche.",
+        konfiguration=KONFIG_KEINE,
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/diag_backup_verdraengung.py "
+                     "--arbeitsverzeichnis /tmp/p651",
+                     "Faehrt die Selbstprobe und die beiden schnellen Proben. "
+                     "Im Versuch: Selbstprobe 'gute ueberlebt 2 von 3, defekte "
+                     "zaehlt JA' (der alte Stand faellt also auf), Probe A "
+                     "'3 von 3, defekte zaehlt NEIN, 1 beiseitegelegt', Probe "
+                     "B 'verbleibend 3, aelteste geloescht'. Probe C wurde "
+                     "NICHT gefahren und steht namentlich im Schlussbericht. "
+                     "Rueckgabewert 0.",
+                     _GEPRUEFT_642),
+                _bsp("python tools/diag_backup_verdraengung.py "
+                     "--arbeitsverzeichnis /tmp/p651b --mit-abbruch",
+                     "Zusaetzlich der echte Abbruchrest. Im Versuch: 253 MB "
+                     "Wegwerf-Quelle, das 'VACUUM INTO' nach 5.718.016 "
+                     "geschriebenen Byte abgeschossen; daneben lag ein "
+                     "'-journal'. Die Teildatei zaehlte danach NICHT als "
+                     "Generation, alle drei guten ueberlebten. Rueckgabewert 0.",
+                     _GEPRUEFT_642),
+            ),
+            exit_codes=((0, "alle GEFAHRENEN Proben bestanden - der Vorgang "
+                            "ist behoben"),
+                        (1, "DER ERNSTFALL: mindestens eine Probe hat den "
+                            "Vorgang nachgewiesen, oder die Selbstprobe hat "
+                            "gezeigt, dass die Nachpruefung blind ist"),
+                        (2, "Aufruffehler oder die Vorbereitung ist "
+                            "gescheitert - dann ist NICHTS geprueft")),
+            warnungen=(
+                "'--mit-abbruch' legt eine Wegwerf-Datenbank von rund 250 MB "
+                "an und kopiert sie teilweise. Auf einem knappen Laufwerk "
+                "vorher den Platz ansehen.",
+                "Ist die Platte sehr schnell, kann das 'VACUUM INTO' fertig "
+                "sein, bevor der Abbruch greift. Das Werkzeug meldet das "
+                "dann als NICHT GEFAHREN - nicht als bestanden. Abhilfe: "
+                "ABBRUCH_QUELLE_MB im Kopf des Werkzeugs erhoehen.",
+                "Das Werkzeug prueft die AUFBEWAHRUNG. Es sagt nichts "
+                "darueber, ob die Sicherungen des Bestandes brauchbar sind - "
+                "dafuer ist 'backup_admin pruefen' da.",
+            ),
+        ),
+    ),
+    CliEintrag(
         schluessel="diag_matrix_laufzeit",
         pfad="tools/diag_matrix_laufzeit.py",
         aufruf="python tools/diag_matrix_laufzeit.py [--runs 5] [--url U]",
@@ -3656,7 +3730,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Die Datenbank, mit der der Verwaltungsserver arbeitet.",
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht der "
                "Start mit Klartext ab.",
-               "management.py, Z. 70-86", "--coordinator-db"),
+               "management.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py, db_pfad() (Build 643)", "--coordinator-db"),
         ),
         tiefe=CliTiefe(
             exit_codes=((0, "sauber beendet"),

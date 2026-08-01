@@ -146,6 +146,24 @@ class SettingResolver:
         return self._config is not None
 
     @property
+    def config(self):
+        """
+        Der geladene ConfigLoader - oder None (NEU Build 643).
+
+        WOFUER: Mehrere Verwaltungswerkzeuge brauchen aus derselben
+        config.yaml nicht nur einen Pfad, sondern auch Schwellenwerte
+        (escalation.*, workload.overload.*, dashboard.ampel.*). Ohne diese
+        Auskunft muessten sie die Datei ein zweites Mal oeffnen - und mit
+        zwei Ladevorgaengen koennten Pfad und Schwelle im Grenzfall aus
+        VERSCHIEDENEN Staenden derselben Datei stammen.
+
+        Bewusst der ConfigLoader selbst und keine Kopie: Die vorhandenen
+        Bauteile (ampel_thresholds_from_config und die anderen) erwarten ein
+        Objekt mit get().
+        """
+        return self._config
+
+    @property
     def config_pfad(self) -> Optional[Path]:
         """Der tatsaechlich geladene Pfad — oder None."""
         return self._config_pfad
@@ -166,7 +184,9 @@ class SettingResolver:
     def aufloesen(self, *, name: str, arg_wert: Any, arg_name: str,
                   config_schluessel: Optional[str], default: Any,
                   abgeleitet: Any = None, abgeleitet_quelle: str = "",
-                  wandler: Optional[Callable[[Any], Any]] = None) -> SettingOrigin:
+                  wandler: Optional[Callable[[Any], Any]] = None,
+                  pflicht: bool = False,
+                  meldung_anhaengen: bool = True) -> SettingOrigin:
         """
         Loest EINEN Wert auf und legt das Ergebnis ins Protokoll.
 
@@ -196,9 +216,29 @@ class SettingResolver:
                                Wert aus config.yaml, ist das ein harter Fehler:
                                eine unlesbare Einstellung darf nicht stillschweigend
                                durch den Vorgabewert ersetzt werden.
+            pflicht:           True -> es MUSS ein Wert zustande kommen. Bleibt
+                               nur der Vorgabewert uebrig und ist der None,
+                               wird SettingResolverError geworfen. Die Meldung
+                               nennt BEIDE Wege, den Wert zu setzen (Argument
+                               und Eintrag) - wer sie liest, muss nicht erst
+                               den Quelltext aufschlagen.
+
+                               WOFUER: Rund fuenfundzwanzig Verwaltungswerkzeuge
+                               haben KEINEN Vorgabewert fuer ihren
+                               Datenbankpfad, und das ist Absicht - ein
+                               erratener Pfad waere schlimmer als ein Abbruch.
+                               Ohne diese Weiche muesste jedes von ihnen die
+                               Abbruchmeldung selbst formulieren, und genau so
+                               ist die Vorrangregel dort fuenfundzwanzigmal
+                               einzeln entstanden.
 
         Returns:
             SettingOrigin (der Wert steht in '.wert').
+
+        Raises:
+            SettingResolverError: bei pflicht=True ohne Wert, bei einer
+                gescheiterten Wandlung, oder wenn 'abgeleitet' ohne
+                Fundstelle uebergeben wurde.
         """
         if abgeleitet is not None and not str(abgeleitet_quelle).strip():
             raise SettingResolverError(
@@ -228,6 +268,28 @@ class SettingResolver:
             if roh is not None and not (isinstance(roh, str) and not roh.strip()):
                 return self._merken(name, self._wandeln(name, roh, wandler, quelle),
                                     "config.yaml", quelle)
+
+        if pflicht and default is None:
+            # KEIN ERRATENER WERT. Die Meldung nennt beide Wege - das Argument
+            # und den Eintrag -, damit sie ohne Blick in den Quelltext
+            # brauchbar ist.
+            wege = ["das Argument %s angeben" % arg_name]
+            if config_schluessel:
+                wege.append("'%s' in der config.yaml setzen%s"
+                            % (config_schluessel,
+                               " (%s)" % self._config_pfad
+                               if self._config_pfad else ""))
+            # 'meldung_anhaengen=False' setzt, wer die Meldung ueber eine
+            # unlesbare config.yaml bereits selbst ausgegeben hat. Sonst
+            # stuende sie zweimal untereinander - und ein Leser, der sie
+            # zweimal sieht, sucht nach zwei Fehlern.
+            anhang = (" " + self._config_meldung
+                      if (self._config_meldung and meldung_anhaengen) else "")
+            raise SettingResolverError(
+                "Kein Wert fuer '%s'. Es gibt hier bewusst keinen "
+                "Vorgabewert - ein erratener Wert waere schlimmer als ein "
+                "Abbruch. Abhilfe: %s.%s"
+                % (name, " ODER ".join(wege), anhang))
 
         return self._merken(
             name, self._wandeln(name, default, wandler, "Vorgabewert"),

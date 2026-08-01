@@ -78,6 +78,20 @@ AUSNAHMEN = {
         "Probe-Datei unter tempfile.mkdtemp(), weil 'PRAGMA mmap_size' auf "
         "':memory:' keine Zeile liefert - der Vorgabewert der Bibliothek ist "
         "nur an einer DATEI-Datenbank abzufragen."),
+    # NEU Build 643. Diese Ausnahme ist NICHT beim Schreiben des Werkzeugs
+    # eingetragen worden, sondern weil PY01 im Regressionslauf angeschlagen
+    # hat - die Pruefung hat getan, wofuer es sie gibt.
+    "diag_backup_verdraengung": (
+        "Baut sich seinen Wegwerf-Bestand SELBST: eine Quelldatenbank mit "
+        "Schema und Inhalt, in einem Verzeichnis, das das Werkzeug anlegt "
+        "und das leer sein muss. Ohne diesen Schreibvorgang gaebe es nichts "
+        "zu sichern und damit nichts zu pruefen - und eine leere Attrappe "
+        "wuerde die Beurteilung der Kopie (user_version, Schemaobjekte, "
+        "nicht leer) gar nicht erst erreichen; die Probe liefe ins Nichts "
+        "und saehe aus wie ein Erfolg. Ein Bestand wird dabei nicht "
+        "angefasst: das Werkzeug oeffnet keine Datenbank, die es nicht "
+        "selbst angelegt hat, und lehnt ein nicht leeres Zielverzeichnis "
+        "ab."),
 }
 
 

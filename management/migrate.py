@@ -43,24 +43,29 @@ from maintenance.wartungsvorbehalt import (            # NEU Build 612
     datenwurzel, wartungsvorbehalt,
 )
 from management.help import cli_epilog  # noqa: E402
+# Build 643: die Vorrangregel Argument > config.yaml > Vorgabewert
+# steht seit diesem Build an EINER Stelle (Ticket 15429c75).
+from core import werkzeug_konfig  # noqa: E402
 
 
 def _resolve_db_path(args) -> str:
-    if args.coordinator_db:
-        return args.coordinator_db
-    # Fallback: aus config.yaml (paths.coordinator_db).
-    try:
-        from core.config_loader import ConfigLoader
-        cfg = ConfigLoader(config_path=args.config)
-        path = cfg.get("paths.coordinator_db")
-        if path:
-            return str(path)
-    except Exception as exc:  # pragma: no cover - Konfig-Randfall
-        print("[migrate] Konnte config.yaml nicht lesen: %s" % exc, file=sys.stderr)
-    raise SystemExit(
-        "[migrate] Kein coordinator.db-Pfad: --coordinator-db angeben oder "
-        "paths.coordinator_db in config.yaml setzen."
-    )
+    """
+    coordinator.db-Pfad: Argument --coordinator-db > paths.coordinator_db > Abbruch.
+
+    BUILD 643 - DIE AUFLOESUNG IST UMGEZOGEN, das Verhalten NICHT.
+    Bis Build 642 stand hier eine eigene Abschrift derselben zwoelf Zeilen;
+    fuenfundzwanzig Werkzeuge trugen sie, und sie waren nicht identisch (die
+    Begruendung steht im Kopf von core/werkzeug_konfig.py). Sie steht jetzt an
+    EINER Stelle.
+
+    UNVERAENDERT bleiben: die Reihenfolge, das Fehlen eines Vorgabewerts
+    (ein erratener Pfad waere schlimmer als ein Abbruch), die Meldung ueber
+    eine unlesbare config.yaml auf stderr und der Abbruch mit dem Praefix
+    '[migrate]'. Die Abbruchmeldung nennt jetzt BEIDE Wege statt nur einen.
+    """
+    return werkzeug_konfig.db_pfad(
+        "migrate", args, arg_attribut="coordinator_db", arg_name="--coordinator-db",
+        config_schluessel="paths.coordinator_db", name="coordinator_db")
 
 
 def main(argv=None) -> int:

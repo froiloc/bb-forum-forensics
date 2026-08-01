@@ -46,25 +46,31 @@ from management.results.assessment_catalog_repo import (
     CatalogError,
 )
 from management.help import cli_epilog  # noqa: E402
+# Build 643: die Vorrangregel Argument > config.yaml > Vorgabewert
+# steht seit diesem Build an EINER Stelle (Ticket 15429c75).
+from core import werkzeug_konfig  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
 
 def _resolve_db_path(args) -> str:
-    if args.db:
-        return args.db
-    try:
-        from core.config_loader import ConfigLoader
-        cfg = ConfigLoader(config_path=args.config)
-        path = cfg.get("paths.coordinator_db")
-        if path:
-            return str(path)
-    except Exception as exc:  # pragma: no cover
-        print("[catalog_admin] config.yaml nicht lesbar: %s" % exc,
-              file=sys.stderr)
-    raise SystemExit(
-        "[catalog_admin] Kein coordinator.db-Pfad: --db oder "
-        "paths.coordinator_db in config.yaml.")
+    """
+    coordinator.db-Pfad: Argument --db > paths.coordinator_db > Abbruch.
+
+    BUILD 643 - DIE AUFLOESUNG IST UMGEZOGEN, das Verhalten NICHT.
+    Bis Build 642 stand hier eine eigene Abschrift derselben zwoelf Zeilen;
+    fuenfundzwanzig Werkzeuge trugen sie, und sie waren nicht identisch (die
+    Begruendung steht im Kopf von core/werkzeug_konfig.py). Sie steht jetzt an
+    EINER Stelle.
+
+    UNVERAENDERT bleiben: die Reihenfolge, das Fehlen eines Vorgabewerts
+    (ein erratener Pfad waere schlimmer als ein Abbruch), die Meldung ueber
+    eine unlesbare config.yaml auf stderr und der Abbruch mit dem Praefix
+    '[catalog_admin]'. Die Abbruchmeldung nennt jetzt BEIDE Wege statt nur einen.
+    """
+    return werkzeug_konfig.db_pfad(
+        "catalog_admin", args, arg_attribut="db", arg_name="--db",
+        config_schluessel="paths.coordinator_db", name="db")
 
 
 def _con(path: str) -> sqlite3.Connection:

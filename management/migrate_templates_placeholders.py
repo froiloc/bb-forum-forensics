@@ -55,6 +55,9 @@ import sys
 import time
 from typing import Any, Dict, Optional
 from management.help import cli_epilog  # noqa: E402
+# Build 643: die Vorrangregel Argument > config.yaml > Vorgabewert
+# steht seit diesem Build an EINER Stelle (Ticket 15429c75).
+from core import werkzeug_konfig  # noqa: E402
 
 # Kanonische DDL der neuen Tabelle. Die CHECKs erzwingen die mc-Regeln
 # (Bauplan §3.1): a braucht sql_query und darf KEINE Validierung tragen;
@@ -274,19 +277,23 @@ def apply_migration(con: sqlite3.Connection,
 
 
 def _resolve_db_path(args) -> str:
-    if args.templates_db:
-        return args.templates_db
-    try:
-        from core.config_loader import ConfigLoader  # lazy, optional
-        cfg = ConfigLoader(args.config)
-        path = cfg.get("paths.templates_db")
-        if path:
-            return path
-    except Exception:
-        pass
-    raise SystemExit(
-        "[migrate-placeholders] Kein templates.db-Pfad: --templates-db angeben "
-        "oder paths.templates_db in config.yaml setzen.")
+    """
+    templates.db-Pfad: Argument --templates-db > paths.templates_db > Abbruch.
+
+    BUILD 643 - DIE AUFLOESUNG IST UMGEZOGEN, das Verhalten NICHT.
+    Bis Build 642 stand hier eine eigene Abschrift derselben zwoelf Zeilen;
+    fuenfundzwanzig Werkzeuge trugen sie, und sie waren nicht identisch (die
+    Begruendung steht im Kopf von core/werkzeug_konfig.py). Sie steht jetzt an
+    EINER Stelle.
+
+    UNVERAENDERT bleiben: die Reihenfolge, das Fehlen eines Vorgabewerts
+    (ein erratener Pfad waere schlimmer als ein Abbruch), die Meldung ueber
+    eine unlesbare config.yaml auf stderr und der Abbruch mit dem Praefix
+    '[migrate_templates_placeholders]'. Die Abbruchmeldung nennt jetzt BEIDE Wege statt nur einen.
+    """
+    return werkzeug_konfig.db_pfad(
+        "migrate_templates_placeholders", args, arg_attribut="templates_db", arg_name="--templates-db",
+        config_schluessel="paths.templates_db", name="templates_db")
 
 
 def main(argv=None) -> int:
