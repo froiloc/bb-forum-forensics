@@ -92,6 +92,14 @@ _GEPRUEFT_618 = ("Build 618, 2026-07-31, gegen einen eingerichteten "
                  "Wegwerf-Bestand unter /tmp (setup_coordinator_dev + alle "
                  "37 Migrationen, keine Faelle), Python 3.13")
 
+#: H18 Teil 4 (Build 619). Derselbe Wegwerf-Bestand - eingerichtet, aber OHNE
+#: Faelle. Das ist fuer diese Gruppe die aussagekraeftige Lage: die meisten
+#: dieser Werkzeuge zeigen damit ihren LEERBEFUND, und genau der ist der
+#: Zustand, in dem man am ehesten unsicher ist, ob das Werkzeug gelaufen ist.
+_GEPRUEFT_619 = ("Build 619, 2026-08-01, gegen einen eingerichteten "
+                 "Wegwerf-Bestand unter /tmp (setup_coordinator_dev + alle "
+                 "37 Migrationen, KEINE Faelle), Python 3.13")
+
 
 def _bsp(aufruf: str, wirkung: str, geprueft: str = _GEPRUEFT) -> CliBeispiel:
     """Kurzform fuer einen GEFAHRENEN Beispielaufruf."""
@@ -119,6 +127,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
         hinweis="Der Normalweg ist die Cockpit-Sicht; dies ist der "
                 "Betriebsweg fuer Skripte und Nachpflege.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.cases.cases_admin --subject-id 1 --coordinator-db ./data/coordinator.db",
+                     "Ohne weitere Optionen ein reiner Blick auf den Fall. Auf dem leeren Bestand: 'Fall subject_id=1 fehlt und kein --username zum Anlegen angegeben.' auf der Fehlerausgabe, Rueckgabewert 1.",
+                     _GEPRUEFT_619),
+            ),
+            exit_codes=((0, "gelesen bzw. geaendert"), (1, "coordinator.db fehlt, der Fall fehlt und es wurde kein '--username' angegeben, oder ein Fachfehler"),),
+            warnungen=(
+                "MIT '--username' WIRD DER FALL ANGELEGT, wenn es ihn noch nicht gibt - ohne eigenen Schalter und ohne Rueckfrage. Das ist der ueberraschendste Punkt an diesem Werkzeug: wer sich beim '--subject-id' vertippt und '--username' mitgibt, legt einen Fall an, statt einen Fehler zu bekommen.",
+                "ES GIBT KEINEN REIN LESENDEN UNTERBEFEHL. Auch der Blick auf einen Fall laeuft ueber eine schreibfaehige Verbindung und setzt den Journalmodus - die Datei wird also angefasst, auch wenn nichts geaendert wird.",
+                "Ohne '--actor' wird als Urheber NULL gebucht und der Systembenutzer nur im Beleg vermerkt. Im laufenden Betrieb gehoert '--actor' dazu.",
+                "Alle Aenderungen sind protokolliert und NICHT zurueckzunehmen.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="case_events_admin",
@@ -139,6 +161,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Einen Eintrag von Hand ergaenzen. Die automatisch "
                "gespiegelten Ereignisse entstehen nicht hier."),
         ),
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.case_events.case_events_admin list --subject-id 1 --coordinator-db ./data/coordinator.db",
+                     "Zeigt den Zeitstrahl eines Falls. Auf dem leeren Bestand: 'Kein Zeitstrahl-Eintrag fuer subject_id=1.' Rueckgabewert 0 - der Leerbefund ist kein Fehler.",
+                     _GEPRUEFT_619),
+            ),
+            exit_codes=((0, "ausgegeben, auch beim Leerbefund; bzw. Eintrag geschrieben"), (1, "coordinator.db fehlt oder Fachfehler"),),
+            warnungen=(
+                "'add' ERZEUGT EINEN UNWIDERRUFLICHEN EINTRAG samt Beleg. Der Zeitstrahl ist eine Chronik und kein Arbeitsblatt.",
+                "DIE AUTOMATISCH GESPIEGELTEN EREIGNISSE ENTSTEHEN NICHT HIER. Dieses Werkzeug traegt nur von Hand nach, was sonst nirgends steht.",
+                "Auch 'list' oeffnet die Datenbank schreibfaehig und setzt den Journalmodus.",
+                "Es wird nicht geprueft, ob die angegebene Fallnummer ueberhaupt zu einem Fall gehoert - ein Zahlendreher legt den Eintrag am falschen Zeitstrahl ab.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="escalation_admin",
@@ -152,6 +188,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         datenbanken=("coordinator.db (lesend, mode=ro)",),
         betrieb="Der Betrieb darf weiterlaufen; die Verbindung nimmt keine "
                 "Schreibsperre.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.cases.escalation_admin --coordinator-db ./data/coordinator.db",
+                     "Gibt die Eskalationsstufen aus. Auf dem leeren Bestand: 'Eskalationen: hoch=0 mittel=0 niedrig=0 (von 0 Faellen)' und '(keine Eskalation)'. Rueckgabewert 0.",
+                     _GEPRUEFT_619),
+            ),
+            exit_codes=((0, "ausgegeben - AUCH wenn nichts eskaliert ist"),),
+            warnungen=(
+                "ES GIBT NUR DEN RUECKGABEWERT 0. Eine hohe Eskalation steht ausschliesslich in der Ausgabe; eine Ueberwachung muss den Text oder die JSON-Ausgabe auswerten.",
+                "FEHLT EINE BENOETIGTE TABELLE, gibt es einen rohen Programmabbruch statt einer handlungsleitenden Meldung - der Bestand ist dann zuerst zu migrieren.",
+                "IST DIE KONFIGURATION NICHT LESBAR, wird das STILL uebergangen und es gelten die Vorgabeschwellen. Dieselbe Datenbank kann damit eine andere Eskalationslage ergeben.",
+                "Es oeffnet die coordinator.db ausdruecklich nur lesend und nimmt keine Sperre - der Betrieb darf weiterlaufen.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="handover_admin",
@@ -165,6 +215,19 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         art="lesend",
         datenbanken=("coordinator.db (lesend, mode=ro)",),
         betrieb="Der Betrieb darf weiterlaufen.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.cases.handover_admin --coordinator-db ./data/coordinator.db",
+                     "Gibt das Uebergabeprotokoll aus. Auf dem leeren Bestand: 'Uebergabe-Protokoll: 0 Umverteilung(en) ueber 0 Fall/Faelle.' Rueckgabewert 0.",
+                     _GEPRUEFT_619),
+            ),
+            exit_codes=((0, "ausgegeben"),),
+            warnungen=(
+                "DIE QUELLE IST DAS PROTOKOLLBUCH, NICHT DIE FALLTABELLE. Das ist der Vorzug dieses Werkzeugs: die Uebergaben bleiben lesbar, auch wenn die Faelle spaeter veraendert wurden. Umgekehrt gilt: was nicht protokolliert wurde, steht hier nicht.",
+                "'--reassignments-only' FILTERT NUR DIE TEXTAUSGABE. Die Kopfzahlen und die JSON-Ausgabe bleiben ungefiltert - die Zaehlung passt dann nicht zur angezeigten Liste.",
+                "Nur lesend, mit ausdruecklichem Nur-Lese-Zugriff.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="next_actions_admin",
@@ -177,6 +240,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         art="lesend",
         datenbanken=("coordinator.db (lesend, mode=ro)",),
         betrieb="Der Betrieb darf weiterlaufen.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.cases.next_actions_admin --coordinator-db ./data/coordinator.db",
+                     "Gibt die naechstbesten Aktionen aus. Auf dem leeren Bestand: 'Naechstbeste Aktionen (scope alle): 0 von 0 Faellen offen, 0 abgeschlossen.' Rueckgabewert 0.",
+                     _GEPRUEFT_619),
+            ),
+            exit_codes=((0, "ausgegeben"),),
+            warnungen=(
+                "ES GIBT NUR DEN RUECKGABEWERT 0.",
+                "'--scope eigene' OHNE '--person-id' WIRD HIER NICHT ABGEFANGEN. Was dabei herauskommt, entscheidet die darunterliegende Auswertung; verlassen sollte man sich darauf nicht.",
+                "FEHLT EINE BENOETIGTE TABELLE, gibt es einen rohen Programmabbruch - wie bei escalation_admin.",
+                "Nur lesend, mit ausdruecklichem Nur-Lese-Zugriff.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="dashboard_admin",
@@ -196,6 +273,21 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Eigenstaendiges HTML mit Erzeugungsvermerk (--out)."),
         ),
         ausgabe="HTML-Datei bei export-html (--out).",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.dashboard.dashboard_admin list --coordinator-db ./data/coordinator.db",
+                     "Gibt die Fallliste mit Ampel aus. Auf dem leeren Bestand: '[dashboard_admin] Keine Faelle vorhanden.' Rueckgabewert 0 - der Leerbefund ist kein Fehler.",
+                     _GEPRUEFT_619),
+            ),
+            exit_codes=((0, "ausgegeben bzw. geschrieben; auch beim Leerbefund"), (1, "coordinator.db fehlt, die Ampelschwellen in der Konfiguration sind unbrauchbar, oder eine benoetigte Tabelle fehlt - Letzteres wird hier sauber gemeldet und nicht als Programmabbruch"),),
+            warnungen=(
+                "DIE AMPEL-BEDEUTUNG IST LAUT DATEIKOPF VORLAEUFIG. Wer sie in einen Bericht uebernimmt, sollte das wissen.",
+                "'--out' UEBERSCHREIBT die Zieldatei ohne Rueckfrage.",
+                "'export-html' liest zusaetzlich zwei Dateien aus dem Oberflaechenverzeichnis. Fehlen sie, bricht der Aufruf mit einem rohen Programmabbruch ab.",
+                "Die Schwellen kommen aus der Konfiguration (Vorgabe 7 und 21 Tage) - dieselbe Datenbank ergibt mit einer anderen Konfiguration eine andere Ampelverteilung.",
+                "Der Dateikopf nennt das Werkzeug nur-lesend; die Verbindung ist trotzdem schreibfaehig. Geschrieben wird nichts.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="limitation_admin",
@@ -214,6 +306,19 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             _b("pruefen", "lesend", "Parametersatz laden und pruefen."),
             _b("zeigen", "lesend", "Hinterlegte Fassungen listen."),
             _b("rechnen", "lesend", "Eine Fristeinschaetzung nachrechnen."),
+        ),
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/../management/deadlines/limitation_admin.py pruefen  (bzw. python -m management.deadlines.limitation_admin pruefen)",
+                     "Prueft den Verjaehrungs-Parametersatz. Im Versuch: 'Parametersatz in Ordnung', Stand 2026-07-25, 19 Fassungen - und trotzdem Rueckgabewert 3, weil der Satz NICHT juristisch bestaetigt ist. Das ist der Sollzustand und kein Defekt.",
+                     _GEPRUEFT_619),
+            ),
+            exit_codes=((0, "der Parametersatz ist in Ordnung UND bestaetigt"), (2, "der Parametersatz ist unbrauchbar"), (3, "BEFUND: keine Fristaussage moeglich - insbesondere, weil der Satz noch nicht juristisch bestaetigt ist. KEIN Fehler"),),
+            warnungen=(
+                "DER AUSGELIEFERTE PARAMETERSATZ IST EIN ENTWURF UND NICHT JURISTISCH BESTAETIGT. 'pruefen' endet deshalb heute regelmaessig mit 3, nicht mit 0. Wer die 3 fuer einen Fehler haelt, sucht an der falschen Stelle - sie ist die Auskunft, dass auf dieser Grundlage keine Frist berechnet werden darf.",
+                "Der Satz benennt seine eigenen Luecken und Vorbehalte ausdruecklich, unter anderem den unberuecksichtigten Paragrafen 78c StGB (Unterbrechung).",
+                "ES WIRD KEINE DATENBANK GEOEFFNET. Das Werkzeug rechnet allein aus dem Parametersatz und ist damit in jedem Betriebszustand aufrufbar.",
+            ),
         ),
     ),
     CliEintrag(
@@ -236,6 +341,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             _b("nachziehen", "lesend",
                "Die Stichprobe nachrechnen. Exit 1 bedeutet Abweichung - "
                "das ist ein Befund, kein Programmfehler."),
+        ),
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.qs.qs_admin liste --db ./data/coordinator.db",
+                     "Fuehrt die Stichprobenziehungen auf. Auf dem leeren Bestand ein ausdruecklicher Leerbefund unter der Ueberschrift 'REIN LESEND'. Rueckgabewert 0.",
+                     _GEPRUEFT_619),
+            ),
+            exit_codes=((0, "ausgegeben, auch beim Leerbefund; bei 'nachziehen': die Ziehung stimmt"), (1, "BEFUND von 'nachziehen': ABWEICHUNG zwischen Ziehung und heutigem Stand. KEIN Programmfehler, sondern etwas, das ein Mensch bewerten muss"), (2, "coordinator.db oder die angegebene Ziehung nicht gefunden, oder Fachfehler"),),
+            warnungen=(
+                "DER RUECKGABEWERT 1 IST EIN BEFUND UND KEIN FEHLER. Eine Abweichung heisst: der Bestand hat sich seit der Ziehung geaendert. Ob das in Ordnung ist, entscheidet ein Mensch.",
+                "OHNE '--db' WIRD STILL './data/coordinator.db' ANGENOMMEN - relativ zum aktuellen Verzeichnis. Aus dem falschen Verzeichnis aufgerufen prueft man eine andere Datenbank, ohne es zu merken.",
+                "'--db' darf vor ODER hinter dem Unterbefehl stehen.",
+                "Es oeffnet ausdruecklich nur lesend und setzt kein PRAGMA - eines der wenigen Werkzeuge, bei denen die Nur-Lese-Zusage technisch durchgesetzt ist.",
+            ),
         ),
     ),
     CliEintrag(
@@ -262,6 +381,23 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Abdeckung je Fall, samt der nie bewerteten. Exit 2 meldet "
                "solche blinden Flecken, damit ein Skript sie sieht."),
         ),
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.results.results_admin --db ./data/coordinator.db catalog",
+                     "Gibt den Bewertungskatalog samt Skalen aus. Im Versuch: 'Katalogversion: 1' und die Konfidenzskala. Rueckgabewert 0; es werden keine Faelle gebraucht.",
+                     _GEPRUEFT_619),
+                _bsp("python -m management.results.results_admin --db ./data/coordinator.db coverage",
+                     "Zeigt die blinden Flecken der Bewertung. Auf dem leeren Bestand: 'Faelle gesamt: 0 | vollstaendig bewertet: 0 | mittlere Abdeckung: None'. Rueckgabewert 0.",
+                     _GEPRUEFT_619),
+            ),
+            exit_codes=((0, "ausgegeben bzw. bewertet; bei 'coverage': keine nie bewerteten Faelle"), (1, "Fachfehler - etwa eine unbekannte Kennung bei '--actor'"), (2, "BEFUND von 'coverage': es gibt Faelle, die NIE bewertet wurden. KEIN Fehler, sondern Handlungsbedarf - der Wert ist da, damit ein Skript ihn sieht"),),
+            warnungen=(
+                "'--db' MUSS VOR DEN UNTERBEFEHL. Steht es dahinter, meldet die Auswertung der Kommandozeile einen Aufruffehler (Rueckgabewert 2) - gemessen am 2026-08-01. Das ist leicht zu verwechseln, weil andere Werkzeuge beides erlauben.",
+                "'assess' UEBERSCHREIBT NICHTS. Jede Bewertung ist eine neue Zeile mit eingefrorener Katalogversion; zurueckgenommen wird nichts.",
+                "Die Kennzahl aus 'score' ist ausdruecklich vorlaeufig - der Vorbehalt wird bei jedem Aufruf mitgedruckt.",
+                "Alle Unterbefehle, auch die rein lesenden, laufen ueber eine schreibfaehige Verbindung.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="catalog_admin",
@@ -287,6 +423,21 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
         hinweis="Jeder Aufruf verlangt --actor. Es gibt keinen lesenden "
                 "Unterbefehl; zum Ansehen dient results_admin catalog.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.results.catalog_admin --db ./data/coordinator.db add-scale --code x --label X --actor KENNUNG",
+                     "Auf einem Bestand ohne die angegebene Kennung: 'FEHLER: Unbekannte Kennung' auf der Fehlerausgabe, Rueckgabewert 1 - und zwar BEVOR irgendetwas geschrieben wurde. Ein gefahrloser Beispiellauf ist bei diesem Werkzeug nicht moeglich: es hat keinen einzigen lesenden Unterbefehl.",
+                     _GEPRUEFT_619),
+            ),
+            exit_codes=((0, "die Aenderung ist durchgefuehrt"), (1, "Fachfehler - darunter eine unbekannte Kennung bei '--actor'"),),
+            warnungen=(
+                "ES GIBT KEINEN LESENDEN UNTERBEFEHL. Jeder Aufruf ist ein Schreibversuch. Zum ANSEHEN des Katalogs dient 'results_admin catalog'.",
+                "JEDE AENDERUNG ERHOEHT DIE KATALOGVERSION. Bereits erfasste Bewertungen behalten ihren damaligen Wert und aendern ihre Bedeutung nicht rueckwirkend - eine Auswertung ueber mehrere Katalogversionen hinweg ist aber mit Bedacht zu lesen.",
+                "ES WIRD NICHTS GELOESCHT. 'deprecate' stellt nur ausser Dienst; der Eintrag bleibt lesbar. Ein Rueckbau geht nur ueber eine weitere Aenderung - die ihrerseits die Version erhoeht.",
+                "'--actor' ist in JEDEM Unterbefehl Pflicht und wird VOR der Aktion aufgeloest. Auf einem Bestand ohne Personal scheitert deshalb jeder Aufruf, bevor etwas geschrieben wird.",
+                "'--db' gehoert vor den Unterbefehl.",
+            ),
+        ),
     ),
 
     # --------------------------------------------------------- Personal, Rechte
