@@ -43,8 +43,16 @@ from __future__ import annotations
 from typing import Dict, Iterable, List, Optional, Tuple
 
 from management.help.cli_modell import (
-    CliBefehl, CliBeispiel, CliEintrag, CliModellError, CliTiefe,
+    KONFIG_KEINE, CliBefehl, CliBeispiel, CliEintrag, CliKonfig,
+    CliModellError, CliTiefe,
 )
+
+
+def _k(schluessel: str, bedeutung: str, vorgabe: str, beleg: str,
+       argument: str = "") -> CliKonfig:
+    """Kurzform fuer einen ausgewerteten Eintrag aus config.yaml (Build 639)."""
+    return CliKonfig(schluessel=schluessel, bedeutung=bedeutung,
+                     vorgabe=vorgabe, beleg=beleg, argument=argument)
 
 #: Arbeitsbereiche, in der Reihenfolge der Ausgabe.
 GRUPPEN_REIHENFOLGE: Tuple[str, ...] = (
@@ -1398,6 +1406,82 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
         ausgabe="Sicherungsdateien und ein Manifest im Sicherungsverzeichnis "
                 "(bei 'run').",
+        # Build 639 (Ticket 60e4236e, das dieses Werkzeug ausdruecklich
+        # nennt): geprueft am Quelltext von management/backup/backup_config.py
+        # (from_config, Z. 51-83) und management/backup/backup_admin.py
+        # (_paths_from_cfg Z. 60, _coordinator_db Z. 63-70).
+        #
+        # AUSDRUECKLICH NICHT AUFGENOMMEN: 'db.journal_mode'. Es liegt nahe,
+        # dass ein Sicherungswerkzeug diesen Eintrag auswertet - es tut es
+        # NICHT. backup_admin ruft apply_journal_mode(con, db_path) ohne
+        # 'mode' auf (Z. 84) und bekommt damit den fest verdrahteten
+        # Vorgabewert aus db/journal_policy.py, nicht den Eintrag aus
+        # config.yaml. Eine plausible Angabe ohne Fundstelle waere hier eine
+        # Vermutung gewesen.
+        konfiguration=(
+            _k("backup.dest_dir",
+               "Wohin gesichert wird. In der Produktivumgebung der UNC-Pfad "
+               "auf dem Sicherungsziel. Das Verzeichnis oder sein "
+               "Elternverzeichnis muss erreichbar sein - sonst bricht die "
+               "Vorabpruefung ab, BEVOR etwas geschrieben wird.",
+               "./backups/", "management/backup/backup_config.py, Z. 51-56"),
+            _k("backup.retention_count",
+               "Wie viele Generationen je Datenbank behalten werden. Aeltere "
+               "werden nach dem Lauf entfernt. Muss mindestens 1 sein.",
+               "7", "management/backup/backup_config.py, Z. 58-65"),
+            _k("backup.min_free_factor",
+               "Wie viel Platz am Ziel frei sein muss, als Vielfaches der "
+               "Gesamtgroesse aller Quellen. Der Aufschlag deckt den "
+               "voruebergehenden Mehrbedarf der Kopie ab. Vorfallgetrieben: "
+               "volle Platte am 2026-07-01.",
+               "1,3", "management/backup/backup_config.py, Z. 68-74"),
+            _k("backup.checkpoint",
+               "Behandlung eines vorgefundenen WAL vor der Kopie: 'passive' "
+               "oder 'none'. 'truncate' ist unzulaessig. 'passive' schreibt "
+               "als einzige Stelle des Laufs in die QUELLE; wer das nicht "
+               "will, setzt 'none' - die Sicherung braucht den Schritt "
+               "nicht.",
+               "passive", "management/backup/backup_config.py, Z. 76-81"),
+            _k("backup.include_shared_dbs",
+               "Ob default.db, templates.db und translations.db mitgesichert "
+               "werden. Die fallbezogenen Datenbanken werden IMMER gesichert, "
+               "unabhaengig von diesem Eintrag.",
+               "true (mitsichern)",
+               "management/backup/backup_config.py, Z. 83"),
+            _k("paths.coordinator_db",
+               "Die Datenbank, in der der Lauf registriert und belegt wird - "
+               "und zugleich eine der gesicherten Quellen.",
+               "./data/coordinator.db",
+               "management/backup/backup_admin.py, _coordinator_db() Z. 63-70",
+               "--coordinator-db"),
+            _k("paths.forensic_db_dir",
+               "Verzeichnis der forensic_<uid>.db - Quellen der Sicherung.",
+               "./data/forensic/",
+               "management/backup/backup_admin.py, _paths_from_cfg() Z. 60"),
+            _k("paths.evidence_db_dir",
+               "Verzeichnis der evidence_<uid>.db - Quellen der Sicherung.",
+               "./data/evidence/",
+               "management/backup/backup_admin.py, _paths_from_cfg() Z. 60"),
+            _k("paths.assets_db_dir",
+               "Verzeichnis der assets_<uid>.db - Quellen der Sicherung.",
+               "./data/assets/",
+               "management/backup/backup_admin.py, _paths_from_cfg() Z. 60"),
+            _k("paths.default_db",
+               "Die default.db - Quelle der Sicherung, sofern "
+               "backup.include_shared_dbs gesetzt ist.",
+               "./data/default.db",
+               "management/backup/backup_admin.py, _paths_from_cfg() Z. 60"),
+            _k("paths.templates_db",
+               "Die templates.db - Quelle der Sicherung, sofern "
+               "backup.include_shared_dbs gesetzt ist.",
+               "./data/templates.db",
+               "management/backup/backup_admin.py, _paths_from_cfg() Z. 60"),
+            _k("paths.translations_db",
+               "Die translations.db - Quelle der Sicherung, sofern "
+               "backup.include_shared_dbs gesetzt ist.",
+               "./data/translations.db",
+               "management/backup/backup_admin.py, _paths_from_cfg() Z. 60"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.backup.backup_admin pruefen "
@@ -1633,6 +1717,66 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
         hinweis="Geschrieben werden nur Steuerdateien im Wartungsverzeichnis "
                 "- an den Fachdaten aendert dieses Werkzeug nichts.",
+        # Build 639: geprueft am Quelltext von maintenance/cli_config.py
+        # (VORGABEN/SCHLUESSEL) und tools/maintenance.py (_add_common). Der
+        # Abschnitt 'maintenance' in config.yaml ist AUSKOMMENTIERT
+        # ausgeliefert; ohne Eintrag gilt jeweils der Vorgabewert.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Datenbank, gegen die die Rechtepruefung laeuft. Der "
+               "DATEINAME zaehlt mit - eine abweichend benannte Datei "
+               "(etwa beim Parallelbetrieb zweier Bestaende) wird "
+               "verwendet, wie sie hier steht.",
+               "./data/coordinator.db", "maintenance/cli_config.py, "
+               "SCHLUESSEL['coordinator_db']; aufgeloest in pfade_aufloesen()",
+               "--coordinator-db"),
+            _k("maintenance.data_dir",
+               "Verzeichnis mit dem Wartungsverzeichnis und den "
+               "Datenbanken.",
+               "das Elternverzeichnis der oben aufgeloesten coordinator.db, "
+               "sonst ./data",
+               "maintenance/cli_config.py, pfade_aufloesen()", "--data-dir"),
+            _k("maintenance.stale_seconds",
+               "Ab wann ein Lebenszeichen als veraltet gilt. Ein Dienst "
+               "mit aelterem Lebenszeichen wird als 'vermutlich tot, "
+               "unbestaetigt' gefuehrt - NIE als in Ordnung. Auf einem "
+               "traegen Netzlaufwerk eher erhoehen: ein zu knapper Wert "
+               "erklaert lebende Dienste fuer tot.",
+               "30 Sekunden", "maintenance/cli_config.py, VORGABEN['stale']",
+               "--stale"),
+            _k("maintenance.on_active",
+               "Was mit laufenden Diensten geschieht, wenn das Fenster "
+               "gesetzt wird: 'pause' oder 'beenden'. Ein anderer Wert wird "
+               "beim Aufruf mit Klartext abgewiesen und NICHT ins Fenster "
+               "geschrieben.",
+               "pause", "tools/maintenance.py, cmd_enter (Pruefung des "
+               "aufgeloesten Werts)", "--on-active"),
+            _k("maintenance.min_build",
+               "Versions-Waechter: Dienste mit kleinerer Buildnummer "
+               "beenden sich beim Wiederaufnehmen selbst.",
+               "0 (keine Anforderung)",
+               "maintenance/cli_config.py, VORGABEN['min_build']",
+               "--min-build"),
+            _k("maintenance.ablauf_min",
+               "Selbsttaetiger Ablauf des Fensters in Minuten. Als "
+               "Standortvorgabe sinnvoll: ein vergessenes Fenster haelt "
+               "den Betrieb sonst an, bis es jemand bemerkt.",
+               "0 (laeuft nie von selbst ab)",
+               "maintenance/cli_config.py, VORGABEN['ablauf_min']",
+               "--ablauf-min"),
+            _k("maintenance.wait_timeout_seconds",
+               "Wie lange 'enter' auf die Bestaetigungen und den "
+               "Sperrnachweis wartet.",
+               "60 Sekunden",
+               "maintenance/cli_config.py, VORGABEN['wait_timeout']",
+               "--wait-timeout"),
+            _k("maintenance.poll_seconds",
+               "Abstand zweier Pruefungen in der Warteschleife. Das "
+               "Werkzeug begrenzt den wirksamen Wert selbst auf 0,2 bis "
+               "2,0 Sekunden.",
+               "1,0 Sekunden", "maintenance/cli_config.py, VORGABEN['poll']; "
+               "Begrenzung in tools/maintenance.py, cmd_enter", "--poll"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python tools/maintenance.py status --data-dir ./data",
@@ -1690,6 +1834,33 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "Verzeichnis. ABER: '--all' nimmt ALLE Anmeldungen ohne "
                 "Filter nach Rechner oder Fenster - auf einem geteilten "
                 "Laufwerk trifft es auch die Wartungsdienste anderer.",
+        # Build 639: geprueft am Quelltext von tools/maintenance_kill.py
+        # (main) und maintenance/cli_config.py. Dieses Werkzeug oeffnet keine
+        # Datenbank fuer die Fachdaten, braucht aber dieselbe Rechtepruefung -
+        # daher derselbe coordinator.db-Pfad.
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die Datenbank, gegen die die Rechtepruefung laeuft. Ist sie "
+               "gerade gesperrt, wird das Beenden NICHT blockiert - dies ist "
+               "eine Wiederherstellung.",
+               "./data/coordinator.db",
+               "maintenance/cli_config.py, pfade_aufloesen(); Auswertung in "
+               "maintenance/cli_support.pruefe_wartungsberechtigung()",
+               "--coordinator-db"),
+            _k("maintenance.data_dir",
+               "Verzeichnis mit dem Wartungsverzeichnis, in dem die "
+               "Anmeldungen der Dienste liegen.",
+               "das Elternverzeichnis der oben aufgeloesten coordinator.db, "
+               "sonst ./data",
+               "maintenance/cli_config.py, pfade_aufloesen()", "--data-dir"),
+            _k("maintenance.kill_wait_timeout_seconds",
+               "Wie lange auf das Selbstbeenden der angesprochenen Dienste "
+               "gewartet wird. Danach werden Nachzuegler NAMENTLICH gemeldet "
+               "und der Aufruf endet mit 2.",
+               "30 Sekunden",
+               "maintenance/cli_config.py, VORGABEN['kill_wait_timeout']",
+               "--wait-timeout"),
+        ),
         tiefe=CliTiefe(
             exit_codes=((0, "erledigt"),
                         (1, "Aufruffehler"),
@@ -3146,6 +3317,29 @@ def fehlliste_cli_tiefe() -> Tuple[str, ...]:
     Stand und kein Versaeumnis, das man verschweigen duerfte.
     """
     return tuple(e.schluessel for e in CLI_KATALOG if not e.hat_tiefe())
+
+
+def fehlliste_cli_konfiguration() -> Tuple[str, ...]:
+    """
+    Die ABGELEITETE Fehlliste der Werkzeuge, bei denen NOCH NICHT GEPRUEFT
+    ist, welche Eintraege aus config.yaml sie auswerten (NEU Build 639,
+    Ticket 60e4236e).
+
+    WAS HIER NICHT STEHT UND WARUM: Ein Werkzeug, bei dem die Pruefung
+    ergeben hat, dass es KEINEN Eintrag liest, steht NICHT in dieser Liste.
+    Es traegt KONFIG_KEINE, und das ist eine Antwort. Nur 'konfiguration=None'
+    - also "nicht nachgesehen" - landet hier.
+
+    Ohne diese Unterscheidung waere die Liste wertlos: sie wuerde entweder
+    geprueft-leere Werkzeuge ewig mitfuehren oder ungepruefte als erledigt
+    ausweisen. Beides waere ein stilles Uebergehen einer Luecke
+    (Grundregel 1).
+
+    Sie wird nicht gepflegt, sondern gerechnet - eine gepflegte Liste koennte
+    luegen.
+    """
+    return tuple(e.schluessel for e in CLI_KATALOG
+                 if not e.konfiguration_geprueft())
 
 
 def verify_katalog_konsistent() -> None:

@@ -30,8 +30,21 @@
 #   - _validate() und _resolve_config_path() werfen nun ConfigLoaderError
 #     statt ValueError / FileNotFoundError.
 #
+# Änderungen Build 638 (Ticket 15429c75 — Vorrangregel):
+#   - Der ROHE Inhalt der YAML-Datei wird zusätzlich aufbewahrt (self._raw),
+#     und stammt_aus_datei() beantwortet die Frage, ob ein Schlüssel in der
+#     Datei TATSÄCHLICH EINGETRAGEN ist.
+#     WARUM DAS NÖTIG IST: get() kann diese Frage nicht beantworten. Es
+#     liefert auch dann einen Wert, wenn nur _DEFAULTS ihn hergibt. Ein
+#     Werkzeug, das die Herkunft seiner Werte belegen soll (Grundregel 1),
+#     würde damit 'aus config.yaml' melden, wo in Wahrheit ein fest
+#     verdrahteter Vorgabewert gegriffen hat — eine falsche Herkunftsangabe
+#     ist schlimmer als gar keine.
+#     Der geladene Konfigurationsinhalt selbst ist UNVERÄNDERT; get() und
+#     as_dict() verhalten sich exakt wie zuvor.
+#
 # Abhängigkeiten: yaml (PyYAML), os, pathlib — ausschließlich Stdlib + PyYAML
-# Version: v0.6.117 · Build: 117 · 2026-05-07
+# Version: v0.8.638 · Build: 638 · 2026-08-01
 # =============================================================================
 
 import os
@@ -162,6 +175,9 @@ class ConfigLoader:
             ConfigValueError:        Wenn ein Wert ungültig ist.
         """
         self._config: dict[str, Any] = copy.deepcopy(_DEFAULTS)
+        # Build 638: der ROHE Dateiinhalt, unvermischt mit _DEFAULTS. Nur er
+        # belegt, was in der Datei WIRKLICH steht (siehe stammt_aus_datei).
+        self._raw: dict[str, Any] = {}
         self._config_path: Path = self._resolve_config_path(config_path)
         self._load_yaml()
 
@@ -190,6 +206,32 @@ class ConfigLoader:
                 return default
             node = node[part]
         return node
+
+    def stammt_aus_datei(self, key: str) -> bool:
+        """
+        Beantwortet: Steht dieser Punkt-separierte Schlüssel TATSÄCHLICH in der
+        geladenen config.yaml? (NEU Build 638)
+
+        Abgrenzung zu get(): get() liefert auch Werte, die ausschließlich aus
+        den Coded Defaults dieses Moduls stammen. Für eine Herkunftsangabe ist
+        das nicht brauchbar — 'aus config.yaml' wäre dann eine unbelegte
+        Behauptung. Diese Methode sieht ausschließlich in den rohen
+        Dateiinhalt.
+
+        Achtung, bewusste Festlegung: Ein Schlüssel, der in der Datei steht,
+        aber leer ist ('' oder null), gilt hier als VORHANDEN. Ob ein leerer
+        Wert brauchbar ist, entscheidet der Aufrufer — nicht dieses Modul.
+        CLI-Overrides ändern das Ergebnis NICHT; sie stehen nicht in der Datei.
+
+        Beispiel:
+            cfg.stammt_aus_datei("paths.coordinator_db")   -> True/False
+        """
+        node: Any = self._raw
+        for part in key.split("."):
+            if not isinstance(node, dict) or part not in node:
+                return False
+            node = node[part]
+        return True
 
     def apply_cli_overrides(self, overrides: dict[str, Any]) -> None:
         """
@@ -250,6 +292,7 @@ class ConfigLoader:
             ) from exc
 
         if raw is None:
+            self._raw = {}
             return  # Leere config.yaml — alle Defaults greifen
 
         if not isinstance(raw, dict):
@@ -258,6 +301,9 @@ class ConfigLoader:
                 f"sein. Gefunden: {type(raw).__name__}"
             )
 
+        # Build 638: Der rohe Inhalt wird VOR dem Merge weggelegt. Eine Kopie,
+        # damit ein späteres _deep_merge/_set die Beleglage nicht verändert.
+        self._raw = copy.deepcopy(raw)
         self._deep_merge(self._config, raw)
 
     def _deep_merge(self, base: dict, override: dict) -> None:

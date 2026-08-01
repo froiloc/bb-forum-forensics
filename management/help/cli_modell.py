@@ -31,7 +31,13 @@
 #   Warntexte. Das ist die TIEFE, und sie folgt in H17/H18 - nachgehalten
 #   ueber die Fehlliste, damit keine Luecke still bleibt (Grundregel 1).
 #
-# Version: v0.8.606 - Build: 606 - 2026-07-31
+# AENDERUNG BUILD 639 (Ticket 60e4236e): Neue Datenklasse CliKonfig und das
+#   Feld CliEintrag.konfiguration. Der Katalog beantwortete bis dahin "wie
+#   rufe ich es auf?", aber nicht "was stellt es fest ein, ohne dass ich etwas
+#   uebergebe?". Fuer die Betriebsseite ist das die haeufigere Frage - und die
+#   Antwort stand nirgends. Naeheres bei CliKonfig.
+#
+# Version: v0.8.639 - Build: 639 - 2026-08-01
 # =============================================================================
 
 from __future__ import annotations
@@ -108,6 +114,62 @@ class CliBeispiel:
 
 
 @dataclass(frozen=True)
+class CliKonfig:
+    """
+    EIN Eintrag aus config.yaml, den dieses Werkzeug tatsaechlich auswertet
+    (NEU Build 639, Ticket 60e4236e).
+
+    WARUM ES DIESES FELD GIBT: Der Katalog beantwortete bis Build 638 die
+    Frage "wie rufe ich es auf?" - aber nicht die Frage "was stellt es fest
+    ein, ohne dass ich etwas uebergebe?". Wer 'backup_admin' bedient, muss
+    wissen, dass Zielverzeichnis und Aufbewahrung aus config.yaml kommen;
+    aus der Optionsliste geht das nicht hervor, denn dort steht kein Wort
+    davon. Ein Werkzeug, dessen wichtigste Stellgroessen unsichtbar sind,
+    wird blind bedient.
+
+    schluessel - der Punkt-separierte Schluessel, so wie er in config.yaml
+                 steht ('backup.retention_count'). NICHT der Abschnittsname
+                 allein: wer sucht, sucht die Zeile.
+    bedeutung  - was dieser Eintrag FUER DIESES WERKZEUG bewirkt. Bewusst je
+                 Werkzeug und nicht einmal zentral: derselbe Eintrag wirkt an
+                 zwei Stellen verschieden, und die Erklaerung gehoert dorthin,
+                 wo sie gebraucht wird.
+    vorgabe    - was gilt, wenn der Eintrag FEHLT. Ohne diese Angabe bleibt
+                 die wichtigste Frage offen ("muss ich das setzen?").
+    argument   - das Kommandozeilen-Argument, das diesen Eintrag ueberstimmt,
+                 oder "" wenn es keines gibt. Der Vorrang ist projektweit
+                 Argument > config.yaml > Vorgabewert (Build 638).
+    beleg      - WO im Quelltext der Eintrag gelesen wird (Datei und, wo
+                 sinnvoll, Zeile). Pflichtfeld. Eine Behauptung ueber das
+                 Verhalten eines Werkzeugs ohne Fundstelle ist im Rahmen
+                 dieses Projekts keine Angabe, sondern eine Vermutung.
+    """
+    schluessel: str
+    bedeutung: str
+    vorgabe: str
+    beleg: str
+    argument: str = ""
+
+    def __post_init__(self) -> None:
+        for pflicht in ("schluessel", "bedeutung", "vorgabe", "beleg"):
+            if not str(getattr(self, pflicht)).strip():
+                raise CliModellError(
+                    "Konfigurationseintrag '%s': Pflichtfeld '%s' ist leer. "
+                    "Ohne Fundstelle und ohne Vorgabewert ist der Eintrag "
+                    "nicht nachpruefbar."
+                    % (self.schluessel or "?", pflicht))
+
+
+#: Der ausdrueckliche Vermerk "geprueft, dieses Werkzeug liest KEINEN Eintrag
+#: aus config.yaml". Er ist NICHT dasselbe wie 'konfiguration=None' (= noch
+#: nicht geprueft), und diese Unterscheidung ist der ganze Zweck: sonst waere
+#: ein ungeprueftes Werkzeug von einem geprueften ohne Eintraege nicht zu
+#: unterscheiden, und die Fehlliste wuerde die Luecke verschweigen
+#: (Grundregel 1).
+KONFIG_KEINE: Tuple["CliKonfig", ...] = ()
+
+
+@dataclass(frozen=True)
 class CliTiefe:
     """
     Die Tiefeninhalte eines Eintrags (H17/H18). In H15 durchgehend None.
@@ -155,6 +217,18 @@ class CliEintrag:
                    (nur ausserhalb des Betriebs, abgekuendigt, einmalige
                    Altmigration ...). Leer, wenn es nichts zu sagen gibt.
     tiefe        - H17/H18.
+    konfiguration - die ausgewerteten Eintraege aus config.yaml (Build 639).
+                   DREI ZUSTAENDE, und der mittlere ist der Grund fuer das
+                   Ganze:
+                     None         - NOCH NICHT GEPRUEFT. Der Eintrag steht
+                                    in fehlliste_cli_konfiguration().
+                     KONFIG_KEINE - geprueft: dieses Werkzeug liest keinen
+                                    Eintrag aus config.yaml.
+                     (CliKonfig,) - geprueft: diese Eintraege, mit Fundstelle.
+                   Ohne die Unterscheidung von None und KONFIG_KEINE waere
+                   "wir haben nichts gefunden" von "wir haben nicht gesucht"
+                   nicht zu unterscheiden - und die Fehlliste wuerde eine
+                   Luecke als erledigt ausweisen (Grundregel 1).
     """
     schluessel: str
     pfad: str
@@ -170,6 +244,7 @@ class CliEintrag:
     ausgabe: str = ""
     hinweis: str = ""
     tiefe: Optional[CliTiefe] = None
+    konfiguration: Optional[Tuple[CliKonfig, ...]] = None
 
     def __post_init__(self) -> None:
         if self.art not in ARTEN:
@@ -199,6 +274,22 @@ class CliEintrag:
     def hat_beispiele(self) -> bool:
         """Ob GEPRUEFTE Beispielaufrufe vorliegen."""
         return bool(self.tiefe and self.tiefe.beispiele)
+
+    def konfiguration_geprueft(self) -> bool:
+        """
+        Ob die Frage "welche Eintraege aus config.yaml wertet dieses Werkzeug
+        aus?" ueberhaupt untersucht wurde (Build 639).
+
+        ACHTUNG, DER UNTERSCHIED IST DER PUNKT: True auch dann, wenn das
+        Ergebnis KONFIG_KEINE lautet - "geprueft, liest keinen Eintrag" ist
+        eine Antwort. Nur None heisst "nicht gesucht", und nur das gehoert in
+        die Fehlliste.
+        """
+        return self.konfiguration is not None
+
+    def hat_konfiguration(self) -> bool:
+        """Ob dieses Werkzeug mindestens einen Eintrag aus config.yaml liest."""
+        return bool(self.konfiguration)
 
     def schreibt(self) -> bool:
         return self.art in ("schreibend", "gemischt")

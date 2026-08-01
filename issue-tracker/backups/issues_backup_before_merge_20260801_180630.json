@@ -1506,12 +1506,12 @@
       "description": "Es erscheint die Meldung:\r\n```\r\n[RBAC] coordinator.db fehlt (data\\coordinator.db) - RBAC nicht pruefbar, abgebrochen.\r\n[Fehler] Berechtigung fehlt - 'enter' abgebrochen.\r\n```\r\n\r\nHintergrund:\r\nBefehlszeile:\r\npy tools\\maintenance.py enter --reason \"Einpflegen neuer Daten\" --ablauf-min 10 --data-dir data --poll 3 --coordinator-db data\\coordinator_2.db\r\n\r\nDer Pfad data\\coordinator_2.db entspricht auch dem Pfad für coordinator.db in config.yaml. Die Datei data\\coordinator.db existiert nicht",
       "expected_behavior": "Das Argument wird übernommen. Und im Allgemeinen sollten die Werte aus `config.yaml` verwendet werden, falls das Argument nicht verwendet wird. Aber Argument schlägt `config.yaml` schlägt hardcoded default.",
       "actual_behavior": "Das Argument wird ignoriert. Der Modus ist daher nicht zu wechseln.",
-      "status": "resolved",
+      "status": "open",
       "priority": "critical",
       "severity": "blocker",
       "assigned_to": "Claude",
       "related_to": [],
-      "resolved_in_version": "0.8.638",
+      "resolved_in_version": null,
       "target_version": null,
       "environment": {
         "python_version": "3.14",
@@ -1532,34 +1532,6 @@
           "old_value": "",
           "new_value": "",
           "comment": "Issue erstellt"
-        },
-        {
-          "timestamp": "2026-08-01T15:20:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "NACHGESTELLT, Container Python 3.13, Build 637. Ein Wegwerf-Verzeichnis mit NUR 'coordinator_2.db' (keine 'coordinator.db'), dann der Aufruf aus dem Ticket. Ausgabe woertlich: '[RBAC] coordinator.db fehlt (/tmp/repro/data/coordinator.db) - RBAC nicht pruefbar, abgebrochen.' Die gemeldete Lage ist damit belegt und nicht nur plausibel.\\n\\nZWEI URSACHEN, nicht eine.\\n\\n(1) DER DATEINAME GING VERLOREN. tools/maintenance.py _resolve_data_dir() (Z. 48-51) nahm vom uebergebenen Pfad nur das ELTERNVERZEICHNIS: 'return Path(args.coordinator_db).parent'. Weitergereicht wurde also '/tmp/repro/data'. maintenance/cli_support.pruefe_wartungsberechtigung() (Z. 137 ff.) setzte darauf wieder den FESTEN Namen: 'coord = Path(data_dir) / \\\"coordinator.db\\\"'. Der Dateiname aus dem Argument kam nie an einer Stelle an, an der er haette wirken koennen. Genau das ist die Meldung ueber eine Datei, die der Melder nie genannt hat.\\n\\n(2) config.yaml WURDE NIE GEFRAGT. Beide Wartungswerkzeuge (tools/maintenance.py, tools/maintenance_kill.py) kannten die Datei ueberhaupt nicht - kein '--config', kein ConfigLoader, kein Zugriff auf 'paths.coordinator_db'. Der Eintrag des Melders war richtig gesetzt und blieb wirkungslos.\\n\\nDIE TIEFERE URSACHE, weil sie sonst wiederkommt: ALLE Vorgabewerte standen im argparse-Aufbau ('--data-dir', default=\\\"./data\\\", Z. 220). Ein argparse-Default ist von einer Nutzereingabe NICHT zu unterscheiden. Selbst wenn die Werkzeuge config.yaml gefragt haetten, haette der Eintrag nie greifen koennen: '--data-dir' sah in jedem Aufruf wie eine Eingabe aus. Die Vorrangregel war hier nicht falsch gebaut, sondern gar nicht baubar.\\n\\nBEFUND ZUM UMFELD: Die Regel steht seit Build 001 im Kopf von core/config_loader.py ('Eskalationskette ... CLI > config.yaml > Coded Default'), war aber NIRGENDS ein Bauteil. Rund fuenfzehn Werkzeuge haben sie je fuer sich nachgebaut - management/cases/cases_admin.py vollstaendig, management/ops/storage_admin.py verkuerzt, die beiden Wartungswerkzeuge gar nicht."
-        },
-        {
-          "timestamp": "2026-08-01T15:31:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "BEHOBEN in Build 0.8.638. Die Vorrangregel ist ab jetzt ein BAUTEIL und wird an EINER Stelle aufgeloest, nicht in jedem Werkzeug erneut.\\n\\nNEU: core/setting_origin.py (Datenklasse SettingOrigin: Wert + Herkunft + benannte Fundstelle), core/setting_resolver.py (die Aufloesung selbst), maintenance/cli_config.py (ihre Anwendung auf beide Wartungswerkzeuge - EINE Stelle fuer beide).\\n\\nDIE REIHE, ausgeschrieben: Argument > aus einem Argument abgeleitet > config.yaml > Vorgabewert des Werkzeugs. Die Zwischenstufe 'abgeleitet' ist noetig, weil '<--data-dir>/coordinator.db' auf einer Angabe des AUFRUFERS beruht und deshalb ueber config.yaml rangieren muss - wer ein Datenverzeichnis nennt, meint dessen coordinator.db und nicht die einer anderen Anlage.\\n\\nGEAENDERT: tools/maintenance.py und tools/maintenance_kill.py (alle Argumente der Vorrangregel tragen jetzt 'default=None'; neues '--config'; die Vorgabewerte stehen in maintenance/cli_config.VORGABEN und werden zuletzt eingesetzt). maintenance/cli_support.pruefe_wartungsberechtigung() nimmt 'coordinator_db' als VOLLSTAENDIGEN Pfad entgegen (None haelt das bisherige Verhalten - alle Bestandsaufrufe unveraendert). core/config_loader.py bekommt stammt_aus_datei().\\n\\nWARUM stammt_aus_datei() SEIN MUSS: get() liefert auch die Coded Defaults des ConfigLoaders. Ein Werkzeug, das seine Herkunft belegen soll, haette damit 'aus config.yaml' gemeldet, wo in Wahrheit ein fest verdrahteter Wert gegriffen hat. Eine falsche Herkunftsangabe ist schlimmer als gar keine (Pruefung VR05).\\n\\nJEDER AUFRUF LEGT SEINE WERTE OFFEN, bevor er wirkt:\\n  [Konfig] config.yaml: /srv/aiw/config.yaml\\n  [Konfig] coordinator_db = data/coordinator_2.db  [Argument --coordinator-db]\\n  [Konfig] data_dir = data  [Argument --coordinator-db]\\n  [Konfig] stale = 30  [Vorgabewert des Werkzeugs (30)]\\nDer gemeldete Vorfall waere damit in der ersten Zeile sichtbar gewesen.\\n\\nNEUE EINSTELLPUNKTE: config.yaml erhaelt einen Abschnitt 'maintenance' (data_dir, stale_seconds, on_active, min_build, ablauf_min, wait_timeout_seconds, poll_seconds, kill_wait_timeout_seconds). Er ist AUSKOMMENTIERT ausgeliefert: solange nichts eingetragen ist, verhalten sich die Werkzeuge exakt wie bis Build 637.\\n\\nWAS AUSDRUECKLICH NICHT GEAENDERT WURDE: Die bisherige Reihenfolge zwischen den beiden Argumenten bleibt - das Elternverzeichnis von '--coordinator-db' ist das Datenverzeichnis, auch wenn '--data-dir' daneben steht. Das stand seit Build 438 im Kopf beider Werkzeuge und war dort die EINZIGE vorhandene Vorrangregel; sie umzudrehen waere eine Verhaltensaenderung, die niemand bestellt hat (Pruefung VR14).\\n\\nPRUEFUNGEN: tests/test_cli_vorrang.py, 22 Faelle. Jede der vier Stufen wird EINZELN erzwungen, indem die jeweils hoehere weggelassen wird, und jede Pruefung stellt zusaetzlich die richtige HERKUNFT fest - ein richtiger Wert aus der falschen Quelle ist ein Zufallstreffer und kein Beleg (TE5). VR20 faehrt den Aufruf aus diesem Ticket woertlich gegen einen Bestand, in dem es KEINE 'coordinator.db' gibt; er laeuft durch. Weiter belegt: 0/''/False sind gesetzte Argumente (VR06), ein unwandelbarer Wert aus config.yaml bricht ab statt still auf den Vorgabewert zu fallen (VR07), ein ausdruecklich per --config genanntes, fehlendes config.yaml bricht ab - ohne --config nicht, aber mit Meldung (VR07b).\\n\\nOFFEN GEBLIEBEN, ausdruecklich: Die rund fuenfzehn UEBRIGEN Werkzeuge, die config.yaml je fuer sich lesen, sind NICHT umgestellt. Das Bauteil steht ihnen zur Verfuegung; ob sie es benutzen, ist noch nicht geprueft. Diese Luecke ist kein Versaeumnis dieses Builds, aber sie ist zu nennen."
-        },
-        {
-          "timestamp": "2026-08-01T15:31:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "Behoben in 0.8.638. Nachstellung, Ursachenanalyse und Gegenproben siehe die beiden Vermerke davor."
-        },
-        {
-          "timestamp": "2026-08-01T15:31:00+00:00",
-          "author": "Claude",
-          "action": "version_update",
-          "old_value": "",
-          "new_value": "0.8.638",
-          "comment": "resolved_in_version gesetzt."
         }
       ]
     },
@@ -3631,7 +3603,7 @@
       "description": "Es ist hilfreich gewisse zentrale Einstellungspunkte zu kennen. Beispielsweise für `backup_admin` wäre es hilfreich, wenn die Konfiguration in `config.yaml` die genutzt wird erklärt würde.",
       "expected_behavior": "Auch Konfigurationsmöglichkeiten in `config.yaml` werden erklärt.",
       "actual_behavior": "`config.yaml` wird derzeit nicht erwähnt.",
-      "status": "in_progress",
+      "status": "open",
       "priority": "high",
       "severity": "trivial",
       "assigned_to": "Claude",
@@ -3655,20 +3627,6 @@
           "old_value": "",
           "new_value": "",
           "comment": "Issue erstellt"
-        },
-        {
-          "timestamp": "2026-08-01T15:45:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "TEILWEISE UMGESETZT in Build 0.8.639. DAS TICKET BLEIBT OFFEN - der Mechanismus steht, die Erhebung ist zu 3 von 66 Werkzeugen fertig. Wer hier 'resolved' setzte, wuerde eine Luecke als geschlossen melden.\\n\\nWAS GEBAUT IST: Der CLI-Katalog fuehrt je Werkzeug das neue Feld 'konfiguration' (management/help/cli_modell.py, Datenklasse CliKonfig). Ein Eintrag nennt VIER Dinge, alle vier Pflicht: den Schluessel wie er in config.yaml steht, seine Bedeutung FUER DIESES WERKZEUG, was ohne Eintrag gilt, und die FUNDSTELLE im Quelltext. Ohne Fundstelle waere eine Angabe ueber das Verhalten eines Werkzeugs eine Vermutung.\\n\\nDREI ZUSTAENDE, und der Unterschied zwischen den letzten beiden ist der eigentliche Punkt: Eintraege vorhanden / KONFIG_KEINE ('geprueft, liest keinen Eintrag') / None ('noch nicht nachgesehen'). Nur der dritte steht in der Fehlliste. Ohne diese Unterscheidung waere 'wir haben nichts gefunden' von 'wir haben nicht gesucht' nicht zu trennen.\\n\\nBEIDE AUSGABEN drucken alle drei Zustaende aus - die Konsole ('python tools/hilfe.py zeige <werkzeug>', Abschnitt 'Einstellungen in config.yaml') und die Vollhilfe (neuer Pflichtabschnitt im Betriebskapitel, als Tabelle). Ein fehlender Abschnitt liesse den Leser raten.\\n\\nERHOBEN (3 von 66): 'backup_admin' - im Ticket ausdruecklich genannt - mit 12 Eintraegen (backup.dest_dir, retention_count, min_free_factor, checkpoint, include_shared_dbs sowie die sieben paths.*-Quellen), belegt an management/backup/backup_config.py Z. 51-83 und backup_admin.py Z. 60/63-70. Ausserdem 'maintenance' (8) und 'maintenance_kill' (3) - sie mussten ohnehin nachgezogen werden, weil Build 638 ihre Vorrangregel geaendert hat (keine Aenderung ohne Anpassung in der Hilfe).\\n\\nEIN BEFUND AUS DER ERHEBUNG, weil er die Arbeitsweise zeigt: Bei backup_admin liegt es nahe, 'db.journal_mode' aufzufuehren. Das Werkzeug wertet den Eintrag NICHT aus - es ruft apply_journal_mode(con, db_path) ohne 'mode' auf (Z. 84) und bekommt den fest verdrahteten Vorgabewert aus db/journal_policy.py. Die plausible Angabe waere falsch gewesen. Pruefung KF11 haelt das fest: wer den Eintrag spaeter aufnimmt, muss vorher den Aufruf aendern.\\n\\nOFFEN: 63 Werkzeuge. Sie stehen NAMENTLICH in tests/hilfe_fehlliste_stand.json unter 'cli_ohne_konfiguration' und werden von 'python tools/hilfe.py stand' ausgegeben. KF08 laesst die Liste nur schrumpfen.\\n\\nPRUEFUNGEN: tests/test_help_cli_konfiguration.py, 11 Faelle. KF06 weist einen ERFUNDENEN Schluessel ab (er muss in config.yaml stehen, auch auskommentiert, oder in den Coded Defaults). KF07 weist eine Fundstelle ab, die auf eine nicht vorhandene Datei zeigt. Beides ist maschinell feststellbar - im Unterschied zur fachlichen Richtigkeit, die die Vier-Augen-Lesung bleibt.\\n\\nREGELWERK: documents/rules-help.md hat den Abschnitt 'Kein Werkzeug ohne Auskunft ueber config.yaml'. Wer kuenftig ein Werkzeug baut, das config.yaml liest, traegt den Eintrag im selben Build nach."
-        },
-        {
-          "timestamp": "2026-08-01T15:45:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "in_progress",
-          "comment": "Mechanismus und Ausgabe stehen (0.8.639); die Erhebung laeuft (3 von 66). Bewusst NICHT 'resolved'."
         }
       ]
     },

@@ -17,8 +17,14 @@
 #   python tools/maintenance_kill.py --uuid <UUID> [--uuid <UUID2> ...]
 #   python tools/maintenance_kill.py --all
 #
+# WOHER DIE WERTE KOMMEN (NEU Build 638, Ticket 15429c75):
+#   Argument > aus einem Argument abgeleitet > config.yaml > Vorgabewert,
+#   aufgeloest ueber maintenance/cli_config.py — dieselbe Stelle wie bei
+#   tools/maintenance.py. Der per --coordinator-db uebergebene DATEINAME geht
+#   nicht mehr verloren; die Herkunft jedes Werts wird ausgegeben.
+#
 # Exitcodes: 0 = ok / alle beendet; 1 = Fehler/nichts gefunden; 2 = Nachzuegler.
-# Version: v0.7.438 · Build: 438 · 2026-07-19
+# Version: v0.8.638 · Build: 638 · 2026-08-01
 # =============================================================================
 
 from __future__ import annotations
@@ -33,14 +39,12 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from core.setting_resolver import SettingResolverError  # noqa: E402
 from maintenance import MaintenancePaths, ServerRegistration  # noqa: E402
+from maintenance.cli_config import (herkunft_ausgeben,  # noqa: E402
+                                    pfade_aufloesen, resolver_bauen,
+                                    wert_aufloesen)
 from management.help import cli_epilog  # noqa: E402
-
-
-def _resolve_data_dir(args) -> Path:
-    if getattr(args, "coordinator_db", None):
-        return Path(args.coordinator_db).parent
-    return Path(args.data_dir)
 
 
 def cmd_list(paths: MaintenancePaths) -> int:
@@ -111,20 +115,42 @@ def main(argv=None) -> int:
                     "Kill-Kanal.",
         epilog=cli_epilog.epilog("maintenance_kill"),
         formatter_class=cli_epilog.HilfeFormat)
-    ap.add_argument("--data-dir", default="./data",
-                    help="Verzeichnis mit _maintenance/ (Default ./data).")
+    # Build 638: 'default=None' bei allen Argumenten der Vorrangregel — die
+    # Begruendung steht ausfuehrlich in tools/maintenance.py bei _add_common.
+    ap.add_argument("--config", default=None,
+                    help="Pfad zur config.yaml (Vorgabe: ./config.yaml). Ist die "
+                         "hier ausdruecklich genannte Datei nicht auswertbar, "
+                         "bricht das Werkzeug ab.")
+    ap.add_argument("--data-dir", default=None,
+                    help="Verzeichnis mit _maintenance/. Ohne Angabe: "
+                         "maintenance.data_dir aus config.yaml, sonst ./data.")
     ap.add_argument("--coordinator-db", default=None,
-                    help="Pfad zur coordinator.db; deren Parent ist das Datenverzeichnis.")
+                    help="Pfad zur coordinator.db EINSCHLIESSLICH Dateiname; deren "
+                         "Parent ist zugleich das Datenverzeichnis. Ohne Angabe: "
+                         "<--data-dir>/coordinator.db, sonst paths.coordinator_db "
+                         "aus config.yaml, sonst ./data/coordinator.db.")
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--list", action="store_true", help="Angemeldete Server auflisten.")
     g.add_argument("--all", action="store_true", help="ALLE angemeldeten Server beenden.")
     g.add_argument("--uuid", action="append", default=[],
                    help="UUID eines zu beendenden Servers (mehrfach moeglich).")
-    ap.add_argument("--wait-timeout", type=int, default=30, dest="wait_timeout",
-                    help="Maximale Wartezeit auf Beendigung in Sekunden (30).")
+    ap.add_argument("--wait-timeout", type=int, default=None,
+                    dest="kill_wait_timeout",
+                    help="Maximale Wartezeit auf Beendigung in Sekunden. Ohne "
+                         "Angabe: maintenance.kill_wait_timeout_seconds aus "
+                         "config.yaml, sonst 30.")
     args = ap.parse_args(argv)
 
-    data_dir = _resolve_data_dir(args)
+    try:
+        resolver = resolver_bauen(args)
+        data_dir, coordinator_db = pfade_aufloesen(args, resolver)
+        wait_timeout = wert_aufloesen(args, resolver, "kill_wait_timeout",
+                                      "--wait-timeout", int)
+    except SettingResolverError as exc:
+        print("[FEHLER] %s" % exc, file=sys.stderr)
+        return 1
+    herkunft_ausgeben(resolver)
+
     paths = MaintenancePaths(data_dir)
     paths.verzeichnisse_anlegen()
 
@@ -135,13 +161,15 @@ def main(argv=None) -> int:
     # coordinator.db wird 'wartung.durchfuehren' erzwungen; ist sie gerade
     # gesperrt, wird der Kill NICHT blockiert (nur protokolliert).
     from maintenance.cli_support import pruefe_wartungsberechtigung
-    ok, meldung = pruefe_wartungsberechtigung(data_dir, recovery=True)
+    # Build 638: mit dem AUFGELOESTEN Pfad, Dateiname eingeschlossen.
+    ok, meldung = pruefe_wartungsberechtigung(data_dir, recovery=True,
+                                              coordinator_db=coordinator_db)
     print("[RBAC] %s" % meldung)
     if not ok:
         print("[FEHLER] Berechtigung fehlt — Kill abgebrochen.", file=sys.stderr)
         return 1
 
-    return cmd_kill(paths, args.uuid, args.all, args.wait_timeout,
+    return cmd_kill(paths, args.uuid, args.all, wait_timeout,
                     von=getpass.getuser())
 
 

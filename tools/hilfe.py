@@ -36,7 +36,12 @@
 # AUSGABE: reines ASCII, 78 Zeichen, keine Escape-Sequenzen - die
 #   Begruendung steht im Kopf von management/help/cli_text.py.
 #
-# Version: v0.8.608 - Build: 608 - 2026-07-31
+# AENDERUNG BUILD 639 (Ticket 60e4236e): 'stand' weist zusaetzlich aus, fuer
+#   wie viele Werkzeuge erhoben ist, welche Eintraege aus config.yaml sie
+#   auswerten - getrennt vom Tiefenstand, damit sich die beiden Luecken nicht
+#   gegenseitig verdecken.
+#
+# Version: v0.8.639 - Build: 639 - 2026-08-01
 # =============================================================================
 
 from __future__ import annotations
@@ -53,7 +58,8 @@ if _WURZEL not in sys.path:
     sys.path.insert(0, _WURZEL)
 
 from management.help.cli_katalog import (                 # noqa: E402
-    CLI_KATALOG, eintrag, fehlliste_cli_tiefe,
+    CLI_KATALOG, eintrag, fehlliste_cli_konfiguration,
+    fehlliste_cli_tiefe,
 )
 from management.help.cli_text import (                    # noqa: E402
     liste_text, suche_text, umbrechen, unbekannt_text, zeige_text,
@@ -124,6 +130,32 @@ def stand_text() -> str:
         zeilen.append(zeile.rstrip().rstrip(","))
     else:
         zeilen.append("Alle Werkzeuge sind vollstaendig ausgearbeitet.")
+
+    # Build 639 (Ticket 60e4236e): der zweite Ausarbeitungsstand - welche
+    # Eintraege aus config.yaml ein Werkzeug auswertet. Er wird GETRENNT
+    # ausgewiesen und nicht mit dem Tiefenstand verrechnet: ein Werkzeug kann
+    # gefahrene Beispiele haben und trotzdem ungeprueft sein, was es sich aus
+    # der Konfiguration holt. Eine zusammengezaehlte Zahl wuerde genau das
+    # verdecken.
+    konfig_offen = fehlliste_cli_konfiguration()
+    zeilen.append("")
+    zeilen.append("Einstellungen aus config.yaml (Ticket 60e4236e)")
+    zeilen.append("-" * 78)
+    zeilen.append("davon geprueft:             %d"
+                  % (len(CLI_KATALOG) - len(konfig_offen)))
+    zeilen.append("davon noch nicht erhoben:   %d" % len(konfig_offen))
+    if konfig_offen:
+        zeilen.append("")
+        zeilen.extend(umbrechen(
+            "Noch nicht erhoben - das heisst NICHT, dass diese Werkzeuge "
+            "keine Eintraege lesen:", 78))
+        zeile = "  "
+        for s in konfig_offen:
+            if len(zeile) + len(s) + 2 > 78:
+                zeilen.append(zeile.rstrip())
+                zeile = "  "
+            zeile += s + ", "
+        zeilen.append(zeile.rstrip().rstrip(","))
 
     # Build 624 (H20): die Werkzeuge, die BEWUSST keinen Epilog in ihrer
     # eingebauten Hilfe bekommen. Sie stehen hier namentlich MIT GRUND -

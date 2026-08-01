@@ -29,7 +29,11 @@
 #      Zeilenumbruch der Konsole nichts zerreisst und ein Einzug beim
 #      Kopieren erhalten bleibt.
 #
-# Version: v0.8.608 - Build: 608 - 2026-07-31
+# AENDERUNG BUILD 639 (Ticket 60e4236e): zeige_text() gibt einen Abschnitt
+#   'Einstellungen in config.yaml' aus - mit allen DREI Zustaenden, also
+#   auch 'geprueft, liest keinen Eintrag' und 'noch nicht erhoben'.
+#
+# Version: v0.8.639 - Build: 639 - 2026-08-01
 # =============================================================================
 
 from __future__ import annotations
@@ -284,6 +288,46 @@ def zeige_text(e: CliEintrag) -> str:
     if e.hinweis:
         zeilen.append("Hinweis")
         _absatz(zeilen, e.hinweis, einzug="  ")
+        zeilen.append("")
+
+    # -----------------------------------------------------------------
+    # Einstellungen aus config.yaml (NEU Build 639, Ticket 60e4236e).
+    #
+    # DIE DREI ZUSTAENDE WERDEN ALLE DREI AUSGEGEBEN, und das ist der Punkt:
+    # "liest keinen Eintrag" ist eine Auskunft, "noch nicht nachgesehen" ist
+    # eine andere. Wer nur die Eintraege druckte, liesse den Leser bei jedem
+    # Werkzeug ohne Abschnitt raten, welcher der beiden Faelle vorliegt.
+    # -----------------------------------------------------------------
+    zeilen.append("Einstellungen in config.yaml")
+    if e.hat_konfiguration():
+        _absatz(zeilen,
+                "Diese Eintraege wertet das Werkzeug aus. Der Vorrang ist "
+                "Argument vor config.yaml vor Vorgabewert - wo es ein "
+                "Argument gibt, steht es dabei.", einzug="  ")
+        zeilen.append("")
+        for k in e.konfiguration:
+            zeilen.append("  " + k.schluessel)
+            zeilen.extend(umbrechen(k.bedeutung, BREITE, "      "))
+            zeilen.extend(umbrechen("ohne Eintrag: " + k.vorgabe,
+                                    BREITE, "      "))
+            if k.argument:
+                zeilen.extend(umbrechen("ueberstimmt durch: " + k.argument,
+                                        BREITE, "      "))
+            zeilen.extend(umbrechen("Fundstelle: " + k.beleg,
+                                    BREITE, "      "))
+            zeilen.append("")
+    elif e.konfiguration_geprueft():
+        _absatz(zeilen,
+                "Geprueft: Dieses Werkzeug wertet KEINEN Eintrag aus "
+                "config.yaml aus.", einzug="  ")
+        zeilen.append("")
+    else:
+        # KEIN STILLES WEGLASSEN - dieselbe Begruendung wie bei
+        # "Ausarbeitung" weiter unten.
+        _absatz(zeilen,
+                "Fuer dieses Werkzeug ist noch nicht erhoben, welche "
+                "Eintraege aus config.yaml es auswertet (Ticket 60e4236e). "
+                "Das heisst NICHT, dass es keine gibt.", einzug="  ")
         zeilen.append("")
 
     if e.hat_tiefe():

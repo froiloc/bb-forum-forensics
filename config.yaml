@@ -154,6 +154,63 @@ ad:
     user_base: ""         # Suchbasis der Benutzeraufloesung (OU der Konten)
     target_group: ""      # AD-Gruppe der Ermittler:innen (cn), rekursiv aufgeloest
 
+# =============================================================================
+# Wartungsmodus (NEU Build 638, Ticket 15429c75).
+#
+# Diese Sektion versorgt die beiden Wartungswerkzeuge
+#   tools/maintenance.py       (enter | exit | status)
+#   tools/maintenance_kill.py
+# mit Vorgabewerten für den STANDORT. Sie ist vollständig OPTIONAL: Was hier
+# nicht steht, bleibt beim festen Vorgabewert des Werkzeugs (in Klammern).
+#
+# Vorrang — projektweit gültig und ab Build 638 auch in diesen beiden
+# Werkzeugen tatsächlich umgesetzt:
+#
+#   Argument  >  aus einem Argument abgeleitet  >  config.yaml  >  Vorgabewert
+#
+# Jeder Aufruf gibt aus, welcher Wert aus welcher Quelle stammt ('[Konfig] ...').
+# Wer wissen will, ob ein Eintrag hier greift, sieht es in der ersten Zeile
+# der Ausgabe — nicht erst am Verhalten.
+#
+# WARUM DIE SEKTION AUSKOMMENTIERT IST: Ein eingetragener Wert gilt als
+# Standort-Festlegung und schlägt den Vorgabewert des Werkzeugs. Solange
+# nichts eingetragen ist, verhalten sich die Werkzeuge exakt wie bis Build 637.
+#
+# maintenance:
+#   # Datenverzeichnis mit _maintenance/ und den Datenbanken (./data).
+#   # Wird auch verwendet, wenn weder --data-dir noch --coordinator-db fällt.
+#   data_dir: "./data"
+#
+#   # Sekunden, ab denen ein Präsenz-Beacon als veraltet gilt (30). Ein Server,
+#   # dessen Beacon älter ist, wird als 'vermutlich tot, unbestätigt' geführt —
+#   # NIE als 'in Ordnung'. Auf einem trägen Netzlaufwerk eher erhöhen: ein zu
+#   # knapper Wert erklärt lebende Server für tot.
+#   stale_seconds: 30
+#
+#   # Verhalten laufender Normalserver beim Setzen des Fensters: pause | beenden
+#   # ('pause'). Ein anderer Wert wird beim Aufruf mit Klartext abgewiesen.
+#   on_active: "pause"
+#
+#   # Versions-Wächter: Server mit kleinerer Buildnummer beenden sich beim
+#   # Wiederaufnehmen selbst (0 = keine Anforderung).
+#   min_build: 0
+#
+#   # Automatischer Ablauf des Wartungsfensters in Minuten (0 = nie). Als
+#   # Standort-Vorgabe sinnvoll: ein vergessenes Fenster hält sonst den
+#   # Betrieb an, bis es jemand bemerkt.
+#   ablauf_min: 0
+#
+#   # Maximale Wartezeit auf ACKs und den Exklusiv-Lock-Beweis in Sekunden (60).
+#   wait_timeout_seconds: 60
+#
+#   # Abstand zweier Prüfungen in der Warteschleife in Sekunden (1.0). Das
+#   # Werkzeug begrenzt den wirksamen Wert selbst auf 0,2 bis 2,0 Sekunden.
+#   poll_seconds: 1.0
+#
+#   # tools/maintenance_kill.py: Wartezeit auf das Selbstbeenden in Sekunden (30).
+#   kill_wait_timeout_seconds: 30
+# =============================================================================
+
 hosts_management:
   enabled: false
 

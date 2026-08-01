@@ -58,6 +58,26 @@ Damit stehen **zwei Adressaten in einem Dokument**. Das ist nur unter drei Bedin
 
 **Regel H-1 gilt für die Betriebskapitel nicht, Regel H-0 sehr wohl.** Der Katalog beschreibt Werkzeuge, keine Fälle; Beispielaufrufe laufen gegen Wegwerf-Bestände.
 
+### Kein Werkzeug ohne Auskunft über `config.yaml` (seit Build 639)
+
+Der CLI-Katalog beantwortete bis Build 638 die Frage „wie rufe ich es auf?" — aber nicht die Frage **„was stellt es fest ein, ohne dass ich etwas übergebe?"**. Für die Betriebsseite ist das die häufigere Frage, und die Antwort stand nirgends: Wer `backup_admin` bedient, muss wissen, dass Zielverzeichnis, Aufbewahrung und Platzreserve aus `config.yaml` kommen; aus der Optionsliste geht das nicht hervor, denn dort steht kein Wort davon (Ticket `60e4236e`).
+
+**Wer ein Werkzeug baut oder ändert, das einen Eintrag aus `config.yaml` liest, trägt ihn im selben Build in `CliEintrag.konfiguration` nach.** Jeder Eintrag nennt vier Dinge, alle vier Pflicht: den Schlüssel, seine Bedeutung *für dieses Werkzeug*, was ohne Eintrag gilt, und die **Fundstelle im Quelltext**. Eine Angabe über das Verhalten eines Werkzeugs ohne Fundstelle ist eine Vermutung.
+
+**Drei Zustände, und der Unterschied zwischen den letzten beiden ist der ganze Zweck:**
+
+| Wert | Bedeutung | steht in der Fehlliste |
+| --- | --- | --- |
+| `(CliKonfig, …)` | geprüft: diese Einträge, mit Fundstelle | nein |
+| `KONFIG_KEINE` | geprüft: liest **keinen** Eintrag | nein |
+| `None` | **noch nicht nachgesehen** | ja |
+
+Ohne die Unterscheidung von `None` und `KONFIG_KEINE` wäre „wir haben nichts gefunden" von „wir haben nicht gesucht" nicht zu trennen — und die Fehlliste würde eine Lücke als erledigt ausweisen. Beide Ausgaben (Konsole und Vollhilfe) drucken alle drei Zustände aus; ein fehlender Abschnitt ließe den Leser raten.
+
+*Durchsetzung:* `fehlliste_cli_konfiguration()` gegen `cli_ohne_konfiguration` in `tests/hilfe_fehlliste_stand.json` (nur schrumpfen, KF08) sowie `tests/test_help_cli_konfiguration.py` KF01–KF11. **KF06** weist einen erfundenen Schlüssel ab, **KF07** eine Fundstelle, die auf eine nicht vorhandene Datei zeigt.
+
+**Stand Build 639: 3 von 66 Werkzeugen erhoben.** Die übrigen 63 stehen namentlich im Stand und in `python tools/hilfe.py stand`. Das ist der ehrliche Anfang und kein erledigtes Ticket.
+
 ## Gliederung eines Vollhilfe-Kapitels
 
 Jedes Kapitel hat dieselben sechs Abschnitte, in dieser Reihenfolge:

@@ -14,8 +14,17 @@
 #     EXCLUSIVE-Lock auf die Ziel-DB zu erhalten (Messen, nicht rechnen). Gelingt
 #     das, haelt niemand mehr eine Sperre.
 #   * quiesce_status — klassifiziert die lebenden Server anhand Praesenz + ACK.
+#   * pruefe_wartungsberechtigung — RBAC-Vorpruefung ueber coordinator.db.
 #
-# Version: v0.7.438 · Build: 438 · 2026-07-19
+# Aenderung Build 638 (Ticket 15429c75):
+#   pruefe_wartungsberechtigung nimmt jetzt zusaetzlich 'coordinator_db' als
+#   VOLLSTAENDIGEN Pfad entgegen. Bis Build 637 kannte der Helfer nur das
+#   Datenverzeichnis und haengte den festen Namen 'coordinator.db' an — ein
+#   per --coordinator-db uebergebener abweichender DATEINAME ging damit
+#   verloren. Die Config-Kopplung selbst bleibt draussen (siehe oben); sie
+#   wohnt in maintenance/cli_config.py.
+#
+# Version: v0.8.638 · Build: 638 · 2026-08-01
 # =============================================================================
 
 from __future__ import annotations
@@ -135,7 +144,8 @@ def quiesce_status(paths: MaintenancePaths, window_id: str, stale_s: int,
 
 
 def pruefe_wartungsberechtigung(data_dir, recovery: bool,
-                                *, os_user: Optional[str] = None) -> tuple:
+                                *, os_user: Optional[str] = None,
+                                coordinator_db=None) -> tuple:
     """
     Prueft, ob der ausfuehrende OS-Benutzer die Faehigkeit 'wartung.durchfuehren'
     besitzt (RBAC ueber coordinator.db). Rueckgabe (ok, meldung):
@@ -148,9 +158,24 @@ def pruefe_wartungsberechtigung(data_dir, recovery: bool,
 
     Der Henne-Ei-Fall (coordinator.db gerade gesperrt) blockiert also NUR das
     Setzen eines Fensters (enter), nie die Wiederherstellung (exit/kill).
+
+    coordinator_db (NEU Build 638, Ticket 15429c75):
+        Der VOLLSTAENDIGE Pfad zur coordinator.db, Dateiname eingeschlossen.
+        Ist er gesetzt, wird er unveraendert verwendet.
+
+        WARUM DAS NOETIG WAR: Zuvor kannte dieser Helfer nur das
+        Datenverzeichnis und setzte darauf den festen Namen 'coordinator.db'.
+        Wer die Datei anders benannte (etwa 'coordinator_2.db', beim
+        Parallelbetrieb zweier Bestaende der Normalfall), bekam eine Meldung
+        ueber eine Datei, die er nie genannt hatte — und keinen Hinweis
+        darauf, dass sein Argument unterwegs verlorengegangen war.
+
+        None haelt das bisherige Verhalten (data_dir/coordinator.db) und damit
+        alle bestehenden Aufrufe unveraendert.
     """
     import sqlite3
-    coord = Path(data_dir) / "coordinator.db"
+    coord = (Path(coordinator_db) if coordinator_db is not None
+             else Path(data_dir) / "coordinator.db")
     try:
         from management.server.identity import IdentityResolver
         from management.rbac.rbac_resolver import RbacResolver

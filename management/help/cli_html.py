@@ -122,6 +122,14 @@ OHNE_TIEFE_TEXT: str = (
     "Beispielaufrufe, Rueckgabewerte und Warnhinweise sind fuer dieses "
     "Werkzeug noch nicht erfasst.")
 
+#: Der Hinweis fuer ein Werkzeug, bei dem noch nicht erhoben ist, welche
+#: Eintraege aus config.yaml es auswertet (NEU Build 639, Ticket 60e4236e).
+#: Der letzte Satz ist der wichtige: er verhindert, dass ein ungeprueftes
+#: Werkzeug als "hat keine" gelesen wird.
+OHNE_KONFIGURATION_TEXT: str = (
+    "Fuer dieses Werkzeug ist noch nicht erhoben, welche Eintraege aus "
+    "config.yaml es auswertet. Das heisst NICHT, dass es keine gibt.")
+
 #: Klartext zur Art eines Werkzeugs - woertlich dieselben Saetze wie in
 #: cli_text.zeige_text(). Zwei Formulierungen fuer dieselbe Aussage waeren
 #: der Anfang genau des Drifts, den dieses Modul vermeiden soll.
@@ -142,6 +150,11 @@ ABSCHNITTE: Tuple[Tuple[str, str], ...] = (
     ("wirkung", "Was es tut"),
     ("daten", "Datenbanken und Belege"),
     ("betrieb", "Betriebsvoraussetzung"),
+    # NEU Build 639 (Ticket 60e4236e). Der Abschnitt steht VOR den
+    # Beispielen und nach der Betriebsvoraussetzung: Wer ein Werkzeug zum
+    # ersten Mal fahren will, klaert erst, was die Anlage ihm dabei fest
+    # vorgibt, und sieht sich dann die Aufrufe an.
+    ("einstellungen", "Einstellungen in config.yaml"),
     ("beispiele", "Beispiele"),
     ("rueckgabewerte", "Rueckgabewerte"),
     ("zu_beachten", "Zu beachten"),
@@ -153,6 +166,11 @@ ABSCHNITTE: Tuple[Tuple[str, str], ...] = (
 #: Beispiels ist die Auskunft, auf die es bei sechs Werkzeugen ankommt.
 PFLICHTABSCHNITTE: Tuple[str, ...] = (
     "zweck", "aufruf", "wirkung", "daten", "betrieb", "beispiele",
+    # 'einstellungen' ist Pflicht (Build 639) - aus demselben Grund wie
+    # 'beispiele': Die Auskunft "dieses Werkzeug wertet KEINEN Eintrag aus"
+    # und die Auskunft "das ist noch nicht erhoben" sind beide etwas wert,
+    # und ohne den Abschnitt waeren sie voneinander nicht zu unterscheiden.
+    "einstellungen",
 )
 
 
@@ -371,6 +389,45 @@ def _betrieb_inhalt(e: CliEintrag) -> List[str]:
     return teile
 
 
+def _einstellungen_inhalt(e: CliEintrag) -> List[str]:
+    """
+    Die ausgewerteten Eintraege aus config.yaml (NEU Build 639).
+
+    DREI ZUSTAENDE, DREI AUSGABEN - und der Unterschied zwischen den letzten
+    beiden ist der Grund fuer den ganzen Abschnitt:
+      * Eintraege vorhanden -> Tabelle mit Bedeutung, Vorgabe, Vorrang, Beleg.
+      * geprueft, keine     -> ein Satz, der das ausdruecklich sagt.
+      * nicht erhoben       -> ein Satz, der das ebenso ausdruecklich sagt.
+    Wer nur den ersten Fall ausgaebe, liesse den Leser bei jedem uebrigen
+    Werkzeug raten, ob es nichts gibt oder ob niemand nachgesehen hat.
+    """
+    if e.hat_konfiguration():
+        teile: List[str] = [
+            "<p>%s</p>" % _e(
+                "Diese Eintraege wertet das Werkzeug aus. Der Vorrang ist "
+                "Argument vor config.yaml vor Vorgabewert."),
+            '<table class="aiw-h-cli-tabelle">',
+            "<thead><tr><th>Eintrag</th><th>Bedeutung</th>"
+            "<th>ohne Eintrag</th><th>ueberstimmt durch</th>"
+            "<th>Fundstelle</th></tr></thead><tbody>",
+        ]
+        for k in e.konfiguration:
+            teile.append(
+                "<tr><td><code>%s</code></td><td>%s</td><td>%s</td>"
+                "<td>%s</td><td>%s</td></tr>"
+                % (_e(k.schluessel), _e(k.bedeutung), _e(k.vorgabe),
+                   ("<code>%s</code>" % _e(k.argument)) if k.argument
+                   else "&ndash;",
+                   _e(k.beleg)))
+        teile.append("</tbody></table>")
+        return teile
+    if e.konfiguration_geprueft():
+        return ["<p>%s</p>" % _e(
+            "Geprueft: Dieses Werkzeug wertet keinen Eintrag aus config.yaml "
+            "aus.")]
+    return ['<p class="aiw-h-offen">%s</p>' % _e(OHNE_KONFIGURATION_TEXT)]
+
+
 def _beispiele_inhalt(e: CliEintrag) -> List[str]:
     """
     Die gefahrenen Beispielaufrufe - oder der ehrliche Grund, warum keiner
@@ -431,6 +488,7 @@ _INHALT = {
     "wirkung": _wirkung_inhalt,
     "daten": _daten_inhalt,
     "betrieb": _betrieb_inhalt,
+    "einstellungen": _einstellungen_inhalt,
     "beispiele": _beispiele_inhalt,
     "rueckgabewerte": _rueckgabe_inhalt,
     "zu_beachten": _beachten_inhalt,
