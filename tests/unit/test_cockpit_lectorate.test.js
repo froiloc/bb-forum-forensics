@@ -321,6 +321,20 @@ describe("cockpit_lectorate", () => {
     };
   }
 
+  // Build 659 (Vorgang 317481d3): Antwort von /api/report/blocks.
+  // b2 traegt die Ordnungszahl 1 — die Ausgabereihenfolge ist NICHT die
+  // alphabetische; die Tests haengen deshalb nirgends an der Sortierung.
+  function _blocks() {
+    return [
+      { ordinal: 1, block_id: "b2", block_type: "header",
+        type_label: "Überschrift", excerpt: "Die Auswertung ergab Folgendes.",
+        truncated: false, comment_count: 0, is_known_type: true },
+      { ordinal: 2, block_id: "b1", block_type: "paragraph",
+        type_label: "Absatz", excerpt: "Der Beschuldigte meldete sich an. …",
+        truncated: true, comment_count: 2, is_known_type: true },
+    ];
+  }
+
   it("LE12 reine Kommentar-Helfer", () => {
     const api = _api();
     expect(api.commentsUrl(700, 1)).toBe(
@@ -342,8 +356,12 @@ describe("cockpit_lectorate", () => {
     api.renderLectorate(main, _data(), { status: "submitted" });
 
     let added = null, resolved = null;
+    // Build 659: Die Blockliste gehoert jetzt zum Aufruf. Ohne sie kann kein
+    // Kommentar mehr abgesendet werden (der Anker ist Pflicht) — LE16 haelt
+    // genau diesen Fall fest.
     api.renderComments(_comData(), {
       personId: 1,
+      blocks: _blocks(),
       onAdd: function (b) { added = b; },
       onResolve: function (b) { resolved = b; },
     });
@@ -362,13 +380,14 @@ describe("cockpit_lectorate", () => {
     expect(items[1].querySelector(".aiw-lectorate-com-suggestion").textContent)
       .toContain("Text Y");
 
-    // Neuen Kommentar absenden.
+    // Neuen Kommentar absenden — mit GEWAEHLTER Textstelle (Build 659).
     panel.querySelector(".aiw-lectorate-com-text").value = "Neuer Hinweis";
+    panel.querySelector(".aiw-lectorate-com-block").value = "b2";
     panel.querySelector(".aiw-lectorate-com-form").dispatchEvent(
       new win.Event("submit", { bubbles: true, cancelable: true })
     );
     expect(added).toEqual({
-      subject_id: 700, report_id: 1, block_id: null,
+      subject_id: 700, report_id: 1, block_id: "b2",
       comment_text: "Neuer Hinweis", suggested_content: null,
     });
 
@@ -390,7 +409,7 @@ describe("cockpit_lectorate", () => {
     // keine Kommentare -> Hinweis.
     let added = null;
     api.renderComments({ subject_id: 700, report_id: 1, count: 0, comments: [] },
-      { personId: 1, onAdd: function (b) { added = b; } });
+      { personId: 1, blocks: _blocks(), onAdd: function (b) { added = b; } });
     const panel = main.querySelector(".aiw-lectorate-comments");
     expect(panel.textContent).toContain("Noch keine Kommentare");
 
@@ -401,5 +420,125 @@ describe("cockpit_lectorate", () => {
     expect(added).toBeNull();
     expect(panel.querySelector(".aiw-lectorate-com-formerr").textContent)
       .toContain("Kommentartext");
+  });
+
+  // =========================================================================
+  // Build 659 — Vorgang 317481d3: Anker als AUSWAHL statt Freitext.
+  // =========================================================================
+
+  it("LE15 blocksUrl + blockOptionLabel (reine Funktionen)", () => {
+    const api = _api();
+    expect(api.blocksUrl(700, 1)).toBe(
+      "/api/report/blocks?subject_id=700&report_id=1"
+    );
+    const [b2, b1] = _blocks();
+    // Nr. · Typ · Auszug — ohne Kommentare KEIN '(0 Kommentare)'-Anhang.
+    expect(api.blockOptionLabel(b2)).toBe(
+      "1 · Überschrift · Die Auswertung ergab Folgendes."
+    );
+    // Mit Kommentaren: Zahl am Ende, korrekter Numerus.
+    expect(api.blockOptionLabel(b1)).toBe(
+      "2 · Absatz · Der Beschuldigte meldete sich an. … (2 Kommentare)"
+    );
+    expect(api.blockOptionLabel({ ordinal: 5, type_label: "Absatz",
+      excerpt: "X", comment_count: 1 })).toContain("(1 Kommentar)");
+    expect(api.blockOptionLabel(null)).toBe("");
+  });
+
+  it("LE16 Anker ist ein Auswahlfeld, ist Pflicht und hat keine Vorauswahl", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = win.document.createElement("div");
+    win.document.body.appendChild(main);
+    api.renderLectorate(main, _data(), { status: "submitted" });
+
+    let added = null;
+    api.renderComments({ subject_id: 700, report_id: 1, count: 0, comments: [] },
+      { personId: 1, blocks: _blocks(), onAdd: function (b) { added = b; } });
+    const panel = main.querySelector(".aiw-lectorate-comments");
+    const sel = panel.querySelector(".aiw-lectorate-com-block");
+
+    // DER KERN DES VORGANGS: kein Freitextfeld mehr.
+    expect(sel.tagName).toBe("SELECT");
+    expect(sel.required).toBe(true);
+    expect(sel.disabled).toBe(false);
+
+    // Ein Platzhalter + zwei Bloecke, in der Reihenfolge der Vorschau.
+    const opts = sel.querySelectorAll("option");
+    expect(opts.length).toBe(3);
+    expect(opts[0].disabled).toBe(true);
+    expect(opts[0].textContent).toContain("Textstelle wählen");
+    expect([opts[1].value, opts[2].value]).toEqual(["b2", "b1"]);
+
+    // KEINE Vorauswahl: sonst entstuende beim schnellen Absenden ein
+    // Kommentar an Block 1, den niemand gewaehlt hat.
+    expect(sel.value).toBe("");
+
+    // Text da, Stelle fehlt -> abgewiesen, onAdd NICHT gerufen.
+    panel.querySelector(".aiw-lectorate-com-text").value = "Passt so nicht.";
+    panel.querySelector(".aiw-lectorate-com-form").dispatchEvent(
+      new win.Event("submit", { bubbles: true, cancelable: true })
+    );
+    expect(added).toBeNull();
+    expect(panel.querySelector(".aiw-lectorate-com-formerr").textContent)
+      .toContain("Textstelle");
+  });
+
+  it("LE17 ohne Blockliste: gesperrt und benannt, KEIN Rueckfall auf Freitext", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = win.document.createElement("div");
+    win.document.body.appendChild(main);
+    api.renderLectorate(main, _data(), { status: "submitted" });
+
+    let added = null;
+    // blocks fehlt ganz — z.B. weil /api/report/blocks nicht antwortete.
+    api.renderComments({ subject_id: 700, report_id: 1, count: 0, comments: [] },
+      { personId: 1, onAdd: function (b) { added = b; } });
+    const panel = main.querySelector(".aiw-lectorate-comments");
+    const sel = panel.querySelector(".aiw-lectorate-com-block");
+
+    expect(sel.tagName).toBe("SELECT");
+    expect(sel.disabled).toBe(true);
+    expect(sel.querySelectorAll("option").length).toBe(1);
+    // Die Maske SAGT, was los ist, statt ein leeres Feld zu zeigen.
+    expect(sel.textContent).toContain("keine Blöcke verfügbar");
+
+    panel.querySelector(".aiw-lectorate-com-text").value = "Hinweis";
+    panel.querySelector(".aiw-lectorate-com-form").dispatchEvent(
+      new win.Event("submit", { bubbles: true, cancelable: true })
+    );
+    expect(added).toBeNull();
+    expect(panel.querySelector(".aiw-lectorate-com-formerr").textContent)
+      .toContain("nicht geladen");
+  });
+
+  it("LE18 Kommentarliste weist die Stelle lesbar aus", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = win.document.createElement("div");
+    win.document.body.appendChild(main);
+    api.renderLectorate(main, _data(), { status: "submitted" });
+
+    const daten = _comData();
+    // Dritter Kommentar: Anker zeigt auf einen Block, den es nicht (mehr) gibt.
+    daten.comments.push({
+      comment_id: "c3", report_id: 1, block_id: "b-weg", reviewer_pid: 1,
+      reviewer_role: "lector", comment_text: "Verwaist", suggested_content: null,
+      status: "pending", created_at: 1700,
+    });
+    daten.count = 3;
+    api.renderComments(daten, { personId: 1, blocks: _blocks() });
+
+    const panel = main.querySelector(".aiw-lectorate-comments");
+    const metas = panel.querySelectorAll(".aiw-lectorate-com-meta");
+
+    // c1 haengt an b1 -> dieselbe Beschriftung wie im Auswahlfeld, KEINE UUID.
+    expect(metas[0].textContent).toContain("Textstelle 2 · Absatz");
+    // c2 ist ankerlos -> ausdruecklich benannt statt einfach weggelassen.
+    expect(metas[1].textContent).toContain("ohne Textstelle");
+    // c3 zeigt ins Leere -> Befund, nicht Rohkennung.
+    expect(metas[2].textContent).toContain("nicht (mehr) im");
+    expect(metas[2].textContent).toContain("b-weg");
   });
 });

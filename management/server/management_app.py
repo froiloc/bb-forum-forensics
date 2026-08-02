@@ -971,6 +971,11 @@ class ManagementApp:
             return self._report_annotations(person_id, query)
         if path == "/api/report/comments":
             return self._report_comments(person_id, query)
+        # Build 659 (Vorgang 317481d3): waehlbare Blockliste fuer die
+        # Verankerung eines Lektorats-Kommentars. Rechte/Scope wie
+        # /api/report/render; dieselbe Quelle wie die Vorschau.
+        if path == "/api/report/blocks":
+            return self._report_blocks(person_id, query)
         # Build 475: Bericht als Vorlage uebernehmen — schreibfreier Entwurf
         # (read-only aus evidence_<uid>.db; Sanitisierung: Platzhalter-Werte
         # entfernt, evidence_ids geleert). Rechte/Scope wie /api/report/render.
@@ -3695,32 +3700,76 @@ class ManagementApp:
         """Rolle fuer den Kommentar-Beleg: Chefin (approve) schlaegt Lektor."""
         return "supervisor" if policy.can(CAP_REPORTS_APPROVE) else "lector"
 
-    def _block_sha256(self, uid: int, block_id: str) -> Optional[str]:
+    # -----------------------------------------------------------------
+    # ANKERPRUEFUNG — DREI WERTE, NICHT ZWEI (Build 659, Vorgang 317481d3).
+    #
+    #   Bis Build 658 lieferte _block_sha256 in ZWEI verschiedenen Lagen
+    #   dasselbe None: "diesen Block gibt es nicht" und "ich konnte nicht
+    #   nachsehen". Der Aufrufer schrieb daraufhin in beiden Faellen einen
+    #   Kommentar mit block_sha256=NULL — ein Vertipper war von einer
+    #   voruebergehend unlesbaren evidence-Datei nicht zu unterscheiden, und
+    #   beides geschah STILL.
+    #
+    #   Das ist dieselbe Ununterscheidbarkeit, die den Vorfall vom 2026-08-02
+    #   ausgemacht hat (build.json Build 658, Punkt 6): eine Pruefung, die
+    #   Faelle wortlos zusammenwirft, ist von einer unvollstaendigen Pruefung
+    #   nicht zu unterscheiden. Deshalb sind es jetzt drei benannte Befunde,
+    #   und der Aufrufer entscheidet je Befund verschieden.
+    # -----------------------------------------------------------------
+    #: Der Block liegt vor — der Hash konnte gebildet werden.
+    BLOCK_VORHANDEN: str = "vorhanden"
+    #: Die evidence-Datei war lesbar, dieser Block steht nicht darin.
+    BLOCK_UNBEKANNT: str = "unbekannt"
+    #: Es konnte nicht nachgesehen werden (Datei fehlt, Tabelle fehlt, defekt).
+    BLOCK_UNPRUEFBAR: str = "unpruefbar"
+
+    def _block_pruefen(self, uid: int,
+                       block_id: str) -> tuple[str, Optional[str], str]:
         """
-        Hash des block_data ZUM KOMMENTARZEITPUNKT (read-only aus evidence),
-        damit eine spaetere Blockaenderung erkennbar wird. None, wenn evidence/
-        Block fehlt.
+        Prueft den Anker gegen report_blocks der evidence_<uid>.db (read-only).
+
+        Rueckgabe (befund, sha256, detail):
+            (BLOCK_VORHANDEN,  <hex>, "")        — Block da, Hash gebildet
+            (BLOCK_UNBEKANNT,  None,  <text>)    — Datei lesbar, Block fehlt
+            (BLOCK_UNPRUEFBAR, None,  <grund>)   — konnte nicht nachgesehen werden
+
+        Der Hash ist der des block_data ZUM KOMMENTARZEITPUNKT; er macht eine
+        spaetere Aenderung des Blocks erkennbar (Konzept v0.2 §4).
         """
         import hashlib
         path = Path(self._evidence_dir) / ("evidence_%d.db" % int(uid))
         if not path.exists():
-            return None
+            return (self.BLOCK_UNPRUEFBAR, None,
+                    "Beweismitteldatenbank nicht gefunden: %s" % path.name)
         try:
             con = sqlite3.connect("file:%s?mode=ro" % path.resolve(), uri=True)
-        except sqlite3.Error:
-            return None
+        except sqlite3.Error as exc:
+            return (self.BLOCK_UNPRUEFBAR, None,
+                    "Beweismitteldatenbank nicht zu oeffnen: %s" % exc)
         try:
             row = con.execute(
                 "SELECT block_data FROM report_blocks WHERE block_id = ?",
-                (block_id,),
+                (str(block_id),),
             ).fetchone()
-            if row is None or row[0] is None:
-                return None
-            return hashlib.sha256(str(row[0]).encode("utf-8")).hexdigest()
-        except sqlite3.Error:
-            return None
+        except sqlite3.Error as exc:
+            # Fehlende Tabelle/defekte Datei — NICHT als "Block unbekannt"
+            # ausgeben. Der Unterschied entscheidet, ob die Anwenderin ihre
+            # Auswahl korrigieren soll oder der Betrieb einen Befund hat.
+            return (self.BLOCK_UNPRUEFBAR, None,
+                    "report_blocks nicht lesbar: %s" % exc)
         finally:
             con.close()
+
+        if row is None:
+            return (self.BLOCK_UNBEKANNT, None,
+                    "Kein Block mit dieser Kennung im Bericht.")
+        if row[0] is None:
+            # Block vorhanden, aber ohne Daten: verankerbar, nur nicht hashbar.
+            # Das wird BENANNT und nicht als fehlender Block behandelt.
+            return (self.BLOCK_VORHANDEN, None,
+                    "Block ohne block_data — kein Hash bildbar.")
+        return (self.BLOCK_VORHANDEN,
+                hashlib.sha256(str(row[0]).encode("utf-8")).hexdigest(), "")
 
     def _report_comments(self, person_id: int,
                          query: Optional[Dict[str, List[str]]]) -> Response:
@@ -3762,6 +3811,135 @@ class ManagementApp:
         comments = ReviewCommentReader(self._evidence_dir, uid).read(report_id)
         return Response.json(200, {"subject_id": uid, "report_id": report_id,
                                    "count": len(comments), "comments": comments})
+
+    # =====================================================================
+    # BLOCKKATALOG EINES BERICHTS (Build 659, Vorgang 317481d3).
+    #   GET /api/report/blocks?subject_id=<uid>[&report_id=<rid>]
+    #   Die waehlbare Blockliste fuer die Verankerung eines Lektorats-
+    #   Kommentars: Ordnungszahl, Blockkennung, Typ, Textauszug, Kommentarzahl.
+    #
+    #   WARUM DER ENDPUNKT ERST JETZT ENTSTEHT: Die Maske verlangte die
+    #   Blockkennung bis Build 658 als Freitext, obwohl sie eine UUID ist, die
+    #   in der Oberflaeche nirgends steht. Die Anlage kannte sie, die Anwenderin
+    #   nicht — das Feld war nicht bedienbar (Vorgang 317481d3).
+    #
+    #   DIESELBE QUELLE WIE DIE VORSCHAU: Es wird derselbe ReportSource ueber
+    #   dasselbe ReadonlyReportBundle gefahren wie in _report_render. Die
+    #   Ordnungszahl ist damit die Position in der Vorschau und keine zweite
+    #   Rechnung, die davon abweichen koennte (Lehre aus Build 658).
+    #
+    #   RECHTE/SCOPE: identisch zu /api/report/render. Rein lesend; es wird
+    #   NICHTS in evidence_<uid>.db geschrieben (Migrationsvorbehalt).
+    # =====================================================================
+    def _report_blocks(self, person_id: int,
+                       query: Optional[Dict[str, List[str]]]) -> Response:
+        """Liefert die waehlbare Blockliste EINES Berichts (JSON), read-only."""
+        policy = self.resolve_policy(person_id)
+        can_review = policy.can(CAP_REPORTS_REVIEW)
+        can_approve = policy.can(CAP_REPORTS_APPROVE)
+        if not (can_review or can_approve):
+            return self._forbidden(CAP_REPORTS_REVIEW)
+
+        scopes = []
+        if can_review:
+            scopes.append(policy.scope(CAP_REPORTS_REVIEW))
+        if can_approve:
+            scopes.append(policy.scope(CAP_REPORTS_APPROVE))
+        scope = "alle" if "alle" in scopes else (scopes[0] if scopes else None)
+
+        q = query or {}
+        uid_raw = (q.get("subject_id") or [None])[0]
+        if uid_raw is None:
+            return Response.json(400, {"error": "subject_id_required"})
+        try:
+            uid = int(uid_raw)
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "subject_id_invalid",
+                                       "value": uid_raw})
+
+        report_id: Optional[int] = None
+        rid_raw = (q.get("report_id") or [None])[0]
+        if rid_raw not in (None, ""):
+            try:
+                report_id = int(rid_raw)
+            except (TypeError, ValueError):
+                return Response.json(400, {"error": "report_id_invalid",
+                                           "value": rid_raw})
+
+        if scope != "alle":
+            if self._case_field(uid, "assigned_to") != person_id:
+                return self._forbidden(CAP_REPORTS_REVIEW)
+
+        from report_render.report_source import ReportSource, NoReportError
+        from management.reports.readonly_report_bundle import (
+            ReadonlyReportBundle,
+        )
+        from management.reports.report_block_catalog import ReportBlockCatalog
+        from management.reports.review_comment_reader import ReviewCommentReader
+
+        try:
+            bundle = ReadonlyReportBundle(
+                evidence_dir=self._evidence_dir,
+                forensic_dir=self._forensic_dir,
+                assets_dir=self._assets_dir,
+                templates_db=self._templates_db,
+                default_db=self._default_db,
+                uid=uid,
+            ).open()
+        except FileNotFoundError as exc:
+            return Response.json(404, {"error": "evidence_not_found",
+                                       "subject_id": uid, "detail": str(exc)})
+
+        try:
+            username = self._case_field(uid, "username") or ("uid_%d" % uid)
+            source = ReportSource(
+                evidence=bundle.evidence,
+                templates=bundle.templates,
+                assets=bundle.assets,
+                forensic_con=bundle.connection,
+                uid=uid,
+                username=str(username),
+                generated_at=int(time.time()),
+            )
+            doc = source.build(report_id)
+        except NoReportError as exc:
+            return Response.json(404, {"error": "no_report",
+                                       "subject_id": uid, "detail": str(exc)})
+        except Exception as exc:  # pragma: no cover - defensiver 500
+            logger.exception(
+                "Blockkatalog fehlgeschlagen (uid=%s, report_id=%s)",
+                uid, report_id,
+            )
+            return Response.json(500, {"error": "blocks_failed",
+                                       "detail": str(exc)})
+        finally:
+            bundle.close()
+
+        # Die Kommentarzahl je Block stammt aus der Union ALLER Addendum-
+        # Dateien — die Lektorin soll sehen, wo bereits eine Erörterung laeuft,
+        # auch wenn sie von einer anderen Prueferin stammt.
+        katalog = ReportBlockCatalog()
+        kommentare = ReviewCommentReader(self._evidence_dir, uid).read(doc.report_id)
+        items = katalog.bauen(doc, katalog.zaehle_kommentare(kommentare))
+        ankerlose = katalog.zaehle_ankerlose(kommentare)
+
+        logger.info(
+            "Blockkatalog: uid=%d, report_id=%s, %d Bloecke, %d Kommentare "
+            "(davon %d ohne Anker) (person=%d, scope=%s)",
+            uid, doc.report_id, len(items), len(kommentare), ankerlose,
+            person_id, scope,
+        )
+        return Response.json(200, {
+            "subject_id": uid,
+            "report_id": doc.report_id,
+            "count": len(items),
+            "blocks": items,
+            # GR1: Kommentare ohne Anker gehoeren zu keinem Listeneintrag. Sie
+            # werden deshalb GEZAEHLT und genannt, statt in der Differenz zu
+            # verschwinden. Die Maske kann sie ab Build 659 nicht mehr
+            # erzeugen; im Bestand aus dem Produktivbetrieb koennen sie liegen.
+            "unanchored_comments": ankerlose,
+        })
 
     # =====================================================================
     # BERICHT ALS VORLAGE UEBERNEHMEN (Build 475 — Vermaehlung B6xB7).
@@ -4464,9 +4642,30 @@ class ManagementApp:
             return Response.json(400, {
                 "error": "bad_request",
                 "detail": "subject_id und report_id erforderlich."})
-        block_id = payload.get("block_id")
-        if block_id is not None:
-            block_id = str(block_id)
+        # BUILD 659 (Vorgang 317481d3): Der Anker ist PFLICHT und wird GEPRUEFT.
+        #
+        #   Bis Build 658 war block_id optional und ungeprueft. Beides zusammen
+        #   ergab einen Kommentar, der auf nichts zeigte, ohne dass es jemandem
+        #   auffiel. Die Maske bietet die Bloecke jetzt zur Auswahl an
+        #   (/api/report/blocks) — es gibt damit keinen Grund mehr, einen
+        #   ungeprueften oder gar keinen Anker anzunehmen.
+        #
+        #   Die Entscheidung, den ankerlosen Kommentar NICHT mehr zuzulassen,
+        #   ist eine fachliche (mc 2026-08-02): eine Anmerkung an die
+        #   verfassende Person soll auf die Stelle zeigen, die gemeint ist.
+        #   Sie weicht bewusst von Konzept v0.2 §4 ab, wo 'block_id NULL' als
+        #   "Kommentar zum Gesamtbericht" vorgesehen war — dieser Fall war nie
+        #   umgesetzt: report_comments.block_id ist NOT NULL (evidence-Schema),
+        #   und die Oberflaeche zeigte einen ankerlosen Kommentar lediglich
+        #   ohne Blockzeile an (cockpit_lectorate.js, cockpit_approval.js).
+        block_id_roh = payload.get("block_id")
+        block_id = str(block_id_roh).strip() if block_id_roh is not None else ""
+        if not block_id:
+            return Response.json(400, {
+                "error": "block_id_required",
+                "detail": "Ein Kommentar muss an einem Block verankert werden. "
+                          "Die waehlbaren Bloecke liefert /api/report/blocks."})
+
         text = (payload.get("comment_text") or "").strip()
         if not text:
             return Response.json(400, {"error": "empty_comment",
@@ -4482,7 +4681,32 @@ class ManagementApp:
             return self._forbidden(CAP_REPORTS_REVIEW)
 
         role = self._reviewer_role(policy)
-        block_hash = self._block_sha256(uid, block_id) if block_id else None
+
+        # Dreiwertige Ankerpruefung — jeder Befund bekommt eine EIGENE Antwort.
+        befund, block_hash, detail = self._block_pruefen(uid, block_id)
+        if befund == self.BLOCK_UNBEKANNT:
+            # 400: die Anwenderin kann es korrigieren. Der abgewiesene Wert
+            # wird MITGENANNT, sonst raet sie, was falsch war.
+            logger.warning(
+                "Kommentar abgewiesen: unbekannter Anker (uid=%s, block_id=%r, "
+                "person=%s)", uid, block_id, person_id)
+            return Response.json(400, {
+                "error": "block_unknown", "subject_id": uid,
+                "block_id": block_id, "detail": detail})
+        if befund == self.BLOCK_UNPRUEFBAR:
+            # 503: NICHT die Schuld der Anwenderin, und kein stilles Speichern
+            # eines unverifizierten Ankers. Der Betrieb bekommt den Grund.
+            logger.error(
+                "Kommentar abgewiesen: Anker nicht pruefbar (uid=%s, "
+                "block_id=%r): %s", uid, block_id, detail)
+            return Response.json(503, {
+                "error": "block_uncheckable", "subject_id": uid,
+                "block_id": block_id, "detail": detail})
+        if block_hash is None and detail:
+            # Block da, aber ohne block_data: gespeichert wird, der Grund fuer
+            # den fehlenden Hash steht aber im Protokoll (GR1).
+            logger.warning("Kommentar ohne Blockhash (uid=%s, block_id=%r): %s",
+                           uid, block_id, detail)
 
         from db.review_addendum_db import open_addendum
         db = open_addendum(self._evidence_dir, uid, person_id, create=True)

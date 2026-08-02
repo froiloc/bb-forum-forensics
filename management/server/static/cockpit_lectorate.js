@@ -251,6 +251,50 @@
             + '&report_id=' + encodeURIComponent(rid);
     }
 
+    // --- Blockkatalog (Build 659, Vorgang 317481d3) ---
+    // blocksUrl: URL der waehlbaren Blockliste eines Berichts.
+    //   Zweck: Der Anker eines Kommentars ist eine UUID aus
+    //   report_blocks.block_id. Sie steht in der Oberflaeche nirgends — bis
+    //   Build 658 musste sie in ein FREITEXTFELD getippt werden, was niemand
+    //   konnte. Diese Liste macht die Bloecke waehlbar.
+    function blocksUrl(uid, rid) {
+        return '/api/report/blocks?subject_id=' + encodeURIComponent(uid)
+            + '&report_id=' + encodeURIComponent(rid);
+    }
+
+    // blockOptionLabel: Beschriftung EINES Eintrags der Auswahlliste.
+    //   Form: '3 · Absatz · Der Beschuldigte meldete sich … (2 Kommentare)'
+    //
+    //   UEBERLEGUNG ZUR REIHENFOLGE DER TEILE: Die Ordnungszahl steht vorn,
+    //   weil sie das einzige Merkmal ist, das die Lektorin auch im
+    //   Vorschaufenster wiederfindet — sie liest von oben nach unten und zaehlt
+    //   mit. Der Typ steht davor, nicht dahinter, weil zwei Bloecke mit
+    //   gleichem Textanfang ('Am 14.03.2024 …') sich oft nur im Typ
+    //   unterscheiden (Absatz gegen Zitat).
+    //
+    //   DIE KOMMENTARZAHL steht am Ende und nur, wenn sie groesser 0 ist. Sie
+    //   beantwortet die Frage "wird hier schon diskutiert?", ohne die
+    //   ueberwiegend unkommentierten Eintraege mit einer '(0 Kommentare)'-
+    //   Wiederholung zu fluten.
+    //
+    //   Auszug und Typbezeichnung kommen FERTIG vom Server
+    //   (management/reports/report_block_catalog.py). Absichtlich keine zweite
+    //   Typtabelle im Browser: zwei Tabellen fuer dieselbe Sache laufen beim
+    //   naechsten Umbau auseinander (Lehre aus Build 658).
+    function blockOptionLabel(b) {
+        if (!b) { return ''; }
+        var teile = [];
+        teile.push(String(b.ordinal != null ? b.ordinal : '?'));
+        teile.push(String(b.type_label || b.block_type || '?'));
+        teile.push(String(b.excerpt || ''));
+        var text = teile.join(' · ');
+        var n = Number(b.comment_count || 0);
+        if (n > 0) {
+            text += (n === 1) ? ' (1 Kommentar)' : ' (' + n + ' Kommentare)';
+        }
+        return text;
+    }
+
     // commentStatusLabel: menschliche Statusbezeichnung eines Kommentars.
     function commentStatusLabel(status) {
         switch (status) {
@@ -730,7 +774,11 @@
     // renderComments(data, opts): baut Formular (neuer Kommentar) + Liste der
     // vorhandenen Kommentare (Union aller Prueferinnen) in das Kommentar-Panel.
     //   data — Antwort von /api/report/comments {subject_id, report_id, comments[]}
-    //   opts — { personId, onAdd(body), onResolve(body) }
+    //   opts — { personId, blocks[], onAdd(body), onResolve(body) }
+    //          blocks — Antwort von /api/report/blocks (Build 659). Fehlt sie,
+    //          bleibt das Auswahlfeld leer UND gesperrt, und die Maske sagt
+    //          das; sie faellt NICHT auf ein Freitextfeld zurueck (das war der
+    //          Fehler, der mit Vorgang 317481d3 behoben wurde).
     function renderComments(data, opts) {
         var panel = _state.comPanel;
         if (!panel) { return; }
@@ -739,6 +787,13 @@
         var comments = (data && data.comments) ? data.comments : [];
         var uid = data ? data.subject_id : null;
         var rid = data ? data.report_id : null;
+
+        // Nachschlagewerk block_id -> Katalogeintrag, damit die Kommentarliste
+        // dieselbe Beschriftung zeigt wie das Auswahlfeld.
+        var blockIndex = {};
+        (opts.blocks || []).forEach(function (b) {
+            if (b && b.block_id) { blockIndex[b.block_id] = b; }
+        });
 
         var head = document.createElement('h3');
         head.className = 'aiw-lectorate-com-head';
@@ -756,11 +811,54 @@
         ta.setAttribute('data-hilfe-id', 'lectorate.bedienung.kommentartext');
         form.appendChild(ta);
 
-        var blockIn = document.createElement('input');
-        blockIn.type = 'text';
+        // --- Anker: AUSWAHL statt Freitext (Build 659, Vorgang 317481d3) ---
+        //
+        //   VORHER: ein <input type="text"> mit dem Platzhalter
+        //   'Block-ID (optional)'. Verlangt war eine UUID aus
+        //   report_blocks.block_id — ein Wert, den die Oberflaeche nirgends
+        //   zeigt. Das Feld war damit nicht bedienbar, und ein Vertipper wurde
+        //   serverseitig still angenommen (management_app.py, bis Build 658).
+        //
+        //   JETZT: ein <select> aus /api/report/blocks, in der REIHENFOLGE DER
+        //   VORSCHAU (dieselbe Blockliste, aus der das iframe gebaut wird).
+        //   Pflichtangabe — ein Kommentar ohne Stelle ist als Rueckmeldung an
+        //   die verfassende Person nur eingeschraenkt brauchbar (mc 2026-08-02).
+        var blockIn = document.createElement('select');
         blockIn.className = 'aiw-lectorate-com-block';
-        blockIn.setAttribute('placeholder', 'Block-ID (optional)');
+        blockIn.required = true;
         blockIn.setAttribute('data-hilfe-id', 'lectorate.bedienung.textstelle');
+
+        var blocks = (opts.blocks && opts.blocks.length) ? opts.blocks : [];
+
+        // Erster Eintrag: KEINE Vorauswahl. Waere der erste Block
+        // vorausgewaehlt, entstuende beim schnellen Absenden ein Kommentar an
+        // Block 1, den niemand gewaehlt hat — ein stiller Fehlanker, also
+        // genau der Zustand, den dieser Umbau beseitigen soll.
+        var leer = document.createElement('option');
+        leer.value = '';
+        leer.textContent = blocks.length
+            ? '— Textstelle wählen —'
+            : '— keine Blöcke verfügbar —';
+        leer.disabled = true;
+        leer.selected = true;
+        blockIn.appendChild(leer);
+
+        blocks.forEach(function (b) {
+            var o = document.createElement('option');
+            o.value = b.block_id;
+            o.textContent = blockOptionLabel(b);
+            // Ein Blocktyp ausserhalb der neun bekannten bleibt WAEHLBAR und
+            // wird nur gekennzeichnet (Grundregel 1: nicht stumm auslassen).
+            if (b.is_known_type === false) { o.setAttribute('data-unknown-type', '1'); }
+            blockIn.appendChild(o);
+        });
+
+        // Konnte die Liste nicht geladen werden oder ist der Bericht leer, wird
+        // das GESAGT und die Eingabe gesperrt — statt ein leeres Auswahlfeld zu
+        // zeigen, das wie ein Ladefehler des Browsers aussieht.
+        if (!blocks.length) {
+            blockIn.disabled = true;
+        }
         form.appendChild(blockIn);
 
         var sug = document.createElement('textarea');
@@ -790,9 +888,24 @@
                 errBox.textContent = 'Bitte einen Kommentartext eingeben.';
                 return;
             }
+            // Build 659: Der Anker ist Pflicht. Die Pruefung steht hier UND
+            // serverseitig (management_app.py:_report_comment_create). Zwei
+            // Pruefungen sind hier keine Doppelung: die im Browser erspart der
+            // Anwenderin den Weg zum Server, die im Server ist die
+            // verbindliche — ein Aufruf muss nicht durch diese Maske kommen.
+            var gewaehlt = (blockIn.value || '').trim();
+            if (!gewaehlt) {
+                errBox.textContent = blocks.length
+                    ? 'Bitte die Textstelle wählen, auf die sich der '
+                      + 'Kommentar bezieht.'
+                    : 'Die Textstellen dieses Vermerks konnten nicht geladen '
+                      + 'werden — ohne sie lässt sich kein Kommentar '
+                      + 'verankern.';
+                return;
+            }
             var body = {
                 subject_id: uid, report_id: rid,
-                block_id: (blockIn.value || '').trim() || null,
+                block_id: gewaehlt,
                 comment_text: text,
                 suggested_content: (sug.value || '').trim() || null
             };
@@ -845,7 +958,26 @@
             var meta = document.createElement('div');
             meta.className = 'aiw-lectorate-com-meta';
             var mbits = [];
-            if (c.block_id) { mbits.push('Block ' + c.block_id); }
+            // Build 659: Der Anker wird als LESBARE Stelle ausgewiesen, nicht
+            // als UUID. Ist der Block im Katalog, steht dort dieselbe
+            // Beschriftung wie im Auswahlfeld — die Lektorin erkennt ihren
+            // eigenen Kommentar an derselben Zeile wieder.
+            if (c.block_id) {
+                var bekannt = blockIndex[c.block_id];
+                mbits.push(bekannt
+                    ? 'Textstelle ' + blockOptionLabel(bekannt)
+                    // Anker vorhanden, Block nicht (mehr) im Bericht: das ist
+                    // ein BEFUND und wird benannt, nicht als Rohkennung
+                    // hingeschrieben (Grundregel 1).
+                    : '⚠ Anker zeigt auf einen Block, der nicht (mehr) im '
+                      + 'Vermerk steht (' + c.block_id + ')');
+            } else {
+                // Ankerlos. Die Maske kann das ab Build 659 nicht mehr
+                // erzeugen; entstuende es auf einem anderen Weg, waere es
+                // ohne diese Zeile von einem verankerten Kommentar optisch
+                // nicht zu unterscheiden.
+                mbits.push('ohne Textstelle');
+            }
             mbits.push('Prueferin #' + c.reviewer_pid);
             meta.textContent = mbits.join(' · ');
             box.appendChild(meta);
@@ -913,6 +1045,8 @@
         categoryLabel: categoryLabel,
         forumContext: forumContext,
         commentsUrl: commentsUrl,         // SF-3 (Build 415)
+        blocksUrl: blocksUrl,             // Blockkatalog (Build 659)
+        blockOptionLabel: blockOptionLabel,
         commentStatusLabel: commentStatusLabel,
         reviewerRoleLabel: reviewerRoleLabel,
         isOwnComment: isOwnComment,

@@ -485,10 +485,20 @@ td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
   display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px;
   max-width: 640px;
 }
+/* Build 659 (Vorgang 317481d3): Das Ankerfeld ist vom <input> zum <select>
+   geworden. Ohne 'select' in dieser Aufzaehlung stuende es unformatiert
+   zwischen zwei formatierten Feldern — der Umbau saehe wie ein Fehler aus. */
 .aiw-lectorate-com-form textarea,
+.aiw-lectorate-com-form select,
 .aiw-lectorate-com-form input {
   font: inherit; padding: 6px 8px; border: 1px solid var(--line);
   border-radius: 6px; width: 100%;
+}
+/* Gesperrtes Auswahlfeld (Bericht ohne Bloecke oder Katalog nicht ladbar):
+   sichtbar als "hier ist nichts zu holen", nicht als kaputtes Bedienelement.
+   Die Beschriftung im Feld sagt zusaetzlich, WAS los ist. */
+.aiw-lectorate-com-form select:disabled {
+  background: var(--bg); color: var(--muted); cursor: not-allowed;
 }
 .aiw-lectorate-com-submit {
   align-self: flex-start; font: inherit; cursor: pointer;

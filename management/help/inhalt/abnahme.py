@@ -377,13 +377,20 @@ LECTORATE = Sichthilfe(
         Abschnitt(
             "kommentare", "Kommentare schreiben und abschließen",
             (
-                "Ein Kommentar besteht aus dem Text, der Sache, um die es "
-                "geht. Zwei weitere Angaben sind freiwillig und lohnen sich "
-                "beide: die BLOCK-KENNUNG, mit der Sie die Stelle benennen, "
-                "auf die Sie sich beziehen, und ein ÄNDERUNGSVORSCHLAG mit "
-                "der Formulierung, die Sie für besser halten. Ein Vorschlag "
-                "erspart der verfassenden Person das Raten und Ihnen den "
-                "zweiten Durchgang.",
+                "Ein Kommentar besteht aus zwei Pflichtangaben: dem TEXT, der "
+                "Sache, um die es geht, und der TEXTSTELLE, auf die er sich "
+                "bezieht. Die Textstelle wählen Sie aus einer Liste der "
+                "Abschnitte dieses Vermerks — in derselben Reihenfolge, in "
+                "der sie oben stehen. Freiwillig ist der "
+                "ÄNDERUNGSVORSCHLAG mit der Formulierung, die Sie für besser "
+                "halten; er erspart der verfassenden Person das Raten und "
+                "Ihnen den zweiten Durchgang.",
+                "Dass die Textstelle Pflicht ist, hat einen Grund: Eine "
+                "Anmerkung, die nur auf den Vermerk als Ganzes zeigt, zwingt "
+                "die verfassende Person zur Suche und ist als Rückmeldung "
+                "wenig wert. Betrifft Ihr Einwand mehrere Stellen, "
+                "kommentieren Sie die erste und benennen die weiteren im "
+                "Text.",
                 "Sichtbar sind die Kommentare ALLER Gegenlesenden zu diesem "
                 "Vermerk, nicht nur die eigenen. Das ist gewollt: zwei "
                 "Personen sollen nicht zweimal dasselbe anmerken.",
@@ -401,9 +408,9 @@ LECTORATE = Sichthilfe(
             liste=(
                 "Gegenlesen: Vermerk aus der Auswahl wählen, Text lesen, "
                 "Kommentare schreiben.",
-                "Eine Stelle genau bezeichnen: die Block-Kennung eintragen "
-                "statt die Anmerkung ans Ende zu hängen — die verfassende "
-                "Person muss sonst raten.",
+                "Eine Stelle genau bezeichnen: die Textstelle aus der Liste "
+                "wählen. Steht dort schon eine Zahl, wird an dieser Stelle "
+                "bereits besprochen — lesen Sie erst, was vorliegt.",
                 "Aufräumen: eigene Kommentare, die erledigt oder gegenstandslos "
                 "sind, abschließen. Was offen bleibt, gilt als offen.",
                 "Nach dem Gegenlesen: der Vermerk bleibt „eingereicht“. Über "
@@ -512,11 +519,19 @@ LECTORATE = Sichthilfe(
             "geht an die verfassende Person und ist für sie die "
             "Arbeitsanweisung.",
             verweis="lectorate#kommentare"),
+        # Build 659 (Vorgang 317481d3): aus dem Freitextfeld "Block-Kennung"
+        # ist ein Auswahlfeld geworden. Der Hilfetext musste mit, weil er die
+        # Angabe bis dahin als freiwillig auswies — sie ist jetzt Pflicht.
         Kontexthilfe(
-            "lectorate.bedienung.textstelle", "Block-Kennung",
-            "Bezeichnet den Abschnitt des Vermerks, auf den sich Ihr "
-            "Kommentar bezieht. Freiwillig, aber sehr empfohlen: ohne diese "
-            "Angabe muss die verfassende Person die gemeinte Stelle suchen.",
+            "lectorate.bedienung.textstelle", "Textstelle",
+            "Die Stelle des Vermerks, auf die sich Ihr Kommentar bezieht — "
+            "Pflichtangabe. Die Liste führt die Abschnitte in der Reihenfolge "
+            "auf, in der sie oben im Vermerk stehen: laufende Nummer, Art des "
+            "Abschnitts und die ersten Wörter seines Textes. Steht hinter "
+            "einem Eintrag eine Zahl, wird an dieser Stelle bereits "
+            "besprochen — auch von anderen Gegenlesenden. Bleibt die Liste "
+            "leer, konnten die Abschnitte nicht geladen werden; dann ist kein "
+            "Kommentar möglich, und die Ursache gehört gemeldet.",
             verweis="lectorate#kommentare"),
         Kontexthilfe(
             "lectorate.bedienung.vorschlag", "Änderungsvorschlag",

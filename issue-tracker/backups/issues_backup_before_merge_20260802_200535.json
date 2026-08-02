@@ -4124,15 +4124,13 @@
       "description": "Es gibt zwar eine Möglichkeit die `Block-ID` einzutragen, um den Kommentar zu verankern, aber es ist überhaupt nicht klar, wie diese Block-IDs heißen. Hier bedarf es eines Auswahlfeldes statt eines freien Inputfeldes. Das System ist in der Lage die Block-IDs herauszufinden und darzulegen, worum es geht, der Anwender aber nicht. Die Block-IDs sind diesem verborgen.",
       "expected_behavior": "Es gibt ein Dropdown-Menü in welchem der tatsächlichen Reihenfolge nach die einzelnen Blöcke aufgeführt sind. Am besten mit einer führenden Ordnungszahl und den ersten 20(?) Zeichen des abgebildeten Texts. Vielleicht auch mit dem Typ des Blocks. So kann der Anwender auswählen für welchen Block der Kommentar gelten soll.\r\n\r\nAußerdem ist fraglich, ob es wirklich optional ist. Kann man Kommentare überhaupt an das Gesamtdokument hängen? Wo würde das dann im Berichtseditor (Baustelle 6) überhaupt angezeigt werden?",
       "actual_behavior": "Das Feld ist ein Freitextfeld. Wie es zu befüllen ist, ist unklar.",
-      "status": "testing",
+      "status": "open",
       "priority": "critical",
       "severity": "blocker",
       "assigned_to": "Claude",
-      "related_to": [
-        "a84766a7-5cdc-5bdc-bd33-e12d17d1283f"
-      ],
-      "resolved_in_version": "0.8.659",
-      "target_version": "0.8.659",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
       "environment": {
         "python_version": "3.14",
         "database": "evidence_<uid>.db"
@@ -4150,14 +4148,6 @@
           "old_value": "",
           "new_value": "",
           "comment": "Issue erstellt"
-        },
-        {
-          "timestamp": "2026-08-02T19:55:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "testing",
-          "comment": "Build 659. Das Freitextfeld ist durch ein Auswahlfeld ersetzt; die waehlbaren Bloecke liefert der neue read-only Endpunkt /api/report/blocks aus DERSELBEN Blockliste, aus der die Vorschau im iframe gebaut wird - die Ordnungszahl im Auswahlfeld kann deshalb nicht von der Reihenfolge im Vorschaufenster abweichen.\n\nEintragsform: 'Nr. - Typ - 60 Zeichen Auszug (n Kommentare)'. 60 statt der im Vorgang vorgeschlagenen 20 Zeichen, weil Berichtsbausteine formelhaft beginnen und bei 20 Zeichen paarweise nicht unterscheidbar waeren. Die Kommentarzahl stammt aus der Union ALLER Addendum-Dateien - sichtbar wird also auch eine laufende Eroerterung einer anderen Prueferin.\n\nZUR ZWEITEN FRAGE DES VORGANGS (ist der Anker wirklich optional, und wo erschiene ein Gesamtkommentar in Baustelle 6): Der Anker ist ab Build 659 PFLICHT - Entscheidung mc 2026-08-02. Das weicht bewusst von Konzept v0.2 Paragraph 4 ab, wo 'block_id NULL = Kommentar zum Gesamtbericht' vorgesehen war. Der Fall war nie umgesetzt: report_comments.block_id ist NOT NULL, und die Oberflaeche zeigte einen ankerlosen Kommentar lediglich ohne Blockzeile an - eine Funktion fuer Gesamtkommentare gab es an keiner Stelle. Fachlich: eine Anmerkung soll auf die Stelle zeigen, die gemeint ist.\n\nMITGEFANGENER ZWEITER FEHLER, schwerer als der gemeldete: Der Server nahm JEDEN String als Anker an. _block_sha256 lieferte bei 'Block gibt es nicht' UND bei 'evidence-Datei nicht lesbar' dasselbe None, und der Aufrufer schrieb daraufhin in beiden Faellen still einen Kommentar mit block_sha256=NULL. Ein Vertipper war von einem Betriebsproblem nicht zu unterscheiden - dieselbe Ununterscheidbarkeit wie im Vorfall vom 2026-08-02 (Build 658). Ersetzt durch eine DREIWERTIGE Pruefung: vorhanden -> speichern, unbekannt -> 400 mit Nennung des abgewiesenen Werts, unpruefbar -> 503 mit Grund.\n\nREGRESSION: 16 neue Python-Faelle (BK01-BK15), 4 neue JS-Faelle (LE15-LE18), LE13/LE14 nachgezogen. GEGENPROBE GEFAHREN: mit der Fassung aus Build 658 antworten BK12, BK13 und BK14 alle drei mit HTTP 200 - also genau der stille Schreibvorgang, um den es geht; LE15-LE18 fallen ebenfalls um. Laeufe im Baucontainer: Python 3074 passed (vorher 3058), JS 1715 passed (vorher 1711).\n\nOFFEN und in einem eigenen Vorgang festgehalten: Der Editor-Lesepfad aus Touch-Set B-c wurde nie gebaut - Lektorats-Kommentare erreichen Baustelle 6 ueberhaupt nicht. Ohne ihn bleibt auch ein gut verankerter Kommentar im Cockpit stehen."
         }
       ]
     },
@@ -6450,57 +6440,6 @@
           "old_value": "",
           "new_value": "",
           "comment": "Die Datenbanken mit der _<pid> im Namen ('evidence_<uid>_<pid>.db'/'^evidence_\\\\d+_\\\\d+\\\\.db$'), sind noch dort, weil sie noch nicht verarbeitet worden sind, denn es gibt bislang zu jenen Benutzernamen noch keinen erzeugten Fall. Das ist also kein Fehler, sondern das normale, erwartete Verhalten. <pid> steht für person_id, also die ID des Ermittlers."
-        }
-      ]
-    },
-    {
-      "id": "a84766a7-5cdc-5bdc-bd33-e12d17d1283f",
-      "type": "bug",
-      "title": "Lektorat-Kommentare erreichen den Berichtseditor nicht (B6-Lesepfad fehlt)",
-      "affected_version": "0.8.659",
-      "reporter": "Claude",
-      "reported_at": "2026-08-02T19:55:00+00:00",
-      "prerequisites": "Ein Bericht existiert. Eine Lektorin hat ueber die Lektorat-Sicht einen Kommentar dazu angelegt (Addendum-Datei evidence_<uid>_<pid>.db unter data/evidence/addenda/<bucket>/<uid>/).",
-      "description": "Die Kommentar-Bruecke SF-3 ist nur zur Haelfte gebaut. Das Konzept Vermaehlung_B6_Editor_B7_Management v0.2 benennt in Paragraph 3 (SF-3) und Paragraph 4 ausdruecklich ZWEI Leser der Addendum-Dateien: \"Leser = Editor (B6) und Support-View, per Union-Glob addenda/<bucket>/<uid>/*.db\". Der Build-Schnitt Paragraph 6 fuehrt den Editor-Lesepfad (B6) im Touch-Set der Nummer B-c mit auf.\n\nGebaut wurden aus B-c der Schreiber (db/review_addendum_db.py), der Management-Leser (management/reports/review_comment_reader.py) und die Lektorat-Sicht. Der Editor-Lesepfad fehlt.\n\nBELEGE (Stand Build 659):\n1. forensic_api/report.py:630 laedt die Kommentare je Block ausschliesslich ueber edb.get_comments_for_block(b.block_id).\n2. db/evidence_db.py:2199-2204 liest dort nur report_comments der evidence_<uid>.db.\n3. Suche nach 'addenda', 'open_addendum' und 'ReviewCommentReader' ueber forensic_api/, editor/, static/ und server/ liefert KEINEN Treffer. Die vier Fundstellen von 'addenda' im Bestand liegen saemtlich in db/review_addendum_db.py und management/reports/review_comment_reader.py.\n\nDer Umlauf ist damit heute: Cockpit -> Addendum-Datei -> Cockpit. Die verfassende Ermittlerin, an die die Anmerkung gerichtet ist, sieht sie nicht.",
-      "expected_behavior": "Der Berichtseditor (Baustelle 6, Fenster 3) zeigt an jedem Block zusaetzlich zu den report_comments der evidence_<uid>.db die Lektorats-/Chef-Kommentare aus der Union der Addendum-Dateien - read-only, mit Nennung der kommentierenden Rolle und des Status. Aufzuloesen bleiben sie beim Besitzer (Konzept Paragraph 4: der Pruefer schliesst seinen Einwand); der Editor liest nur.",
-      "actual_behavior": "Der Editor kennt die Addendum-Dateien nicht. Ein Lektorats-Kommentar erscheint dort nicht - weder verankert noch unverankert. Die Rueckmeldung an die verfassende Person findet ausserhalb des Werkzeugs statt oder gar nicht.",
-      "status": "open",
-      "priority": "high",
-      "severity": "major",
-      "assigned_to": "Claude",
-      "related_to": [
-        "317481d3-9c21-4407-b825-654ee848c9dc"
-      ],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "python_version": "3.14",
-        "database": "evidence_<uid>_<pid>.db"
-      },
-      "tags": [
-        "Lektorat",
-        "Kommentar",
-        "Baustelle6",
-        "Addendum",
-        "SF-3",
-        "Nichtlieferung",
-        "gemessen"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-02T19:55:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Aufgefallen bei der Bearbeitung von 317481d3: dort war die Frage, ob ein Kommentar an das GESAMTdokument haengbar ist und wo er in Baustelle 6 erschiene. Antwort: an keiner Stelle - und das gilt fuer verankerte Kommentare genauso. Der Vorgang ist damit unabhaengig von der Ankerfrage."
-        },
-        {
-          "timestamp": "2026-08-02T18:05:35.816277+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build659.json"
         }
       ]
     }

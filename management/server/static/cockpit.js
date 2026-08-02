@@ -3880,10 +3880,30 @@
         // rendern. Nach JEDER Schreibaktion (Anlegen/Aufloesen) erneut
         // aufgerufen -> die Sicht zeigt nur bestaetigt geschriebene Zustaende
         // (kein optimistisches UI, Grundregel 1).
+        // Build 659 (Vorgang 317481d3): Die Kommentare kommen jetzt ZUSAMMEN
+        // mit dem Blockkatalog. Beide werden nebenlaeufig geholt und erst
+        // gemeinsam gerendert — sonst zeigte die Maske einen Augenblick lang
+        // ein leeres, gesperrtes Auswahlfeld, das wie ein Fehler aussieht.
+        //
+        // SCHLAEGT NUR DER KATALOG FEHL, werden die Kommentare trotzdem
+        // angezeigt (sie sind Ermittlungsstand und duerfen nicht an einer
+        // Nebenquelle haengen); das Auswahlfeld bleibt dann leer und gesperrt
+        // und sagt selbst, dass es nichts anzubieten hat. Der Grund steht in
+        // der Konsole - eine stumme leere Liste waere von 'Bericht hat keine
+        // Bloecke' nicht zu unterscheiden (Grundregel 1).
         var reloadComments = function (uid, rid) {
-            fetchJson(mod.commentsUrl(uid, rid)).then(function (cd) {
+            Promise.all([
+                fetchJson(mod.commentsUrl(uid, rid)),
+                fetchJson(mod.blocksUrl(uid, rid)).catch(function (e) {
+                    log('Blockkatalog nicht ladbar:', e && e.message);
+                    return null;
+                })
+            ]).then(function (res) {
+                var cd = res[0];
+                var bd = res[1];
                 mod.renderComments(cd, {
                     personId: state.personId,
+                    blocks: (bd && bd.blocks) ? bd.blocks : [],
                     onAdd: function (body) {
                         postJson('/api/report/comment', body)
                             .then(function () {
