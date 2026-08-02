@@ -6393,11 +6393,11 @@
       "type": "bug",
       "title": "Startbefund zaehlt Transportdateien als Falldatenbanken",
       "affected_version": "0.8.657",
-      "target_version": "0.8.658",
-      "resolved_in_version": "0.8.658",
+      "target_version": null,
+      "resolved_in_version": null,
       "reporter": "Alex",
       "reported_at": "2026-08-02T19:05:00+00:00",
-      "status": "resolved",
+      "status": "open",
       "priority": "high",
       "severity": "major",
       "assigned_to": "Claude",
@@ -6426,20 +6426,10 @@
           "comment": "MEIN FEHLER, aus Build 657. Ich habe beim Bau angenommen, im evidence-Verzeichnis lägen ausschliesslich Falldatenbanken, und das nicht nachgemessen - auf meinem Baucontainer gibt es das Verzeichnis gar nicht, die Pruefung lief dort gegen 'fehlt'. Ein Pfad, den die Vorrichtung nicht beruehrt, ist ungeprueft; das ist die Lehre aus Build 651, und ich habe sie hier nicht angewandt. NEBENBEFUND, ZUR KENNTNIS UND NICHT ZUR SOFORTIGEN HANDLUNG: alle sieben gemeldeten Dateien tragen dieselbe zweite Zahl (_3). Ob das sieben liegengebliebene Transporte EINER Quelle sind oder der Normalzustand, kann ich von hier aus nicht sagen - der Integrator loescht sie nach erfolgreicher Integration. Falls sie dort dauerhaft liegen, waere das eine eigene Frage."
         },
         {
-          "timestamp": "2026-08-02T19:30:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "Build 658. Das Namensmuster steht jetzt im KATALOG (neues Feld datei_muster: '^evidence_\\\\d+\\\\.db$' bzw. '^assets_\\\\d+\\\\.db$'), nicht im Pruefer - es gehoert zum Wesen der Datenbank wie ihr Pfad. Das Uebergangene wird GEZAEHLT UND GENANNT, nicht verschwiegen: '5 Falldatenbank(en), alle mit Register. 3 weitere Datei(en) im Verzeichnis tragen nicht die Form evidence_<uid>.db und sind uebergangen worden.' Fehlt das Muster im Katalog, wird nicht wieder alles genommen, sondern gemeldet, dass es sich nicht entscheiden laesst (DK09) - sonst waere der Fehlalarm durch eine Unachtsamkeit jederzeit zurueck. DK08, DK09, DK10. GEGENPROBE gegen die Fassung aus Build 657 gefahren: DK08 und DK09 fallen dort um, und die Fehlermeldung von DK08 ist zeichengleich die Meldung aus dem Betrieb."
-        },
-        {
-          "timestamp": "2026-08-02T16:57:14.217502+00:00",
-          "author": "Alex",
+          "timestamp": "2026-08-02T15:58:57.008564+00:00",
+          "author": "merge-tool",
           "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Die Datenbanken mit der _<pid> im Namen ('evidence_<uid>_<pid>.db'/'^evidence_\\\\d+_\\\\d+\\\\.db$'), sind noch dort, weil sie noch nicht verarbeitet worden sind, denn es gibt bislang zu jenen Benutzernamen noch keinen erzeugten Fall. Das ist also kein Fehler, sondern das normale, erwartete Verhalten. <pid> steht für person_id, also die ID des Ermittlers."
+          "comment": "Importiert aus eintraege_claude_Befunde_Konfig_Transport.json"
         }
       ]
     }
