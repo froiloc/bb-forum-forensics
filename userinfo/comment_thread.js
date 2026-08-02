@@ -103,9 +103,16 @@ const STATUS_META = {
  */
 function renderForBlock(block, opts) {
     const comments = block.comments || [];
+    // Build 661 (Vorgang a84766a7): die Anmerkungen der Gegenlesenden aus den
+    // Addendum-Dateien. Sie stehen in einem EIGENEN Abschnitt und werden NICHT
+    // unter die Editor-Kommentare gemischt - es sind zwei Modelle mit zwei
+    // Zustaendigkeiten: einen Review-Kommentar schliesst die Person ab, die
+    // ihn geschrieben hat, nicht die verfassende (Konzept v0.2 \u00a74).
+    const reviewBlock = _renderReviewSection(block.review_comments || []);
 
     if (comments.length === 0) {
-        return `<div class="ct-empty">Noch keine Kommentare f\u00fcr diesen Block.</div>
+        return `${reviewBlock}
+                <div class="ct-empty">Noch keine Kommentare f\u00fcr diesen Block.</div>
                 ${_renderComposeArea(block.block_id)}`;
     }
 
@@ -114,9 +121,118 @@ function renderForBlock(block, opts) {
         ? `<div class="ct-pending-note">${pending} offene${pending === 1 ? 'r' : ''} Kommentar</div>`
         : '';
 
-    return `${pendingNote}
+    return `${reviewBlock}${pendingNote}
             <div class="ct-list">${comments.map(cm => _renderComment(cm, block, opts)).join('')}</div>
             ${_renderComposeArea(block.block_id)}`;
+}
+
+/**
+ * Rolle der kommentierenden Person in Klartext.
+ * Ein unbekannter Wert wird ANGEZEIGT und nicht ersetzt (Grundregel 1) -
+ * sonst verschwaende eine kuenftige Rolle hinter 'Gegenlesen'.
+ */
+function _reviewRole(rolle) {
+    if (rolle === 'lector')     return 'Lektorat';
+    if (rolle === 'supervisor') return 'Chef-Ermittlung';
+    return rolle || 'Gegenlesen';
+}
+
+/**
+ * Rendert den READ-ONLY-Abschnitt mit den Anmerkungen der Gegenlesenden.
+ *
+ * Zwei Entwurfsentscheidungen, die hier bewusst getroffen sind:
+ *
+ *  (1) KEINE Schaltflaeche zum Erledigen oder Verwerfen. Diese Kommentare
+ *      liegen in der Datei einer ANDEREN Person; nur ihr Besitzer schreibt
+ *      darin ("nie zwei Schreiber pro Datei", Konzept v0.2 \u00a74). Eine
+ *      Schaltflaeche, die nichts bewirken kann, waere schlimmer als keine.
+ *
+ *  (2) Der Aenderungsvorschlag wird MITGEZEIGT. Er ist der eigentliche
+ *      Nutzen der Gegenlese fuer die verfassende Person - ihn wegzulassen
+ *      hiesse, sie muesste zum Nachlesen ins Cockpit, das sie nicht hat.
+ */
+function _renderReviewSection(reviewComments) {
+    if (!reviewComments.length) return '';
+
+    const offen = reviewComments.filter(c => c.status === 'pending').length;
+    const kopf = offen > 0
+        ? `${offen} offene Anmerkung${offen === 1 ? '' : 'en'} aus der Gegenlese`
+        : 'Anmerkungen aus der Gegenlese';
+
+    const eintraege = reviewComments.map(cm => {
+        const meta = STATUS_META[cm.status] || { label: cm.status, symbol: '', cls: '' };
+        const vorschlag = cm.suggested_content
+            ? `<div class="ct-review-suggestion">
+                 <span class="ct-review-suggestion-label">Vorschlag:</span>
+                 ${_esc(cm.suggested_content)}
+               </div>`
+            : '';
+        return `
+            <div class="ct-review-comment ct-comment-${_esc(cm.status)}"
+                 data-comment-id="${_esc(cm.comment_id)}">
+                <div class="ct-review-head">
+                    <span class="ct-review-role">${_esc(_reviewRole(cm.reviewer_role))}</span>
+                    <span class="ct-status-badge ${_esc(meta.cls)}"
+                          title="${_esc(meta.label)}">${meta.symbol} ${_esc(meta.label)}</span>
+                    <span class="ct-review-ts">${_esc(_formatTs(cm.created_at))}</span>
+                </div>
+                <div class="ct-review-body">${_esc(cm.comment_text || '')}</div>
+                ${vorschlag}
+            </div>`;
+    }).join('');
+
+    return `<div class="ct-review-section">
+                <div class="ct-review-kopf">${_esc(kopf)}</div>
+                ${eintraege}
+                <div class="ct-review-hinweis">Diese Anmerkungen schlie&szlig;t die
+                    gegenlesende Person selbst ab.</div>
+            </div>`;
+}
+
+/**
+ * Rendert die Anmerkungen, die KEINEM Baustein zugeordnet werden konnten,
+ * sowie die Addendum-Dateien, die nicht gelesen werden konnten.
+ *
+ * Warum das eine eigene Anzeige braucht (Grundregel 1): Ein Kommentar, der
+ * nirgends erscheint, ist von einem nie geschriebenen nicht zu unterscheiden.
+ * Und 'die Lektorin hat nichts angemerkt' sieht ohne diese Zeilen genauso aus
+ * wie 'ihre Datei liess sich nicht oeffnen' - die verfassende Person gaebe
+ * den Vermerk frei, ohne dass jemand die fehlende Rueckmeldung vermisst.
+ */
+function renderDokumentEbene(ohneBlock, fehler) {
+    const posten = ohneBlock || [];
+    const probleme = fehler || [];
+    if (!posten.length && !probleme.length) return '';
+
+    const zeilen = posten.map(cm => {
+        const grund = cm.grund === 'block_unbekannt'
+            ? 'Die Textstelle, auf die sich diese Anmerkung bezog, gibt es im '
+              + 'Vermerk nicht mehr.'
+            : 'Diese Anmerkung wurde ohne Textstelle geschrieben.';
+        return `
+            <div class="ct-review-comment ct-review-heimatlos"
+                 data-comment-id="${_esc(cm.comment_id)}"
+                 data-grund="${_esc(cm.grund || '')}">
+                <div class="ct-review-head">
+                    <span class="ct-review-role">${_esc(_reviewRole(cm.reviewer_role))}</span>
+                    <span class="ct-review-grund">${_esc(grund)}</span>
+                </div>
+                <div class="ct-review-body">${_esc(cm.comment_text || '')}</div>
+            </div>`;
+    }).join('');
+
+    const stoerung = probleme.length
+        ? `<div class="ct-review-stoerung">
+             ${probleme.length} Datei(en) mit Anmerkungen konnten NICHT gelesen
+             werden. Es k&ouml;nnen also Anmerkungen fehlen, die hier nicht
+             stehen: ${_esc(probleme.map(f => f.datei).join(', '))}
+           </div>`
+        : '';
+
+    return `<div class="ct-review-section ct-review-dokument">
+                <div class="ct-review-kopf">Anmerkungen zum Vermerk</div>
+                ${stoerung}${zeilen}
+            </div>`;
 }
 
 /** Rueckwaerts-Kompatibilitaet. */
@@ -230,7 +346,16 @@ function showForBlock(blockId, blocks, opts) {
         return;
     }
 
-    body.innerHTML = renderForBlock(block, opts);
+    // Build 661: Die Dokumentebene steht UEBER dem Block-Thread. Sie gehoert
+    // nicht zum gewaehlten Baustein, muss aber sichtbar sein, solange die
+    // Sidebar offen ist - sonst faende die verfassende Person eine Anmerkung
+    // ohne Textstelle nie (es gibt keinen Baustein, ueber den sie dorthin
+    // gelangte).
+    const dok = opts && opts.reviewDokument
+        ? renderDokumentEbene(opts.reviewDokument.ohneBlock,
+                              opts.reviewDokument.fehler)
+        : '';
+    body.innerHTML = dok + renderForBlock(block, opts);
     _bindSidebarComments(body, block, opts);
     _pulseEditorBlock(blockId);
 }
@@ -427,6 +552,10 @@ window.CommentThread = {
     _formatTs,
     _pulseEditorBlock,
     _clearEditorBlockPulse,
+    // Build 661 (Vorgang a84766a7): Gegenlese-Anmerkungen.
+    renderDokumentEbene,
+    _renderReviewSection,
+    _reviewRole,
 };
 
 })();

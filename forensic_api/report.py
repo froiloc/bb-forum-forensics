@@ -106,6 +106,7 @@ import html as html_module
 import json
 import sqlite3
 import uuid
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from core.logger import get_logger
@@ -422,6 +423,50 @@ def _json_ok(data: dict) -> bytes:
     return json.dumps(data, ensure_ascii=False).encode("utf-8")
 
 
+def _lies_review_kommentare(context, report_id):
+    """
+    Liest die Lektorats-/Chef-Kommentare aus den Addendum-Dateien des Falls
+    und gibt eine ReviewCommentView zurueck (Build 661, Vorgang a84766a7).
+
+    KEIN SCHREIBZUGRIFF. Die Dateien gehoeren je einer anderen Person; der
+    Editor liest sie ausschliesslich (Konzept v0.2 §4, "nie zwei Schreiber
+    pro Datei").
+
+    ── WARUM HIER EIN BREITER except STEHT, UND WARUM ER TROTZDEM NICHT
+       STILL IST ──────────────────────────────────────────────────────────
+    Diese Kommentare sind eine NEBENQUELLE des Editors. Faellt sie aus, darf
+    der Vermerk trotzdem ladbar bleiben — er ist der Arbeitsgegenstand, sie
+    ist die Rueckmeldung dazu. Ein Fehlschlag beim Lesen einer fremden Datei
+    darf die Ermittlerin nicht von ihrem eigenen Text aussperren.
+
+    Der Ausfall wird aber NICHT verschwiegen: er wird protokolliert UND als
+    'review_comment_fehler' in die Antwort gegeben, damit die Oberflaeche ihn
+    zeigen kann. Genau daran krankte der Leser bis Build 660 — er
+    protokollierte und schwieg nach aussen, und 'keine Anmerkung' war von
+    'nicht lesbar' nicht zu unterscheiden (Grundregel 1).
+    """
+    from forensic_api.review_comment_view import ReviewCommentView
+    try:
+        # Der Kontext traegt den Pfad der Falldatenbank; die Addenda liegen
+        # unter deren Verzeichnis (db/review_addendum_db.addendum_path).
+        evidence_dir = str(Path(context.evidence_db).parent)
+        from management.reports.review_comment_reader import ReviewCommentReader
+        kommentare, fehler = ReviewCommentReader(
+            evidence_dir, context.subject_id).read_mit_befund(report_id)
+        if fehler:
+            logger.warning(
+                "Review-Kommentare: %d Addendum-Datei(en) nicht lesbar (uid=%s): %s",
+                len(fehler), context.subject_id, fehler)
+        return ReviewCommentView(kommentare, fehler)
+    except Exception as exc:      # pragma: no cover - defensive Nebenquelle
+        logger.exception(
+            "Review-Kommentare konnten nicht gelesen werden (uid=%s)",
+            getattr(context, "subject_id", "?"))
+        # Der Ausfall reist als Befund mit und wird in der Oberflaeche
+        # sichtbar — nicht als leere Liste getarnt.
+        return ReviewCommentView([], [{"datei": "(alle)", "grund": str(exc)}])
+
+
 def _enrich_blocks_with_cache(blocks_payload: list, cache: dict) -> list:
     """Webt auto:query_id-Eintraege aus dem placeholder_cache in
     placeholder_values_json der Bloecke ein (nur im Response, kein DB-Write).
@@ -623,9 +668,25 @@ class ReportEndpoint:
         lock = edb.get_lock(active_report.id) if active_report else None
 
         blocks_payload = []
+        # BUILD 661 (Vorgang a84766a7): Der Editor liest jetzt AUCH die
+        # Lektorats-/Chef-Kommentare aus den Addendum-Dateien.
+        #
+        #   Bis Build 660 fehlte dieser Weg — obwohl Konzept
+        #   Vermaehlung_B6_Editor_B7_Management v0.2 §3/§4 den "Editor (B6)"
+        #   ausdruecklich als Leser nennt und der Build-Schnitt §6 den
+        #   "Editor-Lesepfad (B6)" im Touch-Set von B-c fuehrt. Die Anmerkung
+        #   der Gegenlesenden erreichte die verfassende Person nicht.
+        #
+        #   NUR LESEN. Der Lebenszyklus des Kommentars bleibt bei der
+        #   kommentierenden Person ("nie zwei Schreiber pro Datei",
+        #   Konzept §4) — deshalb gibt es hier keinen Schreibpfad und in der
+        #   Oberflaeche keine Erledigen-Schaltflaeche an einem Review-Kommentar.
+        review = _lies_review_kommentare(
+            self._context, active_report.id if active_report else None)
         if active_report:
             # Beleg: Bauplan B6 v0.5 §5, Phase 4 — Block-API statt Paragraph-API
             blocks = edb.get_blocks_for_report(active_report.id)
+            review_je_block = review.je_block([b.block_id for b in blocks])
             for b in blocks:
                 comments = edb.get_comments_for_block(b.block_id)
                 # Bug 2.9 Fix Build 158: report_anchors je Block laden und als
@@ -657,6 +718,13 @@ class ReportEndpoint:
                         }
                         for cm in comments
                     ],
+                    # Build 661: die Anmerkungen der Gegenlesenden zu DIESEM
+                    # Baustein (read-only, Union aller Addendum-Dateien).
+                    # Getrennt von 'comments' und nicht daruntergemischt: es
+                    # sind zwei Modelle mit zwei Schreibwegen und zwei
+                    # Zustaendigkeiten. Ein gemeinsamer Topf verwischte, wer
+                    # einen Kommentar abschliessen darf.
+                    "review_comments": review_je_block.get(b.block_id, []),
                 })
 
         reports_payload = [
@@ -684,6 +752,17 @@ class ReportEndpoint:
                 "locked_by": lock.locked_by,
                 "locked_at": lock.locked_at,
             } if lock else None,
+            # Build 661, Grundregel 1: Was sich KEINEM Baustein zuordnen liess,
+            # verschwindet nicht in der Zuordnung, sondern wird am Dokument
+            # gezeigt — ein Kommentar ohne Anker (Bestand vor Build 659) oder
+            # einer, dessen Baustein geloescht wurde. Je Eintrag steht der
+            # Grund darin, damit die Oberflaeche nicht raten muss.
+            "review_comments_ohne_block": review.ohne_block(
+                [b["block_id"] for b in blocks_payload]),
+            # Und: Addendum-Dateien, die NICHT gelesen werden konnten. Ohne
+            # diese Liste sieht 'die Lektorin hat nichts angemerkt' genauso
+            # aus wie 'ihre Datei liess sich nicht oeffnen'.
+            "review_comment_fehler": review.fehler(),
         }
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         handler.send_response_body(

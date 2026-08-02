@@ -3554,3 +3554,55 @@
     color: var(--color-text-muted, #888);
     cursor: default;
 }
+
+/* ---------------------------------------------------------------------------
+ * Build 661 (Vorgang a84766a7): Anmerkungen aus der Gegenlese.
+ *
+ * Sie stammen aus den Addendum-Dateien der Lektorin bzw. der Chef-Ermittlerin
+ * und sind hier READ-ONLY. Die Gestaltung setzt sie deshalb sichtbar ab: ein
+ * Abschnitt mit eigener Kante und eigenem Kopf. Wer sie fuer eigene
+ * Kommentare haelt, sucht die Erledigen-Schaltflaeche, die es hier
+ * bewusst nicht gibt (der Lebenszyklus bleibt bei der kommentierenden Person,
+ * Konzept v0.2 §4).
+ * ------------------------------------------------------------------------- */
+.ct-review-section {
+    margin: 0 0 12px;
+    padding: 8px 10px;
+    border-left: 3px solid #7a5bd6;
+    background: #f6f3fd;
+    border-radius: 4px;
+}
+.ct-review-kopf {
+    font-weight: 600;
+    font-size: 12px;
+    margin-bottom: 6px;
+    color: #4a3585;
+}
+.ct-review-comment { padding: 6px 0; border-top: 1px solid #e2daf5; }
+.ct-review-comment:first-of-type { border-top: none; }
+.ct-review-head {
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline;
+    font-size: 11px; margin-bottom: 3px;
+}
+.ct-review-role { font-weight: 600; color: #4a3585; }
+.ct-review-ts { color: #777; margin-left: auto; }
+.ct-review-body { font-size: 13px; white-space: pre-wrap; }
+.ct-review-suggestion {
+    margin-top: 4px; padding: 4px 6px; font-size: 12px;
+    background: #fff; border: 1px dashed #c3b3e8; border-radius: 3px;
+}
+.ct-review-suggestion-label { font-weight: 600; color: #4a3585; }
+.ct-review-hinweis { margin-top: 6px; font-size: 11px; color: #666; }
+
+/* Anmerkungen ohne Textstelle bzw. mit geloeschtem Baustein - und der
+ * Hinweis auf nicht lesbare Dateien. Beides MUSS auffallen: eine Anmerkung,
+ * die niemand sieht, ist von einer nie geschriebenen nicht zu unterscheiden. */
+.ct-review-dokument { border-left-color: #b8860b; background: #fdf8ec; }
+.ct-review-dokument .ct-review-kopf { color: #7a5a08; }
+.ct-review-dokument .ct-review-role { color: #7a5a08; }
+.ct-review-grund { color: #7a5a08; font-style: italic; }
+.ct-review-stoerung {
+    margin-bottom: 6px; padding: 6px 8px; font-size: 12px;
+    background: #fdecea; border: 1px solid #e6a29b; border-radius: 3px;
+    color: #8c1d13;
+}

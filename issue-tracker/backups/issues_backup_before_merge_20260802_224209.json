@@ -6482,15 +6482,15 @@
       "description": "Die Kommentar-Bruecke SF-3 ist nur zur Haelfte gebaut. Das Konzept Vermaehlung_B6_Editor_B7_Management v0.2 benennt in Paragraph 3 (SF-3) und Paragraph 4 ausdruecklich ZWEI Leser der Addendum-Dateien: \"Leser = Editor (B6) und Support-View, per Union-Glob addenda/<bucket>/<uid>/*.db\". Der Build-Schnitt Paragraph 6 fuehrt den Editor-Lesepfad (B6) im Touch-Set der Nummer B-c mit auf.\n\nGebaut wurden aus B-c der Schreiber (db/review_addendum_db.py), der Management-Leser (management/reports/review_comment_reader.py) und die Lektorat-Sicht. Der Editor-Lesepfad fehlt.\n\nBELEGE (Stand Build 659):\n1. forensic_api/report.py:630 laedt die Kommentare je Block ausschliesslich ueber edb.get_comments_for_block(b.block_id).\n2. db/evidence_db.py:2199-2204 liest dort nur report_comments der evidence_<uid>.db.\n3. Suche nach 'addenda', 'open_addendum' und 'ReviewCommentReader' ueber forensic_api/, editor/, static/ und server/ liefert KEINEN Treffer. Die vier Fundstellen von 'addenda' im Bestand liegen saemtlich in db/review_addendum_db.py und management/reports/review_comment_reader.py.\n\nDer Umlauf ist damit heute: Cockpit -> Addendum-Datei -> Cockpit. Die verfassende Ermittlerin, an die die Anmerkung gerichtet ist, sieht sie nicht.",
       "expected_behavior": "Der Berichtseditor (Baustelle 6, Fenster 3) zeigt an jedem Block zusaetzlich zu den report_comments der evidence_<uid>.db die Lektorats-/Chef-Kommentare aus der Union der Addendum-Dateien - read-only, mit Nennung der kommentierenden Rolle und des Status. Aufzuloesen bleiben sie beim Besitzer (Konzept Paragraph 4: der Pruefer schliesst seinen Einwand); der Editor liest nur.",
       "actual_behavior": "Der Editor kennt die Addendum-Dateien nicht. Ein Lektorats-Kommentar erscheint dort nicht - weder verankert noch unverankert. Die Rueckmeldung an die verfassende Person findet ausserhalb des Werkzeugs statt oder gar nicht.",
-      "status": "testing",
+      "status": "open",
       "priority": "high",
       "severity": "major",
       "assigned_to": "Claude",
       "related_to": [
         "317481d3-9c21-4407-b825-654ee848c9dc"
       ],
-      "resolved_in_version": "0.8.661",
-      "target_version": "0.8.661",
+      "resolved_in_version": null,
+      "target_version": null,
       "environment": {
         "python_version": "3.14",
         "database": "evidence_<uid>_<pid>.db"
@@ -6519,14 +6519,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Build659.json"
-        },
-        {
-          "timestamp": "2026-08-02T22:35:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "testing",
-          "comment": "Build 661, SLICE 1 (lesend). Der Editor-Lesepfad ist gebaut: forensic_api/report.py liest ueber den neuen ReviewCommentView (forensic_api/review_comment_view.py) die Union der Addendum-Dateien und gibt je Baustein 'review_comments' aus. Die Anzeige steht in userinfo/comment_thread.js als eigener, abgesetzter Abschnitt.\n\nNUR LESEN - ohne Erledigen-Schaltflaeche. Der Lebenszyklus bleibt bei der kommentierenden Person (Konzept v0.2 Paragraph 4, 'nie zwei Schreiber pro Datei'). Testfall T24 haelt das fest.\n\nZWEI STILLE PFADE MITGEFANGEN:\n(a) ReviewCommentReader protokollierte eine defekte Addendum-Datei nur und gab eine leere Liste zurueck - 'nichts angemerkt' war von 'nicht lesbar' nicht zu unterscheiden. Neu: read_mit_befund(); der Editor zeigt die betroffenen Dateien an (RC10, T27).\n(b) Ein Anker auf einen geloeschten Baustein und ein ankerloser Kommentar waeren in der Zuordnung verschwunden. Beide stehen jetzt unter 'review_comments_ohne_block' MIT Grund und werden am Dokument angezeigt (RV03/RV04, T26).\n\nDas Abzeichen am Baustein zaehlt die Gegenlese mit, nennt die Herkunft aber im Text - sonst saehe ein Baustein mit Lektoratsanmerkung unauffaellig aus.\n\nNICHT ENTHALTEN und bewusst offen: es gibt keinen Rueckkanal. Die verfassende Person kann auf eine Anmerkung nicht antworten. Ob ein Antwortweg fachlich gewuenscht ist - er laege dann in der EIGENEN Datei der antwortenden Person - waere als eigener Vorgang zu entscheiden.\n\nREGRESSION: 8 neue Python-Faelle (RV01-RV06, RC10, RC11), 7 neue JS-Faelle (T23-T29). Baucontainer (Python 3.13): Python 3103 passed, JS 1722 passed."
         }
       ]
     }

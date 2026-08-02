@@ -314,3 +314,109 @@ describe('Phase 4 — renderForBlock / Sidebar-API', () => {
         expect(typeof window.CommentThread._clearEditorBlockPulse).toBe('function');
     });
 });
+
+// ===========================================================================
+// Build 661 — Vorgang a84766a7: Anmerkungen aus der Gegenlese im Editor.
+//
+// T23 -- Gegenlese-Abschnitt erscheint, mit Rolle, Text und Vorschlag
+// T24 -- KEINE Erledigen-/Verwerfen-Schaltflaeche am Review-Kommentar
+// T25 -- ohne Review-Kommentare bleibt die Anzeige unveraendert
+// T26 -- renderDokumentEbene: ankerlos und geloeschter Baustein, unterschieden
+// T27 -- renderDokumentEbene: nicht lesbare Dateien werden GENANNT
+// T28 -- XSS-Schutz auch im Gegenlese-Abschnitt
+// T29 -- _reviewRole: unbekannte Rolle wird angezeigt, nicht ersetzt
+// ===========================================================================
+
+function _mkReview(overrides = {}) {
+    return {
+        comment_id: 'r1', report_id: 1, block_id: 'b1',
+        reviewer_pid: 4, reviewer_role: 'lector',
+        comment_text: 'Bitte praezisieren',
+        suggested_content: null, status: 'pending',
+        block_sha256: null, created_at: 1700000000, resolved_at: null,
+        ...overrides,
+    };
+}
+
+describe('CommentThread — Gegenlese (Build 661)', () => {
+
+    it('T23 zeigt Rolle, Text und Aenderungsvorschlag', () => {
+        const html = window.CommentThread.renderForBlock({
+            block_id: 'b1', comments: [],
+            review_comments: [_mkReview({
+                suggested_content: 'Am 14.03.2024 um 22:11 Uhr' })],
+        }, {});
+        expect(html).toContain('ct-review-section');
+        expect(html).toContain('Lektorat');
+        expect(html).toContain('Bitte praezisieren');
+        expect(html).toContain('Am 14.03.2024 um 22:11 Uhr');
+        expect(html).toContain('offene Anmerkung');
+    });
+
+    it('T24 bietet KEINE Erledigen-Schaltflaeche an einem fremden Kommentar', () => {
+        // Der Lebenszyklus bleibt bei der kommentierenden Person (Konzept
+        // v0.2 §4). Eine Schaltflaeche, die nichts bewirken kann, waere
+        // schlimmer als keine.
+        const html = window.CommentThread._renderReviewSection([_mkReview()]);
+        expect(html).not.toContain('ct-btn-resolve');
+        expect(html).not.toContain('data-resolution');
+        expect(html).toContain('schlie');   // "...schliesst die gegenlesende Person selbst ab."
+    });
+
+    it('T25 laesst die Anzeige ohne Gegenlese unveraendert', () => {
+        expect(window.CommentThread._renderReviewSection([])).toBe('');
+        const html = window.CommentThread.renderForBlock(
+            { block_id: 'b1', comments: [] }, {});
+        expect(html).not.toContain('ct-review-section');
+        expect(html).toContain('Noch keine Kommentare');
+    });
+
+    it('T26 unterscheidet ankerlos von geloeschtem Baustein', () => {
+        const html = window.CommentThread.renderDokumentEbene([
+            { ...(_mkReview({ comment_id: 'r1', block_id: null })),
+              grund: 'ohne_anker' },
+            { ...(_mkReview({ comment_id: 'r2', block_id: 'b_weg',
+                              comment_text: 'Stelle weg' })),
+              grund: 'block_unbekannt' },
+        ], []);
+        expect(html).toContain('ohne Textstelle geschrieben');
+        expect(html).toContain('gibt es im Vermerk nicht mehr');
+        expect(html).toContain('Stelle weg');
+        expect(html).toContain('data-grund="ohne_anker"');
+        expect(html).toContain('data-grund="block_unbekannt"');
+    });
+
+    it('T27 nennt nicht lesbare Dateien', () => {
+        // Grundregel 1: 'keine Anmerkung' und 'Datei nicht lesbar' duerfen
+        // nicht gleich aussehen - sonst gibt die verfassende Person den
+        // Vermerk frei, ohne die fehlende Rueckmeldung zu vermissen.
+        const html = window.CommentThread.renderDokumentEbene(
+            [], [{ datei: 'evidence_700_4.db', grund: 'nicht zu oeffnen' }]);
+        expect(html).toContain('ct-review-stoerung');
+        expect(html).toContain('evidence_700_4.db');
+        expect(html).toContain('NICHT gelesen');   // Zeilenumbruch im Template
+        // Und ohne beides bleibt es leer.
+        expect(window.CommentThread.renderDokumentEbene([], [])).toBe('');
+    });
+
+    it('T28 schuetzt vor XSS im Gegenlese-Abschnitt', () => {
+        const html = window.CommentThread._renderReviewSection([_mkReview({
+            comment_text: '<img src=x onerror=alert(1)>',
+            suggested_content: '<script>alert(2)</script>',
+        })]);
+        expect(html).not.toContain('<img');
+        expect(html).not.toContain('<script>');
+        expect(html).toContain('&lt;img');
+    });
+
+    it('T29 zeigt eine unbekannte Rolle an, statt sie zu ersetzen', () => {
+        expect(window.CommentThread._reviewRole('lector')).toBe('Lektorat');
+        expect(window.CommentThread._reviewRole('supervisor'))
+            .toBe('Chef-Ermittlung');
+        // Grundregel 1: eine kuenftige Rolle darf nicht hinter einem
+        // Sammelbegriff verschwinden.
+        expect(window.CommentThread._reviewRole('qs_pruefer'))
+            .toBe('qs_pruefer');
+        expect(window.CommentThread._reviewRole(null)).toBe('Gegenlesen');
+    });
+});

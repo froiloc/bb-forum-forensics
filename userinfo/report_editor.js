@@ -197,6 +197,12 @@ const NAME_SYNC_DEBOUNCE_MS = 600;
 
 /** Aktuell geladene Bloecke (fuer Sidebar-Formular) */
 let _currentBlocks = [];
+// Build 661 (Vorgang a84766a7): Anmerkungen der Gegenlese, die KEINEM Baustein
+// zugeordnet werden konnten, sowie Addendum-Dateien, die nicht lesbar waren.
+// Sie haengen am Dokument und nicht an einem Block - deshalb ein eigener
+// Modulzustand statt eines Feldes in _currentBlocks. Ohne diesen Weg
+// verschwaenden sie stumm (Grundregel 1).
+let _reviewDokument = { ohneBlock: [], fehler: [] };
 
 /** Editor.js-Instanz */
 let _editor = null;
@@ -1951,15 +1957,34 @@ function _wrapBlock(ceBlock, blockMeta, username) {
     // Rot = offene Kommentare, Grau = alle erledigt, keiner = kein Badge.
     // blockMeta.comments kommt aus format=json Response.
     // Beleg: Bugfix Build 125, Projektgespraech 2026-05-08
+    // Build 661 (Vorgang a84766a7): Die Anmerkungen der GEGENLESE zaehlen mit.
+    // Grund: Das Abzeichen ist das einzige Signal am Baustein selbst. Zaehlte
+    // es nur die Editor-Kommentare, saehe ein Baustein, zu dem das Lektorat
+    // etwas angemerkt hat, unauffaellig aus - und die Anmerkung waere nur zu
+    // finden, wenn jemand ohne Anlass in die Sidebar schaut.
     const comments = Array.isArray(blockMeta.comments) ? blockMeta.comments : [];
-    if (comments.length > 0) {
-        const hasPending = comments.some(c => c.status === 'pending');
+    const reviews  = Array.isArray(blockMeta.review_comments)
+        ? blockMeta.review_comments : [];
+    const alle = comments.concat(reviews);
+    if (alle.length > 0) {
+        const offeneEigene = comments.filter(c => c.status === 'pending').length;
+        const offeneReview = reviews.filter(c => c.status === 'pending').length;
+        const hasPending = (offeneEigene + offeneReview) > 0;
         const badge = document.createElement('div');
         badge.className = 'block-comment-badge ' +
             (hasPending ? 'block-comment-badge--pending' : 'block-comment-badge--done');
-        badge.title = hasPending
-            ? `${comments.filter(c => c.status === 'pending').length} offene Kommentare`
-            : 'Alle Kommentare erledigt';
+        // Die Herkunft steht IM Text: 'zwei offene Kommentare' und 'zwei
+        // offene Anmerkungen der Gegenlese' verlangen Verschiedenes von der
+        // verfassenden Person, und das Abzeichen ist oft alles, was sie liest.
+        if (hasPending) {
+            const teile = [];
+            if (offeneEigene) { teile.push(`${offeneEigene} offene Kommentare`); }
+            if (offeneReview) { teile.push(`${offeneReview} offene Anmerkungen aus der Gegenlese`); }
+            badge.title = teile.join(', ');
+        } else {
+            badge.title = 'Alle Kommentare erledigt';
+        }
+        if (reviews.length > 0) { badge.setAttribute('data-review', '1'); }
         ceBlock.insertBefore(badge, ceBlock.firstChild);
     }
 
@@ -2076,6 +2101,8 @@ function _openCommentAccordion(blockId, focusInput = false) {
         const username = document.getElementById('report-editor-body')?.dataset?.username || '';
         const lockId = window.lockLayer?.lockId || null;
         const commentOpts = {
+            // Build 661: Dokumentebene der Gegenlese mitreichen.
+            reviewDokument: _reviewDokument,
             lockId,
             myUsername:  username,
             investigator: username,
@@ -2764,6 +2791,10 @@ async function _loadBlocksAndReinit(report) {
         if (resp.ok) {
             const data = await resp.json();
             _currentBlocks = data.blocks || [];
+            _reviewDokument = {
+                ohneBlock: data.review_comments_ohne_block || [],
+                fehler:    data.review_comment_fehler || [],
+            };
             // Bug 2 Fix Build 127: Kommentar-Badges nach Reload aktualisieren.
             // _wrapBlock() ist idempotent (data-wrapped-Guard) und setzt Badges
             // bei bereits dekorierten Bloecken nicht neu. Expliziter Badge-Update
@@ -3184,6 +3215,10 @@ async function _performAutoSave(reportId) {
         if (resp.ok) {
             const data = await resp.json();
             _currentBlocks = data.blocks || [];
+            _reviewDokument = {
+                ohneBlock: data.review_comments_ohne_block || [],
+                fehler:    data.review_comment_fehler || [],
+            };
             // Formular nur aktualisieren wenn kein Formularfeld gerade fokussiert
             const sidebar       = document.getElementById('support-sidebar');
             const openAccordion = sidebar?.querySelector('.support-accordion-section--open');
