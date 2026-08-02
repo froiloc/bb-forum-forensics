@@ -1,0 +1,12 @@
+568a69f50ef09f6200a5095854c56eb4  build.json
+82c9f191f7e0752c830d547c04f2d27b  management/server/management_app.py
+f8018f476c652ed6cd36967822ff6065  management/server/static/cockpit.html
+f0ecccab31c56ca9fe4288f66a8dabc5  management/server/static/cockpit.js
+d097a1626fbbf0043c82e7f9c824debf  management/server/static/cockpit.css
+9a881e7c51b382007eb9a121a9a983ff  management/server/static/cockpit_modules.js
+853bb520ca9686287667fab64a6f92d5  management/server/static/cockpit_baustein_platzhalter.js
+5b088bad795f06931d6575235409d040  management/help/inhalt/redaktion.py
+3fadc6dbc82240600f60633ffbb84d20  tests/test_templates_module_admin.py
+c2d1d50c459e7b63b32c3d8c371e56ab  tests/unit/test_cockpit_tabellen_ux.test.js
+e2eb9c236f9df8454579a3750bf82150  tests/unit/test_cockpit_baustein_platzhalter.test.js
+e6dad664e2bc1d5409685dff7575a050  issue-tracker/eintraege_claude_Build654.json

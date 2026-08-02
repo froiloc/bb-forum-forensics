@@ -542,9 +542,44 @@ MODULES = Sichthilfe(
                 "künftige Vermerke; bereits geschriebene bleiben unberührt.",
                 "Einen Baustein außer Gebrauch nehmen: nicht die Kennung "
                 "ändern, sondern einen neuen anlegen.",
+                "Einen Platzhalter prüfen: In der Tabelle unter dem Text "
+                "eine Beispieleingabe in die Spalte „Testeingabe“ schreiben. "
+                "Passt sie nicht, passt sie auch beim Ausfüllen nicht.",
                 "Eine fehlende Kennung nachtragen: „Nur ohne Kennung“ "
                 "einschalten, Zeile anklicken, den Vorschlag prüfen oder "
                 "ersetzen, speichern. Danach ist die Kennung endgültig.",
+            ),
+        ),
+        Abschnitt(
+            "platzhaltertabelle", "Die Platzhalter-Tabelle",
+            (
+                "Unter dem Bausteintext stehen alle Platzhalter, die er "
+                "enthält — mit Typ, Name, Vorgabe, Beschreibung, Prüfmuster "
+                "und der Zahl der Vorkommen. Die Tabelle läuft beim Tippen "
+                "mit und SCHREIBT NICHTS.",
+                "Das Prüfmuster steht im Klartext da, auch wenn es im "
+                "Bausteintext verschlüsselt hinterlegt ist oder nur als "
+                "Verweis auf eine benannte Formatregel.",
+                "Die Spalte „Verifikation“ nennt jeden Befund im Klartext "
+                "und nicht nur als Farbe. Sechs Dinge werden geprüft:",
+            ),
+            liste=(
+                "V1 — Etwas sieht aus wie ein Platzhalter, ist aber keiner: "
+                "ein Leerzeichen im Namen, ein unbekanntes Kürzel, ein Feld "
+                "zu viel. DAS IST DER WICHTIGSTE BEFUND. Solcher Text löst "
+                "keinen Fehler aus, er steht am Ende wörtlich im Vermerk.",
+                "V2 — Ein automatischer Platzhalter, den es nicht gibt, der "
+                "abgeschaltet ist oder der anderswo anders geführt wird.",
+                "V3 — Ein Eingabefeld, dessen Art von der hinterlegten "
+                "abweicht — etwa freiwillig hier, verpflichtend dort.",
+                "V4 — Ein Prüfmuster, das ins Leere zeigt oder sich nicht "
+                "übersetzen lässt.",
+                "V5 — Das Prüfmuster am Platzhalter weicht von dem "
+                "hinterlegten ab. Kein Fehler, aber beim Ausfüllen gilt das "
+                "hinterlegte.",
+                "V6 — Derselbe Name steht mehrfach im Text, aber mit "
+                "verschiedenen Angaben. Beim Ausfüllen gewinnt eine Fassung, "
+                "und welche, sieht man dem Text nicht an.",
             ),
         ),
         Abschnitt(
@@ -553,9 +588,13 @@ MODULES = Sichthilfe(
                 "Eine Änderung wirkt NUR AUF KÜNFTIGE Vermerke. Bereits "
                 "geschriebene bleiben, wie sie sind — sonst änderte sich "
                 "rückwirkend, was jemand unterschrieben hat.",
-                "Platzhalter werden hier NICHT aufgelöst und auch nicht "
-                "geprüft, ob es sie gibt. Die Vorschau zählt sie; ob ein "
-                "Name stimmt, entscheidet sich in „Platzhalter & Queries“.",
+                "Platzhalter werden hier NICHT aufgelöst. Ob es einen Namen "
+                "gibt und ob eine Eingabe zum Muster passt, prüft die "
+                "Tabelle unter dem Text; gepflegt werden die Platzhalter "
+                "selbst in „Platzhalter & Queries“.",
+                "Die Testeingabe in der Tabelle ist ein Probelauf und sonst "
+                "nichts: Sie wird nirgends gespeichert und landet in keinem "
+                "Vermerk.",
                 "Die Vorschau schreibt nichts.",
             ),
         ),
@@ -691,6 +730,22 @@ MODULES = Sichthilfe(
             "konkreten Vermerks eingesetzt. Wie er wirkt, zeigt die Vorschau "
             "darüber.",
             verweis="modules#vorschau"),
+        # Build 654 (Ticket 4b032177): die Platzhalter-Tabelle.
+        Kontexthilfe(
+            "modules.bedienung.phtabelle", "Platzhalter im Bausteintext",
+            "Führt jeden Platzhalter des Textes mit allen Angaben auf und "
+            "prüft ihn. Die Tabelle läuft beim Tippen mit und schreibt "
+            "nichts. Jeder Befund steht im Klartext dabei — die Farbe allein "
+            "wäre keine Auskunft.",
+            verweis="modules#platzhaltertabelle"),
+        Kontexthilfe(
+            "modules.bedienung.phtest", "Testeingabe",
+            "Eine Beispieleingabe, um zu sehen, ob sie zum Prüfmuster passt. "
+            "SIE WIRD NIRGENDS GESPEICHERT und landet in keinem Vermerk. "
+            "Gibt es zwei Regeln — eine am Platzhalter und eine hinterlegte "
+            "— stehen BEIDE Urteile da. Weichen sie voneinander ab, wird das "
+            "ausdrücklich gesagt: beim Ausfüllen gilt die hinterlegte.",
+            verweis="modules#platzhaltertabelle"),
         Kontexthilfe(
             "modules.bedienung.sortierung", "Sortierung",
             "Bestimmt die Reihenfolge in der Auswahl des Berichtseditors. Ein "

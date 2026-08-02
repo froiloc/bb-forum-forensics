@@ -459,3 +459,54 @@ class EndpointTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# =============================================================================
+# Build 654 (Ticket 4b032177) — GET /api/validation/rules
+#
+# Die Platzhalter-Tabelle der Baustein-Module braucht den Katalog der
+# BENANNTEN Formatregeln (config.yaml -> validation.rules). Seit Build 388
+# traegt das fuenfte Platzhalterfeld ENTWEDER eine Base64-Regex (Altform)
+# ODER einen Verweis 'rule:<name>' in genau diesen Katalog. Der
+# Ermittlerserver liefert ihn unter /_forensic/validation_rules aus; der
+# Verwaltungsserver hatte dafuer bisher keine Route.
+#
+# VR01 — die Route liefert den Katalog und ist auf templates.edit gegated.
+# VR02 — es ist DERSELBE Katalog wie der des Ermittlerservers (dieselbe
+#        Quelle, dasselbe Format). Zwei Wahrheitsquellen waeren genau das,
+#        wovor der Kopf von core/validation_rules.py warnt.
+# =============================================================================
+class ValidationRulesEndpointTests(EndpointTests):
+    """Erbt Aufbau und Abbau von EndpointTests (Person 1 darf, Person 2 nicht)."""
+
+    def test_vr01_katalog_und_recht(self):
+        r = self._app().dispatch(1, "/api/validation/rules")
+        self.assertEqual(r.status, 200, r.body)
+        d = json.loads(r.body.decode("utf-8"))
+        self.assertIn("rules", d)
+        self.assertIn("count", d)
+        self.assertEqual(d["count"], len(d["rules"]))
+        # Jede Regel traegt genau die drei Felder, die der Browser braucht -
+        # das kompilierte Muster wird bewusst NICHT uebertragen.
+        for name, spec in d["rules"].items():
+            self.assertEqual(sorted(spec.keys()),
+                             ["hint", "pattern", "transform"],
+                             "Regel %r hat ein unerwartetes Feld" % name)
+
+        # Ohne templates.edit: 403, nicht etwa ein leerer Katalog. Ein
+        # leerer Katalog waere von 'keine Rechte' nicht zu unterscheiden.
+        self.assertEqual(self._app().dispatch(2, "/api/validation/rules")
+                         .status, 403)
+
+    def test_vr02_dieselbe_quelle_wie_der_ermittlerserver(self):
+        from core.config_loader import ConfigLoader
+        from core.validation_rules import ValidationRules
+
+        erwartet = ValidationRules(ConfigLoader()).as_public_dict()
+        d = json.loads(self._app().dispatch(1, "/api/validation/rules")
+                       .body.decode("utf-8"))
+        # ZEICHENGLEICH. Wer hier eine eigene Aufbereitung einzieht, laesst
+        # Verwaltungs- und Ermittlerserver auseinanderlaufen - und ein
+        # Redakteur saehe in der Maske ein anderes Muster als das, gegen das
+        # der Server am Ende prueft.
+        self.assertEqual(d["rules"], erwartet)

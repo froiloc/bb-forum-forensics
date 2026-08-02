@@ -199,6 +199,14 @@
 <script src="/static/shared/editor.bundle.js" defer></script>
 <script src="/static/shared/placeholder_chips.js" defer></script>
 <script src="/static/cockpit_baustein_vorschau.js" defer></script>
+<!-- Build 654 (Ticket 4b032177): Platzhalter-Tabelle der Baustein-Module.
+     STEHT VOR cockpit_modules.js, das sie beim Rendern ueber
+     window.AIWBausteinPlatzhalter sucht. Sie braucht ausserdem
+     placeholder_chips.js (Zerlegung, oben) und cockpit_templates.js
+     (Regelpruefung, weiter oben eingebunden) - beide sind zu diesem
+     Zeitpunkt geladen, weil alle Skripte 'defer' tragen und damit in
+     Dokumentreihenfolge laufen. -->
+<script src="/static/cockpit_baustein_platzhalter.js" defer></script>
 <script src="/static/cockpit_modules.js" defer></script>
 <!-- Fallübergreifende Volltextsuche (AP-3E/Idee 38, Build 563):
      Modell B, zweistufig. Stufe 1 zeigt KEINEN Text; der Inhalt eines

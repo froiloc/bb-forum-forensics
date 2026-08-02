@@ -4154,9 +4154,37 @@
             renderError(mainEl, 'Baustein-Modul-Modul nicht geladen.');
             return;
         }
-        fetchJson('/api/templates/modules').then(function (data) {
+        // Build 654 (Ticket 4b032177): Die Platzhalter-Tabelle braucht zwei
+        // KATALOGE - die bekannten Platzhalter und die benannten
+        // Formatregeln. Beide sind schreibfrei.
+        //
+        // WARUM SIE DEN AUFBAU NICHT AUFHALTEN DUERFEN: die Sicht ist ohne
+        // sie voll bedienbar; nur die Abgleichspruefungen (V2/V3/V5) fallen
+        // dann weg, und die Tabelle SAGT das auch. Ein gescheiterter
+        // Katalogabruf darf deshalb nicht die ganze Sicht kosten - deshalb
+        // faengt jeder der beiden seinen Fehler selbst ab und liefert null.
+        // Grundregel 1 bleibt gewahrt, weil 'null' in der Tabelle als
+        // ausdruecklicher Hinweis erscheint und nicht als leere Spalte.
+        function _katalog(pfad, name) {
+            return fetchJson(pfad).catch(function (e) {
+                log('Katalog ' + name + ' nicht ladbar:', e && e.message);
+                return null;
+            });
+        }
+        Promise.all([
+            fetchJson('/api/templates/modules'),
+            _katalog('/api/templates/placeholders', 'Platzhalter'),
+            _katalog('/api/validation/rules', 'Formatregeln')
+        ]).then(function (erg) {
+            var data = erg[0];
+            var phData = erg[1];
+            var regelData = erg[2];
             cleanupView();
             mod.renderModules(mainEl, data, {
+                placeholders: (phData && phData.placeholders)
+                    ? phData.placeholders : null,
+                validationRules: (regelData && regelData.rules)
+                    ? regelData.rules : null,
                 onDryRun: function (payload) {
                     postJson('/api/templates/module/dryrun', payload)
                         .then(function (res) { mod.renderDryRun(res); })

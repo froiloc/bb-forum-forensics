@@ -1661,12 +1661,12 @@
       "description": "Es wäre hilfreich, wenn die Platzhalter im Baustein extrahiert und tabellarisch aufgeführt und verifiziert werden würden. Gern in Echtzeit.\r\n\r\nEs sollen alle Parameter der Platzhalter in der Tabelle aufgeführt werden. Eine Spalte soll der Verifikation dienen. Eine Spalte soll dem Testen von Eingaben dienen, falls es ein manueller Platzhalter ist (m: oder o:) zum Testen gegen das Regex.\r\n\r\nIdeal wäre es, wenn diese Tabelle bidirektional wäre und Änderungen in den Feldern der Tabelle sich auf den Inhalt in der textarea auswirken würden.",
       "expected_behavior": "Das Einpflegen von Platzhaltern wird stabiler und komfortabler.",
       "actual_behavior": "",
-      "status": "resolved",
+      "status": "open",
       "priority": "medium",
       "severity": "major",
-      "assigned_to": "Claude",
+      "assigned_to": "",
       "related_to": [],
-      "resolved_in_version": "0.8.654",
+      "resolved_in_version": null,
       "target_version": "0.8.654",
       "environment": {
         "python_version": "3.14",
@@ -1691,12 +1691,10 @@
           "comment": "Issue erstellt"
         },
         {
-          "timestamp": "2026-08-02T14:00:00+00:00",
+          "timestamp": "2026-08-02T12:00:00+00:00",
           "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "Build 654, STUFE 1 (lesen, verifizieren, testen). Die bidirektionale Stufe ist nach Entscheidung mc vom 2026-08-02 zurueckgestellt und als eigenes Ticket 7c1f2a94 angelegt, MIT den drei Fallen, die sie mit sich bringt. UMGESETZT: neue Datei cockpit_baustein_platzhalter.js (Projektregel 10), acht Spalten, entprellt beim Tippen, schreibfrei. Sechs Befunde je im Klartext: V1 verdaechtiges Token, V2 a-Platzhalter unbekannt/abgeschaltet/falscher Typ, V3 m/o-Typ weicht ab, V4 Pruefmuster unbrauchbar, V5 Pruefmuster weicht vom Katalog ab, V6 derselbe Name mehrfach mit verschiedenen Angaben. V1 WAR NICHT BESTELLT UND IST DER WERTVOLLSTE: ein vertipptes Token loest heute keinen Fehler aus, es tut nur nichts und erscheint woertlich im Vermerk. Die Testeingabe urteilt ZWEIMAL - gegen die Regel am Platzhalter und gegen die im Katalog - und meldet ausdruecklich, wenn beide verschieden urteilen. BEFUND, DER EINE NEUE ROUTE NOETIG MACHTE: das fuenfte Platzhalterfeld hat zwei Formen (Base64 vor Build 388, 'rule:<name>' danach); der Regelkatalog lag aber nur auf dem Ermittlerserver. Neu: GET /api/validation/rules, schreibfrei, Recht templates.edit, DIESELBE Quelle. Ohne sie waere jeder moderne Verweis als 'unbrauchbar' angeschlagen - eine Tabelle mit Fehlalarm auf der Mehrzahl der Eintraege wird nicht gelesen. ZWEITER BEFUND, aus der eigenen Konformitaetssuite: UX10 verlangt fuer jede handgebaute Tabelle eine BEGRUENDETE Ausnahme. Nachgetragen. PT01-PT10, VR01, VR02; Gegenprobe fuer die Route gefahren."
+          "action": "comment",
+          "comment": "BEFUND ZUR TAG-LAGE: dieses Ticket trug 'Baustein-Modul' (Bindestrich, Einzahl) statt 'Bausteinmodule'. Eine reine Tag-Abfrage nach 'Bausteinmodule' haette es uebersehen. Tag nachgetragen. Ziel 0.8.654, Stufe 1 (lesen, verifizieren, testen); die bidirektionale Stufe zieht mc nach - Entscheidung vom 2026-08-02."
         }
       ]
     },

@@ -75,7 +75,15 @@
  *   hier aber falsch: ueber die Liste wird AUSGEWAEHLT. Ohne Rueckfall waere
  *   die Sicht nicht nur haesslich, sondern unbedienbar.
  *
- * Version: v0.8.653 · Build: 653 · 2026-08-02
+ * Build 654 (Ticket 4b032177): PLATZHALTER-TABELLE unter dem Bausteintext.
+ *   Sie weist die Platzhalter des Textes in Echtzeit aus, prueft sie gegen
+ *   den Platzhalter- und den Formatregelkatalog und laesst eine Eingabe
+ *   gegen die Regeln testen. Der Bauteil selbst liegt in
+ *   cockpit_baustein_platzhalter.js (Projektregel 10); diese Datei haengt
+ *   ihn ein und speist ihn - genau wie die Vorschau, mit derselben
+ *   Entprellung und aus demselben Formularzustand.
+ *
+ * Version: v0.8.654 · Build: 654 · 2026-08-02
  */
 (function () {
     'use strict';
@@ -99,6 +107,10 @@
         // Zuklapp-Zustand anzeigt.
         vorschauEl: null, vorschau: null, vorschauAn: true,
         vorschauSpalte: null, vorschauSpaltenStand: null,
+        // Build 654: Platzhalter-Tabelle und ihre beiden Kataloge. Die
+        // Kataloge ueberdauern einen Neuaufbau der Maske, weil sie ueber das
+        // Netz kommen und sich beim Bearbeiten eines Bausteins nicht aendern.
+        platzhalter: null, phKatalog: null, phRegeln: null,
         // Build 653: die Tabelle. listEl bleibt daneben bestehen und traegt
         // NUR im Rueckfall etwas - genau eines der beiden ist je gesetzt.
         table: null, nurOhneKennung: false, nurOhneBtn: null
@@ -494,10 +506,45 @@
 
     // _vorschauAktualisieren: aus dem AKTUELLEN Formularzustand, nicht aus dem
     // gespeicherten Datensatz - der Redakteur soll sehen, was er gerade tippt.
+    //
+    // Build 654: dieselbe Quelle speist die Platzhalter-Tabelle. Sie haengt
+    // NICHT am Zuklapp-Zustand der Vorschau - sie steht unter dem Textfeld
+    // und ist eine Pruefung, keine Ansicht.
     function _vorschauAktualisieren() {
-        if (!_state.vorschauAn || !_state.vorschau || !_state.fields) { return; }
+        if (!_state.fields) { return; }
         var f = _state.fields;
-        _state.vorschau.zeige({ body: f.body ? f.body.value : '' });
+        var text = f.body ? f.body.value : '';
+        if (_state.vorschauAn && _state.vorschau) {
+            _state.vorschau.zeige({ body: text });
+        }
+        if (_state.platzhalter) {
+            _state.platzhalter.zeige(text);
+        }
+    }
+
+    // _platzhalterAufbauen (Build 654, Ticket 4b032177).
+    // ------------------------------------------------------------------
+    // Der Bauteil liegt in cockpit_baustein_platzhalter.js. Fehlt er, sagt
+    // die Flaeche das im Klartext - dieselbe Regel wie bei der Vorschau:
+    // eine leere Flaeche saehe aus wie 'keine Platzhalter vorhanden', und
+    // das waere eine Falschaussage (Grundregel 1).
+    function _platzhalterAufbauen(host) {
+        var ph = (typeof window !== 'undefined')
+            ? window.AIWBausteinPlatzhalter : null;
+        if (!ph || typeof ph.erzeuge !== 'function') {
+            host.textContent = 'Platzhalter-Tabelle nicht geladen '
+                + '(cockpit_baustein_platzhalter.js).';
+            host.classList.add('ist-warnung');
+            return;
+        }
+        _state.platzhalter = ph.erzeuge(host, {});
+        // Die Kataloge kommen ueber das Netz und treffen spaeter ein als der
+        // erste Text. Sie werden deshalb NACHGEREICHT, statt den Aufbau auf
+        // sie warten zu lassen - eine Tabelle, die erst nach zwei
+        // Netzabrufen erscheint, wirkt kaputt.
+        if (_state.phKatalog || _state.phRegeln) {
+            _state.platzhalter.kataloge(_state.phKatalog, _state.phRegeln);
+        }
     }
 
     function _renderKeyHinweis() {
@@ -1056,6 +1103,20 @@
         _state.dryEl = dry;
         form.appendChild(dry);
 
+        // --- Platzhalter-Tabelle (Build 654, Ticket 4b032177).
+        // Sie steht UNTER der Maske und nicht in der Vorschau-Spalte: sie
+        // gehoert zum Schreiben des Textes, nicht zum Ansehen des Ergebnisses.
+        var phKopf = document.createElement('div');
+        phKopf.className = 'aiw-mod-ph-kopf';
+        phKopf.setAttribute('data-hilfe-id', 'modules.bedienung.phtabelle');
+        phKopf.textContent = 'Platzhalter im Bausteintext';
+        form.appendChild(phKopf);
+        var phHost = document.createElement('div');
+        phHost.className = 'aiw-mod-ph';
+        phHost.id = 'aiw-mod-ph';
+        form.appendChild(phHost);
+        _state.platzhalter = null;
+
         body.appendChild(form);
 
         // --- Dritte Spalte: Vorschau (Build 652, Ticket 3508ad71).
@@ -1083,8 +1144,22 @@
         // noch nicht eingehaengten Element sind das NULL Pixel, und es zeichnet
         // ins Nichts. Genau dieser Fehler hat in Build 570 bis 573 die
         // Kacheldiagramme unsichtbar gemacht; die Lehre steht hier als Zeile.
+        // Build 654: die Kataloge fuer die Platzhalter-Tabelle. Sie kommen
+        // aus cockpit.js (zwei schreibfreie Abrufe) und duerfen fehlen -
+        // dann sagt die Tabelle, dass sie ohne Katalog urteilt.
+        if (opts.placeholders !== undefined) {
+            var php = (typeof window !== 'undefined')
+                ? window.AIWBausteinPlatzhalter : null;
+            _state.phKatalog = (php && opts.placeholders)
+                ? php.katalogIndex(opts.placeholders) : null;
+        }
+        if (opts.validationRules !== undefined) {
+            _state.phRegeln = opts.validationRules || null;
+        }
+
         // Build 652: Ziel ist die dritte Rasterspalte, nicht mehr das Formular.
         _vorschauAufbauen(vsCol);
+        _platzhalterAufbauen(phHost);
 
         // BUILD 653: DIE TABELLE EBENFALLS ERST JETZT - aus demselben Grund.
         // Gelingt sie nicht, tritt die alte Schaltflaechenliste an ihre
@@ -1152,6 +1227,13 @@
         _state.vorschauEl = null;
         _state.vorschauSpalte = null;
         _state.vorschauSpaltenStand = null;
+        // Build 654: die Platzhalter-Tabelle raeumt ihre Zeilen selbst weg.
+        // Die KATALOGE bleiben stehen - sie sind Netzdaten, keine Sichtdaten,
+        // und ein erneuter Abruf beim naechsten Betreten waere Verschwendung.
+        if (_state.platzhalter && typeof _state.platzhalter.aus === 'function') {
+            try { _state.platzhalter.aus(); } catch (e) { /* nie werfen */ }
+        }
+        _state.platzhalter = null;
     }
 
     // -------------------------------------------------------------------------

@@ -985,6 +985,12 @@ class ManagementApp:
             return self._templates_documents(person_id)
         if path == "/api/templates/modules":
             return self._templates_modules(person_id)
+        # Build 654 (Ticket 4b032177): der Katalog der benannten Formatregeln
+        # (config.yaml validation.rules) fuer die Platzhalter-Tabelle der
+        # Baustein-Module. Schreibfrei, dieselbe Quelle wie
+        # /_forensic/validation_rules des Ermittlerservers.
+        if path == "/api/validation/rules":
+            return self._validation_rules(person_id)
         if path == "/api/cases/detect":
             return self._cases_detect(person_id)
         if path == "/api/promotion":
@@ -4167,6 +4173,44 @@ class ManagementApp:
         finally:
             con.close()
         return Response.json(200, {"count": len(modules), "modules": modules})
+
+    def _validation_rules(self, person_id: int) -> Response:
+        """
+        Der Katalog der benannten Formatregeln (config.yaml validation.rules),
+        SCHREIBFREI. Build 654 (Ticket 4b032177).
+
+        WARUM DIESE ROUTE NOETIG WURDE: Seit Build 388 traegt das fuenfte
+        Platzhalterfeld ENTWEDER eine Base64-Regex (Altform, OP-B6-5) ODER
+        einen symbolischen Verweis 'rule:<name>' in genau diesen Katalog
+        (core/validation_rules.py). Der Ermittlerserver liefert ihn unter
+        /_forensic/validation_rules aus - der Verwaltungsserver bisher gar
+        nicht. Die Platzhalter-Tabelle der Baustein-Module haette deshalb
+        jeden modernen 'rule:'-Verweis als 'nicht pruefbar' ausweisen muessen,
+        und eine Tabelle, die bei der Mehrzahl der Eintraege passt, wird nicht
+        gelesen.
+
+        ES IST DERSELBE KATALOG AUS DERSELBEN QUELLE - as_public_dict() liefert
+        hier wie dort dieselben drei Felder. Eine zweite Wahrheitsquelle waere
+        genau das, wovor der Kopf von core/validation_rules.py warnt.
+
+        Recht: templates.edit - wer Bausteine pflegen darf, muss ihre
+        Formatregeln sehen koennen. Das Muster ist keine Verschlusssache; es
+        steht ohnehin im Modultext.
+        """
+        if not self.resolve_policy(person_id).can(CAP_TEMPLATES_EDIT):
+            return self._forbidden(CAP_TEMPLATES_EDIT)
+        try:
+            from core.config_loader import ConfigLoader
+            from core.validation_rules import ValidationRules
+            katalog = ValidationRules(ConfigLoader()).as_public_dict()
+        except Exception as exc:                     # noqa: BLE001
+            # KEIN STILLES {}: ein leerer Katalog und ein nicht ladbarer
+            # Katalog sind zwei verschiedene Befunde, und die Maske muss sie
+            # unterscheiden koennen (Grundregel 1).
+            logger.error("validation.rules nicht ladbar: %s", exc)
+            return Response.json(500, {"error": "validation_rules_failed",
+                                       "detail": str(exc)})
+        return Response.json(200, {"count": len(katalog), "rules": katalog})
 
     def _tpl_module_from_payload(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """

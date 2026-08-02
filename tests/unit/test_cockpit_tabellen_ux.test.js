@@ -581,6 +581,24 @@ const AUSGENOMMEN = {
     "300 liegen — eine falsche Aussage in einem Beweismittelwerkzeug. Ein " +
     "Umbau braucht zuerst einen serverseitigen Filterweg.",
 
+  // --- Lebt beim Tippen, kein sicherbarer Bedienzustand (Regel §2) ---------
+  "cockpit_baustein_platzhalter.js":
+    "Platzhalter-Tabelle der Baustein-Module (Build 654, Ticket 4b032177): " +
+    "Sie zeigt die Platzhalter DES GERADE GETIPPTEN Textes und wird bei jedem " +
+    "Tastendruck (entprellt) neu aufgebaut. Drei Gruende gegen den Umbau, " +
+    "und keiner davon ist Bequemlichkeit. ERSTENS traegt jede Zeile ein " +
+    "EINGABEFELD samt Urteil; Tabulator muesste das ueber Formatter " +
+    "nachbilden, und der Fokus im Feld ueberlebte den naechsten Neuaufbau " +
+    "nicht. ZWEITENS haette ein gesicherter Bedienzustand (Filter, " +
+    "Sortierung) hier keinen Gegenstand: die Zeilenmenge wechselt mit jedem " +
+    "Wort, ein gemerkter Filter auf einen Platzhalternamen, den es im " +
+    "naechsten Baustein nicht gibt, waere eine Sperre ohne Anlass. DRITTENS " +
+    "ist die Zeilenzahl durch den Bausteintext begrenzt - im Bestand liegt " +
+    "sie im einstelligen Bereich; die Regel zielt auf Listen, in denen man " +
+    "SUCHT, nicht auf eine Pruefausgabe, die man liest. Sortierbar waere sie " +
+    "sogar schaedlich: die Reihenfolge ist die des Textes, und genau danach " +
+    "sucht man die Stelle.",
+
   // --- Noch offen (Regel erfuellt, Umbau steht aus) -------------------------
   // Diese Eintraege sind KEINE dauerhaften Ausnahmen. Sie stehen hier, damit
   // UX10 greift, und verschwinden mit dem jeweiligen Umbau.
