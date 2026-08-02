@@ -1,6 +1,6 @@
 # Regelwerk AIW — Projekt
 
-**Stand:** Build 607 · 2026-07-31
+**Stand:** Build 661 · 2026-08-02 (Abschnitt 4 ergänzt; alles Übrige unverändert seit Build 607)
 
 ## 1. Die zehn Grundregeln
 
@@ -63,6 +63,8 @@ Seit dem Produktivbetrieb erzeugen Ermittelnde Daten. Daraus folgt:
 **Ehre, wem Ehre gebührt.** Niemand übernimmt Verantwortung für Fehler, die er nicht zu verantworten hat — und niemand nimmt Lorbeeren für Erfolge, die überwiegend ein anderer verantwortet.
 
 **Vier Augen bei Texten.** Was Anwender zu lesen bekommen, verfasst der eine und nimmt der andere ab. Maschinelle Prüfungen fangen Muster; sie ersetzen die Lesung nicht (siehe `rules-help.md`).
+
+**Übergabe von Arbeitsergebnissen.** Seit dem 3. August 2026 (`aiw_webserver` 0.8.661, `aiw_sqlite_prepper` 0.1.129) wird als Git-Bundle übergeben, nicht mehr als ZIP-Archiv mit Dateien. Anlass war ein gemessener Befund: ein über den Bestand entpacktes ZIP löscht eine parallel entstandene Änderung still — ein GR1-Verstoß auf der Ebene des Arbeitsweges. Das Verfahren steht in `data-exchange.md`; dieses Regelwerk verweist nur darauf.
 
 ## 5. Belegpflicht in der Argumentation
 

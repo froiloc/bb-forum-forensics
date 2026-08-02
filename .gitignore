@@ -85,3 +85,5 @@ debug/test_2_91_console.js
 !issue-tracker/templates/*.html
 !issue-tracker/static/
 !issue-tracker/static/**
+
+*.bundle
