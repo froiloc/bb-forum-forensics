@@ -287,3 +287,114 @@ describe("Globale Exports", () => {
         expect(typeof dom.window.injectInsertInReportButtons).toBe("function");
     });
 });
+
+/* ===========================================================================
+ * BUILD 655 (Ticket 3d9016fe) — WELCHER BLOCK ENTSTEHT AUS EINEM BAUSTEIN?
+ *
+ * Bis Build 654 stand im Drop-Handler:
+ *     const blockData = modData.block_type === 'paragraph'
+ *         ? { text: insertText } : {};
+ * Ein Baustein mit einem ANDEREN Typ als 'paragraph' bekam ein LEERES
+ * Datenobjekt - sein Inhalt fiel weg. Das ist niemandem aufgefallen, weil
+ * report_modules gar keinen Blocktyp fuehrte und ein Baustein deshalb IMMER
+ * ein Absatz war. Mit der Migration aus Build 655 hoert das auf.
+ *
+ * Die Entscheidung ist deshalb in die REINE Funktion _bausteinBlock
+ * herausgezogen worden - im Drop-Handler eingebettet waere sie nur ueber ein
+ * nachgebautes DataTransfer und eine Editor.js-Instanz erreichbar gewesen,
+ * also praktisch gar nicht.
+ *
+ * RE-BT01 — Absatz-Baustein ohne block_data: Text landet im Block (Altfall).
+ * RE-BT02 — DER FEHLER: Tabellen-Baustein MIT block_data behaelt seinen Inhalt.
+ * RE-BT03 — unbrauchbares block_data wird GEMELDET, nicht still verworfen.
+ * RE-BT04 — Typ ohne Daten und ohne Text: Befund in der Konsole, kein Absatz.
+ * =========================================================================== */
+describe("Baustein-Block aus einem Modul (Build 655)", () => {
+    let dom, f;
+
+    beforeAll(() => {
+        dom = makeDOM();
+        f = dom.window.ReportEditor._bausteinBlock;
+    });
+
+    it("RE-BT01 — Absatz ohne block_data nimmt den Bausteintext", () => {
+        expect(typeof f).toBe("function");
+        expect(f({ block_type: "paragraph" }, "Guten Tag."))
+            .toEqual({ type: "paragraph", data: { text: "Guten Tag." } });
+        // Ohne Typangabe ist es ein Absatz - der Altfall des ganzen Bestands.
+        expect(f({}, "Text")).toEqual({ type: "paragraph",
+                                       data: { text: "Text" } });
+        expect(f(null, "Text")).toEqual({ type: "paragraph",
+                                         data: { text: "Text" } });
+    });
+
+    it("RE-BT02 — ein Tabellen-Baustein behaelt seinen Inhalt", () => {
+        const inhalt = { content: [["Merkmal", "Wert"], ["Alter", "34"]] };
+
+        // Als JSON-Zeichenkette (so kommt es aus dem DataTransfer).
+        const a = f({ block_type: "table", block_data: JSON.stringify(inhalt) },
+                    "wird nicht gebraucht");
+        expect(a.type).toBe("table");
+        expect(a.data).toEqual(inhalt);
+
+        // Und als Objekt (so kommt es aus der API).
+        const b = f({ block_type: "table", block_data: inhalt }, "");
+        expect(b.type).toBe("table");
+        expect(b.data).toEqual(inhalt);
+
+        // MIT DER FASSUNG AUS BUILD 654 waere data hier {} gewesen. Das ist
+        // der ganze Ticketinhalt, in einer Zeile.
+        expect(a.data).not.toEqual({});
+    });
+
+    it("RE-BT03 — unbrauchbares block_data wird gemeldet, nicht geschluckt", () => {
+        const gemeldet = [];
+        const alt = dom.window.console.error;
+        dom.window.console.error = (...a) => gemeldet.push(a.join(" "));
+        try {
+            // Kein gueltiges JSON.
+            const a = f({ block_type: "table", block_data: "{kaputt" },
+                        "Ersatztext");
+            expect(a.type).toBe("table");        // der TYP bleibt stehen
+            expect(a.data).toEqual({ text: "Ersatztext" });
+
+            // Gueltiges JSON, aber kein Objekt - Editor.js reicht je Block
+            // ein Objekt an sein Werkzeug durch.
+            const b = f({ block_type: "list", block_data: "[1,2,3]" }, "E");
+            expect(b.data).toEqual({ text: "E" });
+        } finally {
+            dom.window.console.error = alt;
+        }
+        // GRUNDREGEL 1: der Befund steht in der Konsole, sonst faende ihn
+        // niemand. Zweimal - einmal je Fall.
+        expect(gemeldet.length).toBe(2);
+        expect(gemeldet[0]).toContain("block_data");
+    });
+
+    it("RE-BT04 — Typ ohne Daten und ohne Text ist ein Befund", () => {
+        const gewarnt = [];
+        const alt = dom.window.console.warn;
+        dom.window.console.warn = (...a) => gewarnt.push(a.join(" "));
+        try {
+            const a = f({ block_type: "table" }, "");
+            // Der Typ wird NICHT stillschweigend auf 'paragraph'
+            // zurueckgesetzt: ein leerer Tabellen-Baustein ist ein Befund,
+            // kein Absatz.
+            expect(a.type).toBe("table");
+            expect(a.data).toEqual({ text: "" });
+        } finally {
+            dom.window.console.warn = alt;
+        }
+        expect(gewarnt.length).toBe(1);
+        expect(gewarnt[0]).toContain("bleibt leer");
+
+        // Ein leerer ABSATZ ist dagegen kein Befund - das ist der Normalfall
+        // eines neu angelegten Bausteins.
+        const gewarnt2 = [];
+        const alt2 = dom.window.console.warn;
+        dom.window.console.warn = (...a) => gewarnt2.push(a.join(" "));
+        try { f({ block_type: "paragraph" }, ""); }
+        finally { dom.window.console.warn = alt2; }
+        expect(gewarnt2.length).toBe(0);
+    });
+});

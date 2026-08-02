@@ -41,6 +41,41 @@ def _json_err(msg: str, code: str = "ERROR") -> bytes:
     return json.dumps({"error": msg, "code": code}, ensure_ascii=False).encode("utf-8")
 
 
+def _block_data_objekt(roh):
+    """
+    Speicherform (JSON-TEXT) -> Uebertragungsform (OBJEKT). Build 655.
+
+    Editor.js reicht je Block ein OBJEKT an sein Werkzeug durch, und
+    cockpit_baustein_vorschau.js:74 prueft ausdruecklich auf
+    typeof === 'object'. Die Umformung gehoert an EINE Stelle.
+
+    KEIN STILLES VERWERFEN bei unbrauchbarem Inhalt: Es wird None geliefert
+    UND protokolliert. Der Aufrufer faellt dann auf body zurueck - der
+    Baustein erscheint als Absatz statt als Tabelle, was sichtbar ist und
+    nachgesehen werden kann. Ein geworfener Fehler haette dagegen die ganze
+    Bausteinliste unbrauchbar gemacht, und zwar wegen EINER kaputten Zeile.
+    """
+    if roh is None or roh == "":
+        return None
+    if isinstance(roh, dict):
+        return roh
+    try:
+        wert = json.loads(str(roh))
+    except (TypeError, ValueError) as exc:
+        logger.warning(
+            "report_modules.block_data ist kein gueltiges JSON und wird als "
+            "'nicht vorhanden' ausgeliefert (der Baustein erscheint dann als "
+            "Absatz aus body): %s", exc)
+        return None
+    if not isinstance(wert, dict):
+        logger.warning(
+            "report_modules.block_data ist gueltiges JSON, aber kein Objekt "
+            "(%s) - Editor.js erwartet je Block ein Objekt. Wird als 'nicht "
+            "vorhanden' ausgeliefert.", type(wert).__name__)
+        return None
+    return wert
+
+
 class TemplatesListEndpoint:
     """
     Lesender Zugriff auf Berichtsmodule aus templates.db.
@@ -194,6 +229,12 @@ class TemplatesListEndpoint:
                 "role":        m.role,
                 "topic":       m.topic,
                 "sort_order":  m.sort_order,
+                # Build 655: der Blocktyp gehoert in die LISTE, die
+                # Blockdaten nicht. Das Modulfeld entscheidet, WIE der
+                # Baustein eingefuegt wird - das Panel braucht es beim
+                # Ziehen, also bevor der Inhalt nachgeladen ist. Die Daten
+                # selbst koennen gross sein und kommen mit dem Einzelabruf.
+                "block_type":  m.block_type,
                 # body wird im Listenview nicht uebertragen (zu gross)
                 # Fuer den Body: GET /_forensic/templates/<id>
             }
@@ -239,6 +280,14 @@ class TemplatesListEndpoint:
                 "topic":       m.topic,
                 "body":        m.body,
                 "sort_order":  m.sort_order,
+                # Build 655 (Ticket 5d81a0c7). block_data wird als OBJEKT
+                # ausgeliefert und nicht als JSON-Text: Editor.js erwartet je
+                # Block ein Objekt, und cockpit_baustein_vorschau.js:74
+                # prueft ausdruecklich auf typeof === 'object'. Die
+                # Speicherform ist TEXT - die Umformung gehoert an genau
+                # diese eine Stelle und nicht in den Browser.
+                "block_type":  m.block_type,
+                "block_data":  _block_data_objekt(m.block_data),
             }),
             content_type="application/json; charset=utf-8",
         )

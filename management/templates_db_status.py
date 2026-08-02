@@ -77,6 +77,13 @@ MIGRATIONEN = (
     ("Gross-/Kleinschreibung bei der Pruefung", 497,
      ("spalte", "placeholders.validation_ci"),
      "python3 management/migrate_templates_ci.py --templates-db {db}"),
+    # Build 655 (Ticket 5d81a0c7): Blocktyp und Blockdaten an den Bausteinen.
+    # Die Spur ist block_type; block_data kommt im selben Lauf und braucht
+    # deshalb keine eigene Spur (zwei Spuren fuer einen Schritt waeren zwei
+    # Meldungen fuer dieselbe Sache).
+    ("Blocktyp und Blockdaten an report_modules", 655,
+     ("spalte", "report_modules.block_type"),
+     "python3 management/migrate_templates_blocktyp.py --templates-db {db}"),
 )
 
 

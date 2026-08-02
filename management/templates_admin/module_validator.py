@@ -31,6 +31,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Any, Dict, List
 
@@ -39,6 +40,14 @@ _KEY_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 
 # Zulaessige Rollen (CHECK von report_modules.role).
 ROLES = ("intro", "conclusion", "body", "legal", "appendix", "closing")
+
+# Zulaessige Blocktypen (CHECK von report_modules.block_type, Build 655).
+# ZEICHENGLEICH zu BLOCK_TYPEN in management/migrate_templates_blocktyp.py und
+# zur Katalogliste in userinfo/module_panel.js:117-122. Die Doppelung ist
+# bewusst und belegt: dieser Validator soll den Fehler VOR der Datenbank
+# fangen und dabei eine Meldung liefern, die den Wertevorrat nennt - ein
+# blankes 'CHECK constraint failed' sagt dem Ausfuellenden nichts.
+BLOCK_TYPES = ("paragraph", "header", "list", "table", "quote", "delimiter")
 
 # Platzhalter-Regex — ZEICHENGLEICH zu report_render.placeholder_resolver._CHIP_RE
 # bzw. userinfo/placeholder_chips.js:73 (dort ist die Wahrheit). Bewusste,
@@ -91,6 +100,39 @@ def validate_static(m: Dict[str, Any]) -> List[str]:
         errors.append("body fehlt (der Bausteintext darf nicht leer sein).")
 
     # description ist NULLABLE -> keine Pruefung.
+
+    # ------------------------------------------------------------------
+    # Build 655 (Ticket 5d81a0c7): Blocktyp und Blockdaten.
+    #
+    # BEIDE FELDER SIND OPTIONAL. Fehlen sie im Payload, laesst das Repo den
+    # Bestandswert stehen (module_repo.upsert) - eine Pruefung auf Anwesenheit
+    # waere hier also falsch und wuerde die Maske aus Build 654 blockieren,
+    # die sie noch gar nicht sendet.
+    # ------------------------------------------------------------------
+    if "block_type" in m and m["block_type"] not in (None, ""):
+        if m["block_type"] not in BLOCK_TYPES:
+            errors.append("block_type '%s' ungueltig (erlaubt: %s)."
+                          % (m["block_type"], ", ".join(BLOCK_TYPES)))
+
+    if "block_data" in m and m["block_data"] not in (None, ""):
+        bd = m["block_data"]
+        if isinstance(bd, (dict, list)):
+            pass          # bereits strukturiert - die API hat es zerlegt
+        else:
+            try:
+                geparst = json.loads(str(bd))
+            except (TypeError, ValueError) as exc:
+                errors.append("block_data ist kein gueltiges JSON: %s" % exc)
+            else:
+                # Editor.js reicht je Block ein OBJEKT an sein Werkzeug
+                # durch. Eine Liste oder eine blanke Zahl waere zwar
+                # gueltiges JSON, aber kein Blockdatensatz - und der Fehler
+                # faellt sonst erst im Browser auf.
+                if not isinstance(geparst, dict):
+                    errors.append(
+                        "block_data muss ein JSON-OBJEKT sein (Editor.js "
+                        "reicht je Block ein Objekt an sein Werkzeug durch); "
+                        "gefunden: %s." % type(geparst).__name__)
 
     return errors
 

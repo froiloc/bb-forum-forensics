@@ -13,6 +13,14 @@ CREATE TABLE IF NOT EXISTS "report_modules" (
 	"created_at"	INTEGER NOT NULL,
 	"updated_at"	INTEGER NOT NULL,
 	"module_key"	TEXT,
+	-- Build 655 (Ticket 5d81a0c7): Blocktyp und Blockdaten. Additiv
+	-- nachgeruestet durch management/migrate_templates_blocktyp.py.
+	-- block_data IS NULL bedeutet ausdruecklich "Bestandszeile, der Inhalt
+	-- steht in body" - deshalb kein Backfill und kein veraendertes
+	-- updated_at. Der CHECK ist eine Entscheidung mit Preis: SQLite kann
+	-- ihn nicht aendern, ein siebter Blocktyp braucht einen Tabellen-Neubau.
+	"block_type"	TEXT NOT NULL DEFAULT 'paragraph' CHECK("block_type" IN ('paragraph', 'header', 'list', 'table', 'quote', 'delimiter')),
+	"block_data"	TEXT,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
 DROP TABLE IF EXISTS "placeholders";

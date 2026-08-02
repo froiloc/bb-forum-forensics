@@ -1417,12 +1417,12 @@
     {
       "id": "3d9016fe-7b24-42a5-88c1-05e73fa2b9d7",
       "type": "bug",
-      "status": "resolved",
+      "status": "open",
       "priority": "medium",
       "severity": "major",
       "title": "Baustein mit anderem Blocktyp als paragraph verliert seinen Inhalt",
       "affected_version": "0.8.576",
-      "target_version": "0.8.655",
+      "target_version": "0.8.578",
       "reporter": "Claude",
       "reported_at": "2026-07-30T06:00:00+00:00",
       "assigned_to": "Claude",
@@ -1445,17 +1445,8 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Build576.json"
-        },
-        {
-          "timestamp": "2026-08-02T15:00:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "Build 655, zusammen mit 5d81a0c7 - wie im Ticket vorgesehen ('Gehoert in den Schritt, der report_modules um block_type/block_data erweitert'). Die Entscheidung ist in die REINE Funktion _bausteinBlock herausgezogen worden: im Drop-Handler eingebettet waere sie nur ueber ein nachgebautes DataTransfer und eine Editor.js-Instanz erreichbar gewesen, also praktisch nicht pruefbar. Die Regel: bringt der Baustein eigene Blockdaten mit, werden sie UNVERAENDERT benutzt - egal welcher Typ. Fehlen sie, wird ein Absatzdatensatz aus body gebaut. Der TYP wird dabei NICHT stillschweigend auf 'paragraph' zurueckgesetzt: ein Tabellen-Baustein ohne Daten ist ein Befund und wird gemeldet. Unbrauchbares block_data wird ebenfalls gemeldet statt verworfen. Derselbe Fehler steckte im zweiten Einfuegeweg (module_panel.js _insertModule) und ist dort mitbehoben; ausserdem gab das Panel beim Ziehen fest 'paragraph' mit, statt den Typ des Bausteins zu nehmen. RE-BT01 bis RE-BT04, Gegenprobe gegen Build 654 gefahren - alle vier fallen dort um."
         }
-      ],
-      "resolved_in_version": "0.8.655"
+      ]
     },
     {
       "id": "f0a3c85b-6d17-4e92-b40a-19c62d5f83e7",
@@ -2255,11 +2246,11 @@
     {
       "id": "5d81a0c7-49f2-4e36-b7a5-0c93e28d461f",
       "type": "feature_request",
-      "status": "resolved",
+      "status": "open",
       "priority": "high",
       "severity": "major",
       "title": "Schritt 1: block_type + block_data an report_modules (Migration)",
-      "target_version": "0.8.655",
+      "target_version": "0.8.588",
       "reporter": "Alex",
       "assigned_to": "Claude",
       "related_to": [
@@ -2286,19 +2277,10 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Build587.json"
-        },
-        {
-          "timestamp": "2026-08-02T15:00:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "Build 655. Additive Migration management/migrate_templates_blocktyp.py: block_type TEXT NOT NULL DEFAULT 'paragraph' mit CHECK auf sechs Blockarten, block_data TEXT. ES WIRD KEINE EINZIGE BESTANDSZEILE ANGEFASST - block_data bleibt NULL, und NULL bedeutet ausdruecklich 'der Inhalt steht in body'. Die Verlustfreiheit ist damit nicht nachgewiesen, sondern konstruktiv; BT02 misst sie trotzdem ueber einen Fingerabdruck aller Bestandsspalten. BERICHTIGUNG AN MEINEM EIGENEN BAUPLAN: ich hatte behauptet, ein CHECK sei ueber ADD COLUMN nicht nachruestbar. Das ist falsch, nachgemessen mit sqlite 3.45.1. Nicht nachruestbar ist die spaetere ERWEITERUNG des Wertevorrats - ein siebter Blocktyp braucht einen Tabellen-Neubau. Der Preis steht dreifach fest: Skriptkopf, Werkzeugkatalog, Datenmigrationsleitfaden 19.4. DIE GEFAEHRLICHSTE STELLE WAR NICHT DAS ALTER TABLE, sondern ModuleAuthorRepo.upsert: fehlendes Feld = Bestand behalten, Feld mit Leerwert = loeschen. Ohne diese Unterscheidung loeschte jedes Speichern aus der Maske aus Build 654 die Blockdaten eines Bausteins, der sie hat. BT09b/BT09c, Gegenprobe gefahren. SECHS parallele DDL-Wahrheiten nachgezogen; GS03, GS05, TZ01, TZ03 und TZ05 sind planmaessig gefallen. UNERWARTET angeschlagen haben CK02 (Werkzeugkatalog) und PY08 (schreibfaehiges Modul ohne Werkzeugeintrag) - beide zu Recht. Datenmigrationsleitfaden auf 0.9, neuer Abschnitt 19."
         }
       ],
       "reported_at": "2026-07-30T23:00:00+00:00",
-      "affected_version": "0.8.587",
-      "resolved_in_version": "0.8.655"
+      "affected_version": "0.8.587"
     },
     {
       "id": "8f2b64d9-0a51-4c78-93e6-15d07be4a3c2",

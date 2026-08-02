@@ -4,7 +4,9 @@ CREATE TABLE IF NOT EXISTS "report_modules" (
 	"topic" TEXT NOT NULL, "body" TEXT NOT NULL,
 	"sort_order" INTEGER NOT NULL DEFAULT 0, "is_active" INTEGER NOT NULL DEFAULT 1,
 	"created_by" TEXT NOT NULL, "created_at" INTEGER NOT NULL, "updated_at" INTEGER NOT NULL,
-	"module_key" TEXT, PRIMARY KEY("id" AUTOINCREMENT));
+	"module_key" TEXT,
+	"block_type" TEXT NOT NULL DEFAULT 'paragraph' CHECK("block_type" IN ('paragraph', 'header', 'list', 'table', 'quote', 'delimiter')),
+	"block_data" TEXT, PRIMARY KEY("id" AUTOINCREMENT));
 CREATE TABLE IF NOT EXISTS "report_templates" (
 	"id" INTEGER, "template_key" TEXT NOT NULL, "title" TEXT NOT NULL, "description" TEXT,
 	"report_type" TEXT NOT NULL CHECK("report_type" IN ('interim','final','addendum')),

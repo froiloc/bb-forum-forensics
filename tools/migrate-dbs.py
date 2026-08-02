@@ -149,6 +149,7 @@ TEMPLATES_SCHRITTE = (
     (421, "Audit-CHECK erweitert", "migrate_templates_audit_check"),
     (489, "Platzhalter-Neuordnung", "migrate_templates_placeholders"),
     (497, "Gross-/Kleinschreibung", "migrate_templates_ci"),
+    (655, "Blocktyp und Blockdaten", "migrate_templates_blocktyp"),
 )
 
 

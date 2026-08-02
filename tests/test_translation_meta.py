@@ -134,7 +134,11 @@ _REPORT_MODULES_DDL = (
     "  role TEXT NOT NULL CHECK(role IN ('intro','conclusion','body','legal','appendix','closing')), "
     "  topic TEXT NOT NULL, body TEXT NOT NULL, sort_order INTEGER NOT NULL DEFAULT 0, "
     "  is_active INTEGER NOT NULL DEFAULT 1, created_by TEXT NOT NULL, "
-    "  created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)"
+    "  created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, "
+    # Build 655 (Ticket 5d81a0c7): der Lesecode (TemplatesDb) waehlt beide
+    # Spalten aus. Ohne sie liefert get_module_by_key nichts mehr - und zwar
+    # zu Recht, denn eine so alte Datei ist nicht migriert.
+    "  block_type TEXT NOT NULL DEFAULT 'paragraph', block_data TEXT)"
 )
 
 

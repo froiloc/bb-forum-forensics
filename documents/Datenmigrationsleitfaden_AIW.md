@@ -2,9 +2,9 @@
 
 ## IT-Forensisches Ermittlungswerkzeug Advanced Investigation Wrapper (AIW) · NRW
 
-**Version:** 0.8
-**Build-Bezug:** 545 (Abschnitt 18: Coordinator-Migration M037 `person_view_pref`); 544 (Umnummerierung M040 → M036 und Ende des Parallelbetriebs; Abschnitt 16 aus v0.6/Build 563 mit korrigierter Nummer, Abschnitt 15 aus v0.5/Build 540, Abschnitt 14 aus v0.4/Build 533, Abschnitte 1–13 aus v0.3/Build 469)
-**Datum:** 2026-07-26
+**Version:** 0.9
+**Build-Bezug:** 655 (Abschnitt 19: templates-Migration `block_type`/`block_data`); 545 (Abschnitt 18: Coordinator-Migration M037 `person_view_pref`); 544 (Umnummerierung M040 → M036 und Ende des Parallelbetriebs; Abschnitt 16 aus v0.6/Build 563 mit korrigierter Nummer, Abschnitt 15 aus v0.5/Build 540, Abschnitt 14 aus v0.4/Build 533, Abschnitte 1–13 aus v0.3/Build 469)
+**Datum:** 2026-08-02
 **Status:** Verbindlicher Workflow für Datenmigration im Produktivbetrieb
 **Klassifikation:** VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
 
@@ -15,6 +15,7 @@
 | Version | Build | Datum      | Änderung                                                                                                                                                              |
 | ------- | ----- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0.6     | 563   | 2026-07-26 | Neuer **Abschnitt 16**: die coordinator-Migration **M040** (`fulltext_zweck`, `fulltext_release`, Recht `fulltext.release`) für die fallübergreifende Volltextsuche (AP-3E, Instanz B) — rein additiv, **keine** Beweismitteldatenbank berührt. Enthält den **Sperrvermerk**: M040 darf erst eingespielt werden, wenn Instanz A ihre Migrationen m035–m039 geliefert hat, weil der `MigrationRunner` einen Höchststand statt einer Menge führt und später gelieferte niedrigere Nummern sonst **still übersprungen** würden (Beleg: `management/Vermerk_Migrationsluecke_Parallelbetrieb_v0_1.md`, reproduziert mit `tools/diag_migrationsluecke.py`). Neues Prüfwerkzeug `tools/pruefe_migrationskette.py`. *Anmerkung: zu v0.5 (Abschnitt 15, M034) gibt es keine Zeile in dieser Tabelle — der Kopf wurde fortgeschrieben, die Historie nicht. Hier nur vermerkt, nicht von mir nachgetragen.* |
+| 0.9     | 655   | 2026-08-02 | Neuer **Abschnitt 19**: die templates-Migration **`block_type` / `block_data`** an `report_modules` (Ticket `5d81a0c7`) — rein additiv, **zwei `ALTER TABLE ... ADD COLUMN`**, **keine Zeile angefasst**, kein `updated_at` verändert. `templates.db` ist in §6.0 als *nur-lesend / reduzierte Zeremonie* geführt und **nicht** migrationsvorbehaltspflichtig; sie trägt jedoch die **Redaktionsarbeit**, weshalb Sicherung, Audit-Zeile und `PRAGMA integrity_check` trotzdem gefahren werden. Enthält den **Vermerk zum `CHECK`-Constraint**: er ist auf ausdrückliche Entscheidung mc gesetzt und in SQLite **nicht nachträglich änderbar** — ein siebter Blocktyp erfordert einen Tabellen-Neubau. Enthält ferner den **Bestandsschutz-Vermerk** zu `ModuleAuthorRepo.upsert` (fehlendes Feld ≠ leeres Feld). |
 | 0.8     | 545   | 2026-07-26 | Neuer **Abschnitt 18**: die coordinator-Migration **M037** (`person_view_pref`) für die persönliche Ansichtseinstellung (AP-3G, Idee 37) — rein additiv, eine neue Tabelle, **keine** Beweismitteldatenbank berührt, **kein** Rechte-Seed. Erste Migration nach dem Ende des Parallelbetriebs; die Kette ist lückenlos 1–37. |
 | 0.7     | 544   | 2026-07-26 | Neuer **Abschnitt 17**: Umnummerierung **M040 → M036** und Ende des Parallelbetriebs. Die Kette ist wieder lückenlos (1–36); der Sperrvermerk aus v0.6 ist damit **erledigt**, die Ursache im `MigrationRunner` **nicht** — `tools/pruefe_migrationskette.py` bleibt vor jedem Einspielen verbindlich. Abschnitt 16 wurde auf die neue Nummer gezogen (verbindliche Betriebsanweisung); die Belegdokumente (`diag_migrationsluecke.py`, Vermerk, Baupläne) behalten ihre Nummern und ihren Wortlaut. |
 | 0.4     | 533   | 2026-07-26 | Neuer **Abschnitt 14**: die evidence-Migrationen **M002** (`annotation_tatzeit`, Build 532) und **M003** (`evidence_audit_log` + Genesis, Build 533) — die ersten Strukturänderungen an einer Beweismitteldatenbank nach dem 01.07.2026. Beide additiv und datenneutral, nachgewiesen über Inhaltshashes (TZ04/EA03). Enthält den ausdrücklichen Vermerk, dass der Eintrag für M002 bis hierher **gefehlt** hat. Beleg: Entscheidung mc 2026-07-26 (eigene Beleg-Kette in der evidence-Datei statt Best-Effort-Eintrag in `coordinator.db`). |
@@ -709,3 +710,131 @@ Es gibt keinen `down()` — wie bei allen Migrationen dieses Projekts. Der Rück
 ist die Sicherung von vor dem Lauf. Praktisch ist er hier aber folgenlos: eine
 leere Tabelle ohne Fremdbezug zu behalten kostet nichts, und die Anwendung
 kommt ohne gespeicherte Einstellung mit der Werkseinstellung aus.
+
+---
+
+## 19. Templates-Migration — `block_type` und `block_data` an `report_modules` (NEU, Build 655)
+
+**Werkzeug:** `management/migrate_templates_blocktyp.py`
+**Ticket:** `5d81a0c7-49f2-4e36-b7a5-0c93e28d461f` (Schritt 1 der Editor.js-Reihe)
+**Datenbank:** `templates.db`
+**Prüfkennungen:** BT01–BT09 (`tests/test_migrate_templates_blocktyp.py`)
+
+### 19.1 Einordnung — warum trotzdem volle Zeremonie
+
+§6.0 führt `templates.db` in der Zeile *„default / templates"* als **nur-lesend**
+mit **reduzierter Zeremonie** und ohne Migrationsvorbehalt; §17 und §18 nennen
+sie ausdrücklich als *nicht betroffen*. Das gilt weiter und wird hier **nicht**
+aufgehoben.
+
+Es heißt aber **nicht „risikofrei"**. `templates.db` trägt die
+**Redaktionsarbeit** — Bausteine, Vorlagen, Platzhalter. Verloren gingen dort
+keine Ermittlungsergebnisse, wohl aber die Arbeit der Redaktion, und die ist
+nicht aus einer Beweismitteldatenbank rekonstruierbar. Deshalb laufen Sicherung
+(`.pre655.bak`), Audit-Zeile und `PRAGMA integrity_check` wie bei einer
+vorbehaltspflichtigen Datenbank.
+
+### 19.2 Was die Migration tut
+
+```sql
+ALTER TABLE report_modules ADD COLUMN block_type TEXT NOT NULL
+    DEFAULT 'paragraph'
+    CHECK(block_type IN ('paragraph','header','list','table','quote','delimiter'));
+ALTER TABLE report_modules ADD COLUMN block_data TEXT;
+```
+
+* **Zwei `ADD COLUMN`, kein Tabellen-Neubau.** Dasselbe Argument wie in Build 497
+  (`migrate_templates_ci.py`): SQLite führt `ADD COLUMN` nicht-destruktiv aus,
+  ohne die vorhandenen `CHECK`-Constraints anzutasten. Ein Rebuild wäre
+  unnötiges Risiko.
+* **Nachgemessen, nicht angenommen** (2026-08-02, SQLite 3.45.1): `ADD COLUMN`
+  **mit** `CHECK` ist zulässig; Bestandszeilen erfüllen ihn über den Default;
+  ein `INSERT` mit unbekanntem Typ scheitert; `integrity_check` meldet `ok`.
+
+### 19.3 Verlustfreiheit — es wird keine Zeile angefasst
+
+`block_data` bleibt **NULL**, und NULL bedeutet hier ausdrücklich: *„Bestands­zeile,
+der Inhalt steht in `body`."*
+
+Daraus folgt: **kein Backfill, kein `UPDATE`, kein verändertes `updated_at`** —
+und damit auch keine Gelegenheit, dabei etwas zu verlieren. Die Verlustfreiheit
+ist nicht *nachgewiesen*, sie ist *konstruktiv*.
+
+Der Lesepfad ist darauf vorbereitet: `cockpit_baustein_vorschau.js:72–93` nimmt
+`block_type`/`block_data`, **wenn** sie vorhanden sind, und fällt sonst auf
+`body` zurück (Prüfkennung BV03).
+
+**BT02** misst es: Fingerabdruck aller Bestandsspalten vor und nach dem Lauf,
+zeichengleich, einschließlich mehrsprachiger Inhalte (UTF-8).
+
+### 19.4 Vermerk zum `CHECK` — eine Entscheidung mit Preis
+
+Der `CHECK` ist auf **ausdrückliche Entscheidung mc vom 2026-08-02** gesetzt. Er
+fängt einen Tippfehler im Blocktyp an der Datenbank ab statt erst im Browser.
+
+**Der Preis, und er ist hier festgehalten, damit ihn niemand später als
+Überraschung erlebt:** SQLite kann einen `CHECK`-Constraint **nicht ändern**.
+Ein **siebter** Blocktyp — etwa ein neues Editor.js-Werkzeug — erfordert einen
+**Tabellen-Neubau** und damit eine eigene Migration mit voller Zeremonie
+(`CREATE TABLE neu` → `INSERT ... SELECT` → Zeilenzahlvergleich → `DROP` →
+`RENAME`, Muster: `migrate_templates_placeholders.py`, Build 489).
+
+Der Wertevorrat ist belegt aus `userinfo/module_panel.js:117–122` — den
+Blocktypen, die der Berichtseditor heute kennt — und steht zusätzlich im
+`new_value` der Audit-Zeile, damit später ohne Quelltextsuche nachvollziehbar
+ist, was wann festgeschrieben wurde (BT05).
+
+### 19.5 Bestandsschutz-Vermerk zum Schreibpfad — der eigentliche Datenverlustpfad
+
+Die gefährlichste Stelle dieses Builds ist **nicht** das `ALTER TABLE`, sondern
+`ModuleAuthorRepo.upsert`.
+
+Die Redaktionsmaske sendet `block_type`/`block_data` zum Zeitpunkt dieser
+Migration **noch nicht** — die Eingabe dafür kommt erst mit Build 656. Würde ein
+**fehlendes** Feld als „leer" gedeutet, dann löschte **jedes** Speichern aus der
+alten Maske die Blockdaten eines Bausteins, der sie bereits hat. Ein Redakteur,
+der nur den Titel korrigiert, verlöre den Tabelleninhalt — und zwar still.
+
+**Verbindliche Regel** (`module_repo.py`, `management_app.py::_tpl_module_from_payload`):
+
+| Payload | Bedeutung | Wirkung |
+| --- | --- | --- |
+| Feld **nicht enthalten** | „dazu sage ich nichts" | Bestandswert **bleibt stehen** |
+| Feld enthalten, leer/`null` | „lösche das" | Wert wird geleert |
+
+`"block_type" in m` ist an dieser Stelle **bedeutungstragend** und darf **nicht**
+zu `m.get(...)` vereinfacht werden. **BT09b** misst es; **BT09c** ist die
+Gegenprobe (ohne sie wäre BT09b auch dann grün, wenn das Repo die Felder nie
+schriebe). Die Gegenprobe gegen die Fassung aus Build 654 ist gefahren: dort
+fällt BT09b um.
+
+### 19.6 Ausführung und Erwartung
+
+```
+python management/migrate_templates_blocktyp.py --templates-db <pfad>/templates.db
+```
+
+Erster Lauf: `Backup: ...pre655.bak` und `fertig: block_type und block_data
+hinzugefuegt`. Zweiter Lauf: `block_type und block_data vorhanden — No-op.`,
+**kein** zweites Backup, **keine** zweite Audit-Zeile (BT03). Rückgabewert 0 in
+beiden Fällen; 2, wenn die Datei fehlt.
+
+Stand ablesen — vorher und nachher:
+
+```
+python management/templates_db_status.py --templates-db <pfad>/templates.db
+```
+
+Erwartet: vorher `[ ] Build 655`, nachher `[x] Build 655` (BT08).
+
+### 19.7 Rückweg
+
+Es gibt keinen `down()` — wie bei allen Migrationen dieses Projekts. Der Rückweg
+ist die Sicherung von vor dem Lauf (`.pre655.bak`).
+
+Praktisch ist er hier aber weitgehend folgenlos: Zwei zusätzliche Spalten, von
+denen eine leer ist und die andere überall den Vorgabewert trägt, kosten nichts,
+und der Lesecode vor Build 655 wählt sie nicht aus. **Ausnahme, die zu beachten
+ist:** Sobald ein Baustein `block_data` **trägt**, ist ein Rückweg auf die
+Sicherung ein Verlust genau dieser Blockdaten. Ab diesem Zeitpunkt ist der
+Rückweg nicht mehr folgenlos, sondern eine Datenentscheidung.

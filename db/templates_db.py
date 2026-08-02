@@ -60,6 +60,13 @@ class ModuleRecord:
     body:        str
     sort_order:  int
     is_active:   bool
+    # Build 655 (Ticket 5d81a0c7): Blocktyp und Blockdaten.
+    # block_data IS NULL bedeutet "Bestandszeile, der Inhalt steht in body" -
+    # der Aufrufer faellt dann auf body zurueck. Beide Felder tragen einen
+    # Vorgabewert, damit aelterer Code, der ModuleRecord SELBST baut, nicht
+    # bricht (es gibt solchen Code in den Tests).
+    block_type:  str = "paragraph"
+    block_data:  Optional[str] = None
 
 
 @dataclass
@@ -188,6 +195,8 @@ class TemplatesDb:
         "report_modules": (
             "id", "title", "description", "role", "topic", "body",
             "sort_order", "is_active", "module_key",
+            # Build 655 (Ticket 5d81a0c7)
+            "block_type", "block_data",
         ),
         "report_templates": (
             "id", "template_key", "title", "description", "report_type",
@@ -203,6 +212,10 @@ class TemplatesDb:
             "management/migrate_templates_ci.py (Build 497)",
         ("report_modules", "module_key"):
             "management/migrate_templates_module_key.py (Build 341)",
+        ("report_modules", "block_type"):
+            "management/migrate_templates_blocktyp.py (Build 655)",
+        ("report_modules", "block_data"):
+            "management/migrate_templates_blocktyp.py (Build 655)",
         ("report_templates", "template_key"):
             "management/migrate_templates_full_templates.py (Build 388)",
     }
@@ -375,7 +388,7 @@ class TemplatesDb:
         try:
             row = self._con.execute(
                 "SELECT id, title, description, role, topic, body, "
-                "       sort_order, is_active "
+                "       sort_order, is_active, block_type, block_data "
                 "FROM tdb.report_modules "
                 "WHERE id = ? AND is_active = 1",
                 (module_id,),
@@ -399,7 +412,7 @@ class TemplatesDb:
         try:
             row = self._con.execute(
                 "SELECT id, title, description, role, topic, body, "
-                "       sort_order, is_active "
+                "       sort_order, is_active, block_type, block_data "
                 "FROM tdb.report_modules "
                 "WHERE module_key = ? AND is_active = 1",
                 (module_key,),
@@ -436,7 +449,7 @@ class TemplatesDb:
         try:
             sql = (
                 "SELECT id, title, description, role, topic, body, "
-                "       sort_order, is_active "
+                "       sort_order, is_active, block_type, block_data "
                 "FROM tdb.report_modules "
                 "WHERE is_active = 1"
             )
@@ -668,6 +681,14 @@ class TemplatesDb:
             body=str(row["body"]),
             sort_order=int(row["sort_order"]),
             is_active=bool(row["is_active"]),
+            # Build 655: defensiv ueber .keys(), damit ein Aufrufer mit
+            # einer noch nicht migrierten Datei nicht mit KeyError abbricht,
+            # sondern den bisherigen Zustand sieht - einen Absatz.
+            block_type=(str(row["block_type"])
+                        if "block_type" in row.keys() and row["block_type"]
+                        else "paragraph"),
+            block_data=(row["block_data"]
+                        if "block_data" in row.keys() else None),
         )
 
     @staticmethod

@@ -4220,8 +4220,19 @@ class ManagementApp:
         Nachtragen eines fehlenden module_key an einer Altzeile. Der Validator
         ignoriert sie; das Repo entscheidet, ob sie greift (nur bei
         module_key IS NULL) und weist jeden anderen Gebrauch zurueck.
+
+        BUILD 655 (Ticket 5d81a0c7): block_type und block_data werden NUR
+        DANN in das dict uebernommen, WENN SIE IM PAYLOAD STEHEN.
+
+        Das ist kein Stilfrage. Das Repo unterscheidet zwischen "Feld nicht
+        dabei" (Bestandswert behalten) und "Feld dabei, aber leer"
+        (ausdrueckliches Loeschen). Wuerden sie hier unbedingt mit
+        payload.get() gesetzt, waere jedes fehlende Feld ein None - und jedes
+        Speichern aus der Maske, die sie noch nicht sendet, loeschte die
+        Blockdaten eines Bausteins, der sie schon hat. Ein 'payload.get()'
+        mehr an dieser Stelle waere ein stiller Datenverlust.
         """
-        return {
+        m = {
             "id": payload.get("id"),
             "module_key": payload.get("module_key"),
             "title": payload.get("title"),
@@ -4231,6 +4242,11 @@ class ManagementApp:
             "body": payload.get("body"),
             "sort_order": payload.get("sort_order") or 0,
         }
+        if "block_type" in payload:
+            m["block_type"] = payload["block_type"]
+        if "block_data" in payload:
+            m["block_data"] = payload["block_data"]
+        return m
 
     def _templates_module_upsert(self, person_id: int,
                                  payload: Dict[str, Any]) -> Response:

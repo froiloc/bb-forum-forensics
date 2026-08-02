@@ -4084,10 +4084,32 @@ function _initDragDrop() {
                 insertText = window.PlaceholderChips.dehydrateChips(insertText);
             }
 
-            const blockData = modData.block_type === 'paragraph'
-                ? { text: insertText }
-                : {};
-            window._editor.blocks.insert(modData.block_type || 'paragraph', blockData, {}, targetIdx);
+            // ================================================================
+            // BUILD 655 (Ticket 3d9016fe) - HIER GING DER INHALT VERLOREN.
+            //
+            // Bis Build 654 stand hier:
+            //     const blockData = modData.block_type === 'paragraph'
+            //         ? { text: insertText } : {};
+            // Ein Baustein mit einem ANDEREN Typ als 'paragraph' bekam damit
+            // ein LEERES Datenobjekt - sein Inhalt fiel weg. Das ist bis
+            // heute niemandem aufgefallen, weil report_modules gar keinen
+            // Blocktyp fuehrte und ein Baustein deshalb IMMER ein Absatz war.
+            // Mit der Migration aus Build 655 hoert das auf, und der Fehler
+            // waere ab dem ersten Tabellen-Baustein aufgetreten.
+            //
+            // DIE NEUE REGEL: der Baustein bringt seine Blockdaten selbst mit
+            // (block_data). Sind sie da, werden sie UNVERAENDERT benutzt -
+            // egal welcher Typ. Fehlen sie, ist es eine Bestandszeile, deren
+            // Inhalt in body steht; dann wird daraus ein Absatzdatensatz
+            // gebaut. Der Typ wird dabei NICHT stillschweigend auf
+            // 'paragraph' zurueckgesetzt: ein Tabellen-Baustein ohne Daten
+            // ist ein Befund, kein Absatz.
+            // ================================================================
+            const baustein = _bausteinBlock(modData, insertText);
+            window._editor.blocks.insert(
+                baustein.type, baustein.data, {}, targetIdx);
+            const blockType = baustein.type;
+            const blockData = baustein.data;
             window._editor.caret.setToBlock(targetIdx);
             _dbg('Drop (Modul): Block eingefuegt, type=', modData.block_type,
                 'idx=', targetIdx, 'textLen=', insertText.length);
@@ -4568,11 +4590,85 @@ _dbg('report_editor.js: Exports auf window gesetzt (Build wird async geladen)');
 // Beleg: Bugfix Build 202, Projektgespraech 2026-05-17
 // Bug 2.104 Fix Build 204: isReloading() fuer module_panel._insertModule.
 // Beleg: Bugfix Build 204, Projektgespraech 2026-05-17
+// =============================================================================
+// _bausteinBlock (Build 655, Ticket 3d9016fe) — WELCHER BLOCK ENTSTEHT AUS
+// EINEM BAUSTEIN?
+//
+// HIER GING BIS BUILD 654 DER INHALT VERLOREN. Es stand da:
+//     const blockData = modData.block_type === 'paragraph'
+//         ? { text: insertText } : {};
+// Ein Baustein mit einem ANDEREN Typ als 'paragraph' bekam damit ein LEERES
+// Datenobjekt - sein Inhalt fiel weg. Das ist niemandem aufgefallen, weil
+// report_modules gar keinen Blocktyp fuehrte und ein Baustein deshalb IMMER
+// ein Absatz war. Mit der Migration aus Build 655 hoert das auf, und der
+// Fehler waere ab dem ersten Tabellen-Baustein aufgetreten.
+//
+// DIE REGEL: bringt der Baustein eigene Blockdaten mit, werden sie
+// UNVERAENDERT benutzt - egal welcher Typ. Fehlen sie, ist es eine
+// Bestandszeile, deren Inhalt in body steht; dann wird ein Absatzdatensatz
+// daraus gebaut. Der TYP wird dabei NICHT stillschweigend auf 'paragraph'
+// zurueckgesetzt: ein Tabellen-Baustein ohne Daten ist ein Befund, kein
+// Absatz - und er wird als solcher gemeldet.
+//
+// REIN und ohne DOM, damit sie einzeln geprueft werden kann (RE-BT01..04).
+// @param {Object} modData  -- die Nutzlast aus dem DataTransfer bzw. der API
+// @param {string} insertText -- der Bausteintext (body), ggf. nachgeladen
+// @returns {{type: string, data: Object}}
+// =============================================================================
+function _bausteinBlock(modData, insertText) {
+    const md = modData || {};
+    const type = md.block_type || 'paragraph';
+    let data = null;
+
+    if (md.block_data) {
+        // Das Panel reicht block_data als JSON-Zeichenkette durch
+        // (DataTransfer kann nur Text). Ein Objekt wird ebenso angenommen,
+        // damit ein kuenftiger Aufrufer nicht erst serialisieren muss.
+        if (typeof md.block_data === 'object') {
+            data = md.block_data;
+        } else {
+            try {
+                const geparst = JSON.parse(md.block_data);
+                // Editor.js reicht je Block ein OBJEKT an sein Werkzeug
+                // durch. Ein Array oder eine Zahl waere gueltiges JSON, aber
+                // kein Blockdatensatz.
+                data = (geparst && typeof geparst === 'object'
+                        && !Array.isArray(geparst)) ? geparst : null;
+                if (!data) {
+                    console.error('[forensic] Baustein: block_data ist kein '
+                        + 'JSON-Objekt; der Baustein wird aus seinem Text '
+                        + 'aufgebaut.');
+                }
+            } catch (err) {
+                // KEIN STILLES VERWERFEN (Grundregel 1): der Block wird
+                // trotzdem eingefuegt, aber der Befund steht in der Konsole -
+                // sonst faende ihn niemand.
+                console.error('[forensic] Baustein: block_data ist kein '
+                    + 'gueltiges JSON, der Baustein wird aus seinem Text '
+                    + 'aufgebaut.', err);
+                data = null;
+            }
+        }
+    }
+
+    if (!data) {
+        data = { text: insertText || '' };
+        if (type !== 'paragraph' && !insertText) {
+            console.warn('[forensic] Baustein vom Typ "' + type + '" bringt '
+                + 'weder block_data noch Text mit - der eingefuegte Block '
+                + 'bleibt leer.');
+        }
+    }
+    return { type: type, data: data };
+}
+
 window.ReportEditor = window.ReportEditor || {};
 // Build 394: Export fuer die Regressionstests. Beide Funktionen tragen die
 // Regeln, deren Verletzung den Datenverlust ausgeloest hat — sie muessen gegen
 // den ECHTEN Code geprueft werden, nicht gegen einen Nachbau ('gruen aber tot').
 window.ReportEditor._buildBlockSavePayload = _buildBlockSavePayload;
+// Build 655 (Ticket 3d9016fe): fuer die Pruefung RE-BT01..04.
+window.ReportEditor._bausteinBlock = _bausteinBlock;
 window.ReportEditor._refreshChipsInBlock   = _refreshChipsInBlock;
 // Build 496: Freigabe-Button gegen den ECHTEN Code pruefen (nicht Nachbau).
 // _setCurrentReportForTest setzt den internen _currentReport-Zustand im Test.

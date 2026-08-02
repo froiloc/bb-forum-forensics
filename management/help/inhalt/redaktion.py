@@ -595,6 +595,14 @@ MODULES = Sichthilfe(
                 "Die Testeingabe in der Tabelle ist ein Probelauf und sonst "
                 "nichts: Sie wird nirgends gespeichert und landet in keinem "
                 "Vermerk.",
+                "Ein Baustein kann mehr sein als ein Absatz — etwa eine "
+                "Tabelle. Welche Formen es gibt, ist FESTGESCHRIEBEN und "
+                "lässt sich im laufenden Betrieb nicht erweitern; eine "
+                "weitere Form ist eine Umstellung und keine Einstellung.",
+                "Ältere Bausteine sind dabei unverändert geblieben: Sie "
+                "führen keine eigene Form, und das heißt, ihr Inhalt steht "
+                "wie bisher im Bausteintext. Es ist keine Zeile angefasst "
+                "und kein Änderungsdatum verschoben worden.",
                 "Die Vorschau schreibt nichts.",
             ),
         ),

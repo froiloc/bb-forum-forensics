@@ -49,7 +49,11 @@ CREATE TABLE report_modules (
     role TEXT NOT NULL CHECK (role IN ('intro','conclusion','body','legal','appendix','closing')),
     topic TEXT NOT NULL, body TEXT NOT NULL, sort_order INTEGER NOT NULL DEFAULT 0,
     is_active INTEGER NOT NULL DEFAULT 1, created_by TEXT NOT NULL,
-    created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, module_key TEXT
+    created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, module_key TEXT,
+    -- Build 655 (Ticket 5d81a0c7). Deckungsgleich mit templates.db.schema.sql.
+    block_type TEXT NOT NULL DEFAULT 'paragraph'
+        CHECK (block_type IN ('paragraph','header','list','table','quote','delimiter')),
+    block_data TEXT
 );
 CREATE UNIQUE INDEX ux_report_modules_key ON report_modules (module_key)
     WHERE module_key IS NOT NULL;

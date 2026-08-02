@@ -78,7 +78,12 @@ def _con_mit_tdb():
     con.execute(
         "CREATE TABLE tdb.report_modules (id INTEGER, title TEXT, "
         "description TEXT, role TEXT, topic TEXT, body TEXT, "
-        "sort_order INTEGER, is_active INTEGER, module_key TEXT)")
+        "sort_order INTEGER, is_active INTEGER, module_key TEXT, "
+        # Build 655 (Ticket 5d81a0c7): die Vorrichtung muss die Wirklichkeit
+        # abbilden - genau die Lehre aus Build 584, die im Kopf dieser
+        # Funktion steht. Ohne die beiden Spalten prueft die Suite gegen eine
+        # Welt, die es nach der Migration nicht mehr gibt.
+        "block_type TEXT, block_data TEXT)")
     con.execute(
         "CREATE TABLE tdb.report_templates (id INTEGER, template_key TEXT, "
         "title TEXT, description TEXT, report_type TEXT, blocks_json TEXT, "
@@ -265,7 +270,10 @@ class GestaltUndStandTests(unittest.TestCase):
         con.execute(
             "CREATE TABLE tdb.report_modules (id INTEGER, title TEXT, "
             "description TEXT, role TEXT, topic TEXT, body TEXT, "
-            "sort_order INTEGER, is_active INTEGER, module_key TEXT)")
+            "sort_order INTEGER, is_active INTEGER, module_key TEXT, "
+            # Build 655 (Ticket 5d81a0c7): sonst meldet fehlende_spalten()
+            # hier zwei fehlende Spalten, und GS03 faellt - zu Recht.
+            "block_type TEXT, block_data TEXT)")
         con.execute(
             "CREATE TABLE tdb.report_templates (id INTEGER, template_key TEXT, "
             "title TEXT, description TEXT, report_type TEXT, "
@@ -316,10 +324,12 @@ class GestaltUndStandTests(unittest.TestCase):
             "  CHECK (target_type IN ('module','query','template')));")
         anzahl, zeilen = bericht(con, "/pfad/templates.db")
         text = "\n".join(zeilen)
-        # 'placeholders' und 'validation_ci' fehlen -> zwei Migrationen offen.
-        self.assertEqual(anzahl, 2)
+        # 'placeholders', 'validation_ci' und 'block_type' fehlen
+        # -> drei Migrationen offen (Build 655: vorher zwei).
+        self.assertEqual(anzahl, 3)
         self.assertIn("migrate_templates_placeholders", text)
         self.assertIn("migrate_templates_ci.py", text)
+        self.assertIn("migrate_templates_blocktyp.py", text)
         # Der Pfad wird in die Befehle eingesetzt, damit man sie kopieren kann.
         self.assertIn("/pfad/templates.db", text)
         # Angewandtes wird als angewandt gezeigt.

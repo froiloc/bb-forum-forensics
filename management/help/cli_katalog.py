@@ -119,6 +119,18 @@ _GEPRUEFT_620 = ("Build 620, 2026-08-01, gegen Wegwerf-Bestaende unter /tmp "
                  "Zustand nach allen Migrationen), Python 3.13")
 
 
+#: Build 655 (Ticket 5d81a0c7). Der Lauf ist gegen eine Wegwerf-templates.db
+#: unter /tmp gefahren, gebaut aus tests/fixtures_templates_schema.sql - also
+#: gegen genau die Gestalt, die der Bestand nach allen Migrationen hat. Beide
+#: Laeufe sind gemessen: der erste ergaenzt, der zweite meldet No-op. Die
+#: Zeile mit module_key 'intro.start' ist danach unveraendert (updated_at
+#: gleich, block_type 'paragraph', block_data NULL), PRAGMA integrity_check
+#: meldet 'ok'.
+_GEPRUEFT_655 = ("Build 655, 2026-08-02, gegen einen Wegwerf-Bestand unter "
+                 "/tmp (templates.db aus tests/fixtures_templates_schema.sql), "
+                 "Python 3.14")
+
+
 #: Build 623 (H19 Nachtrag). Diese Laeufe brauchten KEINEN Wegwerf-Bestand,
 #: und das ist keine Nachlaessigkeit, sondern die Eigenschaft des Werkzeugs:
 #: tools/hilfe_lektorat.py oeffnet keine Datenbank. Es liest das Hilferegister
@@ -3041,6 +3053,46 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "Es legt VON SELBST eine Sicherung an ('.pre497.bak'), sofern nicht '--no-backup' gesetzt ist - und nur dann, wenn wirklich etwas zu tun ist.",
                 "ES BAUT BEWUSST KEINE TABELLE NEU, sondern haengt nur eine Spalte an. Das ist der risikoaermste der fuenf Schritte.",
                 "ES SETZT DEN STAND VON BUILD 489 VORAUS. Fehlt die Tabelle 'placeholders', bricht es mit einem Programmabbruch ab und nennt das zustaendige Skript.",
+                "Nach dem Lauf wird die Datei mit einer Vollpruefung nachgeprueft.",
+            ),
+        ),
+    ),
+    CliEintrag(
+        schluessel="migrate_templates_blocktyp",
+        pfad="management/migrate_templates_blocktyp.py",
+        aufruf="python management/migrate_templates_blocktyp.py [--no-backup]",
+        titel="templates.db: Blockart und Blockdaten an den Bausteinen",
+        gruppe="Migration und Reparatur",
+        zweck="Einem Baustein die Moeglichkeit geben, etwas anderes zu sein "
+              "als ein Absatz - etwa eine Tabelle.",
+        art="schreibend",
+        datenbanken=("templates.db (schreibend)",),
+        betrieb="Legt selbst eine Sicherungskopie an, sofern man sie nicht "
+                "abschaltet, und prueft die Datei danach nach. Es wird KEINE "
+                "vorhandene Zeile veraendert - nur zwei Spalten angehaengt.",
+        hinweis="EINMALIGE Altmigration. Sind beide Spalten vorhanden, "
+                "geschieht nichts.",
+        konfiguration=(
+            _k("paths.templates_db",
+               "Die Vorlagen-Datenbank, auf die die Migration angewandt wird.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab.",
+               "management/migrate_templates_blocktyp.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py, db_pfad() (Build 643)", "--templates-db"),
+        ),
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python management/migrate_templates_blocktyp.py --templates-db /tmp/mig655/templates.db",
+                     "Erster Lauf: 'Backup: ...pre655.bak' und 'fertig: block_type und block_data hinzugefuegt (block_type Default \'paragraph\', block_data NULL = Inhalt steht in body), Audit-Zeile geschrieben.' Rueckgabewert 0.",
+                     _GEPRUEFT_655),
+                _bsp("python management/migrate_templates_blocktyp.py --templates-db /tmp/mig655/templates.db",
+                     "Zweiter Lauf auf demselben Bestand: 'block_type und block_data vorhanden - No-op.' Kein Backup, keine Audit-Zeile. Rueckgabewert 0.",
+                     _GEPRUEFT_655),
+            ),
+            exit_codes=((0, "ergaenzt ODER bereits vorhanden"), (2, "templates.db nicht gefunden"),),
+            warnungen=(
+                "ES VERAENDERT KEINE EINZIGE BESTANDSZEILE. Die neue Spalte 'block_data' bleibt leer, und leer bedeutet ausdruecklich 'der Inhalt steht wie bisher im Bausteintext'. Deshalb aendert sich auch kein Aenderungsdatum.",
+                "Es legt VON SELBST eine Sicherung an ('.pre655.bak'), sofern nicht '--no-backup' gesetzt ist - und nur dann, wenn wirklich etwas zu tun ist.",
+                "DIE ZULAESSIGEN BLOCKARTEN SIND FESTGESCHRIEBEN. Eine SIEBTE Blockart laesst sich nachtraeglich NICHT einfach ergaenzen: die Datenbank kann diese Festschreibung nicht aendern, es braucht dafuer einen Tabellen-Neubau und damit eine eigene Migration. Das war beim Bau bekannt und ist so entschieden worden.",
                 "Nach dem Lauf wird die Datei mit einer Vollpruefung nachgeprueft.",
             ),
         ),

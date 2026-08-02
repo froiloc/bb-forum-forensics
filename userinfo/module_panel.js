@@ -437,10 +437,19 @@ function _bindPanelEvents(body) {
             if (!mod) return;
             _dbg('Drag start (Modul, delegiert): module_id=', modId, 'title=', mod.title);
             e.dataTransfer.effectAllowed = 'copy';
+            // Build 655 (Ticket 5d81a0c7): der Blocktyp kommt jetzt AUS DEM
+            // BAUSTEIN und ist nicht mehr fest 'paragraph'. Die Listenantwort
+            // (GET /_forensic/templates) traegt ihn seit diesem Build mit.
+            //
+            // block_data wird beim Ziehen bewusst NICHT mitgegeben: die
+            // Listenantwort enthaelt weder body noch block_data (beide
+            // koennen gross sein). Der Empfaenger laedt den Baustein bei
+            // Bedarf einzeln nach - dort kommen die Blockdaten mit. Ein hier
+            // aus mod.body gebautes { text: ... } waere fuer einen
+            // Tabellen-Baustein schlicht falsch.
             e.dataTransfer.setData('application/x-forensic-module', JSON.stringify({
                 module_id:   modId,
-                block_type:  'paragraph',
-                block_data:  JSON.stringify({ text: mod.body || '' }),
+                block_type:  mod.block_type || 'paragraph',
                 module_text: mod.body || '',
             }));
         } else {
@@ -1169,8 +1178,17 @@ async function _insertModule(moduleId) {
         const m = await _fetchModuleBody(moduleId);
         if (!m) throw new Error('Modul nicht geladen.');
 
-        // 2. block_data aufbauen: text = Modul-Body (Template-Syntax)
-        const blockData = JSON.stringify({ text: m.body || '' });
+        // 2. block_data aufbauen.
+        //
+        // BUILD 655 (Ticket 5d81a0c7): bringt der Baustein eigene Blockdaten
+        // mit, werden sie UNVERAENDERT uebernommen - sonst verloere ein
+        // Tabellen-Baustein beim Einfuegen seinen Inhalt (derselbe Fehler,
+        // den Ticket 3d9016fe fuer den Ziehweg beschreibt). Nur wenn er
+        // keine hat, ist es eine Bestandszeile, deren Inhalt in body steht.
+        const blockType = m.block_type || 'paragraph';
+        const blockData = (m.block_data && typeof m.block_data === 'object')
+            ? JSON.stringify(m.block_data)
+            : JSON.stringify({ text: m.body || '' });
 
         // 3. Block speichern (Phase 4 Block-API)
         // Bug 2.114 Fix Build 206: Cursor-Block-ID ermitteln, damit der Server
@@ -1197,7 +1215,7 @@ async function _insertModule(moduleId) {
         const data = await dl._sendRequest({
             action:               'save_block',
             block_id:             blockId,
-            block_type:           'paragraph',
+            block_type:           blockType,
             block_data:           blockData,
             module_id:            moduleId,
             insert_after_block_id: insertAfterBlockId,
