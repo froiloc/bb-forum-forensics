@@ -1003,6 +1003,64 @@ td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
 .aiw-mod-ph-urteil .ist-fehler { color: var(--rot); font-weight: 600; }
 .aiw-mod-ph-test.ist-leer, .aiw-mod-ph-urteil.ist-leer { color: var(--muted); }
 
+/* ==========================================================================
+ * Build 656 (Ticket 8f2b64d9) — EINGABE: Editor.js + Rohmodus.
+ *
+ * Die Flaeche traegt beide Modi UEBEREINANDER (einer davon hidden) statt
+ * nebeneinander: sie zeigen dasselbe, nur anders, und nebeneinander laedt
+ * das zu der Frage ein, welcher von beiden gerade gilt.
+ * ========================================================================== */
+.aiw-mod-eing-titel {
+    font-size: 12px; text-transform: uppercase; letter-spacing: .04em;
+    color: #5a6b75; margin-top: 12px; padding-top: 10px;
+    border-top: 1px solid var(--line);
+}
+.aiw-mod-eing-kopf {
+    display: flex; align-items: center; gap: 8px; margin: 4px 0 6px;
+    flex-wrap: wrap;
+}
+.aiw-mod-eing-typ {
+    font: inherit; padding: 4px 6px; border: 1px solid var(--line);
+    border-radius: 4px;
+}
+.aiw-mod-eing-typ:disabled { background: #eef1f3; color: var(--muted); }
+.aiw-mod-eing-komfort {
+    min-height: 140px; padding: 8px 10px; border: 1px solid var(--line);
+    border-radius: 4px; background: #fff;
+}
+.aiw-mod-eing-komfort.ist-warnung { color: #b5730c; font-style: italic; }
+.aiw-mod-eing-komfort .codex-editor__redactor { padding-bottom: 0 !important; }
+.aiw-mod-eing-komfort .ce-block:first-child { margin-top: 0; }
+.aiw-mod-eing-roh {
+    width: 100%; box-sizing: border-box; padding: 6px 8px;
+    border: 1px solid var(--line); border-radius: 4px;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 12px; tab-size: 2;
+}
+.aiw-mod-eing-meldung { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+.aiw-mod-eing-meldung:empty { display: none; }
+.aiw-mod-eing-meldung.ist-ok      { color: var(--gruen); }
+.aiw-mod-eing-meldung.ist-fehler  { color: var(--rot); font-weight: 600; }
+.aiw-mod-eing-meldung.ist-warnung { color: #8a5a00; }
+
+/* Der Vergleichskasten. Er ist ABSICHTLICH auffaellig: er erscheint nur,
+ * wenn ein Moduswechsel etwas kosten wuerde, und das soll man nicht
+ * uebersehen koennen. */
+.aiw-mod-eing-vergleich {
+    margin-top: 8px; padding: 8px 10px; font-size: 12px;
+    border: 2px solid var(--rot); border-radius: 4px; background: #fdecea;
+}
+.aiw-mod-eing-vergleich-titel { margin: 0 0 6px; font-weight: 600; }
+.aiw-mod-eing-vergleich ul { margin: 0 0 8px; padding-left: 18px; }
+.aiw-mod-eing-vergleich li.ist-entfallen { color: var(--rot); font-weight: 600; }
+.aiw-mod-eing-vergleich li.ist-geaendert { color: #8a5a00; }
+.aiw-mod-eing-vergleich li.ist-neu       { color: var(--muted); }
+.aiw-mod-eing-vergleich-leiste { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Der Klartextspiegel ist schreibgeschuetzt — und das soll man ihm ansehen,
+ * bevor man hineinklickt. */
+.aiw-mod-bodytext[readonly] { background: #f4f6f7; color: #4a5a63; }
+
 .aiw-mod-new, .aiw-mod-drybtn, .aiw-mod-save {
   font: inherit; cursor: pointer; padding: 6px 14px;
   border: 1px solid var(--akzent); border-radius: 6px;

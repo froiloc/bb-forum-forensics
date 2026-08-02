@@ -2303,10 +2303,10 @@
     {
       "id": "8f2b64d9-0a51-4c78-93e6-15d07be4a3c2",
       "type": "feature_request",
-      "status": "resolved",
+      "status": "open",
       "priority": "high",
       "title": "Schritt 2: Editor.js als Eingabe im Management + Rohmodus",
-      "target_version": "0.8.656",
+      "target_version": "0.8.589",
       "reporter": "Alex",
       "assigned_to": "Claude",
       "related_to": [
@@ -2331,19 +2331,10 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Build587.json"
-        },
-        {
-          "timestamp": "2026-08-02T16:00:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "Build 656. Neue Datei cockpit_baustein_eingabe.js (Projektregel 10). Komfortmodus: Editor.js mit DERSELBEN Werkzeugliste wie die Vorschau (AIWBausteinVorschau.werkzeuge) - eine zweite Liste waere eine zweite Wahrheit, und dann koennte die Vorschau etwas zeigen, was die Eingabe nicht bauen kann. Rohmodus: Textfeld mit laufender JSON-Pruefung, Zeile und Spalte bei Fehlern, Klammerbilanz (zaehlt NICHT in Zeichenketten) und Formatieren-Knopf. Syntaxfaerbung ist wie im Ticket vorgesehen NICHT dabei. DER KERN IST DER VERGLEICH: beim Wechsel Roh -> Komfort wird der Editor mit den Rohdaten aufgebaut, SOFORT wieder ausgelesen und Feld fuer Feld gegen die Eingabe gehalten. Jeder Unterschied wird MIT PFAD benannt; der Wechsel gilt erst nach Bestaetigung. DAS FUEHRENDE FELD WECHSELT: block_data fuehrt, body ist der Klartextspiegel und wird beim Speichern erzeugt. Er entfernt Auszeichnung, LAESST ABER PLATZHALTER STEHEN - sonst zaehlte der Validator sie nicht mehr. Das Textfeld bleibt sichtbar und schreibgeschuetzt, weil body an Stellen gelesen wird, die von Blockdaten nichts wissen. ZWEI STELLEN HAETTEN LAUTLOS AUSGESETZT: der Entwurfsspeicher (Editor.js erzeugt weder 'input' noch 'change' auf dem Formular) und ein Entwurf aus der Zeit davor, der nur body traegt. Beide haben jetzt einen ausdruecklichen Zweig, ED08 und EI03 messen sie. VERTRAGSAENDERUNG: Speichern und Probelauf sind asynchron geworden und lesen den Editor frisch aus; MO08/MO09 nachgezogen. BD09/BD10 haben angeschlagen - meine Schaltflaechenfabrik setzte die Hilfe-Marke ueber eine Variable, und eine so gesetzte Marke ist im Quelltext nicht auffindbar. Fabrikregel aus Build 633, nachgezogen. ED01-ED08, EI01-EI03."
         }
       ],
       "reported_at": "2026-07-30T23:00:00+00:00",
-      "affected_version": "0.8.587",
-      "resolved_in_version": "0.8.656"
+      "affected_version": "0.8.587"
     },
     {
       "id": "b47ce019-6d38-4a02-95f1-8e2064cba735",
@@ -6231,7 +6222,7 @@
       ],
       "attachments": [],
       "prerequisites": "Setzt die Platzhalter-Tabelle aus Build 654 voraus.",
-      "description": "Aus Ticket 4b032177 herausgeloest. Der Wunsch dort lautet: 'Ideal waere es, wenn diese Tabelle bidirektional waere und Aenderungen in den Feldern der Tabelle sich auf den Inhalt in der textarea auswirken wuerden.' Entscheidung mc vom 2026-08-02: Stufe 1 (lesen, verifizieren, testen) zuerst, das Zurueckschreiben nachziehen.\n\nTechnisch tragfaehig, weil parse() je Chip das Originaltoken in seg.raw mitfuehrt (userinfo/placeholder_chips.js): ein geaenderter Wert wird zu einem neuen Token zusammengesetzt und positionsgenau gegen raw ersetzt.\n\nDREI FALLEN, die vorab zu entscheiden sind:\n1. TRENNZEICHEN. '|' und '}' duerfen in keinem Feld vorkommen (_CHIP_RE benutzt [^|}\\​n]). Eingaben mit diesen Zeichen sind ABZUWEISEN, nicht stillschweigend zu entschaerfen.\n2. MEHRFACHVORKOMMEN. Steht ein Name mehrfach im Text, aendert die Tabellenzeile ALLE Vorkommen. Das ist anzuzeigen, BEVOR es geschieht.\n3. EINFUEGEMARKE. Das Zurueckschreiben setzt die Einfuegemarke im Textfeld zurueck. Deshalb erst bei 'change' (Feld verlassen), nicht bei 'input'.",
+      "description": "Aus Ticket 4b032177 herausgeloest. Der Wunsch dort lautet: 'Ideal waere es, wenn diese Tabelle bidirektional waere und Aenderungen in den Feldern der Tabelle sich auf den Inhalt in der textarea auswirken wuerden.' Entscheidung mc vom 2026-08-02: Stufe 1 (lesen, verifizieren, testen) zuerst, das Zurueckschreiben nachziehen.\n\nTechnisch tragfaehig, weil parse() je Chip das Originaltoken in seg.raw mitfuehrt (userinfo/placeholder_chips.js): ein geaenderter Wert wird zu einem neuen Token zusammengesetzt und positionsgenau gegen raw ersetzt.\n\nDREI FALLEN, die vorab zu entscheiden sind:\n1. TRENNZEICHEN. '|' und '}' duerfen in keinem Feld vorkommen (_CHIP_RE benutzt [^|}\\&ZeroWidthSpace;n]). Eingaben mit diesen Zeichen sind ABZUWEISEN, nicht stillschweigend zu entschaerfen.\n2. MEHRFACHVORKOMMEN. Steht ein Name mehrfach im Text, aendert die Tabellenzeile ALLE Vorkommen. Das ist anzuzeigen, BEVOR es geschieht.\n3. EINFUEGEMARKE. Das Zurueckschreiben setzt die Einfuegemarke im Textfeld zurueck. Deshalb erst bei 'change' (Feld verlassen), nicht bei 'input'.",
       "expected_behavior": "Aenderungen in der Platzhalter-Tabelle wirken zeichengenau auf den Bausteintext zurueck, ohne Verlust bei Sonderzeichen und UTF-8.",
       "actual_behavior": "",
       "updates": [

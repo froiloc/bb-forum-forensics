@@ -83,7 +83,28 @@
  *   ihn ein und speist ihn - genau wie die Vorschau, mit derselben
  *   Entprellung und aus demselben Formularzustand.
  *
- * Version: v0.8.654 · Build: 654 · 2026-08-02
+ * Build 656 (Ticket 8f2b64d9): EDITOR.JS ALS EINGABE, dazu ein Rohmodus.
+ *   Der Bauteil liegt in cockpit_baustein_eingabe.js (Projektregel 10); diese
+ *   Datei haengt ihn ein, speist ihn aus dem Datensatz und liest ihn beim
+ *   Speichern aus.
+ *
+ *   DAS FUEHRENDE FELD WECHSELT. Bis Build 655 war 'body' die Wahrheit. Ab
+ *   jetzt fuehren block_type/block_data, und body ist ihr KLARTEXTSPIEGEL -
+ *   er wird beim Speichern aus den Blockdaten erzeugt. Das Textfeld bleibt
+ *   sichtbar, aber SCHREIBGESCHUETZT: es zeigt, was in den Altpfaden
+ *   ankommt (Bausteinliste des Ermittlerservers, Rueckfall der Vorschau,
+ *   Platzhalterzaehlung), und genau dafuer ist es gut.
+ *
+ *   WARUM NICHT WEG DAMIT: body ist NOT NULL und wird an Stellen gelesen, die
+ *   von Blockdaten nichts wissen. Ein unsichtbares Feld, das trotzdem
+ *   irgendwo ankommt, ist schlimmer als ein sichtbares, das man nicht
+ *   aendern kann.
+ *
+ *   DAS SPEICHERN IST SEITHER ASYNCHRON: editor.save() gibt ein Versprechen.
+ *   buildPayload bleibt REIN und bekommt die Blockdaten uebergeben - eine
+ *   reine Funktion, die auf ein Versprechen wartet, waere keine mehr.
+ *
+ * Version: v0.8.656 · Build: 656 · 2026-08-02
  */
 (function () {
     'use strict';
@@ -111,6 +132,10 @@
         // Kataloge ueberdauern einen Neuaufbau der Maske, weil sie ueber das
         // Netz kommen und sich beim Bearbeiten eines Bausteins nicht aendern.
         platzhalter: null, phKatalog: null, phRegeln: null,
+        // Build 656: die Eingabe (Editor.js + Rohmodus) und der zuletzt
+        // gelesene Blockstand. blockStand ist die BRUECKE zwischen dem
+        // asynchronen editor.save() und den reinen Funktionen dieser Datei.
+        eingabe: null, blockStand: { type: 'paragraph', data: {} },
         // Build 653: die Tabelle. listEl bleibt daneben bestehen und traegt
         // NUR im Rueckfall etwas - genau eines der beiden ist je gesetzt.
         table: null, nurOhneKennung: false, nurOhneBtn: null
@@ -297,7 +322,18 @@
             role: f.role || 'body',
             topic: String(f.topic || '').trim(),
             body: (f.body === undefined || f.body === null) ? '' : String(f.body),
-            sort_order: parseInt(f.sort_order, 10) || 0
+            sort_order: parseInt(f.sort_order, 10) || 0,
+            // BUILD 656: Blockart und Blockdaten.
+            //
+            // Sie werden NUR AUFGENOMMEN, WENN SIE DA SIND. Das Repo
+            // unterscheidet zwischen "Feld nicht dabei" (Bestandswert
+            // behalten) und "Feld dabei, aber leer" (loeschen) - die
+            // Zusicherung aus Build 655. Ein unbedingtes Setzen hier haette
+            // sie ausgehebelt: ein Speichern, bei dem der Editor gerade
+            // nicht ausgelesen werden konnte, loeschte sonst die Blockdaten.
+            block_type: (f.block_type === undefined || f.block_type === null
+                || f.block_type === '') ? undefined : String(f.block_type),
+            block_data: (f.block_data === undefined) ? undefined : f.block_data
         };
     }
 
@@ -370,6 +406,16 @@
             f.body.value = m.body || '';
             f.sort_order.value = (m.sort_order === undefined
                 || m.sort_order === null) ? 0 : m.sort_order;
+            // BUILD 656: Blockart und Blockdaten in die Eingabe.
+            // block_data IS NULL heisst 'Bestandszeile, der Inhalt steht in
+            // body' (Build 655) - daraus wird ein Absatzdatensatz gebaut.
+            // Genau derselbe Rueckfall wie in der Vorschau (blockAus), und
+            // aus demselben Grund.
+            _state.blockStand = _blockstandAus(m);
+            if (_state.eingabe) {
+                _state.eingabe.setze(_state.blockStand.type,
+                                     _state.blockStand.data);
+            }
             // selKey adressiert die Zeile in der Liste. Bei einer Altzeile
             // gibt es keinen Schluessel - dann wird ueber die id adressiert,
             // sonst stuende dort der Text "null".
@@ -383,6 +429,10 @@
             f.topic.value = '';
             f.body.value = '';
             f.sort_order.value = 0;
+            _state.blockStand = { type: 'paragraph', data: { text: '' } };
+            if (_state.eingabe) {
+                _state.eingabe.setze('paragraph', { text: '' });
+            }
             _state.selKey = null;
             _state.selId = null;
             _state.nachtragId = null;
@@ -522,6 +572,40 @@
         }
     }
 
+    // _eingabeAufbauen (Build 656, Ticket 8f2b64d9).
+    // ------------------------------------------------------------------
+    // Der Bauteil liegt in cockpit_baustein_eingabe.js. Fehlt er, sagt die
+    // Flaeche das im Klartext - und das schreibgeschuetzte Textfeld wird
+    // WIEDER BESCHREIBBAR. Das ist der Rueckfall auf den Zustand vor diesem
+    // Build: lieber die alte Eingabe als gar keine.
+    function _eingabeAufbauen(host) {
+        var ein = (typeof window !== 'undefined')
+            ? window.AIWBausteinEingabe : null;
+        if (!ein || typeof ein.erzeuge !== 'function') {
+            host.textContent = 'Eingabe-Modul nicht geladen '
+                + '(cockpit_baustein_eingabe.js). Der Bausteintext unten ist '
+                + 'deshalb wieder direkt beschreibbar.';
+            host.classList.add('ist-warnung');
+            var f0 = _state.fields;
+            if (f0 && f0.body) { f0.body.readOnly = false; }
+            _state.eingabe = null;
+            return;
+        }
+        _state.eingabe = ein.erzeuge(host, {
+            // DIE BRUECKE ZUM ENTWURFSSPEICHER. cockpit_modules.js sichert
+            // bei 'input'/'change' auf dem Formular; Editor.js erzeugt
+            // beides NICHT. Ohne diesen Rueckruf setzte der Entwurf
+            // stillschweigend aus, und ein Neuladen kostete die Arbeit.
+            onChange: function () {
+                _blockStandLesen().then(function () {
+                    _persistDraft();
+                    _vorschauAktualisieren();
+                });
+            }
+        });
+        _state.eingabe.setze(_state.blockStand.type, _state.blockStand.data);
+    }
+
     // _platzhalterAufbauen (Build 654, Ticket 4b032177).
     // ------------------------------------------------------------------
     // Der Bauteil liegt in cockpit_baustein_platzhalter.js. Fehlt er, sagt
@@ -578,8 +662,40 @@
         }
     }
 
+    // _blockstandAus (Build 656): aus einem Datensatz die Blockangaben.
+    // REIN und deshalb einzeln pruefbar.
+    //
+    // Die Regel ist dieselbe wie in cockpit_baustein_vorschau.js blockAus:
+    // liegen Blockdaten vor, gelten sie unveraendert; sonst ist es eine
+    // Bestandszeile aus der Zeit vor Build 655, deren Inhalt in body steht.
+    // Der TYP bleibt dabei stehen - ein Tabellen-Baustein ohne Daten ist ein
+    // Befund und kein Absatz (dieselbe Haltung wie in report_editor.js).
+    function _blockstandAus(m) {
+        var mm = m || {};
+        var typ = mm.block_type || 'paragraph';
+        var daten = mm.block_data;
+        if (typeof daten === 'string' && daten !== '') {
+            try { daten = JSON.parse(daten); } catch (e) { daten = null; }
+        }
+        if (daten && typeof daten === 'object' && !Array.isArray(daten)) {
+            return { type: typ, data: daten };
+        }
+        return { type: typ, data: { text: mm.body || '' } };
+    }
+
+    // _currentFields: der Formularzustand als flaches dict.
+    //
+    // BUILD 656: body kommt NICHT mehr aus dem Textfeld, sondern aus dem
+    // Klartextspiegel der Blockdaten. Das Feld ist schreibgeschuetzt und
+    // zeigt nur noch an, was in den Altpfaden ankommt.
+    //
+    // Die Funktion bleibt SYNCHRON und stuetzt sich auf _state.blockStand -
+    // den zuletzt aus dem Editor gelesenen Stand. Sie asynchron zu machen
+    // haette buildPayload mitgerissen, und damit die reine Funktion, gegen
+    // die MO05 und MK03 pruefen.
     function _currentFields() {
         var f = _state.fields;
+        var stand = _state.blockStand || { type: 'paragraph', data: {} };
         return {
             id: _state.nachtragId,
             module_key: f.module_key.value,
@@ -587,9 +703,38 @@
             description: f.description.value,
             role: f.role.value,
             topic: f.topic.value,
-            body: f.body.value,
-            sort_order: f.sort_order.value
+            body: _klartext(stand),
+            sort_order: f.sort_order.value,
+            block_type: stand.type,
+            block_data: stand.data
         };
+    }
+
+    // _klartext: der body-Spiegel. Faellt der Bauteil aus, bleibt der Wert
+    // im Textfeld stehen - lieber der alte body als ein leerer (body ist
+    // NOT NULL, und ein leerer faellt beim Validator durch).
+    function _klartext(stand) {
+        var ein = (typeof window !== 'undefined')
+            ? window.AIWBausteinEingabe : null;
+        if (ein && typeof ein.klartextAus === 'function') {
+            return ein.klartextAus(stand.type, stand.data);
+        }
+        var f = _state.fields;
+        return (f && f.body) ? f.body.value : '';
+    }
+
+    // _blockStandLesen: den Editor auslesen und den Spiegel nachziehen.
+    // Gibt ein Versprechen - der Aufrufer entscheidet, ob er darauf wartet.
+    function _blockStandLesen() {
+        if (!_state.eingabe || typeof _state.eingabe.lies !== 'function') {
+            return Promise.resolve(_state.blockStand);
+        }
+        return _state.eingabe.lies().then(function (b) {
+            _state.blockStand = { type: b.type, data: b.data };
+            var f = _state.fields;
+            if (f && f.body) { f.body.value = _klartext(_state.blockStand); }
+            return _state.blockStand;
+        });
     }
 
     // _aktuelleKennung: was gerade in der Maske steht, als Adresse.
@@ -912,7 +1057,11 @@
 
     // --- Browser-Zwischenspeicher des Entwurfs (Build 488) ---------------
     function _draftFromState() {
-        return { v: 1, fields: _currentFields(), selKey: _state.selKey,
+        // v: 2 seit Build 656 - fields traegt jetzt block_type/block_data.
+        // Die Nummer wird gefuehrt, aber NICHT als Sperre benutzt:
+        // _restoreDraft kommt mit beiden Formen zurecht, und ein Entwurf
+        // wegzuwerfen, nur weil er aelter ist, waere Arbeitsverlust ohne Not.
+        return { v: 2, fields: _currentFields(), selKey: _state.selKey,
                  selId: _state.selId, nachtragId: _state.nachtragId };
     }
     function _persistDraft() {
@@ -950,6 +1099,23 @@
         f.body.value = fl.body || '';
         f.sort_order.value = (fl.sort_order === undefined
             || fl.sort_order === null) ? 0 : fl.sort_order;
+        // BUILD 656: die Blockangaben aus dem Entwurf.
+        //
+        // EIN ENTWURF AUS DER ZEIT VOR BUILD 656 kennt sie nicht - er traegt
+        // nur body. Dann wird derselbe Rueckfall benutzt wie fuer eine
+        // Bestandszeile: ein Absatz aus dem Text. Ohne diesen Zweig stuende
+        // nach dem Wiederherstellen ein LEERER Editor da, obwohl der Entwurf
+        // Text enthaelt - und das saehe aus wie verlorene Arbeit. Genau die
+        // Art Fehler, die Build 575 am Schluesselfeld gekostet hat.
+        _state.blockStand = _blockstandAus({
+            block_type: fl.block_type,
+            block_data: fl.block_data,
+            body: fl.body
+        });
+        if (_state.eingabe) {
+            _state.eingabe.setze(_state.blockStand.type,
+                                 _state.blockStand.data);
+        }
         _state.selKey = (d.selKey === undefined) ? null : d.selKey;
         _state.selId = (d.selId === undefined) ? null : d.selId;
         _state.nachtragId = (d.nachtragId === undefined) ? null : d.nachtragId;
@@ -1069,10 +1235,32 @@
         fDesc.setAttribute('data-hilfe-id',
             'modules.bedienung.beschreibung');
         fDesc.rows = 2;
-        var fBody = _labeledField(form, 'Bausteintext (body)', 'textarea',
+        // --- Eingabe (Build 656, Ticket 8f2b64d9) ------------------------
+        // Sie steht VOR dem Klartextspiegel: hier wird gearbeitet, dort
+        // wird nachgesehen.
+        var eingKopf = document.createElement('div');
+        eingKopf.className = 'aiw-mod-eing-titel';
+        eingKopf.setAttribute('data-hilfe-id', 'modules.bedienung.eingabe');
+        eingKopf.textContent = 'Bausteininhalt';
+        form.appendChild(eingKopf);
+        var eingHost = document.createElement('div');
+        eingHost.className = 'aiw-mod-eing';
+        eingHost.id = 'aiw-mod-eing';
+        form.appendChild(eingHost);
+        _state.eingabe = null;
+
+        var fBody = _labeledField(form,
+            'Klartextspiegel (body) — wird beim Speichern erzeugt', 'textarea',
             'aiw-mod-bodytext');
         fBody.setAttribute('data-hilfe-id',
             'modules.bedienung.bausteintext');
+        // BUILD 656: SCHREIBGESCHUETZT, ABER SICHTBAR. body ist NOT NULL und
+        // wird an Stellen gelesen, die von Blockdaten nichts wissen. Wer
+        // wissen will, was dort ankommt, muss es sehen koennen - ein
+        // unsichtbares Feld, das trotzdem irgendwo ankommt, waere schlimmer
+        // als ein sichtbares, das man nicht aendern kann.
+        fBody.readOnly = true;
+        fBody.rows = 4;
         var fSort = _labeledField(form, 'Sortierung', 'number', 'aiw-mod-sort');
         fSort.setAttribute('data-hilfe-id',
             'modules.bedienung.sortierung');
@@ -1160,6 +1348,8 @@
         // Build 652: Ziel ist die dritte Rasterspalte, nicht mehr das Formular.
         _vorschauAufbauen(vsCol);
         _platzhalterAufbauen(phHost);
+        // BUILD 656: ebenfalls erst jetzt - Editor.js misst seinen Behaelter.
+        _eingabeAufbauen(eingHost);
 
         // BUILD 653: DIE TABELLE EBENFALLS ERST JETZT - aus demselben Grund.
         // Gelingt sie nicht, tritt die alte Schaltflaechenliste an ihre
@@ -1177,17 +1367,24 @@
             vsTimer = setTimeout(_vorschauAktualisieren, 350);
         });
 
+        // BUILD 656: BEIDE KNOEPFE LESEN DEN EDITOR FRISCH AUS, bevor sie
+        // etwas senden. Sich auf den gemerkten Stand zu verlassen hiesse,
+        // die letzte Eingabe zu verlieren, wenn der Rueckruf noch nicht
+        // durchgelaufen ist - und genau das faellt niemandem auf, weil das
+        // Gespeicherte fast immer stimmt.
         dryBtn.addEventListener('click', function () {
             _setMsg('');
-            if (typeof opts.onDryRun === 'function') {
+            if (typeof opts.onDryRun !== 'function') { return; }
+            _blockStandLesen().then(function () {
                 opts.onDryRun(buildPayload(_currentFields()));
-            }
+            });
         });
         saveBtn.addEventListener('click', function () {
             renderDryRun(null);
-            if (typeof opts.onSave === 'function') {
+            if (typeof opts.onSave !== 'function') { return; }
+            _blockStandLesen().then(function () {
                 opts.onSave(buildPayload(_currentFields()));
-            }
+            });
         });
 
         _fillForm(null);
@@ -1234,6 +1431,11 @@
             try { _state.platzhalter.aus(); } catch (e) { /* nie werfen */ }
         }
         _state.platzhalter = null;
+        // Build 656: die Editor-Instanz der EINGABE - wie die der Vorschau.
+        if (_state.eingabe && typeof _state.eingabe.aus === 'function') {
+            try { _state.eingabe.aus(); } catch (e) { /* nie werfen */ }
+        }
+        _state.eingabe = null;
     }
 
     // -------------------------------------------------------------------------
@@ -1245,6 +1447,7 @@
         moduleLabel: moduleLabel,
         sortModules: sortModules,
         moduleRows: moduleRows,           // Tabellenzeilen (Build 653)
+        _blockstandAus: _blockstandAus,   // Blockangaben je Datensatz (Build 656)
         zeilenKennung: zeilenKennung,     // Adressweg einer Zeile (Build 653)
         isValidKey: isValidKey,
         buildPayload: buildPayload,

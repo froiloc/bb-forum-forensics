@@ -137,7 +137,20 @@ describe("cockpit_modules", () => {
     expect(items[1].classList.contains("is-active")).toBe(true);
   });
 
-  it("MO08 Vorschau-Button ruft onDryRun mit Payload", () => {
+  // BUILD 656: BEIDE KNOEPFE SIND ASYNCHRON GEWORDEN.
+  //
+  // Sie lesen erst den Editor aus (editor.save() gibt ein Versprechen) und
+  // senden dann. Der Rueckruf kommt deshalb einen Mikrotask spaeter. Das ist
+  // eine echte Vertragsaenderung und keine Testkosmetik - deshalb steht sie
+  // hier als Kommentar und nicht nur als 'await'.
+  //
+  // Der Rest des Vertrags gilt unveraendert: ohne das Eingabe-Modul
+  // (cockpit_baustein_eingabe.js, in diesem Kontext nicht geladen) faellt
+  // die Maske auf das beschreibbare Textfeld zurueck, und body ist wieder
+  // das, was dort steht. Genau dieser Rueckfall wird hier mitgemessen.
+  const _tick = () => new Promise((r) => setTimeout(r, 0));
+
+  it("MO08 Vorschau-Button ruft onDryRun mit Payload", async () => {
     const win = _ctx();
     const api = _api(win);
     const main = win.document.getElementById("aiw-main");
@@ -150,12 +163,13 @@ describe("cockpit_modules", () => {
     main.querySelector(".aiw-mod-topic").value = "Thema";
     main.querySelector(".aiw-mod-bodytext").value = "Hallo {{a:x}} {{m:y}}";
     main.querySelector(".aiw-mod-drybtn").dispatchEvent(new win.Event("click"));
+    await _tick();
     expect(seen).toBeTruthy();
     expect(seen.module_key).toBe("neu.key");
     expect(seen.body).toContain("{{a:x}}");
   });
 
-  it("MO09 Speichern-Button ruft onSave mit Payload", () => {
+  it("MO09 Speichern-Button ruft onSave mit Payload", async () => {
     const win = _ctx();
     const api = _api(win);
     const main = win.document.getElementById("aiw-main");
@@ -168,6 +182,7 @@ describe("cockpit_modules", () => {
     main.querySelector(".aiw-mod-topic").value = "T";
     main.querySelector(".aiw-mod-bodytext").value = "Body";
     main.querySelector(".aiw-mod-save").dispatchEvent(new win.Event("click"));
+    await _tick();
     expect(saved).toBeTruthy();
     expect(saved.module_key).toBe("s.key");
     expect(saved.body).toBe("Body");
@@ -739,5 +754,100 @@ describe("Bausteinmodule — Tabelle statt Liste (Build 653)", () => {
     // dass irgendetwas geraeumt wurde.
     expect(gemacht.filter).toEqual([]);
     expect(btn.getAttribute("aria-pressed")).toBe("false");
+  });
+});
+
+/* ===========================================================================
+ * BUILD 656 (Ticket 8f2b64d9) — DIE MASKE MIT DER NEUEN EINGABE.
+ *
+ * Der Bauteil selbst liegt in cockpit_baustein_eingabe.js und wird dort
+ * geprueft (ED01-ED08). Hier geht es um die EINBINDUNG: was die Maske aus
+ * einem Datensatz macht, was sie in den Entwurf schreibt und was sie tut,
+ * wenn der Bauteil fehlt.
+ *
+ * EI01 — _blockstandAus: Blockdaten fuehren, sonst Rueckfall auf body.
+ * EI02 — der Klartextspiegel ist schreibgeschuetzt — ausser der Bauteil fehlt.
+ * EI03 — der Entwurf traegt die Blockangaben, und ein ALTER Entwurf ohne sie
+ *        geht nicht verloren.
+ * =========================================================================== */
+describe("Bausteinmodule — Einbindung der Eingabe (Build 656)", () => {
+  // EI01 --------------------------------------------------------------------
+  it("EI01: _blockstandAus laesst Blockdaten fuehren", () => {
+    const api = _api();
+    const f = api._blockstandAus;
+    expect(typeof f).toBe("function");
+
+    // Der Regelfall ab Build 655.
+    expect(f({ block_type: "table", block_data: { content: [["a"]] },
+               body: "egal" }))
+      .toEqual({ type: "table", data: { content: [["a"]] } });
+
+    // Als JSON-Zeichenkette (so kommt es aus dem Entwurfsspeicher).
+    expect(f({ block_type: "table", block_data: '{"content":[["a"]]}' }))
+      .toEqual({ type: "table", data: { content: [["a"]] } });
+
+    // DER BESTANDSFALL: block_data IS NULL heisst 'der Inhalt steht in body'
+    // (Build 655). Derselbe Rueckfall wie in der Vorschau, aus demselben
+    // Grund - und OHNE den Typ stillschweigend zurueckzusetzen.
+    expect(f({ block_type: "paragraph", block_data: null, body: "Alt." }))
+      .toEqual({ type: "paragraph", data: { text: "Alt." } });
+    expect(f({ block_type: "table", block_data: null, body: "Notbehelf" }))
+      .toEqual({ type: "table", data: { text: "Notbehelf" } });
+
+    // Unbrauchbares block_data wird nicht geraten, sondern faellt zurueck.
+    expect(f({ block_type: "list", block_data: "{kaputt", body: "T" }))
+      .toEqual({ type: "list", data: { text: "T" } });
+    expect(f({ block_data: "[1,2]", body: "T" }))
+      .toEqual({ type: "paragraph", data: { text: "T" } });
+    expect(f(null)).toEqual({ type: "paragraph", data: { text: "" } });
+  });
+
+  // EI02 --------------------------------------------------------------------
+  it("EI02: ohne das Eingabe-Modul bleibt das Textfeld beschreibbar", () => {
+    // In diesem Kontext ist cockpit_baustein_eingabe.js NICHT geladen. Der
+    // Rueckfall ist Absicht: lieber die alte Eingabe als gar keine.
+    const win = _ctx();
+    const main = win.document.getElementById("aiw-main");
+    _api(win).renderModules(main, _data(), {});
+
+    const host = main.querySelector("#aiw-mod-eing");
+    expect(host).toBeTruthy();
+    // KEIN STILLER AUSFALL: die Flaeche sagt, was fehlt.
+    expect(host.textContent).toContain("cockpit_baustein_eingabe.js");
+    expect(host.className).toContain("ist-warnung");
+    expect(main.querySelector(".aiw-mod-bodytext").readOnly).toBe(false);
+  });
+
+  // EI03 --------------------------------------------------------------------
+  it("EI03: der Entwurf traegt die Blockangaben und verliert alte nicht", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = win.document.getElementById("aiw-main");
+    api.renderModules(main, _data(), {});
+
+    // Einen Baustein waehlen und tippen -> der Entwurf entsteht.
+    main.querySelectorAll(".aiw-mod-item")[0].click();
+    main.querySelector(".aiw-mod-title").value = "Geaendert";
+    main.querySelector(".aiw-mod-title")
+        .dispatchEvent(new win.Event("input", { bubbles: true }));
+
+    const entwurf = JSON.parse(win.localStorage.getItem(api.DRAFT_KEY));
+    expect(entwurf.v).toBe(2);
+    expect(entwurf.fields.block_type).toBeTruthy();
+    expect(entwurf.fields.block_data).toBeTruthy();
+
+    // EIN ENTWURF AUS DER ZEIT VOR BUILD 656 kennt die Blockangaben nicht.
+    // Er darf trotzdem nicht als leer wiederhergestellt werden - das saehe
+    // aus wie verlorene Arbeit.
+    const win2 = _ctx();
+    win2.localStorage.setItem(api.DRAFT_KEY, JSON.stringify({
+      v: 1, selKey: "intro.std", selId: 1, nachtragId: null,
+      fields: { module_key: "intro.std", title: "Alt", description: "",
+                role: "intro", topic: "X", body: "Alter Text", sort_order: 0 },
+    }));
+    const main2 = win2.document.getElementById("aiw-main");
+    _api(win2).renderModules(main2, _data(), {});
+    expect(main2.querySelector(".aiw-mod-title").value).toBe("Alt");
+    expect(main2.querySelector(".aiw-mod-bodytext").value).toBe("Alter Text");
   });
 });

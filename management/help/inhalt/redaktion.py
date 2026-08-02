@@ -551,6 +551,29 @@ MODULES = Sichthilfe(
             ),
         ),
         Abschnitt(
+            "eingabe", "Den Baustein schreiben",
+            (
+                "Der Bausteininhalt wird in einer Fläche geschrieben, die "
+                "ihn so zeigt, wie er später im Vermerk aussieht. Links "
+                "darüber steht seine Art — Absatz, Überschrift, Liste, "
+                "Tabelle, Zitat oder Trenner.",
+                "Für Feinarbeit gibt es die Rohansicht: dort stehen die "
+                "Daten des Bausteins in ihrer gespeicherten Form. Beim Tippen "
+                "wird laufend geprüft; bei einem Fehler stehen Zeile und "
+                "Spalte darunter, dazu eine Klammerbilanz und ein Knopf zum "
+                "sauberen Einrücken.",
+                "DER WEG ZURÜCK IST DER HEIKLE. Die gestaltete Eingabe gibt "
+                "den Inhalt an das jeweilige Werkzeug weiter, und was dieses "
+                "Werkzeug nicht kennt, überlebt den Weg nicht. Deshalb wird "
+                "beim Wechsel VERGLICHEN: Jede Stelle, die verlorenginge "
+                "oder sich änderte, wird einzeln aufgeführt. Der Wechsel "
+                "geschieht erst, wenn er ausdrücklich bestätigt wird — sonst "
+                "bleibt alles in der Rohansicht stehen.",
+                "Unter der Eingabe steht der Klartextspiegel. Er lässt sich "
+                "nicht beschreiben und wird beim Speichern erzeugt.",
+            ),
+        ),
+        Abschnitt(
             "platzhaltertabelle", "Die Platzhalter-Tabelle",
             (
                 "Unter dem Bausteintext stehen alle Platzhalter, die er "
@@ -732,12 +755,15 @@ MODULES = Sichthilfe(
             "Wofür dieser Baustein gedacht ist. Ein Satz hier erspart der "
             "nächsten Person die Rückfrage."),
         Kontexthilfe(
-            "modules.bedienung.bausteintext", "Bausteintext",
-            "Der Text selbst. Er ist Freitext und darf Platzhalter enthalten; "
-            "diese bleiben stehen und werden erst beim Schreiben des "
-            "konkreten Vermerks eingesetzt. Wie er wirkt, zeigt die Vorschau "
-            "darüber.",
-            verweis="modules#vorschau"),
+            "modules.bedienung.bausteintext", "Klartextspiegel",
+            "Der Baustein als reiner Text — OHNE Gestaltung, mit allen "
+            "Platzhaltern. Das Feld lässt sich NICHT beschreiben: Es wird "
+            "beim Speichern aus dem Bausteininhalt darüber erzeugt. Es steht "
+            "trotzdem sichtbar da, weil einige Stellen mit dieser Fassung "
+            "arbeiten — die Auswahlliste beim Schreiben eines Vermerks und "
+            "die Zählung der Platzhalter. Wer wissen will, was dort ankommt, "
+            "soll es sehen können.",
+            verweis="modules#eingabe"),
         # Build 654 (Ticket 4b032177): die Platzhalter-Tabelle.
         Kontexthilfe(
             "modules.bedienung.phtabelle", "Platzhalter im Bausteintext",
@@ -754,6 +780,50 @@ MODULES = Sichthilfe(
             "— stehen BEIDE Urteile da. Weichen sie voneinander ab, wird das "
             "ausdrücklich gesagt: beim Ausfüllen gilt die hinterlegte.",
             verweis="modules#platzhaltertabelle"),
+        # Build 656 (Ticket 8f2b64d9): Editor.js als Eingabe plus Rohmodus.
+        Kontexthilfe(
+            "modules.bedienung.eingabe", "Bausteininhalt",
+            "Hier wird der Baustein geschrieben. Die Fläche zeigt ihn so, wie "
+            "er später im Vermerk aussieht. Für Feinarbeit lässt sich auf die "
+            "Rohansicht umschalten.",
+            verweis="modules#eingabe"),
+        Kontexthilfe(
+            "modules.bedienung.blockart", "Art des Bausteins",
+            "Ob der Baustein ein Absatz, eine Überschrift, eine Liste, eine "
+            "Tabelle, ein Zitat oder ein Trenner ist. Die Auswahl ist "
+            "abschließend und lässt sich im laufenden Betrieb nicht "
+            "erweitern. In der Rohansicht steht die Art fest — dort werden "
+            "nur die Inhalte bearbeitet.",
+            verweis="modules#eingabe"),
+        Kontexthilfe(
+            "modules.bedienung.rohmodus", "Rohansicht / Komfortansicht",
+            "Wechselt zwischen der gestalteten Eingabe und der reinen "
+            "Datenansicht. BEIM WECHSEL ZURÜCK WIRD VERGLICHEN: Was die "
+            "gestaltete Eingabe nicht kennt, würde sie beim Übernehmen "
+            "verlieren. Solche Stellen werden EINZELN aufgeführt, und der "
+            "Wechsel geschieht erst, wenn er ausdrücklich bestätigt wird.",
+            verweis="modules#eingabe"),
+        Kontexthilfe(
+            "modules.bedienung.rohtext", "Rohansicht",
+            "Die Daten des Bausteins in ihrer gespeicherten Form. Beim Tippen "
+            "wird laufend geprüft: Ist etwas nicht in Ordnung, stehen Zeile "
+            "und Spalte darunter, dazu eine Klammerbilanz. Eine farbige "
+            "Hervorhebung gibt es hier bewusst nicht.",
+            verweis="modules#eingabe"),
+        Kontexthilfe(
+            "modules.bedienung.formatieren", "Formatieren",
+            "Rückt die Rohansicht sauber ein. Am INHALT ändert sich dabei "
+            "nichts — nur die Darstellung. Ist der Text fehlerhaft, wird "
+            "nicht formatiert, sondern der Fehler benannt."),
+        Kontexthilfe(
+            "modules.bedienung.uebernehmen", "Wechseln und Änderungen übernehmen",
+            "Vollzieht den Wechsel MIT den aufgeführten Verlusten. Danach "
+            "gilt, was oben steht — was in der Liste als entfallen gemeldet "
+            "war, ist dann fort. Gespeichert ist damit noch nichts."),
+        Kontexthilfe(
+            "modules.bedienung.zurueck", "Im Rohmodus bleiben",
+            "Bricht den Wechsel ab. Es ist nichts verändert worden; der "
+            "Rohtext steht unverändert da."),
         Kontexthilfe(
             "modules.bedienung.sortierung", "Sortierung",
             "Bestimmt die Reihenfolge in der Auswahl des Berichtseditors. Ein "
