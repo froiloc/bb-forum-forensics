@@ -1667,15 +1667,14 @@
       "assigned_to": "",
       "related_to": [],
       "resolved_in_version": null,
-      "target_version": "0.8.654",
+      "target_version": null,
       "environment": {
         "python_version": "3.14",
         "database": "templates.db"
       },
       "tags": [
-        "Bausteinmodule",
         "Management",
-        "Baustein-Modul",
+        "Bausteinmodule",
         "Platzhalter",
         "Vorschau",
         "Editor"
@@ -1689,12 +1688,6 @@
           "old_value": "",
           "new_value": "",
           "comment": "Issue erstellt"
-        },
-        {
-          "timestamp": "2026-08-02T12:00:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "BEFUND ZUR TAG-LAGE: dieses Ticket trug 'Baustein-Modul' (Bindestrich, Einzahl) statt 'Bausteinmodule'. Eine reine Tag-Abfrage nach 'Bausteinmodule' haette es uebersehen. Tag nachgetragen. Ziel 0.8.654, Stufe 1 (lesen, verifizieren, testen); die bidirektionale Stufe zieht mc nach - Entscheidung vom 2026-08-02."
         }
       ]
     },
@@ -3685,18 +3678,12 @@
       "assigned_to": "Claude",
       "related_to": [],
       "resolved_in_version": null,
-      "target_version": "0.8.653",
+      "target_version": null,
       "environment": {
         "python_version": "3.14",
         "database": "templates.db"
       },
-      "tags": [
-        "Bausteinmodule",
-        "Management",
-        "Redaktion",
-        "Tabulator",
-        "Liste"
-      ],
+      "tags": [],
       "attachments": [],
       "updates": [
         {
@@ -3706,12 +3693,6 @@
           "old_value": "",
           "new_value": "",
           "comment": "Issue erstellt"
-        },
-        {
-          "timestamp": "2026-08-02T12:00:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "BEFUND ZUR TAG-LAGE: dieses Ticket trug keinen einzigen Tag. Eine Abfrage nach 'Bausteinmodule' - wie mc sie zu Sitzungsbeginn gefahren hat - haette es uebersehen, obwohl es die Sicht Baustein-Module betrifft und Prioritaet hoch traegt. Tags nachgetragen, damit derselbe Fehler nicht wiederkehrt. Ziel 0.8.653."
         }
       ]
     },
@@ -3726,25 +3707,18 @@
       "description": "Das Layout soll aufgeräumt werden. Die Vorschau soll zum immer sichbaren Standard werden. Sie soll auch auf die Dokumentenvorlage und möglicherweise die Platzhalter, falls sinnvoll, ausgeweitet werden. Bei den Platzhaltern könnte sie in Verbindung mit dem Bereich Prüfung verschoben werden.",
       "expected_behavior": "Die Editor.js Vorschau soll auf in einen eigenen Bereich rechts neben die Eingabemaske verschoben werden. Sie soll dauerhaft eingeblendet sein. Damit entfällt die Notwendigkeit für die Schaltfläche \"Rohansicht/Vorschau\".\r\n\r\nDer neue Vorschau-Bereich soll aber flexibel sein und nur an die rechte Seite gehen, falls dort auch Platz ist, sonst kommt er nach wie vor unter die Eingabemaske.",
       "actual_behavior": "Das Vorschaufenster klebt unten an der Eingabemaske.",
-      "status": "resolved",
+      "status": "open",
       "priority": "high",
       "severity": "major",
       "assigned_to": "Claude",
       "related_to": [],
-      "resolved_in_version": "0.8.652",
-      "target_version": "0.8.652",
+      "resolved_in_version": null,
+      "target_version": null,
       "environment": {
         "python_version": "3.14",
         "database": "templates.db"
       },
-      "tags": [
-        "Bausteinmodule",
-        "Management",
-        "Redaktion",
-        "Editor.js",
-        "Vorschau",
-        "Layout"
-      ],
+      "tags": [],
       "attachments": [],
       "updates": [
         {
@@ -3754,14 +3728,6 @@
           "old_value": "",
           "new_value": "",
           "comment": "Issue erstellt"
-        },
-        {
-          "timestamp": "2026-08-02T12:00:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "Build 652. Die Vorschau steht in einer eigenen Rasterspalte rechts neben der Maske und ist ohne Zutun sichtbar; _vorschauAufbauen haengt nicht mehr ins Formular. DIE UMBRUCHREGEL STEHT IN CSS, NICHT IN JAVASCRIPT: der Ticketwortlaut 'nur an die rechte Seite, falls dort auch Platz ist' ist eine Breitenfrage, und Editor.js misst seinen Behaelter bereits selbst - eine zweite Messquelle in JavaScript waere eine Doppelwahrheit. Drei Stufen: >=1281px drei Spalten, <=1280px Vorschau unter die Maske, <=900px alles untereinander. Beim Spaltenwechsel wird die Editor-Instanz NICHT neu gebaut. ABWEICHUNG VOM TICKETWORTLAUT, VON mc ZU BESTAETIGEN: der Schalter entfaellt nicht, sondern wird zum Zuklapp-Schalter mit gemerktem Stand - auf schmalen Anzeigen bleibt das Wegraeumen noetig. NEBENBEFUND MITBEHOBEN: cleanup() baute die Editor-Instanz der Vorschau nicht ab, sondern vergass sie nur. LY01-LY04, Gegenprobe gegen Build 651 gefahren - alle vier fallen dort um."
         }
       ]
     },

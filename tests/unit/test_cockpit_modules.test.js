@@ -398,3 +398,118 @@ describe("Bausteinmodule — Zustand des Schlüsselfeldes (Build 575)", () => {
     expect(_hinweis(main).className).toContain("aiw-mod-keyhinweis-warn");
   });
 });
+
+/* ===========================================================================
+ * BUILD 652 (Ticket 3508ad71) — VORSCHAU IN EIGENER SPALTE, DAUERHAFT.
+ *
+ * Gegenstand: die Vorschau klebte bis Build 651 unten an der Eingabemaske
+ * (_vorschauAufbauen(form) haengte Kopf und Behaelter an das Formular). Sie
+ * steht jetzt in einer dritten Rasterspalte rechts daneben.
+ *
+ * WAS DIESE FAELLE PRUEFEN KOENNEN UND WAS NICHT: JSDOM wertet KEIN CSS aus
+ * und kennt keine Medienabfragen. Ob die Spalte auf einem 1000px breiten
+ * Fenster tatsaechlich umbricht, laesst sich hier NICHT messen - das ist in
+ * der VM am Bildschirm zu pruefen. Belegbar ist zweierlei, und das wird auch
+ * belegt: (a) der DOM-Aufbau, den die Rasterregel voraussetzt, und (b) dass
+ * die Umbruchregel im Stylesheet ueberhaupt steht. (b) ist eine schwache,
+ * aber ehrliche Sperre: sie faengt das Loeschen der Regel, nicht ihren
+ * Wirkungsgrad. Das wird hier gesagt und nicht als Vollpruefung ausgegeben.
+ *
+ * LY01 — Vorschau haengt in einer EIGENEN Spalte, nicht mehr im Formular.
+ * LY02 — sie ist ohne Zutun sichtbar (Ticket: "dauerhaft eingeblendet").
+ * LY03 — der Schalter klappt zu und wieder auf und MERKT SICH DEN STAND.
+ * LY04 — die Umbruchregel steht im Stylesheet (Rasterbereiche + @media).
+ * =========================================================================== */
+describe("Bausteinmodule — Vorschau-Spalte (Build 652)", () => {
+  const _main = (win) => win.document.getElementById("aiw-main");
+  const _spalte = (main) => main.querySelector(".aiw-mod-vorschaucol");
+  const _schalter = (main) => main.querySelector("#aiw-mod-vorschau-schalter");
+  const _host = (main) => main.querySelector("#aiw-mod-vorschau");
+
+  // LY01 --------------------------------------------------------------------
+  it("LY01: die Vorschau steht in einer eigenen Spalte, nicht im Formular", () => {
+    const win = _ctx();
+    const main = _main(win);
+    _api(win).renderModules(main, _data(), {});
+
+    const spalte = _spalte(main);
+    const host = _host(main);
+    const form = main.querySelector(".aiw-mod-form");
+
+    expect(spalte).toBeTruthy();
+    expect(host).toBeTruthy();
+    // DIE KERNAUSSAGE: der Behaelter haengt an der Spalte, NICHT am Formular.
+    // Mit der Fassung aus Build 651 faellt genau diese Zeile um.
+    expect(spalte.contains(host)).toBe(true);
+    expect(form.contains(host)).toBe(false);
+
+    // Alle drei Spalten sind Kinder desselben Rasters, in der Reihenfolge
+    // Liste - Maske - Vorschau. Die Rasterbereiche ordnen sie zwar selbst,
+    // aber die Vorlese-Reihenfolge folgt dem DOM, und die soll stimmen.
+    const raster = main.querySelector(".aiw-mod-body");
+    const kinder = Array.prototype.map.call(raster.children,
+      (el) => el.className.split(" ")[0]);
+    expect(kinder).toEqual([
+      "aiw-mod-listcol", "aiw-mod-form", "aiw-mod-vorschaucol",
+    ]);
+  });
+
+  // LY02 --------------------------------------------------------------------
+  it("LY02: die Vorschau ist ohne Zutun sichtbar", () => {
+    const win = _ctx();
+    const main = _main(win);
+    _api(win).renderModules(main, _data(), {});
+
+    expect(_host(main).hidden).toBe(false);
+    expect(_spalte(main).className).not.toContain("ist-zu");
+    // Der Schalter sagt, was er tut - nicht, was gerade zu sehen ist.
+    expect(_schalter(main).textContent).toBe("Vorschau ausblenden");
+    expect(_schalter(main).getAttribute("aria-expanded")).toBe("true");
+  });
+
+  // LY03 --------------------------------------------------------------------
+  it("LY03: der Schalter klappt zu, wieder auf und merkt sich den Stand", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = _main(win);
+    api.renderModules(main, _data(), {});
+
+    _schalter(main).click();
+    expect(_host(main).hidden).toBe(true);
+    expect(_spalte(main).className).toContain("ist-zu");
+    expect(_schalter(main).textContent).toBe("Vorschau einblenden");
+    expect(_schalter(main).getAttribute("aria-expanded")).toBe("false");
+    expect(win.localStorage.getItem(api.VORSCHAU_KEY)).toBe("0");
+
+    _schalter(main).click();
+    expect(_host(main).hidden).toBe(false);
+    expect(win.localStorage.getItem(api.VORSCHAU_KEY)).toBe("1");
+
+    // DER EIGENTLICHE PUNKT: neu aufgebaut kommt der gemerkte Stand zurueck.
+    // Bis Build 651 war das ausdruecklich NICHT so ("ein Moment, keine
+    // Vorliebe") - deshalb steht es hier als Fall und nicht als Zusicherung
+    // im Kommentar.
+    _schalter(main).click();               // -> zu, gemerkt
+    api.renderModules(main, _data(), {});
+    expect(_host(main).hidden).toBe(true);
+    expect(_schalter(main).textContent).toBe("Vorschau einblenden");
+  });
+
+  // LY04 --------------------------------------------------------------------
+  it("LY04: die Umbruchregel steht im Stylesheet", () => {
+    const css = readFileSync(
+      "management/server/static/cockpit.css", "utf-8");
+
+    // Das Raster selbst.
+    expect(css).toMatch(/\.aiw-mod-body\s*\{[^}]*display:\s*grid/);
+    expect(css).toContain('grid-template-areas: "liste maske vorschau"');
+    expect(css).toMatch(/\.aiw-mod-vorschaucol\s*\{[^}]*grid-area:\s*vorschau/);
+
+    // Und die beiden Umbruchstufen. Ohne sie ginge die Spalte auf schmalen
+    // Anzeigen nicht unter die Maske, sondern quetschte sie zusammen - genau
+    // der Zustand, den das Ticket ausschliesst.
+    expect(css).toContain("@media (max-width: 1280px)");
+    expect(css).toContain("@media (max-width: 900px)");
+    expect(css).toMatch(/"liste maske"\s*\n\s*"liste vorschau"/);
+  });
+});

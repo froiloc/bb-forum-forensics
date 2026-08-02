@@ -1,0 +1,7 @@
+02088fb78d87c463512c991bff4856b8  build.json
+c6eff11493314fe38e3f4589db6987f5  management/server/static/cockpit_modules.js
+905b347c4c0b548cba7994c473a7dec6  management/server/static/cockpit.css
+7ba0ca366d2423400dc152a6217046f3  management/help/inhalt/redaktion.py
+8fe10ee80715f33fd5727fc849fcf9e4  tests/unit/test_cockpit_modules.test.js
+b24000d31ed58e06773d2efdd7e270ab  management/Bauplan_Bausteinmodule_Builds652ff_v0_1.md
+419f7e9089b8eef0933d562f5eaaaf6f  issue-tracker/eintraege_claude_Build652.json

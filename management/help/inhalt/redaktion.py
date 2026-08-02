@@ -491,8 +491,12 @@ MODULES = Sichthilfe(
         Abschnitt(
             "aufbau", "Aufbau der Sicht",
             (
-                "Überschrift, Hinweis, Liste der vorhandenen Bausteine und "
-                "die Bearbeitungsmaske mit dem Text.",
+                "Überschrift, Hinweis und darunter drei Spalten: links die "
+                "Liste der vorhandenen Bausteine, in der Mitte die "
+                "Bearbeitungsmaske, rechts die Vorschau.",
+                "Reicht die Breite nicht für drei Spalten, rückt die "
+                "Vorschau unter die Maske; auf sehr schmalen Anzeigen steht "
+                "alles untereinander.",
                 "Jeder Baustein hat eine feste Kennung, unter der ihn der "
                 "Berichtseditor einfügt. Sie ist die Verbindung — wer sie "
                 "ändert, trennt sie.",
@@ -510,9 +514,16 @@ MODULES = Sichthilfe(
         Abschnitt(
             "vorschau", "Die Vorschau",
             (
-                "Vor dem Speichern zeigt die Vorschau, wie der Baustein im "
-                "Berichtseditor aussehen wird, und zählt die enthaltenen "
-                "Platzhalter. Sie SCHREIBT NICHTS.",
+                "Die Vorschau zeigt, wie der Baustein im Berichtseditor "
+                "aussehen wird, und zählt die enthaltenen Platzhalter. Sie "
+                "SCHREIBT NICHTS.",
+                "Sie steht rechts neben der Maske und ist dauerhaft "
+                "eingeblendet — es muss nichts angeklickt werden, damit sie "
+                "erscheint. Sie läuft beim Tippen mit, kurz verzögert, damit "
+                "sie sich nicht bei jedem Tastendruck neu aufbaut.",
+                "Ist das Fenster zu schmal für drei Spalten, rückt die "
+                "Vorschau unter die Maske. Das ist kein Fehler, sondern die "
+                "Platzregel: Die Maske behält Vorrang vor der Ansicht.",
                 "Die Platzhalterzählung ist der eigentliche Prüfwert: Ein "
                 "vertippter Platzhaltername fällt hier auf — im fertigen "
                 "Vermerk fiele er als leere Stelle auf.",
@@ -567,13 +578,19 @@ MODULES = Sichthilfe(
 
         # Die acht Bedienelemente (Build 635, Welle B3). Der Umschalter
         # 'Rohansicht / Vorschau' steht woertlich im Vorgang 17200856.
+        # Build 652 (Ticket 3508ad71): die Vorschau steht jetzt dauerhaft in
+        # einer eigenen Spalte. Der Schalter wechselt nicht mehr zwischen
+        # zwei Ansichten, sondern klappt die Spalte zu - und merkt sich das.
+        # Der ALTE Text hat das Gegenteil zugesichert ("er wird auch nicht
+        # gemerkt"); er waere ab diesem Build falsch gewesen.
         Kontexthilfe(
-            "modules.bedienung.ansicht", "Rohansicht / Vorschau",
-            "Wechselt zwischen der Ansicht, die die schreibende Person "
-            "später im Berichtseditor sieht, und dem genauen Text mit allen "
-            "Platzhaltern. BEIDES IST NUR EINE ANSICHT — am Baustein ändert "
-            "der Wechsel nichts, und er wird auch nicht gemerkt: Beim "
-            "nächsten Öffnen steht wieder die Vorschau.",
+            "modules.bedienung.ansicht", "Vorschau ein-/ausblenden",
+            "Klappt die Vorschau-Spalte rechts neben der Maske zu und wieder "
+            "auf. AM BAUSTEIN ÄNDERT DAS NICHTS — es ist eine Ansichtssache. "
+            "Der Stand wird gemerkt: Wer die Vorschau zuklappt, findet sie "
+            "beim nächsten Öffnen zugeklappt vor. Auf schmalen Bildschirmen "
+            "steht die Vorschau unter der Maske statt daneben; der Schalter "
+            "wirkt dort genauso.",
             verweis="modules#vorschau"),
         Kontexthilfe(
             "modules.bedienung.neu", "Neuer Baustein",

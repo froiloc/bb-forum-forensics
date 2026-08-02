@@ -842,9 +842,75 @@ td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
    (module_key/Titel/Rolle/Thema/Beschreibung/body-Freitext/Sortierung) mit
    schreibfreier Platzhalter-Vorschau. Fehler rot / OK gruen (Grundregel 1).
    ========================================================================== */
-.aiw-mod-body { display: flex; gap: 18px; align-items: flex-start; }
-.aiw-mod-listcol { width: 300px; flex: 0 0 auto; }
-.aiw-mod-form { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 8px; max-width: 720px; }
+/* Build 652 (Ticket 3508ad71) — DREISPALTIGES RASTER.
+ *
+ * Bis Build 651 war das hier ein zweispaltiger Flex-Kasten, und die Vorschau
+ * hing UNTEN am Formular. Ticketwortlaut: "Die Editor.js Vorschau soll in
+ * einen eigenen Bereich rechts neben die Eingabemaske verschoben werden. Sie
+ * soll dauerhaft eingeblendet sein. ... Der neue Vorschau-Bereich soll aber
+ * flexibel sein und nur an die rechte Seite gehen, falls dort auch Platz ist,
+ * sonst kommt er nach wie vor unter die Eingabemaske."
+ *
+ * DESHALB grid-template-areas UND NICHT JAVASCRIPT: die Umbruchregel ist eine
+ * reine Breitenfrage. Sie in gemessenen Pixeln nachzubauen hiesse, neben der
+ * Messung des Browsers eine zweite zu fuehren - und Editor.js misst seinen
+ * Behaelter bereits selbst. Zwei Messquellen fuer dieselbe Groesse sind die
+ * Bauart von Fehlern, nicht von Layouts.
+ *
+ * DIE DREI STUFEN, und warum die Grenzen dort liegen:
+ *   >= 1281px  drei Spalten. 300 (Liste) + 18 + Maske + 18 + mind. 340
+ *              (Vorschau) laesst der Maske erst ab rund 1280px die 560px,
+ *              unter denen der Bausteintext unlesbar schmal wird.
+ *   <= 1280px  Vorschau unter die Maske, Liste behaelt ihre Spalte.
+ *   <=  900px  alles untereinander; darunter traegt auch die Liste keine
+ *              300px-Spalte mehr, ohne der Maske den Rest zu nehmen.
+ */
+.aiw-mod-body {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr) minmax(340px, 0.85fr);
+  grid-template-areas: "liste maske vorschau";
+  gap: 18px;
+  align-items: start;
+}
+.aiw-mod-listcol { grid-area: liste; min-width: 0; }
+.aiw-mod-form { grid-area: maske; min-width: 0; display: flex; flex-direction: column; gap: 8px; max-width: 720px; }
+.aiw-mod-vorschaucol { grid-area: vorschau; min-width: 0;
+  /* main.aiw-main ist die Bildlaufflaeche (Zeile 123). Die Vorschau bleibt
+   * beim Blaettern durch die Maske stehen - top:0 ist gefahrlos, weil die
+   * Kopfleiste AUSSERHALB dieser Flaeche liegt und nichts ueberdeckt. */
+  position: sticky; top: 0;
+}
+/* Zugeklappt braucht die Spalte keine Breite mehr — sonst bliebe rechts ein
+ * leeres Drittel stehen, und das sieht nach Defekt aus, nicht nach Absicht. */
+.aiw-mod-body:has(.aiw-mod-vorschaucol.ist-zu) {
+  grid-template-columns: 300px minmax(0, 1fr) auto;
+}
+
+@media (max-width: 1280px) {
+  .aiw-mod-body {
+    grid-template-columns: 300px minmax(0, 1fr);
+    grid-template-areas: "liste maske"
+                         "liste vorschau";
+  }
+  .aiw-mod-body:has(.aiw-mod-vorschaucol.ist-zu) {
+    grid-template-columns: 300px minmax(0, 1fr);
+  }
+  /* Untereinander ergibt Kleben keinen Sinn mehr. */
+  .aiw-mod-vorschaucol { position: static; }
+}
+
+@media (max-width: 900px) {
+  .aiw-mod-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "liste"
+                         "maske"
+                         "vorschau";
+  }
+  .aiw-mod-body:has(.aiw-mod-vorschaucol.ist-zu) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .aiw-mod-listcol { width: auto; }
+}
 
 .aiw-mod-new, .aiw-mod-drybtn, .aiw-mod-save {
   font: inherit; cursor: pointer; padding: 6px 14px;
@@ -3262,15 +3328,23 @@ button.aiw-navgroup:focus-visible {
    Ein Behälter ohne Höhe ergäbe eine leere Zeichenfläche — dieselbe Falle wie
    bei den Kacheldiagrammen in Build 570.
    =========================================================================== */
+/* Build 652: der Kopf sitzt jetzt OBEN in einer eigenen Spalte, nicht mehr
+ * als Trennung unter dem Formular. Die Trennlinie oben und der Abstand von
+ * 14px waren genau dafuer da und wuerden hier eine Naht zeigen, wo keine
+ * ist. Die Spalte grenzt sich stattdessen seitlich ab. */
 .aiw-mod-vorschau-kopf {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: .6rem;
-    margin: 14px 0 4px 0;
-    padding-top: 10px;
-    border-top: 1px solid var(--line);
+    margin: 0 0 4px 0;
+    /* Auf Hoehe der ersten Feldbeschriftung der Maske. */
+    padding-top: 2px;
+    min-height: 26px;
 }
+.aiw-mod-vorschau-schalter { flex: 0 0 auto; white-space: nowrap; }
+/* Zugeklappt: nur noch der Schalter, kein leerer Titel daneben. */
+.aiw-mod-vorschaucol.ist-zu .aiw-mod-vorschau-titel { display: none; }
 .aiw-mod-vorschau-titel {
     font-size: 12px;
     text-transform: uppercase;
@@ -3278,11 +3352,22 @@ button.aiw-navgroup:focus-visible {
     color: #5a6b75;
 }
 .aiw-mod-vorschau {
-    min-height: 90px;
+    /* Build 652: in einer eigenen Spalte darf die Flaeche zeigen, wofuer sie
+     * da ist. 90px waren das Mass fuer einen Anhang unter dem Formular.
+     * Die Hoechsthoehe haelt sie im Bild, wenn ein langer Baustein sonst die
+     * ganze Seite in die Laenge zoege - dann blaettert die Vorschau selbst. */
+    min-height: 220px;
+    max-height: calc(100vh - 220px);
+    overflow: auto;
+    overscroll-behavior: contain;
     padding: 8px 10px;
     border: 1px solid var(--line);
     border-radius: 4px;
     background: #fff;
+}
+@media (max-width: 1280px) {
+    /* Unter der Maske ist sie wieder ein Anhang und nimmt sich zurueck. */
+    .aiw-mod-vorschau { min-height: 120px; max-height: none; overflow: visible; }
 }
 .aiw-mod-vorschau.ist-warnung,
 .aiw-mod-vorschau-meldung.ist-warnung {

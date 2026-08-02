@@ -38,7 +38,31 @@
 *   stehen in management/help/inhalt/redaktion.py.
 *   Darunter der Umschalter 'Rohansicht / Vorschau', den mc im Vorgang
 *   woertlich benannt hat.
- * Version: v0.8.635 · Build: 635 · 2026-08-01
+ *
+ * Build 652 (Ticket 3508ad71): DIE VORSCHAU BEKOMMT EINE EIGENE SPALTE.
+ *   Sie klebte bisher UNTEN an der Eingabemaske (_vorschauAufbauen haengte
+ *   Kopf und Behaelter an das Formular). Jetzt steht sie als dritte
+ *   Rasterspalte RECHTS neben der Maske und ist dauerhaft sichtbar.
+ *
+ *   WARUM DAS RASTER UND NICHT JAVASCRIPT: der Ticketwortlaut verlangt, dass
+ *   die Spalte nur nach rechts geht, "falls dort auch Platz ist, sonst kommt
+ *   er nach wie vor unter die Eingabemaske". Das ist eine Breitenfrage, und
+ *   Breitenfragen beantwortet CSS (grid-template-areas + @media) besser als
+ *   gemessene Pixel: Editor.js misst seinen Behaelter beim Aufbau, und eine
+ *   zweite Messquelle in JavaScript waere genau die Art von Doppelwahrheit,
+ *   die uns in Build 575 das Schluesselfeld gekostet hat. Beim Spaltenwechsel
+ *   wird die Editor-Instanz NICHT neu gebaut - nur ihre Spalte wandert.
+ *
+ *   DER UMSCHALTER BLEIBT, ABER ALS ZUKLAPP-SCHALTER. Das Ticket sagt, die
+ *   Schaltflaeche "Rohansicht/Vorschau" werde unnoetig. Sie tat bisher genau
+ *   eines: die Vorschau ein- und ausblenden (host.hidden). Auf schmalen
+ *   Anzeigen ist das weiterhin noetig, sonst schiebt die Vorschau die Maske
+ *   aus dem Bild. Er heisst deshalb jetzt, was er tut, und merkt sich seinen
+ *   Stand (VORSCHAU_KEY) - anders als bisher, wo er ausdruecklich "ein
+ *   Moment, keine Vorliebe" war. ANNAHME, VON mc ZU BESTAETIGEN ODER ZU
+ *   VERWERFEN.
+ *
+ * Version: v0.8.652 · Build: 652 · 2026-08-02
  */
 (function () {
     'use strict';
@@ -55,17 +79,47 @@
     var _state = {
         listEl: null, fields: null, msgEl: null, dryEl: null,
         selKey: null, selId: null, nachtragId: null,
-        keyHinweisEl: null
+        keyHinweisEl: null,
+        // Build 577 / 652: Vorschau. vorschauSpalte ist die dritte
+        // Rasterspalte, vorschauEl der Behaelter darin, vorschau die
+        // Editor-Instanz, vorschauSpaltenStand die EINE Funktion, die den
+        // Zuklapp-Zustand anzeigt.
+        vorschauEl: null, vorschau: null, vorschauAn: true,
+        vorschauSpalte: null, vorschauSpaltenStand: null
     };
 
     // Build 488: Browser-Zwischenspeicher (localStorage) des NOCH NICHT
     // gespeicherten Editor-Entwurfs (analog Dokumentvorlagen Build 487). Eigener
     // versionierter Schluessel. Nur Client-seitig, migrationsneutral.
     var DRAFT_KEY = 'aiw.modules.draft.v1';
+
+    // Build 652: Stand des Zuklapp-Schalters der Vorschau-Spalte. Eigener
+    // Schluessel, damit er den Entwurf (DRAFT_KEY) nicht beruehrt - ein
+    // zugeklapptes Vorschaufenster ist keine Arbeit, die verlorengehen kann.
+    var VORSCHAU_KEY = 'aiw.modules.vorschau.v1';
+
     function _ls() {
         try {
             return (typeof localStorage !== 'undefined') ? localStorage : null;
         } catch (e) { return null; }
+    }
+
+    // _vorschauStandLesen / _vorschauStandSchreiben (Build 652)
+    // --------------------------------------------------------------------
+    // VORGABE IST OFFEN. Das Ticket 3508ad71 will die Vorschau als "immer
+    // sichtbaren Standard"; wer sie einmal zuklappt, bekommt sie beim
+    // naechsten Betreten trotzdem nicht ungefragt zurueck. Deshalb: nur ein
+    // ausdrueckliches '0' schliesst - jeder andere Wert, auch ein fehlender
+    // oder ein unlesbarer Speicher, ergibt OFFEN.
+    function _vorschauStandLesen() {
+        var ls = _ls();
+        if (!ls) { return true; }
+        try { return ls.getItem(VORSCHAU_KEY) !== '0'; } catch (e) { return true; }
+    }
+    function _vorschauStandSchreiben(offen) {
+        var ls = _ls();
+        if (!ls) { return; }
+        try { ls.setItem(VORSCHAU_KEY, offen ? '1' : '0'); } catch (e) { /* egal */ }
     }
 
     // Stabiler Schluessel-Zeichenraum (Spiegel der Server-Regel _KEY_RE).
@@ -300,12 +354,15 @@
     // BUILD 577 - VORSCHAU DES BAUSTEINS.
     //
     // Zeigt den Baustein so, wie ihn der Ermittler spaeter IM BERICHTSEDITOR
-    // sieht: Editor.js im Nur-Lese-Modus, Platzhalter als Chips. Die
-    // Umschaltung 'Vorschau / Rohansicht' merkt sich NICHTS - sie ist ein
-    // Moment, keine Vorliebe. Die Rohansicht bleibt erreichbar, damit dem
-    // Redakteur der genaue Text nicht genommen wird.
+    // sieht: Editor.js im Nur-Lese-Modus, Platzhalter als Chips.
+    //
+    // BUILD 652 (Ticket 3508ad71): die Vorschau steht nicht mehr unter der
+    // Maske, sondern in einer EIGENEN Spalte rechts daneben. Der Parameter
+    // heisst deshalb nicht mehr 'form', sondern 'spalte' - das ist keine
+    // Kosmetik, sondern der Unterschied, an dem man beim Lesen erkennt, dass
+    // hier nicht mehr ins Formular gehaengt wird.
     // ------------------------------------------------------------------
-    function _vorschauAufbauen(form) {
+    function _vorschauAufbauen(spalte) {
         var kopf = document.createElement('div');
         kopf.className = 'aiw-mod-vorschau-kopf';
         var titel = document.createElement('span');
@@ -314,22 +371,24 @@
         kopf.appendChild(titel);
         var schalter = document.createElement('button');
         schalter.type = 'button';
-        schalter.className = 'aiw-btn aiw-btn-klein';
+        schalter.className = 'aiw-btn aiw-btn-klein aiw-mod-vorschau-schalter';
         schalter.id = 'aiw-mod-vorschau-schalter';
-        schalter.textContent = 'Rohansicht';
         // Build 635 (Vorgang 17200856): Hilfe-Marke, LITERAL gesetzt.
         // mc hat DIESEN Schalter im Vorgang ausdruecklich benannt:
         // "Insbesondere die Wechselschaltflaechen 'Rohansicht' und
         // 'Vorschau' muessen erklaert werden."
+        // Build 652: er heisst jetzt nach seiner Wirkung. Die Marke bleibt,
+        // ihr Text in redaktion.py ist mitgezogen.
         schalter.setAttribute('data-hilfe-id', 'modules.bedienung.ansicht');
         kopf.appendChild(schalter);
-        form.appendChild(kopf);
+        spalte.appendChild(kopf);
 
         var host = document.createElement('div');
         host.className = 'aiw-mod-vorschau';
         host.id = 'aiw-mod-vorschau';
-        form.appendChild(host);
+        spalte.appendChild(host);
         _state.vorschauEl = host;
+        _state.vorschauSpalte = spalte;
 
         var vs = (typeof window !== 'undefined')
             ? window.AIWBausteinVorschau : null;
@@ -342,10 +401,29 @@
             host.classList.add('ist-warnung');
         }
 
+        // _spaltenStand: bringt Schalterbeschriftung, Sichtbarkeit des
+        // Behaelters und die Klasse an der Spalte auf EINEN Stand. Es gibt
+        // bewusst nur diese eine Stelle, die das tut - die Lehre aus Build
+        // 575 ('es gab DREI unabhaengige Ausdruecke fuer den Feldzustand').
+        function _spaltenStand() {
+            var offen = !!_state.vorschauAn;
+            schalter.textContent = offen ? 'Vorschau ausblenden'
+                                         : 'Vorschau einblenden';
+            schalter.setAttribute('aria-expanded', offen ? 'true' : 'false');
+            host.hidden = !offen;
+            spalte.classList.toggle('ist-zu', !offen);
+        }
+        _state.vorschauSpaltenStand = _spaltenStand;
+
+        // Der gemerkte Stand gilt ab jetzt; Vorgabe ist offen.
+        _state.vorschauAn = _vorschauStandLesen();
+        _spaltenStand();
+        if (_state.vorschauAn) { _vorschauAktualisieren(); }
+
         schalter.addEventListener('click', function () {
             _state.vorschauAn = !_state.vorschauAn;
-            schalter.textContent = _state.vorschauAn ? 'Rohansicht' : 'Vorschau';
-            host.hidden = !_state.vorschauAn;
+            _vorschauStandSchreiben(_state.vorschauAn);
+            _spaltenStand();
             if (_state.vorschauAn) { _vorschauAktualisieren(); }
             else if (_state.vorschau) { _state.vorschau.aus(); }
         });
@@ -677,6 +755,14 @@
         form.appendChild(dry);
 
         body.appendChild(form);
+
+        // --- Dritte Spalte: Vorschau (Build 652, Ticket 3508ad71).
+        // Sie wird HIER erzeugt, damit sie im Raster steht; GEFUELLT wird sie
+        // erst nach dem Einhaengen (siehe unten) - Editor.js misst.
+        var vsCol = document.createElement('div');
+        vsCol.className = 'aiw-mod-vorschaucol';
+        body.appendChild(vsCol);
+
         wrap.appendChild(body);
         mainEl.appendChild(wrap);
 
@@ -695,7 +781,8 @@
         // noch nicht eingehaengten Element sind das NULL Pixel, und es zeichnet
         // ins Nichts. Genau dieser Fehler hat in Build 570 bis 573 die
         // Kacheldiagramme unsichtbar gemacht; die Lehre steht hier als Zeile.
-        _vorschauAufbauen(form);
+        // Build 652: Ziel ist die dritte Rasterspalte, nicht mehr das Formular.
+        _vorschauAufbauen(vsCol);
 
         // Beim Tippen mitlaufen, aber entprellt: Editor.js baut je Aktualisierung
         // eine Instanz auf, und das bei jedem Tastendruck waere Verschwendung.
@@ -735,6 +822,16 @@
         _state.selKey = null;
         _state.selId = null;
         _state.nachtragId = null;
+        // Build 652: die Editor-Instanz der Vorschau haelt einen DOM-Baum
+        // fest. Beim Verlassen der Sicht wird sie ABGEBAUT, nicht nur
+        // vergessen - sonst bleibt sie samt Behaelter im Speicher stehen.
+        if (_state.vorschau && typeof _state.vorschau.aus === 'function') {
+            try { _state.vorschau.aus(); } catch (e) { /* Abbau darf nie werfen */ }
+        }
+        _state.vorschau = null;
+        _state.vorschauEl = null;
+        _state.vorschauSpalte = null;
+        _state.vorschauSpaltenStand = null;
     }
 
     // -------------------------------------------------------------------------
@@ -754,6 +851,7 @@
         errorsText: errorsText,
         ROLES: ROLES,
         DRAFT_KEY: DRAFT_KEY,             // Browser-Zwischenspeicher (Build 488)
+        VORSCHAU_KEY: VORSCHAU_KEY,       // Zuklapp-Stand der Vorschau (Build 652)
         // DOM
         renderModules: renderModules,
         renderDryRun: renderDryRun,
