@@ -50,7 +50,7 @@
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 #: Sicherung des Servers vor dem Speichern (server.py).
 #: Beispiel: issues_backup_20260801_183548.json
@@ -103,6 +103,33 @@ def ist_reparatur_sicherung(name: str) -> bool:
 def reparatur_sicherungsname(zeitpunkt: datetime) -> str:
     """Bildet den Dateinamen einer Reparatur-Sicherung."""
     return f"issues_backup_before_repair_{zeitpunkt.strftime('%Y%m%d_%H%M%S')}.json"
+
+
+def zeitpunkt_aus_namen(name: str) -> Optional[datetime]:
+    """
+    Liest den Zeitstempel aus dem Dateinamen einer Sicherung.
+
+    BUILD 650 (Vorgang 0c14996b): Der Takt der Server-Sicherung bemisst sich
+    ab jetzt am juengsten Stand AUF DER PLATTE und nicht mehr an einem Feld
+    des laufenden Prozesses. Dafuer muss man dem Dateinamen ansehen, wann er
+    entstanden ist - und dem Namen, nicht der Aenderungszeit: die kann durch
+    Kopieren, Auspacken oder eine Dateisynchronisation verstellt sein, der
+    Name nicht.
+
+    Returns:
+        Den Zeitpunkt, oder None, wenn der Name keinem Muster entspricht.
+    """
+    for muster in (SERVER_MUSTER, MERGE_MUSTER, REPARATUR_MUSTER):
+        if not muster.match(name):
+            continue
+        stempel = re.search(r"(\d{8})_(\d{6})", name)
+        if not stempel:
+            return None
+        try:
+            return datetime.strptime(stempel.group(1) + stempel.group(2), "%Y%m%d%H%M%S")
+        except ValueError:  # pragma: no cover - unmoegliches Datum im Namen
+            return None
+    return None
 
 
 def eigene_sicherungen(verzeichnis: Path, muster: re.Pattern) -> List[Path]:

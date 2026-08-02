@@ -64,6 +64,7 @@ if str(TRACKER) not in sys.path:
     sys.path.insert(0, str(TRACKER))
 
 from tag_cloud import tag_wolke  # noqa: E402
+from tag_repair import ZUORDNUNG, TagRepair, tags_umschreiben  # noqa: E402
 from textformat import zeilen_html  # noqa: E402
 
 
@@ -214,6 +215,74 @@ class TestTagWolke(unittest.TestCase):
         self.assertEqual(sum(1 for _ in wolke), len(aus_den_daten))
 
 
+class TestTagZusammenlegung(unittest.TestCase):
+    """
+    TZ01-TZ04 - BUILD 650, Vorgang 6e96ae4a.
+
+    Die Wolke aus Build 647 machte sichtbar, dass 167 Tags auf 145 Vorgaenge
+    kommen. Zusammengelegt wird nach einer Liste, die mc vorgibt - nicht nach
+    einem Aehnlichkeitsmass. TZ02 ist der Grund dafuer und der wichtigste
+    Fall dieser Klasse.
+    """
+
+    def test_tz01_legt_zusammen_und_laesst_fremdes_stehen(self):
+        neu, ersetzungen = tags_umschreiben(["test", "Migration"], ZUORDNUNG)
+        self.assertEqual(neu, ["Tests", "Migration"])
+        self.assertEqual(ersetzungen, [("test", "Tests")])
+
+    def test_tz02_grundregel_familien_bleiben_getrennt(self):
+        """
+        DIE ENTSCHEIDUNG VON mc, FESTGENAGELT (2026-08-02):
+
+          "Alles mit Grundregel so lassen. Es bezeichnet die Nummer der
+           Grundregel. Das zu aendern wuerde das Thema der Regel aendern, auf
+           welche hier Bezug genommen wird."
+
+        'Grundregel1', 'Grundregel2', 'Grundregel-3' und 'Grundregel4' sehen
+        aus wie eine Familie und sind KEINE - die Zahl ist der Inhalt. Mein
+        erster Vorschlag wollte sie zusammenlegen; ein Werkzeug, das seine
+        Zuordnung selbst errechnet, haette das getan und den Bezug zerstoert.
+        Genau dafuer gab es die Vorschlagsliste.
+        """
+        familie = ["Grundregel1", "Grundregel2", "Grundregel-3", "Grundregel4"]
+        neu, ersetzungen = tags_umschreiben(familie, ZUORDNUNG)
+        self.assertEqual(neu, familie)
+        self.assertEqual(ersetzungen, [])
+        for tag in familie:
+            self.assertNotIn(tag.lower(), {k.lower() for k in ZUORDNUNG})
+
+    def test_tz03_doppelte_werden_zusammengefasst(self):
+        # Traegt ein Vorgang 'test' UND 'Tests', darf danach nicht zweimal
+        # dasselbe dastehen.
+        neu, _ = tags_umschreiben(["test", "Tests", "Migration"], ZUORDNUNG)
+        self.assertEqual(neu, ["Tests", "Migration"])
+
+    def test_tz04_trockenlauf_und_anwenden(self):
+        import tempfile, shutil as sh
+        with tempfile.TemporaryDirectory() as ordner:
+            arbeit = Path(ordner)
+            (arbeit / "data").mkdir()
+            ziel = arbeit / "data" / "issues.json"
+            ziel.write_text(json.dumps({"issues": [
+                {"id": "a", "tags": ["test", "Migration"]},
+                {"id": "b", "tags": ["Grundregel2"]},
+            ]}, ensure_ascii=False), encoding="utf-8")
+            vorher = ziel.read_bytes()
+
+            reparatur = TagRepair(ziel)
+            bericht = reparatur.pruefen()
+            self.assertEqual(len(bericht.befunde), 1)
+            self.assertEqual(ziel.read_bytes(), vorher,
+                             "Der Trockenlauf hat die Datei veraendert")
+
+            bericht = reparatur.anwenden()
+            self.assertTrue(bericht.angewendet)
+            self.assertIsNotNone(bericht.sicherung)
+            daten = {i["id"]: i for i in json.loads(ziel.read_text(encoding="utf-8"))["issues"]}
+            self.assertEqual(daten["a"]["tags"], ["Tests", "Migration"])
+            self.assertEqual(daten["b"]["tags"], ["Grundregel2"])
+
+
 # ---------------------------------------------------------------------------
 # Ebene A - am laufenden Tracker.
 # ---------------------------------------------------------------------------
@@ -268,7 +337,7 @@ def setUpModule():
         # Paket fuehrt selbst ein Verzeichnis 'server/', und 'import server'
         # liefert im Verbund dieses statt der Datei des Trackers.
         spezifikation = importlib.util.spec_from_file_location(
-            "issue_tracker_server_dashboard", TRACKER / "server.py")
+            "issue_tracker_server_dashboard", TRACKER / "tracker_server.py")
         modul = importlib.util.module_from_spec(spezifikation)
         sys.modules["issue_tracker_server_dashboard"] = modul
         spezifikation.loader.exec_module(modul)

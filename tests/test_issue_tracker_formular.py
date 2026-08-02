@@ -112,7 +112,7 @@ def setUpModule():
         # und 'import server' liefert im Verbund dieses statt der Datei des
         # Trackers (Vorgang 7c7a738f).
         spez = importlib.util.spec_from_file_location(
-            "issue_tracker_server_formular", TRACKER / "server.py")
+            "issue_tracker_server_formular", TRACKER / "tracker_server.py")
         _modul = importlib.util.module_from_spec(spez)
         sys.modules["issue_tracker_server_formular"] = _modul
         spez.loader.exec_module(_modul)
@@ -151,6 +151,10 @@ def _felder(v, **abweichungen):
         "tags": ", ".join(v.get("tags") or []),
         "related_to": ", ".join(v.get("related_to") or []),
         "estimated_hours": "", "os": "", "browser": "", "python_version": "", "database": "",
+        # BUILD 650: die Fassungsnummer. Ohne sie laeuft das Formular in den
+        # Rueckfall 'kein Feld abgeschickt' - die uebrigen Faelle brauchen das
+        # nicht, aber sie duerfen auch nicht daran haengenbleiben.
+        "stand": "",
     }
     felder.update(abweichungen)
     return felder
@@ -340,6 +344,107 @@ class TestFormular(Grundgeruest):
                          "Die mitgeschickte Fassung ist keine Versionsangabe")
 
 
+class TestGleichzeitigkeit(Grundgeruest):
+    """
+    NB01-NB04 - BUILD 650, Vorgang f0d2894b: die verlorene Aenderung.
+
+    Bis Build 649 genuegten zwei offene Browserfenster: jeder Schreibweg las
+    den ganzen Bestand, aenderte einen Vorgang und schrieb alles zurueck. Wer
+    zuletzt speicherte, loeschte die Aenderung des anderen - ohne Meldung und
+    ohne Spur im Verlauf. Das war der letzte offene Punkt mit
+    Verlustpotenzial.
+
+    Das Verfahren (Festlegung mc, 2026-08-02): eine Fassungsnummer im
+    Formular. Sie haelt fest, auf welchem Stand die Maske gebaut wurde;
+    stimmt der beim Speichern nicht mehr, wird abgewiesen.
+    """
+
+    def _stand(self, kennung):
+        html = _client.get(f"/issue/{kennung}/edit").text
+        treffer = re.search(r'name="stand" value="([^"]*)"', html)
+        self.assertIsNotNone(treffer, "Das Formular traegt keine Fassungsnummer")
+        return treffer.group(1)
+
+    def test_nb01_formular_traegt_eine_fassungsnummer(self):
+        stand = self._stand(_bestand()[0]["id"])
+        self.assertTrue(stand, "Die Fassungsnummer ist leer")
+
+    def test_nb02_der_zweite_verliert_nicht_still(self):
+        v = _bestand()[0]
+        stand = self._stand(v["id"])
+
+        # Fenster B speichert zuerst - mit demselben (noch gueltigen) Stand.
+        erster = _client.post("/issue/save",
+                              data=_felder(v, stand=stand, assigned_to="Fenster B"),
+                              follow_redirects=False)
+        self.assertEqual(erster.status_code, 303)
+
+        # Fenster A hatte das Formular vorher offen und speichert jetzt.
+        zweiter = _client.post("/issue/save",
+                               data=_felder(v, stand=stand, assigned_to="Fenster A"),
+                               follow_redirects=False)
+
+        self.assertEqual(zweiter.status_code, 400,
+                         "Der zweite Speichervorgang hat den ersten ueberschrieben")
+        self.assertIn("zwischenzeitlich geändert", zweiter.text)
+        self.assertIn("Fenster A", zweiter.text,
+                      "Die Eingabe steht nicht mehr im Formular")
+
+        gespeichert = {i["id"]: i for i in _bestand()}[v["id"]]
+        self.assertEqual(gespeichert["assigned_to"], "Fenster B",
+                         "Die Aenderung des ersten ist verlorengegangen")
+
+    def test_nb03_nach_dem_neuladen_geht_es(self):
+        v = _bestand()[0]
+        stand = self._stand(v["id"])
+        _client.post("/issue/save", data=_felder(v, stand=stand, assigned_to="B"),
+                     follow_redirects=False)
+
+        # Neu laden heisst: neue Fassungsnummer.
+        neuer_stand = self._stand(v["id"])
+        self.assertNotEqual(neuer_stand, stand)
+
+        antwort = _client.post("/issue/save",
+                               data=_felder(v, stand=neuer_stand, assigned_to="A"),
+                               follow_redirects=False)
+        self.assertEqual(antwort.status_code, 303,
+                         "Nach dem Neuladen liess sich nicht speichern - die "
+                         "Sperre waere dann eine Sackgasse")
+
+    def test_nb04_fremde_aenderungen_loesen_keinen_konflikt_aus(self):
+        """
+        DIE GEGENPROBE, und sie ist die wichtigere Haelfte.
+
+        Eine Sperre, die bei JEDER Aenderung an der Datei anschlaegt, waere
+        unbenutzbar - sie meldete staendig Konflikte, die keine sind, und man
+        lernte, sie wegzuklicken. Der Fingerabdruck haengt deshalb an EINEM
+        Vorgang, nicht an der Datei.
+        """
+        vorgaenge = _bestand()
+        if len(vorgaenge) < 2:
+            self.skipTest("Weniger als zwei Vorgaenge.")
+        eins, zwei = vorgaenge[0], vorgaenge[1]
+
+        stand_eins = self._stand(eins["id"])
+        # Jemand aendert einen ANDEREN Vorgang.
+        _client.post("/issue/save",
+                     data=_felder(zwei, stand=self._stand(zwei["id"]),
+                                  assigned_to="jemand anderes"),
+                     follow_redirects=False)
+
+        antwort = _client.post("/issue/save",
+                               data=_felder(eins, stand=stand_eins, assigned_to="ich"),
+                               follow_redirects=False)
+        self.assertEqual(antwort.status_code, 303,
+                         "Die Sperre meldet einen Konflikt, obwohl ein ANDERER "
+                         "Vorgang geaendert wurde")
+
+        bestand = {i["id"]: i for i in _bestand()}
+        self.assertEqual(bestand[eins["id"]]["assigned_to"], "ich")
+        self.assertEqual(bestand[zwei["id"]]["assigned_to"], "jemand anderes",
+                         "Die fremde Aenderung ist verlorengegangen")
+
+
 class TestFilter(Grundgeruest):
 
     def test_mf01_oder_innerhalb_und_zwischen_den_arten(self):
@@ -454,6 +559,62 @@ class TestVorlagen(unittest.TestCase):
         self.assertNotIn("<script", html,
                          "Die Oberflaeche soll ohne JavaScript auskommen - "
                          "wie das Forum selbst")
+
+
+class TestBauformen(unittest.TestCase):
+    """
+    BF01/BF02 - BUILD 650: die beiden ueberholten Aufrufformen bleiben weg.
+
+    Vorgaenge afa7f325 (@app.on_event) und d39b6db4 (TemplateResponse mit dem
+    Namen als erstem Argument). Beide waren keine Fehler, sondern Warnungen
+    bei jedem Regressionslauf - und eine Warnzeile, die man wegsehen lernt,
+    ist der Weg, auf dem echte Warnungen untergehen (Vorgang 9de086d3,
+    'Alarmmuedigkeit').
+
+    GEPRUEFT WIRD AM SYNTAXBAUM, nicht am Text. Zum vierten Mal in dieser
+    Baustelle derselbe Grund: der Quelltext ERKLAERT in Kommentaren, was
+    frueher dastand, und eine Textsuche findet diese Erklaerung. Ein Test,
+    der die Dokumentation seines Gegenstands nicht von dessen Code
+    unterscheidet, zwingt dazu, Erklaerungen wegzulassen.
+    """
+
+    def setUp(self):
+        import ast
+        self.baum = ast.parse((TRACKER / "tracker_server.py").read_text(encoding="utf-8"))
+        self.ast = ast
+
+    def test_bf01_kein_on_event_mehr(self):
+        treffer = []
+        for knoten in self.ast.walk(self.baum):
+            if not isinstance(knoten, (self.ast.FunctionDef, self.ast.AsyncFunctionDef)):
+                continue
+            for schmuck in knoten.decorator_list:
+                ziel = schmuck.func if isinstance(schmuck, self.ast.Call) else schmuck
+                if isinstance(ziel, self.ast.Attribute) and ziel.attr == "on_event":
+                    treffer.append(knoten.name)
+        self.assertEqual(treffer, [],
+                         f"@app.on_event ist wieder da: {treffer}. FastAPI hat es "
+                         f"fuer ueberholt erklaert; der Ersatz ist 'lifespan'.")
+
+    def test_bf02_templateresponse_mit_request_zuerst(self):
+        falsch = []
+        for knoten in self.ast.walk(self.baum):
+            if not isinstance(knoten, self.ast.Call):
+                continue
+            ziel = knoten.func
+            if not (isinstance(ziel, self.ast.Attribute) and ziel.attr == "TemplateResponse"):
+                continue
+            if not knoten.args:
+                falsch.append("Aufruf ohne Argumente")
+                continue
+            erstes = knoten.args[0]
+            # Erwartet: TemplateResponse(request, "name.html", {...})
+            ist_request = isinstance(erstes, self.ast.Name) and erstes.id == "request"
+            if not ist_request:
+                falsch.append(self.ast.dump(erstes)[:60])
+        self.assertEqual(falsch, [],
+                         f"TemplateResponse in der ueberholten Aufrufform: {falsch}. "
+                         f"Starlette verlangt den Request als erstes Argument.")
 
 
 if __name__ == "__main__":

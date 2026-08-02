@@ -2,6 +2,18 @@
 """
 Einfaches Start-Script für den Issue Tracker
 Verwendung: python run.py
+
+BUILD 650 (Vorgang 7c7a738f): Die Serverdatei heisst jetzt
+'tracker_server.py' und nicht mehr 'server.py'. Grund: Das Paket fuehrt ein
+eigenes Verzeichnis 'server/' (server/shell_handler.py und weitere). Sobald
+das Wurzelverzeichnis im Suchpfad steht - im Regressionslauf steht es immer
+dort -, lieferte 'import server' das Paket des Webservers statt der Datei des
+Trackers. Der Fehler lautete "module 'server' has no attribute 'app'", und im
+Verbund hat sich eine ganze Testsuite deswegen still uebersprungen.
+
+Im Betrieb hat das nie gestoert, weil der Start aus DIESEM Verzeichnis
+heraus erfolgt (Auskunft mc, 2026-08-02). Es war eine Falle fuer den, der es
+spaeter anders macht - jetzt ist sie weg statt nur beschildert.
 """
 
 import subprocess
@@ -50,7 +62,7 @@ BACKUP_DIR=./backups
     print("🚀 Starte Issue Tracker...")
     try:
         # Wichtig: Server als Subprozess starten für korrektes Reloading
-        subprocess.run([sys.executable, "server.py"])
+        subprocess.run([sys.executable, "tracker_server.py"])
     except KeyboardInterrupt:
         print("\n👋 Server gestoppt.")
 

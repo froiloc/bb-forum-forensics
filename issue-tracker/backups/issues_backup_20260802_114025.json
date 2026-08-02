@@ -4640,12 +4640,12 @@
       "reported_at": "2026-08-01T19:30:00+00:00",
       "assigned_to": "",
       "type": "bug",
-      "status": "resolved",
+      "status": "open",
       "priority": "medium",
       "severity": "major",
       "title": "Kein Schutz gegen gleichzeitiges Schreiben - Aenderungen gehen verloren",
       "affected_version": "0.8.641",
-      "resolved_in_version": "0.8.650",
+      "resolved_in_version": null,
       "target_version": "0.8.642",
       "tags": [
         "Issue-Tracker",
@@ -4674,14 +4674,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eingang_claude_Build642.json"
-        },
-        {
-          "timestamp": "2026-08-02T09:00:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "BEHOBEN IN BUILD 650, nach deiner Festlegung vom 2026-08-02: Fassungsnummer im Formular. Das Bearbeitungsformular traegt verdeckt einen Fingerabdruck des Vorgangs mit; beim Speichern wird er neu gebildet und verglichen. Stimmt er nicht mehr, wird abgewiesen - mit der Angabe, WER zuletzt geaendert hat und WANN ('jemand war schneller' ist keine brauchbare Auskunft), und die Eingabe bleibt stehen. GEMESSEN am laufenden Server: Fenster B speichert (303), Fenster A speichert mit dem alten Stand (400), B's Aenderung ist noch da, A's Eingabe steht im Formular, nach dem Neuladen geht es (303). DER FINGERABDRUCK HAENGT AN EINEM VORGANG, NICHT AN DER DATEI - sonst schluege er auch an, wenn jemand einen voellig anderen Vorgang bearbeitet hat, und man lernte, ihn wegzuklicken (NB04 prueft genau das). NICHT GELOEST und ausdruecklich benannt: das Fenster INNERHALB eines Aufrufs (wenige Millisekunden zwischen Laden und Schreiben) und der Fall Server + merge.py gleichzeitig - dafuer braeuchte es eine Dateisperre, und die war ausdruecklich nicht bestellt. Sperren: NB01-NB04."
         }
       ]
     },
@@ -4896,12 +4888,12 @@
       "reported_at": "2026-08-01T19:30:00+00:00",
       "assigned_to": "",
       "type": "improvement",
-      "status": "resolved",
+      "status": "open",
       "priority": "medium",
       "severity": "minor",
       "title": "Sicherungstakt von 24 Stunden, und der Takt vergisst sich beim Start",
       "affected_version": "0.8.641",
-      "resolved_in_version": "0.8.650",
+      "resolved_in_version": null,
       "target_version": "0.8.642",
       "tags": [
         "Issue-Tracker",
@@ -4930,14 +4922,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eingang_claude_Build642.json"
-        },
-        {
-          "timestamp": "2026-08-02T09:00:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "BEHOBEN IN BUILD 650, nach deiner Festlegung vom 2026-08-02: jede Stunde, 48 Generationen. ZWEI AENDERUNGEN. (1) DER TAKT BEMISST SICH AM BESTAND, NICHT AM GEDAECHTNIS: gelesen wird der juengste eigene Sicherungsstand auf der Platte, und zwar der Zeitstempel aus dem NAMEN (die Aenderungszeit kann durch Kopieren oder eine Dateisynchronisation verstellt sein). Damit ueberlebt der Takt den Neustart. (2) DIE ZAHL 48 STEHT IN DER KONFIGURATION (BACKUP_KEEP), nicht mehr fest im Code - sie ist eine Betriebsentscheidung, keine Bauentscheidung. Beides ueber .env aenderbar. Ein Arbeitstag bekommt damit rund acht Sicherungspunkte statt einem, der Vorrat reicht zwei Arbeitswochen. Sperre: SW05d."
         }
       ]
     },
@@ -5099,12 +5083,12 @@
       "reported_at": "2026-08-01T19:30:00+00:00",
       "assigned_to": "",
       "type": "improvement",
-      "status": "resolved",
+      "status": "open",
       "priority": "low",
       "severity": "minor",
       "title": "server.py nutzt das ueberholte @app.on_event von FastAPI",
       "affected_version": "0.8.641",
-      "resolved_in_version": "0.8.650",
+      "resolved_in_version": null,
       "target_version": "0.8.642",
       "tags": [
         "Issue-Tracker",
@@ -5133,14 +5117,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eingang_claude_Build642.json"
-        },
-        {
-          "timestamp": "2026-08-02T09:00:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "BEHOBEN IN BUILD 650. Start und Ende laufen ueber 'lifespan' statt ueber zwei '@app.on_event'-Rueckrufe. FACHLICH AENDERT SICH NICHTS - dieselben Zeilen im Protokoll, an derselben Stelle im Ablauf. Der Gewinn ist die Bauform: 'vor dem Betrieb' und 'nach dem Betrieb' stehen um ein 'yield' herum und damit auf einen Blick beieinander. WARUM JETZT: die festgenagelte Fassung war kein Zustand, sondern ein Aufschub - und der kostete bei jedem Regressionslauf eine Warnzeile, die man wegsehen lernt. Genau so gehen echte Warnungen unter (vgl. 9de086d3). Der Lauf ist jetzt warnungsfrei. Sperre: BF01."
         }
       ]
     },
@@ -5704,12 +5680,12 @@
       "reported_at": "2026-08-01T20:15:00+00:00",
       "assigned_to": "",
       "type": "improvement",
-      "status": "resolved",
+      "status": "open",
       "priority": "low",
       "severity": "trivial",
       "title": "TemplateResponse wird in der ueberholten Aufrufform benutzt",
       "affected_version": "0.8.644",
-      "resolved_in_version": "0.8.650",
+      "resolved_in_version": null,
       "target_version": "0.8.645",
       "tags": [
         "Issue-Tracker",
@@ -5738,14 +5714,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eingang_claude_Build645.json"
-        },
-        {
-          "timestamp": "2026-08-02T09:00:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "BEHOBEN IN BUILD 650. Alle fuenf Aufrufe von TemplateResponse nehmen den Request jetzt als erstes Argument, so wie Starlette es verlangt. Zusammen mit afa7f325 ist der Lauf damit frei von Verfallswarnungen. Sperre: BF02 - GEPRUEFT AM SYNTAXBAUM, nicht am Text: der Quelltext erklaert in Kommentaren, was frueher dastand, und eine Textsuche findet diese Erklaerung. Das ist in dieser Baustelle jetzt zum vierten Mal aufgetreten."
         }
       ]
     },
@@ -5806,12 +5774,12 @@
       "reported_at": "2026-08-01T20:15:00+00:00",
       "assigned_to": "",
       "type": "bug",
-      "status": "resolved",
+      "status": "open",
       "priority": "medium",
       "severity": "major",
       "title": "issue-tracker/server.py heisst wie das Paket server/ des Webservers",
       "affected_version": "0.8.644",
-      "resolved_in_version": "0.8.650",
+      "resolved_in_version": null,
       "target_version": "0.8.645",
       "tags": [
         "Issue-Tracker",
@@ -5841,14 +5809,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eingang_claude_Build645.json"
-        },
-        {
-          "timestamp": "2026-08-02T09:00:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "BEHOBEN IN BUILD 650. Die Datei heisst jetzt 'tracker_server.py'. Du startest mit 'cd issue-tracker && python run.py' - im BETRIEB hat die Namensgleichheit deshalb nie gestoert, das Verzeichnis des Trackers steht dann vorn im Suchpfad. Sie war eine Falle fuer den, der es spaeter anders macht, und einmal ist sie schon zugeschnappt: im Regressionslauf lieferte 'import server' das Paket des Webservers, und eine ganze Testsuite hat sich daraufhin STILL uebersprungen. Jetzt ist die Falle weg statt nur beschildert. Geaendert: run.py, readme.md und die Ladepfade in vier Testdateien; der Start ist nachgeprueft."
         }
       ]
     },
@@ -5858,12 +5818,12 @@
       "reported_at": "2026-08-01T21:45:00+00:00",
       "assigned_to": "Alex",
       "type": "improvement",
-      "status": "resolved",
+      "status": "open",
       "priority": "low",
       "severity": "minor",
       "title": "Das Tag-Vokabular ist ungepflegt - 160 Tags, 89 davon einmalig",
       "affected_version": "0.8.646",
-      "resolved_in_version": "0.8.650",
+      "resolved_in_version": null,
       "target_version": null,
       "tags": [
         "Issue-Tracker",
@@ -5893,14 +5853,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eingang_claude_Build647.json"
-        },
-        {
-          "timestamp": "2026-08-02T09:30:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "BEHOBEN IN BUILD 650 - mit deiner Zuordnung, nicht mit meiner. Ich hatte 36 Vorschlaege vorgelegt; deine Entscheidung vom 2026-08-02 lautet: 'Alles mit Grundregel so lassen. Es bezeichnet die Nummer der Grundregel. Das zu aendern wuerde das Thema der Regel aendern, auf welche hier Bezug genommen wird.' und 'Singular immer auf Plural erweitern. Dabei belassen wir es.'\n\nDAS WAR DER PUNKT DER VORSCHLAGSLISTE. Meine Liste fuehrte 'Grundregel1 <= Grundregel2, Grundregel-3, Grundregel4' ganz oben - ein Aehnlichkeitsmass sieht dort eine Familie mit Nummern. Es ist aber keine: die Zahl IST der Inhalt, und das Zusammenlegen haette den Bezug zerstoert. Ein Werkzeug, das seine Zuordnung selbst errechnet, haette genau das getan. TZ02 nagelt die Entscheidung jetzt fest.\n\nGELIEFERT: issue-tracker/repair_tags.py (+ tag_repair.py). Die Zuordnung steht im Code, nicht in einer Heuristik: test->Tests, Sicht->Sichten, Spur->Spuren. Das sind die drei Singular/Plural-Doppel des Bestands, ueber die Endungen -s, -e und -en ermittelt und von Hand nachgesehen. Trockenlauf als Vorgabe, '--apply' sichert vorher und schreibt atomar, '--liste' zeigt nur die Zuordnung. Auf einer Kopie durchgelaufen: 3 Ersetzungen in 3 Vorgaengen, 167 Tags werden 164, die vier Grundregel-Tags unveraendert.\n\nNICHT ANGERUEHRT: die 92 Einzelstuecke. Ein Tag, das einmal vorkommt, taugt nicht zum Filtern - aber es stoert auch nicht, und es zu entfernen hiesse, eine Angabe aus einem fremden Vorgang zu loeschen. Sperren: TZ01-TZ04."
         }
       ]
     },
@@ -6001,12 +5953,12 @@
       "reported_at": "2026-08-01T22:30:00+00:00",
       "assigned_to": "Alex",
       "type": "bug",
-      "status": "resolved",
+      "status": "in_progress",
       "priority": "high",
       "severity": "major",
       "title": "Zeilenumbrueche stehen als Zeichenfolge im Text - 22 Vorgaenge",
       "affected_version": "0.8.647",
-      "resolved_in_version": "0.8.649",
+      "resolved_in_version": null,
       "target_version": "0.8.648",
       "tags": [
         "Issue-Tracker",
@@ -6038,14 +5990,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eingang_claude_Build648.json"
-        },
-        {
-          "timestamp": "2026-08-02T09:40:25.569373+00:00",
-          "author": "developer",
-          "action": "status_change",
-          "old_value": "in_progress",
-          "new_value": "resolved",
-          "comment": "Schnell als gelöst markiert"
         }
       ]
     },

@@ -52,6 +52,21 @@
           einer Vorlage haengt.
         #}
         <input type="hidden" name="related_to" value="{{ formular.related_to }}">
+
+        {#
+          BUILD 650 - DIE FASSUNGSNUMMER (Vorgang f0d2894b).
+
+          Sie haelt fest, auf welchem Stand dieses Formular gebaut wurde. Beim
+          Speichern vergleicht server.py sie mit dem Stand in der Datei;
+          stimmen sie nicht mehr ueberein, hat jemand anderes denselben
+          Vorgang zwischenzeitlich geaendert - und statt seine Aenderung
+          stillschweigend zu ueberschreiben, kommt das Formular mit einer
+          Meldung zurueck.
+
+          Bis Build 649 genuegten zwei offene Browserfenster, damit eine
+          Aenderung ohne jede Meldung verschwand.
+        #}
+        <input type="hidden" name="stand" value="{{ formular.stand }}">
         
         <div class="form-row">
             <div class="form-group">

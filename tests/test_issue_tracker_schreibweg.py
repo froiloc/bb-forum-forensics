@@ -71,6 +71,7 @@ if str(TRACKER) not in sys.path:
 
 from backup_names import (  # noqa: E402
     MERGE_MUSTER,
+    zeitpunkt_aus_namen,
     REPARATUR_MUSTER,
     SERVER_MUSTER,
     eigene_sicherungen,
@@ -260,14 +261,32 @@ class TestQuelltextSperren(unittest.TestCase):
     """
 
     def test_sw06_server_speichert_ueber_den_sicheren_weg(self):
-        knoten = _methode(TRACKER / "server.py", "IssueManager", "save")
+        knoten = _methode(TRACKER / "tracker_server.py", "IssueManager", "save")
         self.assertTrue(_ruft_auf(knoten, "write"),
                         "IssueManager.save benutzt den sicheren Schreibweg nicht")
         self.assertFalse(_oeffnet_zum_schreiben(knoten),
                          "IssueManager.save kuerzt die Zieldatei wieder unmittelbar")
 
+    def test_sw05d_zeitpunkt_aus_namen(self):
+        """
+        BUILD 650 (Vorgang 0c14996b): Der Takt der Sicherung bemisst sich ab
+        jetzt am juengsten Stand AUF DER PLATTE. Dafuer muss der Zeitpunkt aus
+        dem NAMEN kommen - die Aenderungszeit kann durch Kopieren oder eine
+        Dateisynchronisation verstellt sein, der Name nicht.
+        """
+        zeit = datetime(2026, 8, 2, 7, 15, 30)
+        for bilden in (server_sicherungsname, merge_sicherungsname,
+                       reparatur_sicherungsname):
+            with self.subTest(erzeuger=bilden.__name__):
+                self.assertEqual(zeitpunkt_aus_namen(bilden(zeit)), zeit)
+
+        # Was zu keinem Muster passt, ergibt keinen Zeitpunkt - und darf
+        # deshalb den Takt auch nicht beeinflussen.
+        self.assertIsNone(zeitpunkt_aus_namen("handnotiz.json"))
+        self.assertIsNone(zeitpunkt_aus_namen("issues_backup_von_hand.json"))
+
     def test_sw07_server_bereinigt_nicht_mehr_per_glob(self):
-        knoten = _methode(TRACKER / "server.py", "IssueManager", "_create_backup")
+        knoten = _methode(TRACKER / "tracker_server.py", "IssueManager", "_create_backup")
         self.assertTrue(_ruft_auf(knoten, "eigene_sicherungen"),
                         "_create_backup waehlt nicht nach eigenem Muster aus")
         self.assertFalse(_ruft_auf(knoten, "glob"),

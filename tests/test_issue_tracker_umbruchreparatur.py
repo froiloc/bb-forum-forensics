@@ -69,22 +69,25 @@ from literal_newline_repair import (  # noqa: E402
 # -----------------------------------------------------------------------------
 # DER STAND (Build 648).
 #
-# 317 verlorene Umbrueche in 21 Vorgaengen, gemessen am Bestand von Build 647.
-# Diese Zahl ist KEIN Ziel, sondern eine Obergrenze: LN09 verlangt, dass sie
-# nicht WAECHST. Sobald mc 'python repair_literal_newlines.py --apply' hat
-# laufen lassen, faellt sie auf 0 - dann gehoert die Zahl hier auf 0 gesetzt,
-# und aus der Obergrenze wird eine Sperre.
+# BUILD 650: DIE ZAHL STEHT AUF 0 - AUS DER OBERGRENZE IST EINE SPERRE
+# GEWORDEN. Der Weg dahin, zum Nachlesen: Build 648 mass 317 verlorene
+# Umbrueche in 21 Vorgaengen und trug sie als Obergrenze ein (ein Test, der ab
+# Auslieferung rot ist, verstiesse gegen Grundregel 2). mc hat das Werkzeug
+# danach laufen lassen; Build 649 fand noch 71 - Nachschub aus Kommentaren,
+# die es in 647 noch nicht gab. Nach dem zweiten Lauf ist der Bestand sauber,
+# nachgezaehlt ueber alle 145 Vorgaenge.
 #
-# WARUM NICHT SOFORT 0: Der Bestand wird von mir nicht angefasst (dieselbe
-# Regel wie bei den Kurz-IDs in Build 642). Ein Test, der ab Auslieferung rot
-# ist, verstiesse gegen Grundregel 2 - und ein rotes Ergebnis, das man
-# wegsehen muss, entwertet die ganze Suite.
+# AB JETZT HEISST 'GROESSER ALS 0' IMMER: es ist eine Eingangsdatei
+# eingepflegt worden, in der ein Backslash verdoppelt wurde. Zu beheben mit
+# 'python repair_literal_newlines.py --apply'. Der Fehler entsteht beim
+# ERZEUGEN der Datei, also bei mir - merge.py warnt seit Build 648 an genau
+# dieser Stelle.
 #
 # WARUM UEBERHAUPT EINE ZAHL: Weil der Fehler beim ERZEUGEN von
 # Eingangsdateien entsteht, also bei mir, und weil er in der fertigen Anzeige
 # nur auffaellt, wenn jemand genau hinsieht. mc hat ihn gefunden, nicht ich.
 # -----------------------------------------------------------------------------
-STAND_UMBRUECHE = 317
+STAND_UMBRUECHE = 0
 
 
 def _vorgang(**felder):

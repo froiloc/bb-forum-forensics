@@ -5,7 +5,9 @@ Git-integrierbar mit JSON-Speicher und Web-Interface
 """
 
 import json
+import hashlib
 import re
+from contextlib import asynccontextmanager
 import uuid
 import logging
 import shutil
@@ -43,6 +45,7 @@ from textformat import zeilen_html
 from tag_cloud import tag_wolke, STUFEN as TAG_STUFEN
 from backup_names import (
     SERVER_MUSTER,
+    zeitpunkt_aus_namen,
     SUCH_GLOB,
     eigene_sicherungen,
     server_sicherungsname,
@@ -74,7 +77,14 @@ class Config:
     # Backup
     AUTO_BACKUP: bool = os.getenv("AUTO_BACKUP", "true").lower() == "true"
     BACKUP_DIR: Path = Path(os.getenv("BACKUP_DIR", "./backups"))
-    BACKUP_INTERVAL_HOURS: int = int(os.getenv("BACKUP_INTERVAL_HOURS", "24"))
+    # BUILD 650 (Vorgang 0c14996b): Vorgabe von 24 auf 1 Stunde. Festlegung
+    # mc, 2026-08-02: "Jede Stunde, 48 Generationen." Ein Arbeitstag am
+    # Tracker bekommt damit rund acht Sicherungspunkte statt einem, und der
+    # Vorrat reicht zwei Arbeitswochen zurueck.
+    BACKUP_INTERVAL_HOURS: int = int(os.getenv("BACKUP_INTERVAL_HOURS", "1"))
+    # Bis Build 649 stand die Zahl 10 fest im Code. Sie gehoert in die
+    # Konfiguration - sie ist eine Betriebsentscheidung, keine Bauentscheidung.
+    BACKUP_KEEP: int = int(os.getenv("BACKUP_KEEP", "48"))
     
     # UI
     TITLE: str = os.getenv("TITLE", "Software Issue Tracker")
@@ -162,7 +172,48 @@ def _paketfassung() -> str:
 
 PAKETFASSUNG = _paketfassung()
 
+# ============================================================================
+# BUILD 650 - START UND ENDE UEBER 'lifespan' (Vorgang afa7f325)
+#
+# Bis Build 649 standen hier '@app.on_event("startup")' und '("shutdown")'.
+# FastAPI hat beide zugunsten des 'lifespan'-Kontextes fuer ueberholt
+# erklaert und meldet das bei jedem Lauf der Regression als Warnung.
+#
+# WAS SICH FACHLICH AENDERT: NICHTS. Es sind dieselben Zeilen im Protokoll,
+# an derselben Stelle im Ablauf. Der Unterschied ist die Bauform: statt zweier
+# Rueckrufe gibt es EINEN Kontext, in dem 'vor dem Betrieb' und 'nach dem
+# Betrieb' um ein 'yield' herum stehen. Das ist auch der Grund, warum die
+# Umstellung ueberhaupt lohnt - man sieht beide Haelften auf einen Blick und
+# kann nicht mehr vergessen, dass es die zweite gibt.
+#
+# WARUM JETZT UND NICHT SPAETER: Die Fassung in issue-tracker/requirements.txt
+# ist auf fastapi 0.115.0 festgenagelt, es lief also. Aber eine festgenagelte
+# Fassung ist kein Zustand, sondern ein Aufschub - und der Aufschub kostet bei
+# jedem Regressionslauf eine Warnzeile, die man wegsehen lernt. Genau das ist
+# der Weg, auf dem echte Warnungen untergehen (vgl. Vorgang 9de086d3,
+# 'Alarmmuedigkeit').
+# ============================================================================
+
+@asynccontextmanager
+async def lebenszyklus(anwendung: FastAPI):
+    """Was vor dem ersten und nach dem letzten Aufruf geschieht."""
+    logger.info("=" * 60)
+    logger.info(f"{config.TITLE} wird gestartet")
+    logger.info(f"Host: {config.HOST}:{config.PORT}")
+    logger.info(f"Daten-Verzeichnis: {config.DATA_DIR.absolute()}")
+    logger.info(f"Issue-Datei: {config.ISSUES_FILE.absolute()}")
+    logger.info(f"Backup-Verzeichnis: {config.BACKUP_DIR.absolute()}")
+    logger.info(f"Debug-Modus: {config.DEBUG}")
+    logger.info(f"Auto-Backup: {config.AUTO_BACKUP}")
+    logger.info("=" * 60)
+
+    yield
+
+    logger.info("Server wird heruntergefahren")
+
+
 app = FastAPI(
+    lifespan=lebenszyklus,
     title=config.TITLE,
     version="2.0.0",
     description="Lokaler Issue Tracker für die Softwareentwicklung"
@@ -268,14 +319,39 @@ class IssueManager:
             logger.error(f"Fehler beim Speichern (Bestand unveraendert): {e}")
             return False
     
+    def _juengste_eigene_sicherung(self) -> Optional[datetime]:
+        """
+        Wann die letzte eigene Sicherung entstanden ist - laut Dateisystem.
+
+        BUILD 650 (Vorgang 0c14996b). Bis Build 649 stand der Zeitpunkt in
+        'self.last_backup', also in einem Feld des laufenden Prozesses. Das
+        hatte zwei Folgen, die beide gegen den Zweck einer Sicherung laufen:
+        nach jedem Neustart begann der Takt von vorn (es entstand also eine
+        Sicherung mehr als gedacht), und lief der Server durch, entstand bei
+        einer Taktlaenge von 24 Stunden fuer einen ganzen Arbeitstag genau
+        EIN Sicherungspunkt - der Stand VOR der ersten Aenderung.
+
+        Der Blick auf die Platte kennt beide Probleme nicht: dort steht, was
+        wirklich da ist. Gelesen wird der Zeitstempel aus dem NAMEN, nicht
+        die Aenderungszeit - die kann durch Kopieren oder eine
+        Dateisynchronisation verstellt sein.
+        """
+        eigene = eigene_sicherungen(config.BACKUP_DIR, SERVER_MUSTER)
+        if not eigene:
+            return None
+        zeitpunkte = [zeitpunkt_aus_namen(p.name) for p in eigene]
+        vorhanden = [z for z in zeitpunkte if z is not None]
+        return max(vorhanden) if vorhanden else None
+
     def _create_backup(self):
         """Erstellt ein Backup der aktuellen Issue-Datei"""
         if not self.file_path.exists():
             return
-        
-        # Prüfen ob Backup nötig ist
+
+        # Prüfen ob Backup nötig ist - am Bestand, nicht am Gedaechtnis.
         now = datetime.now()
-        if self.last_backup and (now - self.last_backup) < timedelta(hours=config.BACKUP_INTERVAL_HOURS):
+        juengste = self._juengste_eigene_sicherung()
+        if juengste and (now - juengste) < timedelta(hours=config.BACKUP_INTERVAL_HOURS):
             return
         
         backup_file = config.BACKUP_DIR / server_sicherungsname(now)
@@ -299,8 +375,8 @@ class IssueManager:
             # gehoert jemand anderem und bleibt liegen.
             # ---------------------------------------------------------------
             eigene = eigene_sicherungen(config.BACKUP_DIR, SERVER_MUSTER)
-            if len(eigene) > 10:
-                for old_backup in eigene[:-10]:
+            if len(eigene) > config.BACKUP_KEEP:
+                for old_backup in eigene[:-config.BACKUP_KEEP]:
                     old_backup.unlink()
                     logger.debug(f"Altes eigenes Backup gelöscht: {old_backup}")
         except Exception as e:
@@ -555,6 +631,40 @@ def _sucht(issue: Dict[str, Any], begriff: str) -> bool:
 FORMULAR_VERSIONSMUSTER = re.compile(r"^\d+\.\d+\.\d+[a-z]?$")
 
 
+def vorgangsstand(issue: Optional[Dict[str, Any]]) -> str:
+    """
+    Ein kurzer Fingerabdruck EINES Vorgangs.
+
+    BUILD 650 (Vorgang f0d2894b): Er ist die Fassungsnummer, die das Formular
+    verdeckt mittraegt. Beim Speichern wird er neu gebildet und verglichen -
+    stimmt er nicht mehr, hat in der Zwischenzeit jemand anderes denselben
+    Vorgang geaendert.
+
+    WARUM JE VORGANG UND NICHT UEBER DIE GANZE DATEI: Ein Fingerabdruck der
+    ganzen Datei schluege auch dann an, wenn jemand einen VOELLIG ANDEREN
+    Vorgang bearbeitet hat - und wuerde damit staendig Konflikte melden, die
+    keine sind. Fuer den Bestand gilt das ohnehin nicht: save_issue laedt die
+    Datei bei jedem Aufruf frisch und aendert darin genau einen Vorgang;
+    Aenderungen an anderen Vorgaengen koennen also gar nicht verlorengehen.
+    Verloren gehen kann nur der EINE Vorgang, den zwei Leute gleichzeitig
+    offen haben - und genau den beschreibt dieser Fingerabdruck.
+
+    WAS ER NICHT LEISTET: Das Fenster INNERHALB eines Aufrufs - zwischen dem
+    Laden und dem Schreiben, also wenige Millisekunden - bleibt offen. Wer es
+    schliessen will, braucht eine Dateisperre, und die deckt dann auch
+    merge.py mit ab; das ist ein eigener Bau und ausdruecklich nicht dieser
+    (Festlegung mc, 2026-08-02).
+
+    'sort_keys' und der feste Zeichensatz sind Bedingung: sonst haenge der
+    Fingerabdruck an der zufaelligen Reihenfolge im Speicher und meldete
+    Konflikte, wo keine sind.
+    """
+    if not issue:
+        return ""
+    roh = json.dumps(issue, sort_keys=True, ensure_ascii=False)
+    return hashlib.md5(roh.encode("utf-8")).hexdigest()[:16]
+
+
 def pruefe_formular(werte: Dict[str, Any], bekannte_ids: set,
                     bestehende_verweise: List[str]) -> List[str]:
     """
@@ -656,6 +766,8 @@ def formularwerte(issue: Optional[Dict[str, Any]] = None,
     umgebung = (issue or {}).get("environment") or {}
     werte = {
         "issue_id": (issue or {}).get("id", ""),
+        # BUILD 650: die Fassungsnummer (Vorgang f0d2894b).
+        "stand": vorgangsstand(issue),
         "type": (issue or {}).get("type", "bug"),
         "title": (issue or {}).get("title", ""),
         "affected_version": (issue or {}).get("affected_version", ""),
@@ -803,8 +915,7 @@ async def index(
     # Auswahlmoeglichkeit verliert, waere unbedienbar.
     assignees = sorted({i.get("assigned_to", "") for i in alle_issues if i.get("assigned_to")})
 
-    return templates.TemplateResponse("index.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "index.html", {
         "issues": paged_issues,
         "stats": stats,
         "assignees": assignees,
@@ -834,8 +945,7 @@ async def index(
 @app.get("/issue/new", response_class=HTMLResponse)
 async def new_issue_form(request: Request):
     """Formular für neuen Issue"""
-    return templates.TemplateResponse("issue_form.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "issue_form.html", {
         # BUILD 649: Die Maske liest nur noch aus 'formular' - ein Bauplan
         # fuer alle drei Wege (neu, bearbeiten, Neuausgabe nach Fehler).
         "formular": formularwerte(),
@@ -865,8 +975,7 @@ async def view_issue(request: Request, issue_id: str):
     # Nächste mögliche Status
     next_statuses = STATUS_FLOW.get(issue.get("status", "open"), [])
     
-    return templates.TemplateResponse("issue_detail.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "issue_detail.html", {
         "issue": issue,
         "related_issues": related_issues,
         "referencing_issues": referencing_issues,
@@ -883,8 +992,7 @@ async def edit_issue_form(request: Request, issue_id: str):
     if not issue:
         raise HTTPException(status_code=404, detail="Issue nicht gefunden")
     
-    return templates.TemplateResponse("issue_form.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "issue_form.html", {
         "formular": formularwerte(issue),
         "fehler": [],
         "action": "Bearbeiten",
@@ -920,6 +1028,12 @@ async def save_issue(
     # issue_form.html gar kein Feld 'related_to' fuehrte, loeschte JEDE
     # Bearbeitung ueber die Weboberflaeche SAEMTLICHE Verweise des Vorgangs.
     related_to: Optional[str] = Form(None),
+    # BUILD 650 (Vorgang f0d2894b): der Stand, auf dem dieses Formular gebaut
+    # wurde. 'None' heisst 'das Formular hat nichts dazu gesagt' - dieselbe
+    # Unterscheidung wie bei 'related_to' und aus demselben Grund: ein altes
+    # Formular im Browser-Zwischenspeicher darf nicht blockiert werden, es
+    # soll nur nicht stillschweigend etwas ueberschreiben.
+    stand: Optional[str] = Form(None),
     estimated_hours: str = Form(""),
     os_name: str = Form("", alias="os"),
     browser: str = Form(""),
@@ -958,6 +1072,9 @@ async def save_issue(
     # -----------------------------------------------------------------------
     eingaben = {
         "issue_id": issue_id or "",
+        # Nach einer Abweisung muss der Stand ERHALTEN bleiben, sonst waere
+        # der zweite Versuch wieder blind.
+        "stand": stand or "",
         "type": typ,
         "title": title,
         "affected_version": affected_version,
@@ -984,6 +1101,38 @@ async def save_issue(
     if issue_id and vorgang is None:
         meldungen.append("Zu dieser Kennung gibt es keinen Vorgang mehr.")
 
+    # -----------------------------------------------------------------------
+    # BUILD 650 - DIE VERLORENE AENDERUNG (Vorgang f0d2894b).
+    #
+    # Zwei offene Browserfenster genuegten bisher: wer zuletzt speicherte,
+    # loeschte die Aenderung des anderen - ohne Meldung, ohne Spur im Verlauf.
+    # Ab jetzt traegt das Formular verdeckt mit, auf welchem Stand es gebaut
+    # wurde; stimmt der nicht mehr, wird abgewiesen.
+    #
+    # DIE MELDUNG NENNT ROSS UND REITER: wer zuletzt geaendert hat und wann.
+    # 'Jemand war schneller' ist keine brauchbare Auskunft - man muss wissen,
+    # bei wem man nachfragt.
+    # -----------------------------------------------------------------------
+    if issue_id and vorgang is not None and stand:
+        jetziger = vorgangsstand(vorgang)
+        if jetziger != stand:
+            letzte = (vorgang.get("updates") or [{}])[-1]
+            wer = letzte.get("author") or "unbekannt"
+            wann = str(letzte.get("timestamp") or "")[:19].replace("T", " ")
+            meldungen.append(
+                f"Dieser Vorgang wurde zwischenzeitlich geändert - zuletzt von "
+                f"{wer} am {wann}. Deine Eingaben stehen unten unverändert; "
+                f"bitte den Vorgang in einem zweiten Fenster ansehen und die "
+                f"Änderungen zusammenführen, dann erneut speichern."
+            )
+            logger.warning("Fassungskonflikt bei %s: Formular %s, Bestand %s",
+                           issue_id, stand, jetziger)
+    elif issue_id and vorgang is not None and stand is None:
+        # Ein Formular ohne das Feld - etwa aus dem Zwischenspeicher des
+        # Browsers. Nicht blockieren, aber vermerken: sonst waere die Sperre
+        # unbemerkt wirkungslos.
+        logger.info("Formular ohne Fassungsnummer gespeichert (%s)", issue_id)
+
     if meldungen:
         # DIE EINGABE BLEIBT STEHEN. Das ist der Unterschied zu allem, was
         # vorher da war: bis Build 648 wurde zurechtgebogen oder verworfen,
@@ -992,9 +1141,9 @@ async def save_issue(
         logger.info("Formular abgewiesen (%d Meldungen): %s",
                     len(meldungen), "; ".join(meldungen))
         return templates.TemplateResponse(
+            request,
             "issue_form.html",
             {
-                "request": request,
                 "formular": formularwerte(roh=eingaben),
                 "fehler": meldungen,
                 "action": "Bearbeiten" if issue_id else "Erstellen",
@@ -1270,30 +1419,6 @@ async def health_check():
 
 
 # ============================================================================
-# Startup Event
-# ============================================================================
-
-@app.on_event("startup")
-async def startup_event():
-    """Wird beim Start ausgeführt"""
-    logger.info("=" * 60)
-    logger.info(f"{config.TITLE} wird gestartet")
-    logger.info(f"Host: {config.HOST}:{config.PORT}")
-    logger.info(f"Daten-Verzeichnis: {config.DATA_DIR.absolute()}")
-    logger.info(f"Issue-Datei: {config.ISSUES_FILE.absolute()}")
-    logger.info(f"Backup-Verzeichnis: {config.BACKUP_DIR.absolute()}")
-    logger.info(f"Debug-Modus: {config.DEBUG}")
-    logger.info(f"Auto-Backup: {config.AUTO_BACKUP}")
-    logger.info("=" * 60)
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Wird beim Beenden ausgeführt"""
-    logger.info("Server wird heruntergefahren")
-
-
-# ============================================================================
 # Main - Wichtig: Dieser Block behebt den Uvicorn-Fehler!
 # ============================================================================
 
@@ -1305,7 +1430,7 @@ def start():
     if config.RELOAD:
         # Bei Reload muss uvicorn mit dem Modul-String gestartet werden
         uvicorn.run(
-            "server:app",  # Modul-String statt App-Objekt
+            f"{MODULENAME}:app",  # Modul-String statt App-Objekt
             host=config.HOST,
             port=config.PORT,
             reload=True,

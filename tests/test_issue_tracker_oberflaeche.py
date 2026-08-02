@@ -126,7 +126,7 @@ def _tracker_server_laden():
     """
     import importlib.util
 
-    pfad = TRACKER / "server.py"
+    pfad = TRACKER / "tracker_server.py"
     spezifikation = importlib.util.spec_from_file_location(
         "issue_tracker_server", pfad)
     modul = importlib.util.module_from_spec(spezifikation)
@@ -384,7 +384,7 @@ class VorlagenUndQuelltext(unittest.TestCase):
         )
 
     def test_of08_save_issue_unterscheidet_fehlend_von_leer(self):
-        quelle = (TRACKER / "server.py").read_text(encoding="utf-8")
+        quelle = (TRACKER / "tracker_server.py").read_text(encoding="utf-8")
         baum = ast.parse(quelle)
         funktion = next(
             (k for k in ast.walk(baum)

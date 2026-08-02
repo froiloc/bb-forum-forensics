@@ -1,3 +1,14 @@
+# Starten
+
+```
+cd issue-tracker
+python run.py
+```
+
+Die Serverdatei heißt seit Build 650 `tracker_server.py` (Vorgang `7c7a738f`);
+`server.py` hieß wie das Paket `server/` des Webservers und wurde beim Laden
+aus dem Wurzelverzeichnis heraus mit diesem verwechselt.
+
 # Was sich in Build 642 geändert hat
 
 Vier Punkte, die den Umgang mit dem Werkzeug betreffen:
