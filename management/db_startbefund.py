@@ -34,12 +34,15 @@
 #   wird gezaehlt und zusammengefasst; wer es genau wissen will, bekommt vom
 #   genannten Werkzeug die Einzelaufstellung.
 #
-# Version: v0.8.657 · Build: 657 · 2026-08-02
+# Version: v0.8.658 · Build: 658 · 2026-08-02
+#   Build 658: _falldatenbanken nimmt nur noch die kanonische Form und nennt,
+#   was es uebergangen hat (Ticket c48b0d76).
 # =============================================================================
 
 from __future__ import annotations
 
 import os
+import re
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
@@ -230,10 +233,52 @@ class DbStartbefund:
         if not p.is_dir():
             return Befund(e.kennung, e.name, e.art, verzeichnis, BEFUND_FEHLT,
                           "Das Verzeichnis gibt es nicht.", None, False)
-        dateien = sorted(p.glob("*.db"))
+
+        # ------------------------------------------------------------------
+        # BUILD 658 - NUR DIE KANONISCHE FORM.
+        #
+        # Bis Build 657 stand hier glob("*.db") und nahm damit ALLES. Im
+        # evidence-Verzeichnis liegen aber auch die TRANSPORTDATEIEN des
+        # Cross-Annotation-Integrators ("evidence_<uid>_<iid>.db"): sie sind
+        # voruebergehend, tragen ein anderes Schema und haben zu Recht kein
+        # Register. Sieben davon erzeugten auf der Anlage von mc bei JEDEM
+        # Serverstart einen Warnbalken.
+        #
+        # DER SCHADEN WAR NICHT DER FALSCHE ZAEHLER, SONDERN DIE ABSTUMPFUNG.
+        # Ein Balken, der bei jedem Start etwas meldet, das in Ordnung ist,
+        # wird nach der dritten Woche nicht mehr gelesen - und dann faellt
+        # auch die echte Meldung nicht mehr auf. Genau die Falle, die dieser
+        # Startbefund schliessen sollte.
+        #
+        # DAS MUSTER KOMMT AUS DEM KATALOG, nicht von hier: es gehoert zum
+        # Wesen der Datenbank wie ihr Pfad. Fehlt es, wird NICHT stillschweigend
+        # alles genommen - dann ist der Katalog unvollstaendig, und das ist
+        # ein Befund.
+        # ------------------------------------------------------------------
+        alle = sorted(x for x in p.glob("*.db") if x.is_file())
+        if not e.datei_muster:
+            return Befund(e.kennung, e.name, e.art, verzeichnis,
+                          BEFUND_UNPRUEFBAR,
+                          "Im Katalog fehlt das Dateinamensmuster fuer diese "
+                          "Art - es laesst sich nicht entscheiden, welche "
+                          "der %d Dateien gemeint sind." % len(alle),
+                          None, False)
+        muster = re.compile(e.datei_muster)
+        dateien = [x for x in alle if muster.match(x.name)]
+        beiseite = len(alle) - len(dateien)
+        # GRUNDREGEL 1: was uebergangen wird, wird GEZAEHLT und GENANNT. Eine
+        # Pruefung, die Dateien wortlos auslaesst, ist von einer
+        # unvollstaendigen nicht zu unterscheiden.
+        nachsatz = ("" if not beiseite else
+                    " %d weitere Datei(en) im Verzeichnis tragen nicht die "
+                    "Form '%s' und sind uebergangen worden (z. B. "
+                    "Transportdateien der Fremd-Annotationen)."
+                    % (beiseite, e.name))
+
         if not dateien:
             return Befund(e.kennung, e.name, e.art, verzeichnis, BEFUND_OK,
-                          "Keine Falldatenbanken vorhanden.", None, False)
+                          "Keine Falldatenbanken vorhanden." + nachsatz,
+                          None, False)
 
         ohne_register: List[str] = []
         unlesbar: List[str] = []
@@ -253,7 +298,7 @@ class DbStartbefund:
         if not ohne_register and not unlesbar:
             return Befund(e.kennung, e.name, e.art, verzeichnis, BEFUND_OK,
                           "%d Falldatenbank(en), alle mit Register."
-                          % len(dateien), None, False)
+                          % len(dateien) + nachsatz, None, False)
 
         teile = ["%d Falldatenbank(en) gefunden" % len(dateien)]
         if ohne_register:
@@ -270,7 +315,7 @@ class DbStartbefund:
         return Befund(e.kennung, e.name, e.art, verzeichnis, BEFUND_UNPRUEFBAR,
                       "; ".join(teile) + ". Ein fehlendes Register bedeutet "
                       "NICHT zwingend einen Rueckstand - genaueres sagt das "
-                      "Werkzeug je Fall.",
+                      "Werkzeug je Fall." + nachsatz,
                       WERKZEUG + " --subject-id <uid>", False)
 
 

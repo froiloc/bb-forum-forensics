@@ -64,7 +64,8 @@
 #   Pfad und traf die falsche Datei. Das Werkzeug holt den Pfad aus
 #   config.yaml und kann ihn nicht verfehlen.
 #
-# Version: v0.8.657 · Build: 657 · 2026-08-02
+# Version: v0.8.658 · Build: 658 · 2026-08-02
+#   Build 658: Feld datei_muster - die kanonische Form einer Falldatenbank.
 # Beleg: Vorfall 2026-08-02 (Sicht Baustein-Module, HTTP 500 ohne Logzeile);
 #        tools/migrate-dbs.py Kopf (Festlegungen mc 2026-07-30);
 #        management/server/migration_status.py (Entscheidung mc 2026-07-10).
@@ -120,6 +121,23 @@ class DbEintrag:
     begruendung: str
     #: Welche Server benutzen sie? ('verwaltung', 'ermittler')
     server: Tuple[str, ...]
+    #: BUILD 658: Wie heisst eine Datei DIESER Art?
+    #
+    #  Nur fuer Falldatenbanken belegt. Der Ausdruck steht HIER und nicht im
+    #  Pruefer, weil er zum Wesen der Datenbank gehoert - genau wie ihr Pfad.
+    #  Zwei Ausdruecke fuer denselben Namen liefen beim naechsten Umbau
+    #  auseinander, und dann prueft der eine, was der andere nicht bildet.
+    #
+    #  ANLASS: Der Startbefund aus Build 657 nahm im evidence-Verzeichnis
+    #  ALLES, was auf .db endete - und zaehlte damit die Transportdateien
+    #  des Cross-Annotation-Integrators ('evidence_<uid>_<iid>.db') als
+    #  Falldatenbanken ohne Register. Sieben Stueck, bei jedem Serverstart,
+    #  auf einer Anlage, die am naechsten Tag in Betrieb ging.
+    #
+    #  DIE KANONISCHE FORM HAT GENAU EINE ZAHL. So bilden sie
+    #  management/server/management_app.py ("evidence_%d.db" % int(uid)) und
+    #  management/stats/annotation_stats_repo.py uebereinstimmend.
+    datei_muster: Optional[str] = None
 
 
 #: DAS WERKZEUG, auf das jeder Befund zeigt. An EINER Stelle, damit Meldung
@@ -169,6 +187,7 @@ DB_KATALOG: Tuple[DbEintrag, ...] = (
         vorgabe="./data/evidence/",
         blockierend=False,
         befehl=WERKZEUG + " --subject-id <uid> --apply",
+        datei_muster=r"^evidence_\d+\.db$",
         begruendung=(
             "Eine Datei JE FALL, mit Register und Spuren. Steht seit dem "
             "01.07.2026 unter dem Migrationsvorbehalt - eine Migration "
@@ -185,6 +204,7 @@ DB_KATALOG: Tuple[DbEintrag, ...] = (
         vorgabe="./data/assets/",
         blockierend=False,
         befehl=WERKZEUG + " --subject-id <uid> --apply",
+        datei_muster=r"^assets_\d+\.db$",
         begruendung=(
             "Wie evidence_<uid>.db: eine Datei je Fall, Register vorhanden, "
             "seit dem 01.07.2026 unter Migrationsvorbehalt."),

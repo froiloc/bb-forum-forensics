@@ -22,7 +22,11 @@
 # DK06 — meldezeilen(): schweigt bei 'alles gut', nennt sonst Pfad und Befehl.
 # DK07 — der Befund heilt nicht und kann es nicht: keine Schreibverbindung.
 #
-# Version: v0.8.657 · Build: 657 · 2026-08-02
+# DK08 — Transportdateien loesen keinen Fehlalarm aus (Build 658).
+# DK09 — fehlt das Namensmuster, wird gemeldet statt geraten (Build 658).
+# DK10 — das Muster passt zur kanonischen Bildung im Bestand (Build 658).
+#
+# Version: v0.8.658 · Build: 658 · 2026-08-02
 # =============================================================================
 
 from __future__ import annotations
@@ -274,3 +278,135 @@ class KatalogTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# =============================================================================
+# BUILD 658 — DER FEHLALARM DER FALLDATENBANKEN (Ticket c48b0d76).
+#
+# Der Startbefund aus Build 657 nahm im evidence-Verzeichnis ALLES, was auf
+# .db endete, und zaehlte damit die TRANSPORTDATEIEN des
+# Cross-Annotation-Integrators ("evidence_<uid>_<iid>.db") als
+# Falldatenbanken ohne Register. Sieben Stueck, bei jedem Serverstart, auf
+# einer Anlage, die am naechsten Tag in Betrieb ging.
+#
+# WARUM ES DURCH MEINE PRUEFUNG KAM: auf dem Baucontainer gibt es das
+# evidence-Verzeichnis gar nicht - die Pruefung lief dort gegen 'fehlt'. Ein
+# Pfad, den die Vorrichtung nicht beruehrt, ist ungeprueft. Das ist die Lehre
+# aus Build 651, und ich habe sie hier nicht angewandt. DIESER FALL BAUT DAS
+# VERZEICHNIS DESHALB WIRKLICH.
+#
+# DK08 — nur die kanonische Form wird geprueft, das Uebergangene wird GENANNT.
+# DK09 — fehlt das Muster im Katalog, wird das gemeldet statt alles zu nehmen.
+# =============================================================================
+class FalldatenbankenTests(unittest.TestCase):
+
+    def _verzeichnis(self, echte=5, transport=3, ohne_register=0):
+        tmp = tempfile.mkdtemp()
+        ev = os.path.join(tmp, "evidence")
+        os.makedirs(ev)
+
+        def _db(name, register=True):
+            con = sqlite3.connect(os.path.join(ev, name))
+            if register:
+                con.execute("CREATE TABLE schema_migrations (version INTEGER)")
+            else:
+                # Das Schema einer Transportdatei: Annotationen, kein Register.
+                con.execute("CREATE TABLE annotations (id INTEGER)")
+            con.commit()
+            con.close()
+
+        for n in range(echte):
+            _db("evidence_%d.db" % (1000 + n))
+        for n in range(ohne_register):
+            _db("evidence_%d.db" % (2000 + n), register=False)
+        for n in range(transport):
+            # Die Form, die den Fehlalarm ausgeloest hat.
+            _db("evidence_%d_3.db" % (1486482 + n), register=False)
+        return ev
+
+    def _befund(self, ev, kennung="evidence"):
+        cfg = _StubConfig({"paths.evidence_db_dir": ev,
+                           "paths.assets_db_dir": ev})
+        return [b for b in DbStartbefund("verwaltung", cfg).erhebe()
+                if b.kennung == kennung][0]
+
+    # DK08 -----------------------------------------------------------------
+    def test_dk08_transportdateien_loesen_keinen_alarm_aus(self):
+        b = self._befund(self._verzeichnis(echte=5, transport=3))
+
+        # KEIN Warnbalken - das ist der ganze Punkt. Ein Balken, der bei
+        # jedem Start etwas Richtiges meldet, wird nach der dritten Woche
+        # nicht mehr gelesen; dann faellt auch die echte Meldung nicht auf.
+        self.assertTrue(b.ok, b.text)
+        self.assertEqual(meldezeilen([b]), [])
+
+        # Gezaehlt werden die fuenf echten, nicht die acht Dateien.
+        self.assertIn("5 Falldatenbank(en)", b.text)
+        # GRUNDREGEL 1: das Uebergangene wird GENANNT, nicht verschwiegen.
+        # Eine Pruefung, die Dateien wortlos auslaesst, ist von einer
+        # unvollstaendigen nicht zu unterscheiden.
+        self.assertIn("3 weitere Datei(en)", b.text)
+        self.assertIn("uebergangen", b.text)
+
+        # Und die ECHTEN Befunde gehen dabei nicht verloren.
+        b2 = self._befund(self._verzeichnis(echte=4, transport=3,
+                                            ohne_register=2))
+        self.assertFalse(b2.ok)
+        self.assertIn("6 Falldatenbank(en)", b2.text)   # 4 + 2
+        self.assertIn("2 ohne Register", b2.text)
+        self.assertIn("3 weitere Datei(en)", b2.text)
+
+        # Ein Verzeichnis NUR mit Transportdateien ist in Ordnung - und sagt
+        # trotzdem, was es gesehen hat.
+        b3 = self._befund(self._verzeichnis(echte=0, transport=2))
+        self.assertTrue(b3.ok)
+        self.assertIn("Keine Falldatenbanken", b3.text)
+        self.assertIn("2 weitere", b3.text)
+
+    # DK09 -----------------------------------------------------------------
+    def test_dk09_ohne_muster_wird_nichts_geraten(self):
+        """
+        Fehlt im Katalog das Namensmuster, darf der Pruefer NICHT einfach
+        alles nehmen - dann waere der Fehlalarm zurueck. Er meldet, dass er
+        es nicht entscheiden kann.
+        """
+        import dataclasses
+        from management.db_katalog import eintrag as _eintrag
+
+        ev = self._verzeichnis(echte=3, transport=2)
+        ohne = dataclasses.replace(_eintrag("evidence"), datei_muster=None)
+        befund = DbStartbefund(
+            "verwaltung",
+            _StubConfig({"paths.evidence_db_dir": ev}))._falldatenbanken(
+                ohne, ev)
+
+        self.assertFalse(befund.ok)
+        self.assertIn("fehlt das Dateinamensmuster", befund.text)
+        self.assertIn("5", befund.text)      # es nennt, worueber es raet
+
+    # DK10 -----------------------------------------------------------------
+    def test_dk10_das_muster_passt_zur_kanonischen_bildung(self):
+        """
+        Das Muster im Katalog und die Stelle, die den Namen BILDET, muessen
+        zusammenpassen. management_app.py und annotation_stats_repo.py bilden
+        'evidence_%d.db'; wer das Muster aendert, ohne dort nachzusehen,
+        prueft an der Wirklichkeit vorbei.
+        """
+        import re as _re
+        from management.db_katalog import eintrag as _eintrag
+
+        muster = _re.compile(_eintrag("evidence").datei_muster)
+        self.assertTrue(muster.match("evidence_%d.db" % 1488))
+        self.assertTrue(muster.match("evidence_0.db"))
+        # Transportdateien und Addendum-Dateien: zwei Zahlen, nicht gemeint.
+        self.assertFalse(muster.match("evidence_1488_3.db"))
+        self.assertFalse(muster.match("evidence_1488_12345.db"))
+        # Und nichts, was nur so aehnlich heisst.
+        self.assertFalse(muster.match("evidence_.db"))
+        self.assertFalse(muster.match("evidence_1488.db.bak"))
+        self.assertFalse(muster.match("assets_1488.db"))
+        self.assertFalse(muster.match("xevidence_1488.db"))
+
+        amuster = _re.compile(_eintrag("assets").datei_muster)
+        self.assertTrue(amuster.match("assets_1488.db"))
+        self.assertFalse(amuster.match("assets_1488_3.db"))
