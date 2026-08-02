@@ -2549,6 +2549,14 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Prepper_Build127.json"
+        },
+        {
+          "timestamp": "2026-08-02T18:59:08.119429+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Ich benötige ein Werkzeug zur Migration für bestehende Datenbanken. Die Schwere des Fehlers macht eine Migration per Prozess notwendig.\r\n\r\nIn `stage2/evidence_db_init.py` habe ich den Datentyp für report_block_order.sort_index von TEXT auf INTEGER gestellt. Dies gilt ab Version 0.1.128."
         }
       ]
     },
