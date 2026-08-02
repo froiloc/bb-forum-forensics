@@ -31,7 +31,7 @@ from markupsafe import Markup, escape
 #
 # Beide liegen im selben Verzeichnis wie diese Datei; Python nimmt das
 # Skriptverzeichnis von sich aus in sys.path auf, sowohl bei 'python server.py'
-# als auch bei 'uvicorn server:app' aus diesem Verzeichnis.
+# als auch bei 'uvicorn tracker_server:app' aus diesem Verzeichnis.
 #
 # WARUM AUSGELAGERT: Ein Baustein, der 'fastapi' voraussetzt, ist in der
 # Regression nicht pruefbar - das Paket ist keine Abhaengigkeit der Testumgebung
@@ -1422,15 +1422,40 @@ async def health_check():
 # Main - Wichtig: Dieser Block behebt den Uvicorn-Fehler!
 # ============================================================================
 
+#: Der Modulname, unter dem uvicorn diese Datei nachladen kann.
+#:
+#: BUILD 651 - BEFUND AUS DEM BETRIEB (mc, 2026-08-02):
+#:   ERROR: Error loading ASGI app. Could not import module "server".
+#:
+#: WAS PASSIERT IST: Build 650 hat die Datei von 'server.py' in
+#: 'tracker_server.py' umbenannt (Vorgang 7c7a738f). Ich habe run.py, die
+#: readme und vier Testdateien nachgezogen - und die Stelle IM INNEREN
+#: DIESER DATEI uebersehen. Dort stand der Modulname als Zeichenkette
+#: ("server:app"), und eine Zeichenkette benennt kein Werkzeug um.
+#:
+#: WARUM ES IM CONTAINER NICHT AUFFIEL: Der Zweig wird nur bei RELOAD=true
+#: durchlaufen; ohne Reload bekommt uvicorn das App-OBJEKT und braucht den
+#: Namen gar nicht. Meine Startprobe lief ohne .env, also ohne Reload - sie
+#: hat den einen Weg geprueft, den es nicht getroffen hat. In der VM steht
+#: RELOAD=true (run.py schreibt das so in die .env).
+#:
+#: DIE LEHRE, UND SIE IST NICHT NEU: Ein Name, der als Zeichenkette
+#: dasteht, wandert bei keiner Umbenennung mit. Deshalb steht er hier nicht
+#: mehr als Zeichenkette, sondern wird aus dem DATEINAMEN gebildet. Wer die
+#: Datei kuenftig umbenennt, benennt diesen Wert mit um, ohne es zu merken -
+#: und das ist genau der Zweck.
+MODULNAME = Path(__file__).stem
+
+
 def start():
     """Startet den Uvicorn-Server"""
     import uvicorn
-    
+
     # Wichtig: Wenn RELOAD=True, muss die App als String übergeben werden
     if config.RELOAD:
         # Bei Reload muss uvicorn mit dem Modul-String gestartet werden
         uvicorn.run(
-            f"{MODULENAME}:app",  # Modul-String statt App-Objekt
+            f"{MODULNAME}:app",  # aus dem Dateinamen, nicht von Hand
             host=config.HOST,
             port=config.PORT,
             reload=True,

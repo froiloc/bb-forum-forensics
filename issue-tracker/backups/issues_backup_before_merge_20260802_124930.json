@@ -6093,50 +6093,6 @@
           "comment": "Importiert aus eingang_claude_Build649.json"
         }
       ]
-    },
-    {
-      "id": "03687632-c91d-5e37-beb5-270c0cf0854b",
-      "reporter": "Claude",
-      "reported_at": "2026-08-02T10:45:00+00:00",
-      "assigned_to": "Claude",
-      "type": "bug",
-      "status": "resolved",
-      "priority": "critical",
-      "severity": "blocker",
-      "title": "Tracker startet nach der Umbenennung nicht mehr (RELOAD=true)",
-      "affected_version": "0.8.650",
-      "resolved_in_version": "0.8.651",
-      "target_version": null,
-      "tags": [
-        "Issue-Tracker",
-        "Regression",
-        "Betrieb",
-        "gemessen"
-      ],
-      "prerequisites": "RELOAD=true in issue-tracker/.env - so schreibt run.py sie beim ersten Start.",
-      "description": "Gemeldet von mc am 2026-08-02 aus der VM:\n\n  ERROR:    Error loading ASGI app. Could not import module \"server\".\n\nURSACHE, UND SIE GEHT AUF MEIN KONTO. Build 650 hat die Serverdatei von 'server.py' in 'tracker_server.py' umbenannt (Vorgang 7c7a738f). Ich habe run.py, die readme und vier Testdateien nachgezogen - und die Stelle IM INNEREN DER DATEI SELBST uebersehen: in start() stand der Modulname als Zeichenkette, 'uvicorn.run(\"server:app\", ..., reload=True)'. Eine Zeichenkette benennt kein Werkzeug um.",
-      "expected_behavior": "'python run.py' startet den Tracker, mit und ohne Reload.",
-      "actual_behavior": "Mit RELOAD=true bricht uvicorn beim Laden der Anwendung ab. Ohne Reload laeuft es - dort bekommt uvicorn das App-Objekt und braucht den Namen gar nicht.",
-      "related_to": [],
-      "environment": {
-        "python_version": "3.14"
-      },
-      "updates": [
-        {
-          "timestamp": "2026-08-02T10:45:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "BEHOBEN IN BUILD 651. Der Modulname wird jetzt aus dem DATEINAMEN gebildet (Path(__file__).stem) und steht nicht mehr als Zeichenkette da. Wer die Datei kuenftig umbenennt, benennt diesen Wert mit um, ohne es zu merken - und das ist der Zweck.\n\nWARUM MEINE STARTPROBE IN BUILD 650 ES NICHT GEFANGEN HAT - das ist der eigentliche Befund. Der Zweig mit dem Modulnamen wird NUR bei RELOAD=true durchlaufen. Ich habe den Start geprueft, aber ohne .env, also ohne Reload; ich habe damit genau den Weg geprueft, den der Fehler nicht beruehrt, und das Ergebnis als 'Start nachgeprueft' vermerkt. Eine Probe, die den halben Fall abdeckt, ist keine halbe Sicherheit - sie ist eine falsche.\n\nZWEI NEUE SPERREN in tests/test_issue_tracker_start.py: ST01 verlangt, dass in start() kein vollstaendiger Modulname als Zeichenkette steht; ST02 STARTET DEN TRACKER WIRKLICH, mit RELOAD=true, und verlangt 'Application startup complete' ohne 'Error loading ASGI app'. BEIDE SIND GEGEN DEN ECHTEN FEHLER GEMESSEN: mit der Fassung aus Build 650 fallen beide um, mit der Berichtigung laufen beide durch.\n\nZWEI BEFUNDE AN DEN SPERREN SELBST, beide aus ihrem ersten Lauf. (1) ST01 suchte zunaechst nach ':app' irgendwo im Text - und schlug damit gegen die LOESUNG an, denn die baut den Namen als f-Zeichenkette zusammen, deren fester Teil ':app' ist. Jetzt wird ein vollstaendiger Modulname verlangt. (2) ST02 nahm einen festen Port und scheiterte am 'Address already in use' des vorherigen Laufs - uvicorn startet im Reload-Betrieb einen Kindprozess, den ein terminate() auf den Elternprozess nicht mitnimmt. Jetzt holt der Fall den Port vom Betriebssystem und beendet die ganze Prozessgruppe.\n\nSOFORTHILFE, falls Build 651 noch nicht eingespielt ist: in issue-tracker/tracker_server.py die eine Zeichenkette 'server:app' auf 'tracker_server:app' aendern - oder RELOAD=false in der .env setzen."
-        },
-        {
-          "timestamp": "2026-08-02T10:49:30.165324+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eingang_claude_Build651.json"
-        }
-      ]
     }
   ]
 }
