@@ -5,6 +5,7 @@ Git-integrierbar mit JSON-Speicher und Web-Interface
 """
 
 import json
+import re
 import uuid
 import logging
 import shutil
@@ -14,7 +15,7 @@ from typing import List, Optional, Dict, Any
 import os
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request, Form, HTTPException, UploadFile, File
+from fastapi import FastAPI, Request, Form, HTTPException, Query, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -137,6 +138,30 @@ init_directories()
 # FastAPI App erstellen
 # ============================================================================
 
+# ----------------------------------------------------------------------------
+# BUILD 649 (Vorgang 044ca2ee): Die laufende Fassung des Pakets.
+#
+# Die Schnellaktionen der Detailansicht setzen einen Vorgang auf 'geloest',
+# ohne nach der Fassung zu fragen - drei Vorgaenge im Bestand sind so ohne
+# 'resolved_in_version' entstanden. Die Fassung ABZUFRAGEN waere das Ende der
+# Schnellaktion; sie EINZUTRAGEN kostet nichts, denn sie steht in build.json.
+#
+# Faellt das Lesen aus, bleibt der Wert leer - genau wie bisher. Ein
+# Erzeugungsvermerk, der eine falsche Fassung nennt, waere schlechter als
+# keiner (vgl. Vorgang ff7e80ab zum Rueckfall auf 'Build 0').
+# ----------------------------------------------------------------------------
+def _paketfassung() -> str:
+    try:
+        datei = Path(__file__).resolve().parent.parent / "build.json"
+        wert = json.loads(datei.read_text(encoding="utf-8")).get("version", "")
+        return str(wert) if wert else ""
+    except Exception as fehler:  # pragma: no cover - Randfall
+        logger.warning("build.json nicht lesbar, Fassung bleibt leer: %s", fehler)
+        return ""
+
+
+PAKETFASSUNG = _paketfassung()
+
 app = FastAPI(
     title=config.TITLE,
     version="2.0.0",
@@ -148,6 +173,7 @@ templates = Jinja2Templates(directory=str(config.TEMPLATES_DIR))
 
 # Globale Template-Variablen
 templates.env.globals["config"] = config
+templates.env.globals["paketfassung"] = PAKETFASSUNG
 
 
 # ============================================================================
@@ -456,18 +482,234 @@ def create_update_entry(author: str, action: str, comment: str = "",
     }
 
 # ============================================================================
+# Hilfen fuer die Filterung - BUILD 649
+# ============================================================================
+
+def _saubere_werte(werte: Optional[List[str]]) -> List[str]:
+    """
+    Macht aus dem, was ein Auswahlfeld schickt, eine brauchbare Liste.
+
+    WARUM DAS NOETIG IST: Ein <select> ohne Auswahl schickt seinen leeren
+    Eintrag mit ('status_filter='). Ohne diese Reinigung stuende in der Liste
+    eine leere Zeichenkette, und der Filter wuerde alles wegwerfen, weil kein
+    Vorgang den Status '' hat. Der Fehler waere schwer zu finden: die Seite
+    zeigte einfach nichts an.
+
+    Doppelte Werte werden zusammengefasst, die Reihenfolge bleibt erhalten -
+    sie ist die Reihenfolge des Auswahlfelds und damit vorhersagbar.
+    """
+    if not werte:
+        return []
+    gesehen = []
+    for wert in werte:
+        sauber = str(wert).strip()
+        if sauber and sauber not in gesehen:
+            gesehen.append(sauber)
+    return gesehen
+
+
+def _sucht(issue: Dict[str, Any], begriff: str) -> bool:
+    """
+    Volltextsuche ueber einen Vorgang.
+
+    BUILD 647 (Vorgang 18204843): erfasst ausdruecklich auch die TAGS sowie
+    erwartetes und tatsaechliches Verhalten. Bis Build 646 sah die Suche nur
+    in Titel, Beschreibung und ID - ausgerechnet das Merkmal, nach dem in
+    diesem Projekt gearbeitet wird, blieb aussen vor.
+    """
+    felder = (
+        issue.get("title", ""),
+        issue.get("description", ""),
+        issue.get("id", ""),
+        issue.get("expected_behavior", ""),
+        issue.get("actual_behavior", ""),
+    )
+    if any(begriff in str(f).lower() for f in felder):
+        return True
+    return any(begriff in str(t).lower() for t in (issue.get("tags") or []))
+
+
+# ============================================================================
+# Formularpruefung - BUILD 649
+#
+# VIER VORGAENGE, EINE URSACHE. 237503ce (Titel wird bei 80 Zeichen
+# stillschweigend gekuerzt), fd0d5d52 (die Maske kann den Bestand
+# schemawidrig machen), ed9205cc (unlesbare Aufwandsangabe wird still
+# verworfen) und 04a0a4bc (unbekannte Verweise werden still verworfen)
+# beschreiben dasselbe Muster: DIE MASKE VERWIRFT, STATT ABZUWEISEN.
+#
+# Der Grund war baulich: es gab keinen Weg zurueck. save_issue konnte nur
+# speichern oder mit einem HTTP-Fehler abbrechen - und ein Abbruch haette die
+# Eingabe genauso verloren. Also wurde stillschweigend zurechtgebogen.
+#
+# Ab Build 649 gibt es diesen Weg: Bei einem Fehler wird das Formular MIT DEN
+# EINGABEN und den Meldungen neu ausgeliefert. Nichts geht verloren, und
+# niemand muss ins Serverprotokoll sehen, um zu erfahren, was passiert ist.
+#
+# GEGENPROBE ZUR ABGRENZUNG: merge.py weist dieselben Faelle seit jeher ab
+# (IssueValidator). Dass die Maske sie annahm, war der eigentliche Befund -
+# dieselbe Vorgabe, zwei Verhaltensweisen.
+# ============================================================================
+
+#: Woertlich aus issue-tracker.schema.json und aus merge.py (VERSIONS_MUSTER).
+FORMULAR_VERSIONSMUSTER = re.compile(r"^\d+\.\d+\.\d+[a-z]?$")
+
+
+def pruefe_formular(werte: Dict[str, Any], bekannte_ids: set,
+                    bestehende_verweise: List[str]) -> List[str]:
+    """
+    Prüft die Eingaben einer Maske und gibt die Meldungen zurück.
+
+    Args:
+        werte:                die Formularwerte.
+        bekannte_ids:         alle Vorgangs-IDs im Bestand.
+        bestehende_verweise:  die Verweise, die im Vorgang schon stehen. Sie
+                              werden durchgelassen, auch wenn sie unbekannt
+                              sind - sonst wuerde die Maske Altlasten
+                              stillschweigend entfernen, und genau das war
+                              der Fehler aus Build 645.
+
+    Returns:
+        Liste von Meldungen. Leer heisst: in Ordnung.
+    """
+    meldungen: List[str] = []
+
+    titel = str(werte.get("title") or "")
+    if not titel.strip():
+        meldungen.append("Der Titel fehlt.")
+    elif len(titel) > config.MAX_TITLE_LENGTH:
+        # Vorgang 237503ce. Bis Build 648 stand hier ein stilles
+        # 'title[:MAX_TITLE_LENGTH]' - beim Anlegen UND beim Bearbeiten. Wer
+        # einen bestehenden Vorgang nur speicherte, um ein anderes Feld zu
+        # aendern, verlor dabei das Ende seines Titels.
+        meldungen.append(
+            f"Der Titel ist {len(titel)} Zeichen lang, erlaubt sind "
+            f"{config.MAX_TITLE_LENGTH}. Bitte kürzen - abgeschnitten wird "
+            f"nichts mehr."
+        )
+
+    # KEINE PFLICHT AUF DIE BESCHREIBUNG - und das ist ein Befund aus dem
+    # ersten Lauf: Die erste Fassung verlangte sie, und damit liess sich ein
+    # Vorgang des Bestands nicht mehr speichern, der keine hat (64edd18a).
+    # Das Schema fuehrt als Pflichtfelder nur id, type, title,
+    # affected_version, reporter, reported_at und status. EINE MASKE DARF
+    # NICHT STRENGER SEIN ALS DAS SCHEMA - sonst sperrt sie Vorgaenge aus, die
+    # regelgerecht im Bestand stehen.
+
+    # Vorgang fd0d5d52: Versionsangaben ohne Musterpruefung. Eine Eingabe wie
+    # '0.8' landete im Bestand, und erst die Regression oder
+    # 'merge.py --validate-only' fiel darueber - also spaeter und bei jemand
+    # anderem.
+    for feld, name, pflicht in (("affected_version", "Betroffene Version", True),
+                                ("target_version", "Zielversion", False)):
+        wert = str(werte.get(feld) or "").strip()
+        if not wert:
+            if pflicht:
+                meldungen.append(f"{name} fehlt.")
+            continue
+        if not FORMULAR_VERSIONSMUSTER.match(wert):
+            meldungen.append(
+                f"{name} '{wert}' passt nicht zum Versionsmuster "
+                f"(z.B. '0.8.649' oder '0.8.649a')."
+            )
+
+    if not str(werte.get("reporter") or "").strip():
+        meldungen.append("Der Melder fehlt.")
+
+    # Vorgang ed9205cc: 'except ValueError: pass' - die Eingabe verschwand.
+    aufwand = str(werte.get("estimated_hours") or "").strip()
+    if aufwand:
+        try:
+            zahl = float(aufwand.replace(",", "."))
+            if zahl < 0:
+                meldungen.append("Der geschätzte Aufwand darf nicht negativ sein.")
+        except ValueError:
+            meldungen.append(
+                f"Der geschätzte Aufwand '{aufwand}' ist keine Zahl."
+            )
+
+    # Vorgang 04a0a4bc: unbekannte Verweise landeten in einer Protokollzeile
+    # und waren danach weg. Seit Build 645 stand wenigstens ein Vermerk im
+    # Verlauf - jetzt kommt die Meldung dorthin, wo sie hingehoert: ans
+    # Formular, mit stehenbleibender Eingabe.
+    unbekannt = [v for v in werte.get("related_to_liste") or []
+                 if v not in bekannte_ids and v not in bestehende_verweise]
+    if unbekannt:
+        meldungen.append(
+            "Zu diesen Verweisen gibt es keinen Vorgang: "
+            + ", ".join(unbekannt)
+            + ". Bitte die volle UUID eintragen oder den Eintrag entfernen."
+        )
+
+    return meldungen
+
+
+def formularwerte(issue: Optional[Dict[str, Any]] = None,
+                  roh: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    Baut den Satz Werte, aus dem die Maske gefuellt wird.
+
+    EIN Bauplan fuer drei Wege - neues Formular, Bearbeitungsformular und die
+    Neuausgabe nach einem Fehler. Ohne das haette die Vorlage drei Fassungen
+    von '{{ ... if ... else '' }}' gebraucht, und die dritte haette gefehlt.
+    """
+    umgebung = (issue or {}).get("environment") or {}
+    werte = {
+        "issue_id": (issue or {}).get("id", ""),
+        "type": (issue or {}).get("type", "bug"),
+        "title": (issue or {}).get("title", ""),
+        "affected_version": (issue or {}).get("affected_version", ""),
+        "reporter": (issue or {}).get("reporter", "") or config.DEFAULT_REPORTER,
+        "priority": (issue or {}).get("priority", "medium"),
+        "severity": (issue or {}).get("severity", "minor"),
+        "prerequisites": (issue or {}).get("prerequisites", ""),
+        "description": (issue or {}).get("description", ""),
+        "expected_behavior": (issue or {}).get("expected_behavior", ""),
+        "actual_behavior": (issue or {}).get("actual_behavior", ""),
+        "assigned_to": (issue or {}).get("assigned_to", ""),
+        "target_version": (issue or {}).get("target_version") or "",
+        "tags": ", ".join((issue or {}).get("tags") or []),
+        "related_to": ", ".join((issue or {}).get("related_to") or []),
+        "estimated_hours": (issue or {}).get("estimated_hours", ""),
+        "os": umgebung.get("os", ""),
+        "browser": umgebung.get("browser", ""),
+        "python_version": umgebung.get("python_version", ""),
+        "database": umgebung.get("database", ""),
+    }
+    if roh:
+        werte.update({k: v for k, v in roh.items() if v is not None})
+    return werte
+
+
+# ============================================================================
 # Routes
 # ============================================================================
 
 @app.get("/", response_class=HTMLResponse)
 async def index(
     request: Request,
-    status_filter: Optional[str] = None,
-    type_filter: Optional[str] = None,
-    priority_filter: Optional[str] = None,
+    # -----------------------------------------------------------------------
+    # BUILD 649 - MEHRFACHAUSWAHL (Vorgang f42afcd9, mc):
+    #   "Es waere toll, wenn man mehrere in den select Tags auswaehlen koennte
+    #    (Strg + Klick, Multi-Select) und diese dann als ODER Suche verwendet
+    #    werden wuerden."
+    #
+    # Aus jedem Filter wird damit eine LISTE. 'Query(None)' statt eines
+    # einfachen Vorgabewerts ist noetig, weil FastAPI sonst nicht weiss, dass
+    # der Parameter mehrfach in der Adresse vorkommen darf
+    # ('?status_filter=open&status_filter=review').
+    #
+    # DIE VERKNUEPFUNG: ODER innerhalb einer Filterart, UND zwischen den
+    # Filterarten. 'kritisch oder hoch' UND 'offen' ist die Lesart, die man
+    # erwartet - und die einzige, die sich mit Auswahlfeldern ueberhaupt
+    # ausdruecken laesst.
+    # -----------------------------------------------------------------------
+    status_filter: Optional[List[str]] = Query(None),
+    type_filter: Optional[List[str]] = Query(None),
+    priority_filter: Optional[List[str]] = Query(None),
+    assigned_to: Optional[List[str]] = Query(None),
+    tag_filter: Optional[List[str]] = Query(None),
     search: Optional[str] = None,
-    assigned_to: Optional[str] = None,
-    tag_filter: Optional[str] = None,
     page: int = 1
 ):
     """Hauptseite mit Issue-Liste und Filterung"""
@@ -481,74 +723,84 @@ async def index(
     # war und alles andere null - die Zahlen sahen aus wie Bestandszahlen und
     # waren Auswahlzahlen.
     #
-    # Mit der Tag-Wolke (Vorgang 2d692c67) waere derselbe Fehler noch
-    # aergerlicher geworden: eine Wolke, die sich bei jedem Klick auf das
-    # reduziert, was gerade uebrig ist, kann man nicht als Filter benutzen -
-    # nach dem ersten Klick waere jeder andere Weg verschwunden.
-    #
     # Deshalb: 'alle_issues' bleibt der Bestand, 'issues' ist die Auswahl.
     # -----------------------------------------------------------------------
     alle_issues = issue_manager.load()
-    issues = list(alle_issues)
 
-    # Filter anwenden
-    if status_filter:
-        issues = [i for i in issues if i.get("status") == status_filter]
-    if type_filter:
-        issues = [i for i in issues if i.get("type") == type_filter]
-    if priority_filter:
-        issues = [i for i in issues if i.get("priority") == priority_filter]
-    if assigned_to:
-        issues = [i for i in issues if i.get("assigned_to") == assigned_to]
-    if tag_filter:
-        # BUILD 647 (Vorgang 2d692c67): Der Klick in der Tag-Wolke landet
-        # hier. Verglichen wird ohne Ruecksicht auf Gross- und
-        # Kleinschreibung: die Tags sind von Hand gepflegt, und 'Migration'
-        # und 'migration' sind dasselbe Thema.
-        gesucht = tag_filter.strip().lower()
+    # Leere Eintraege wegwerfen: ein nicht gesetztes Auswahlfeld schickt eine
+    # leere Zeichenkette mit, und die duerfte sonst alles wegfiltern.
+    status_werte = _saubere_werte(status_filter)
+    typ_werte = _saubere_werte(type_filter)
+    prio_werte = _saubere_werte(priority_filter)
+    zustaendig_werte = _saubere_werte(assigned_to)
+    tag_werte = _saubere_werte(tag_filter)
+
+    def _hauptfilter(menge: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Alle Filter AUSSER dem Tag-Filter."""
+        if status_werte:
+            menge = [i for i in menge if i.get("status") in status_werte]
+        if typ_werte:
+            menge = [i for i in menge if i.get("type") in typ_werte]
+        if prio_werte:
+            menge = [i for i in menge if i.get("priority") in prio_werte]
+        if zustaendig_werte:
+            menge = [i for i in menge if i.get("assigned_to") in zustaendig_werte]
+        if search:
+            menge = [i for i in menge if _sucht(i, search.lower())]
+        return menge
+
+    # Zwischenstand OHNE den Tag-Filter - er wird gleich zweimal gebraucht.
+    ohne_tags = _hauptfilter(alle_issues)
+
+    issues = ohne_tags
+    if tag_werte:
+        # Vergleich ohne Ruecksicht auf Gross- und Kleinschreibung: die Tags
+        # sind von Hand gepflegt, und 'Migration' und 'migration' sind
+        # dasselbe Thema. ODER-Verknuepfung wie bei den uebrigen Filtern.
+        gesucht = {t.strip().lower() for t in tag_werte}
         issues = [i for i in issues
-                  if any(str(t).strip().lower() == gesucht for t in (i.get("tags") or []))]
-    if search:
-        # BUILD 647 (Vorgang 18204843): Die Suche erfasst jetzt auch TAGS
-        # sowie erwartetes und tatsaechliches Verhalten. Bis Build 646 sah sie
-        # in Titel, Beschreibung und ID - ausgerechnet das Merkmal, nach dem
-        # in diesem Projekt gearbeitet wird ('alle Vorgaenge zum Thema
-        # Issue-Tracker'), blieb aussen vor.
-        search_lower = search.lower()
-
-        def _trifft(i: Dict[str, Any]) -> bool:
-            felder = (
-                i.get("title", ""),
-                i.get("description", ""),
-                i.get("id", ""),
-                i.get("expected_behavior", ""),
-                i.get("actual_behavior", ""),
-            )
-            if any(search_lower in str(f).lower() for f in felder):
-                return True
-            return any(search_lower in str(t).lower() for t in (i.get("tags") or []))
-
-        issues = [i for i in issues if _trifft(i)]
+                  if gesucht & {str(t).strip().lower() for t in (i.get("tags") or [])}]
 
     # Sortierung: neueste zuerst
-    issues.sort(key=lambda x: x.get("reported_at", ""), reverse=True)
+    issues = sorted(issues, key=lambda x: x.get("reported_at", ""), reverse=True)
 
     # Paginierung
     total_issues = len(issues)
     total_pages = max(1, (total_issues + config.ITEMS_PER_PAGE - 1) // config.ITEMS_PER_PAGE)
     page = max(1, min(page, total_pages))
     start_idx = (page - 1) * config.ITEMS_PER_PAGE
-    end_idx = start_idx + config.ITEMS_PER_PAGE
-    paged_issues = issues[start_idx:end_idx]
+    paged_issues = issues[start_idx:start_idx + config.ITEMS_PER_PAGE]
 
     # -----------------------------------------------------------------------
-    # KENNZAHLEN UND AUSWAHLLISTEN - AUS DEM BESTAND, NICHT AUS DER AUSWAHL.
+    # DIE TAG-WOLKE - BUILD 649, Vorgang 01fedc41 (mc):
+    #   "Mit dem Setzen der Hauptfilter sollen auch die Elemente in der
+    #    Tag-Cloud aktualisiert (und reduziert) werden."
+    #
+    # SIE FOLGT DEN HAUPTFILTERN, ABER NICHT SICH SELBST. Gebildet wird sie
+    # aus 'ohne_tags' - also aus der Auswahl VOR dem Tag-Filter. Der
+    # Unterschied ist der Punkt: Wuerde sie auch dem Tag-Filter folgen,
+    # bliebe nach dem ersten Klick nur noch das angeklickte Tag stehen
+    # (und die, die zufaellig in denselben Vorgaengen vorkommen) - jeder
+    # weitere Weg waere verschwunden. mc hat das in seinem Vorgang ebenfalls
+    # so formuliert: die HAUPTFILTER sollen wirken.
+    #
+    # AUSNAHME: Ein gerade gesetztes Tag bleibt IMMER in der Wolke, auch wenn
+    # es dort sonst herausfiele. Sonst koennte man es nicht mehr abwaehlen -
+    # eine Bedienung, aus der man nicht herauskommt, ist keine.
     # -----------------------------------------------------------------------
+    wolke = issue_manager.get_tag_cloud(ohne_tags)
+    vorhanden = {e["tag"].lower() for e in wolke}
+    for gesetzt in tag_werte:
+        if gesetzt.lower() not in vorhanden:
+            wolke.append({"tag": gesetzt, "anzahl": 0, "stufe": 0})
+    wolke.sort(key=lambda e: e["tag"].lower())
+
     stats = issue_manager.get_statistics(alle_issues)
 
-    # Eindeutige Zugewiesene für Filter (Vorgang e2d1f0ae: die Liste wurde
-    # gebildet und von der Vorlage nie angezeigt - jetzt wird sie angezeigt,
-    # und sie schrumpft beim Filtern nicht mehr weg).
+    # Eindeutige Zugewiesene für Filter (Vorgang e2d1f0ae). Aus dem BESTAND,
+    # damit die Liste beim Filtern nicht schrumpft - anders als die Wolke, die
+    # ausdruecklich schrumpfen SOLL: ein Auswahlfeld, das seine eigene
+    # Auswahlmoeglichkeit verliert, waere unbedienbar.
     assignees = sorted({i.get("assigned_to", "") for i in alle_issues if i.get("assigned_to")})
 
     return templates.TemplateResponse("index.html", {
@@ -556,19 +808,19 @@ async def index(
         "issues": paged_issues,
         "stats": stats,
         "assignees": assignees,
-        # BUILD 647: Die Auswahlfelder werden aus EINER Quelle gebaut (siehe
-        # die Aufzaehlungen oben), nicht mehr in der Vorlage verdrahtet.
         "status_labels": STATUS_LABELS,
         "type_labels": TYPE_LABELS,
         "priority_labels": PRIORITY_LABELS,
-        "tag_cloud": issue_manager.get_tag_cloud(alle_issues),
+        "tag_cloud": wolke,
+        # Ab Build 649 sind das LISTEN. Die Vorlage prueft mit 'in' statt mit
+        # '==' - deshalb heissen die Schluessel unveraendert weiter.
         "current_filters": {
-            "status": status_filter,
-            "type": type_filter,
-            "priority": priority_filter,
+            "status": status_werte,
+            "type": typ_werte,
+            "priority": prio_werte,
+            "assigned_to": zustaendig_werte,
+            "tag": tag_werte,
             "search": search,
-            "assigned_to": assigned_to,
-            "tag": tag_filter,
         },
         "pagination": {
             "current_page": page,
@@ -584,7 +836,10 @@ async def new_issue_form(request: Request):
     """Formular für neuen Issue"""
     return templates.TemplateResponse("issue_form.html", {
         "request": request,
-        "issue": None,
+        # BUILD 649: Die Maske liest nur noch aus 'formular' - ein Bauplan
+        # fuer alle drei Wege (neu, bearbeiten, Neuausgabe nach Fehler).
+        "formular": formularwerte(),
+        "fehler": [],
         "action": "Erstellen",
         "default_reporter": config.DEFAULT_REPORTER,
         "status_labels": STATUS_LABELS
@@ -630,7 +885,8 @@ async def edit_issue_form(request: Request, issue_id: str):
     
     return templates.TemplateResponse("issue_form.html", {
         "request": request,
-        "issue": issue,
+        "formular": formularwerte(issue),
+        "fehler": [],
         "action": "Bearbeiten",
         "default_reporter": config.DEFAULT_REPORTER,
         "status_labels": STATUS_LABELS
@@ -641,7 +897,11 @@ async def edit_issue_form(request: Request, issue_id: str):
 async def save_issue(
     request: Request,
     issue_id: Optional[str] = Form(None),
-    type: str = Form(...),
+    # BUILD 649 (Vorgang a4a3c469): Die Parameter heissen nicht mehr 'type'
+    # und 'os'. Beide verdeckten innerhalb dieser Funktion einen Namen, den
+    # man dort braucht - 'os' das Modul, 'type' den eingebauten Namen. Das
+    # Formularfeld heisst weiterhin so; dafuer ist 'alias' da.
+    typ: str = Form(..., alias="type"),
     title: str = Form(...),
     affected_version: str = Form(...),
     reporter: str = Form(...),
@@ -655,99 +915,128 @@ async def save_issue(
     target_version: str = Form(""),
     tags: str = Form(""),
     # BUILD 645 - 'None' STATT '""' ALS VORGABE, UND DAS IST DER GANZE PUNKT.
-    #
     # Bis Build 644 stand hier 'Form("")'. Damit war 'kein Feld abgeschickt'
-    # nicht von 'Feld abgeschickt und leer' zu unterscheiden - beides kam als
-    # "" an. Da issue_form.html gar kein Feld 'related_to' fuehrte, hiess das:
-    # JEDE Bearbeitung ueber die Weboberflaeche loeschte SAEMTLICHE Verweise
-    # des Vorgangs. Gemessen an f51fd838: ['906ede75','e9522fe2','c3f80e54']
-    # -> [] nach einem einzigen Speichern, ohne Meldung und ohne Eintrag im
-    # Verlauf.
-    #
-    # Mit 'Form(None)' sind die beiden Faelle unterscheidbar:
-    #   None -> das Formular hat nichts dazu gesagt  -> Bestand behalten
-    #   ""   -> jemand hat das Feld ausdruecklich geleert -> leeren
+    # nicht von 'Feld abgeschickt und leer' zu unterscheiden - und da
+    # issue_form.html gar kein Feld 'related_to' fuehrte, loeschte JEDE
+    # Bearbeitung ueber die Weboberflaeche SAEMTLICHE Verweise des Vorgangs.
     related_to: Optional[str] = Form(None),
     estimated_hours: str = Form(""),
-    os: str = Form(""),
+    os_name: str = Form("", alias="os"),
     browser: str = Form(""),
     python_version: str = Form(""),
     database: str = Form("")
 ):
     """Issue erstellen oder aktualisieren"""
     issues = issue_manager.load()
-    
+
     # Tags verarbeiten
     tag_list = [t.strip() for t in tags.split(",") if t.strip()]
-    
+
     # -----------------------------------------------------------------------
-    # VERWANDTE VORGAENGE - BUILD 645 VOLLSTAENDIG UMGEBAUT.
-    #
-    # Der bisherige Bestand des Vorgangs ist der Massstab. Er wird zuerst
-    # ermittelt, denn er entscheidet zwei Dinge:
-    #   (1) was gilt, wenn das Formular nichts geschickt hat, und
-    #   (2) was NICHT verworfen werden darf, auch wenn es die Pruefung nicht
-    #       besteht.
-    #
-    # ZU (2), UND DAS IST DIE ZWEITE HAELFTE DES FEHLERS: Die alte Pruefung
-    # liess nur durch, was als volle ID im Bestand vorkommt. Fuer die fuenf
-    # Verweise, die als 8-Zeichen-Kurzform in der Datei stehen (Vorgang
-    # 6da63d8b), heisst das: selbst MIT verstecktem Feld waeren sie beim
-    # Speichern herausgefiltert worden - die Reparatur haette den Fehler nur
-    # verschoben. Was bereits gespeichert IST, wird deshalb durchgelassen.
-    # Die Oberflaeche ist nicht der Ort, an dem Altlasten stillschweigend
-    # verschwinden; dafuer gibt es repair_related_ids.py, das ansagt, was es
-    # tut.
+    # VERWANDTE VORGAENGE - der bisherige Bestand ist der Massstab (Build 645).
     # -----------------------------------------------------------------------
     bestehende_verweise: List[str] = []
-    verworfene_verweise: List[str] = []
+    vorgang = None
     if issue_id:
-        _vorgang = next((i for i in issues if i.get("id") == issue_id), None)
-        if _vorgang:
-            bestehende_verweise = list(_vorgang.get("related_to") or [])
+        vorgang = next((i for i in issues if i.get("id") == issue_id), None)
+        if vorgang:
+            bestehende_verweise = list(vorgang.get("related_to") or [])
 
     if related_to is None:
         # Das Formular hat zu den Verweisen nichts gesagt. Ein Formular, das
         # ein Feld nicht kennt, ist keine Aussage ueber dieses Feld.
-        valid_relations = bestehende_verweise
+        verweisliste = list(bestehende_verweise)
         if bestehende_verweise:
             logger.info(
                 "Kein Feld 'related_to' im Formular - %d bestehende Verweise "
-                "unveraendert uebernommen", len(bestehende_verweise)
-            )
+                "unveraendert uebernommen", len(bestehende_verweise))
     else:
-        related_list = [r.strip() for r in related_to.split(",") if r.strip()]
-        valid_relations = []
-        existing_ids = {i["id"] for i in issues}
-        for rel_id in related_list:
-            if rel_id in existing_ids or rel_id in bestehende_verweise:
-                valid_relations.append(rel_id)
-            else:
-                verworfene_verweise.append(rel_id)
-                logger.warning(f"Verwandte Issue-ID nicht gefunden: {rel_id}")
+        verweisliste = [r.strip() for r in related_to.split(",") if r.strip()]
 
+    # -----------------------------------------------------------------------
+    # BUILD 649 - GEPRUEFT WIRD VOR DEM SPEICHERN, NICHT DANACH.
+    # -----------------------------------------------------------------------
+    eingaben = {
+        "issue_id": issue_id or "",
+        "type": typ,
+        "title": title,
+        "affected_version": affected_version,
+        "reporter": reporter,
+        "priority": priority,
+        "severity": severity,
+        "prerequisites": prerequisites,
+        "description": description,
+        "expected_behavior": expected_behavior,
+        "actual_behavior": actual_behavior,
+        "assigned_to": assigned_to,
+        "target_version": target_version,
+        "tags": tags,
+        "related_to": ", ".join(verweisliste),
+        "related_to_liste": verweisliste,
+        "estimated_hours": estimated_hours,
+        "os": os_name,
+        "browser": browser,
+        "python_version": python_version,
+        "database": database,
+    }
+
+    meldungen = pruefe_formular(eingaben, {i["id"] for i in issues}, bestehende_verweise)
+    if issue_id and vorgang is None:
+        meldungen.append("Zu dieser Kennung gibt es keinen Vorgang mehr.")
+
+    if meldungen:
+        # DIE EINGABE BLEIBT STEHEN. Das ist der Unterschied zu allem, was
+        # vorher da war: bis Build 648 wurde zurechtgebogen oder verworfen,
+        # weil es keinen Weg zurueck gab. Statuscode 400, damit auch ein
+        # Skript merkt, dass nichts gespeichert wurde.
+        logger.info("Formular abgewiesen (%d Meldungen): %s",
+                    len(meldungen), "; ".join(meldungen))
+        return templates.TemplateResponse(
+            "issue_form.html",
+            {
+                "request": request,
+                "formular": formularwerte(roh=eingaben),
+                "fehler": meldungen,
+                "action": "Bearbeiten" if issue_id else "Erstellen",
+                "default_reporter": config.DEFAULT_REPORTER,
+                "status_labels": STATUS_LABELS,
+            },
+            status_code=400,
+        )
 
     # Umgebungsinformationen
     environment = {}
-    env_fields = {"os": os, "browser": browser, "python_version": python_version, "database": database}
+    env_fields = {"os": os_name, "browser": browser,
+                  "python_version": python_version, "database": database}
     for key, value in env_fields.items():
         if value:
             environment[key] = value
-    
+
+    aufwand = None
+    if str(estimated_hours).strip():
+        aufwand = float(str(estimated_hours).strip().replace(",", "."))
+
     if issue_id:  # Update existierender Issue
-        issue = next((i for i in issues if i.get("id") == issue_id), None)
-        if not issue:
-            raise HTTPException(status_code=404, detail="Issue nicht gefunden")
-        
-        # Änderungen tracken
-        changes = []
-        if issue.get("status") != issue.get("status"):
-            changes.append(f"Status: {issue.get('status')} → {issue.get('status')}")
-        
-        # Update durchführen
-        issue.update({
-            "type": type,
-            "title": title[:config.MAX_TITLE_LENGTH],
+        issue = vorgang
+
+        # -------------------------------------------------------------------
+        # BUILD 649 - DER AENDERUNGSVERMERK NENNT JETZT DIE FELDER
+        # (Vorgang b2175ac7).
+        #
+        # Bis Build 648 stand hier
+        #     if issue.get("status") != issue.get("status"):
+        # - ein Vergleich desselben Werts mit sich selbst, also nie wahr. Die
+        # Liste blieb leer, und der Vermerk lautete immer nur 'Issue
+        # aktualisiert'. Die Zeitleiste war fuer Bearbeitungen ueber die
+        # Maske damit ohne Aussagewert.
+        #
+        # GEMESSEN WIRD VOR DEM SCHREIBEN - sonst vergleicht man wieder den
+        # neuen Stand mit sich selbst. Genau daran ist die alte Zeile
+        # gescheitert.
+        # -------------------------------------------------------------------
+        neue_werte = {
+            "type": typ,
+            "title": title,
             "affected_version": affected_version,
             "priority": priority,
             "severity": severity,
@@ -758,48 +1047,85 @@ async def save_issue(
             "assigned_to": assigned_to,
             "target_version": target_version if target_version else None,
             "tags": tag_list,
-            "related_to": valid_relations,
-            "environment": environment
-        })
-        
-        if estimated_hours:
-            try:
-                issue["estimated_hours"] = float(estimated_hours)
-            except ValueError:
-                pass
-        
-        # Update-Historie
+            "related_to": verweisliste,
+            "environment": environment,
+        }
+        BENENNUNG = {
+            "type": "Typ", "title": "Titel", "affected_version": "Betroffene Version",
+            "priority": "Priorität", "severity": "Schweregrad",
+            "prerequisites": "Voraussetzungen", "description": "Beschreibung",
+            "expected_behavior": "Erwartetes Verhalten",
+            "actual_behavior": "Tatsächliches Verhalten",
+            "assigned_to": "Zuständig", "target_version": "Zielversion",
+            "tags": "Tags", "related_to": "Verweise", "environment": "Umgebung",
+        }
+
+        def _kurz(wert):
+            """Lange Texte werden benannt, nicht abgedruckt."""
+            if isinstance(wert, (list, dict)):
+                return f"{len(wert)} Einträge" if wert else "leer"
+            text = str(wert or "")
+            if not text:
+                return "leer"
+            return text if len(text) <= 60 else text[:57] + "…"
+
+        def _gleich(links, rechts) -> bool:
+            """
+            Vergleich, der 'nicht vorhanden' und 'leer' als dasselbe ansieht.
+
+            BEFUND AUS DEM ERSTEN LAUF: Nicht jeder Vorgang fuehrt jedes Feld.
+            Wird ein solcher Vorgang ueber die Maske gespeichert, kommt aus
+            dem Formular eine leere Zeichenkette, und ein blosser Vergleich
+            meldete 'Beschreibung geaendert' - obwohl sich nichts geaendert
+            hat, was jemand als Aenderung erkennen wuerde. Ein Vermerk, der
+            Aenderungen erfindet, ist so wenig wert wie einer, der keine
+            nennt.
+            """
+            if links in (None, "", [], {}) and rechts in (None, "", [], {}):
+                return True
+            return links == rechts
+
+        changes = []
+        for feld, neuer_wert in neue_werte.items():
+            alter_wert = issue.get(feld)
+            if _gleich(alter_wert, neuer_wert):
+                continue
+            if feld in ("description", "expected_behavior", "actual_behavior",
+                        "prerequisites"):
+                # Bei Fliesstext nur die Tatsache vermerken - der ganze Text
+                # stuende sonst zweimal in der Datei.
+                changes.append(f"{BENENNUNG[feld]} geändert")
+            else:
+                changes.append(f"{BENENNUNG[feld]}: {_kurz(alter_wert)} → {_kurz(neuer_wert)}")
+
+        # Der Aufwand steht nicht in 'neue_werte', weil er nur gesetzt wird,
+        # wenn eine Zahl kam - im Vergleich muss er trotzdem auftauchen.
+        if aufwand is not None and issue.get("estimated_hours") != aufwand:
+            changes.append(
+                f"{'Aufwand'}: {_kurz(issue.get('estimated_hours'))} → {_kurz(aufwand)}")
+
+        issue.update(neue_werte)
+        if aufwand is not None:
+            issue["estimated_hours"] = aufwand
+
         if "updates" not in issue:
             issue["updates"] = []
-        
+
         issue["updates"].append(create_update_entry(
             author=reporter,
             action="comment",
-            comment="Issue aktualisiert" + (f": {', '.join(changes)}" if changes else "")
+            comment=("Issue aktualisiert: " + ", ".join(changes)) if changes
+                    else "Issue gespeichert, keine Änderung"
         ))
 
-        # BUILD 645: Was die Oberflaeche nicht uebernehmen konnte, steht ab
-        # jetzt IM VORGANG und nicht nur im Protokoll des Servers. Ein
-        # Protokolleintrag ist kein Beleg fuer den, der spaeter die Akte liest.
-        if verworfene_verweise:
-            issue["updates"].append(create_update_entry(
-                author=reporter,
-                action="comment",
-                comment=(
-                    "HINWEIS: Diese Verweise wurden beim Speichern nicht "
-                    "uebernommen, weil zu ihnen kein Vorgang gefunden wurde: "
-                    + ", ".join(verworfene_verweise)
-                )
-            ))
+        logger.info(f"Issue {issue_id} aktualisiert: {len(changes)} Feld(er)")
 
-        logger.info(f"Issue {issue_id} aktualisiert")
-        
     else:  # Neu erstellen
         now = datetime.now(timezone.utc).isoformat()
         new_issue = {
             "id": str(uuid.uuid4()),
-            "type": type,
-            "title": title[:config.MAX_TITLE_LENGTH],
+            "type": typ,
+            "title": title,
             "affected_version": affected_version,
             "reporter": reporter,
             "reported_at": now,
@@ -811,7 +1137,7 @@ async def save_issue(
             "priority": priority,
             "severity": severity,
             "assigned_to": assigned_to,
-            "related_to": valid_relations,
+            "related_to": verweisliste,
             "resolved_in_version": None,
             "target_version": target_version if target_version else None,
             "environment": environment,
@@ -823,28 +1149,12 @@ async def save_issue(
                 comment="Issue erstellt"
             )]
         }
-        
-        if estimated_hours:
-            try:
-                new_issue["estimated_hours"] = float(estimated_hours)
-            except ValueError:
-                pass
-        
-        # BUILD 645: derselbe Vermerk wie beim Bearbeiten - siehe dort.
-        if verworfene_verweise:
-            new_issue["updates"].append(create_update_entry(
-                author=reporter,
-                action="comment",
-                comment=(
-                    "HINWEIS: Diese Verweise wurden beim Anlegen nicht "
-                    "uebernommen, weil zu ihnen kein Vorgang gefunden wurde: "
-                    + ", ".join(verworfene_verweise)
-                )
-            ))
+        if aufwand is not None:
+            new_issue["estimated_hours"] = aufwand
 
         issues.append(new_issue)
         logger.info(f"Neuer Issue erstellt: {new_issue['id']}")
-    
+
     if issue_manager.save(issues):
         return RedirectResponse(url="/", status_code=303)
     else:

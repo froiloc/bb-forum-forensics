@@ -226,6 +226,52 @@
             border: 1px solid #ddd;
             border-radius: 4px;
         }
+
+        /* ------------------------------------------------------------------
+           Build 649 - MEHRFACHAUSWAHL (Vorgang f42afcd9).
+           Die Auswahlfelder tragen jetzt 'multiple' und stehen unter einer
+           Beschriftung: ohne sie sieht ein Mehrfachfeld aus wie eine Liste
+           ohne Zweck. 'align-items: flex-start', damit die verschieden hohen
+           Felder oben buendig stehen. */
+        .filters {
+            align-items: flex-start;
+        }
+
+        .filterfeld {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .filterfeld-name {
+            font-size: 0.8rem;
+            color: #7f8c8d;
+        }
+
+        .filterfeld select[multiple] {
+            min-width: 11rem;
+            /* Ohne eigenes Innenmass zeigt der Browser halbe Zeilen an -
+               das sieht aus wie ein Darstellungsfehler. */
+            padding: 0.25rem 0;
+        }
+
+        .filterfeld select[multiple] option {
+            padding: 0.15rem 0.5rem;
+        }
+
+        .filterknoepfe {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+            /* Auf Hoehe der Felder, nicht auf Hoehe ihrer Beschriftung. */
+            padding-top: 1.2rem;
+        }
+
+        .filterhinweis {
+            font-size: 0.75rem;
+            color: #95a5a6;
+        }
         
         .issue-list {
             list-style: none;
@@ -461,6 +507,26 @@
             opacity: 0.75;
         }
 
+        /* Build 649 - Fehlerkasten der Maske (Vorgaenge 237503ce u.a.). */
+        .fehlerkasten {
+            background: #fdecea;
+            border-left: 4px solid #e74c3c;
+            padding: 1rem 1.25rem;
+            border-radius: 4px;
+            margin-bottom: 1.5rem;
+            color: #7b241c;
+        }
+
+        .fehlerkasten ul {
+            margin: 0.5rem 0 0 1.25rem;
+        }
+
+        .fehlerhinweis {
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+            color: #a04000;
+        }
+
         .bereichstitel {
             font-size: 1.1rem;
             color: #7f8c8d;
@@ -484,14 +550,22 @@
         {% block content %}{% endblock %}
     </main>
     
-    <script>
-        function confirmDelete() {
-            return confirm('Wirklich löschen?');
-        }
-        
-        function filterIssues() {
-            document.getElementById('filter-form').submit();
-        }
-    </script>
+    {#
+      BUILD 649 - AUFGERAEUMT (Vorgaenge 3aaf1315 und f42afcd9).
+
+      'confirmDelete()' ist ersatzlos entfallen: Es gab weder in einer
+      Vorlage noch in server.py einen Loeschweg, die Funktion wurde nirgends
+      gerufen. Sie legte nahe, dass ein Loeschen vorgesehen waere - und das
+      waere an dieser Datei eine gefaehrliche Annahme. Ein Vorgang wird
+      geschlossen, nicht entfernt.
+
+      'filterIssues()' ist ebenfalls entfallen: Mit der Mehrfachauswahl waehlt
+      man mit Strg+Klick nacheinander aus, und ein Absenden nach dem ersten
+      Klick machte das unbenutzbar. Gefiltert wird jetzt ueber die
+      Schaltflaeche.
+
+      Damit kommt diese Oberflaeche ganz ohne JavaScript aus - passend zum
+      Forum selbst, das ebenfalls ohne auskommt.
+    #}
 </body>
 </html>

@@ -1,0 +1,424 @@
+{
+  "issues": [
+    {
+      "id": "88dc129b-ad30-4ae8-948e-9d8cd99bb9a2",
+      "type": "improvement",
+      "title": "PY4 fuer 'gemischte' Werkzeuge und fuer Verbindungen aus Repos",
+      "affected_version": "0.8.629",
+      "reporter": "Claude",
+      "reported_at": "2026-08-01T10:22:28.513295+00:00",
+      "prerequisites": "Build 629 (bestandsweite PY4-Pruefung vorhanden).",
+      "description": "Die Pruefung aus Build 629 (tests/test_py4_lesend.py) deckt Regel PY4 fuer alle Werkzeuge mit art='lesend' ab. ZWEI LUECKEN BLEIBEN, und beide sind hier benannt statt stillschweigend hingenommen.\n\n1) WERKZEUGE MIT art='gemischt' WERDEN NICHT GEPRUEFT. Dort ist eine schreibfaehige Verbindung erlaubt - der schreibende Unterbefehl braucht sie. Ob der LESENDE Unterbefehl desselben Werkzeugs sie vermeidet, ist am Quelltext nicht ohne Weiteres zu entscheiden: es haengt am Ablaufweg, nicht an der Datei. backup_admin ist der Fall, an dem es sichtbar wurde - dort ist es seit Build 627 sauber getrennt (_open_con schreibend, _open_con_ro lesend), und diese Trennung waere das Muster fuer die uebrigen.\n\n2) VERBINDUNGEN, DIE IN EINEM ANDEREN MODUL GEOEFFNET WERDEN, sieht die Suche nicht. Sie liest je Werkzeug nur dessen eigene Datei. Der Bestand reicht die Verbindung ueberwiegend HEREIN (die *_repo-Klassen bekommen sie im Konstruktor), aber ausgeschlossen ist das Gegenteil nicht.\n\n3) Auch nicht geprueft: Zugriffe an sqlite3 vorbei.\n\nERHOBEN, NICHT VERMUTET: Die Zahlen aus Build 629 - 65 Werkzeuge im Katalog, davon mit art='lesend' die geprueften; gefunden wurden vier echte Verstoesse (zwei aus Vorgang 906ede75, zwei neu) und drei begruendete Ausnahmen.",
+      "expected_behavior": "Fuer gemischte Werkzeuge das Muster aus backup_admin uebernehmen: zwei Oeffner, einer schreibend und einer nur-lesend, und der lesende Unterbefehl nimmt den lesenden. Danach laesst sich auch fuer sie eine Pruefung schreiben, die am Quelltext greift.\n\nFuer die Repo-Luecke: erheben, ob es den Fall ueberhaupt gibt, bevor eine Pruefung dafuer gebaut wird.",
+      "actual_behavior": "PY01 prueft nur art='lesend' und nur die Werkzeugdatei selbst.",
+      "status": "resolved",
+      "priority": "low",
+      "severity": "minor",
+      "assigned_to": "Claude",
+      "related_to": [
+        "906ede75"
+      ],
+      "resolved_in_version": "0.8.649",
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14"
+      },
+      "tags": [
+        "SQLite",
+        "PY4",
+        "Regelwerk",
+        "py4",
+        "tests",
+        "erhebung"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-01T10:22:28.513295+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Beim Abschluss von 906ede75 (Build 629) aufgeschrieben. Die Luecken stehen auch im Kopf von tests/test_py4_lesend.py und in rules-coding.md - ein halbes Netz, das sich fuer ein ganzes ausgibt, ist gefaehrlicher als gar keines (TE4)."
+        },
+        {
+          "timestamp": "2026-08-01T11:02:02.644293+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eingang_claude_Build629.json"
+        },
+        {
+          "timestamp": "2026-08-01T22:40:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "BEHOBEN in Build 0.8.649 - UND DIE BEIDEN LUECKEN SIND JETZT VERMESSEN, NICHT MEHR NUR BENANNT.\n\nDer Vorgang hat zwei Luecken von PY01 benannt. Bis Build 648 stand im Bestand, dass es sie GIBT; wie gross sie sind, war unbekannt. Eine benannte Luecke unbekannter Groesse ist ein halber Befund.\n\n=== LUECKE 1: WERKZEUGE MIT art='gemischt' ===\n\nERHOBEN (Build 649, ueber tests/_lesende_verbindungen mit dem Syntaxbaum, nicht per Textsuche):\n  22 Werkzeuge tragen art='gemischt'\n  16 davon oeffnen in ihrer EIGENEN Datei schreibfaehig\n  13 davon haben mindestens einen als LESEND ausgewiesenen Unterbefehl und besitzen GAR KEINEN mode=ro-Oeffner\n\nDIE 13: ad_sync_admin, capacity_admin, case_events_admin, case_release_admin, external_admin, migrate_templates_full_templates, migration_fleet_admin, onboarding_admin, person_admin, promotion_admin, rbac_admin, repair_block_types, results_admin.\n\nDREI HABEN BEREITS BEIDE OEFFNER und sind damit das Muster, nicht der Mangel: backup_admin (seit Build 627, _open_con schreibend / _open_con_ro lesend), convert_journal_mode, migrate-dbs.\n\nDER MANGEL IST NICHT DIE SCHREIBFAEHIGE VERBINDUNG, SONDERN DIE FEHLENDE ZWEITE. Ein Werkzeug, das auch schreibt, DARF schreibfaehig oeffnen - der schreibende Unterbefehl braucht das. Zum Befund wird es erst, wenn ein als lesend ausgewiesener Unterbefehl existiert und die dafuer noetige zweite Verbindung im ganzen Quelltext nicht vorkommt. Dann laeuft die ZUGESAGTE Leseoperation mit Schreibrecht auf ein Beweismittel.\n\n=== LUECKE 2: DIE REPO-LUECKE ===\n\nDer Vorgang sagt, der Bestand reiche die Verbindung ueberwiegend HEREIN, schliesse das Gegenteil aber nicht aus. NACHGEMESSEN: 21 Module, die KEIN Werkzeug des Katalogs sind, oeffnen selbst schreibfaehig. (Vor den Behebungen dieses Builds waren es 25.)\n\nNICHT JEDER DIESER 21 EINTRAEGE IST EIN MANGEL, und das steht ausdruecklich in der Liste: db/evidence_db.py ist die Ablage der Beweismittel und waere ohne Schreibrecht sinnlos. Die Liste beantwortet eine andere Frage - WELCHE WEGE gibt es ueberhaupt, auf denen ein als 'lesend' gefuehrtes Werkzeug an Schreibrecht kommt, ohne dass PY01 es sieht? PY01 sieht nur die Datei des Werkzeugs. Der Wert liegt deshalb im WACHSTUM der Liste, nicht in ihrem Bestand.\n\n=== EIN SCHWERER BEFUND AUS DIESER ERHEBUNG, SOFORT BEHOBEN ===\n\nVier Dateien des Migrationsgeschirrs tragen im eigenen Dateikopf die Zusage 'Rein lesend' und oeffneten schreibfaehig: management/migration_fleet/harness/integrity.py, harness/rowcount.py, harness/blob.py und planner.py.\n\nGEMESSEN gegen einen NICHT VORHANDENEN Pfad (Python 3.13, vor der Behebung):\n  integrity_check        -> IntegrityResult(ok=True, messages=[])\n    Datei danach angelegt? True, 0 Byte\n  table_rowcounts        -> {}\n  read_instance_version  -> 0\n\nDas Migrationsgeschirr hat also die UNVERSEHRTHEIT EINER DATENBANK BESTAETIGT, DIE ES SELBST ERZEUGT HAT. Ein Tippfehler im Pfad war bis Build 648 kein Fehler, sondern ein Erfolg mit Nebenwirkung.\n\nNACH DER BEHEBUNG (neuer Helfer _nur_lesend() mit 'file:...?mode=ro'):\n  integrity_check -> IntegrityResult(ok=False, messages=['DatabaseError: unable to open database file'])\n  keine Datei angelegt.\n\nDas ist zugleich der fuenfte Fall zu Vorgang f51fd838 (Zusage im Kommentar ist keine Sperre) und dort mit aufgenommen.\n\n=== WAS JETZT DURCHGESETZT WIRD ===\n\ntests/hilfe_fehlliste_stand.json fuehrt beide Erhebungen namentlich (py4_gemischt_ohne_lesenden_oeffner mit 13, py4_module_schreibfaehig mit 21), Stand Build 649.\n\ntests/test_py4_lesend.py ist um sechs Faelle erweitert:\n  PY07  - die 'gemischt'-Liste darf nur SCHRUMPFEN. Sie schaltet VON SELBST auf die absolute Forderung um, sobald sie leer ist - derselbe Weg wie CK07 (Build 620) und KF08 (Build 641). Eine Regel, die man am Tag ihrer Einfuehrung nicht einhalten kann, wird abgeschaltet; deshalb erst die Schranke.\n  PY08  - die Modulliste darf nur wachsen-frei bleiben; ein NEUER Eintrag verlangt Nachsehen, wer das Modul benutzt. PY08 schlaegt ausserdem an, wenn die eingecheckte Liste LEER ist - denn eine leere Liste hiesse hier 'die Erhebung ist nicht gelaufen' und nicht 'alles gut'.\n  PY09/PY09b - GEGENPROBE zu PY07 an backup_admin (erfuellt drei der vier Bedingungen und darf deshalb NICHT in der Liste stehen) und an einer erfundenen Datei mit/ohne mode=ro.\n  PY10  - GEGENPROBE zu PY08: die Erhebung muss db/evidence_db.py finden, sonst findet sie gar nichts.\n  PY10b/PY10c - die Auslassungsliste der Modul-Erhebung: jede Auslassung braucht einen Grund, und mindestens eine muss wirklich etwas herausnehmen.\n\nBEI PY10c IST MIR NOCH ETWAS AUFGEFALLEN, und es gehoert hierher: Von den acht Verzeichnissen, die ich zunaechst ausgenommen hatte, wirkt HEUTE genau EINES ('tests', 162 Dateien). Die anderen sieben enthalten im Bestand ueberhaupt keine .py-Datei mit einer SQLite-Verbindung. Sie stehen weiterhin dort - ein im Bestand angelegtes 'venv' wuerde die Erhebung sonst mit Hunderten fremder Dateien fluten -, aber sie sind jetzt als VORSORGE gekennzeichnet. Eine ungeprueft aufgezaehlte Auslassungsliste erweckt den Eindruck, es seien acht Fundgruben abgeraeumt worden. Es ist eine.\n\n=== WAS WEITERHIN OFFEN IST (TE4, ausdruecklich) ===\n\n1. Ob ein Werkzeug mit BEIDEN Oeffnern im lesenden Unterbefehl auch den richtigen nimmt. Das haengt am Ablaufweg, nicht an der Datei, und ist am Syntaxbaum nicht zu entscheiden. Diese Erhebung findet nur den sicheren Fall: die zweite Verbindung existiert GAR NICHT.\n2. Zugriffe an sqlite3 vorbei.\n3. Die Behebung der 13 Werkzeuge selbst. Sie ist NICHT Gegenstand dieses Builds - 13 Werkzeuge sind 13 einzeln nachzuweisende Umbauten, und jeder verlangt zu wissen, welcher Unterbefehl welche Verbindung nimmt. Die Schranke PY07 sorgt dafuer, dass es nicht mehr wird; die Behebung gehoert in eigene Builds.\n\nDie Regel steht in documents/rules-coding.md, Abschnitt 'Durchsetzung von PY4', mit beiden Zahlen und dem Grund, warum die Modulliste keine Maengelliste ist."
+        }
+      ]
+    },
+    {
+      "id": "f51fd838-c9f5-458f-8778-ea219689c441",
+      "type": "documentation",
+      "title": "Zusage im Kommentar ist keine Sperre - bei SQLite gilt das doppelt",
+      "affected_version": "0.8.627",
+      "reporter": "Claude",
+      "reported_at": "2026-08-01T09:40:02.719243+00:00",
+      "prerequisites": "",
+      "description": "KEIN EINZELBEFUND, SONDERN EIN MUSTER. Es ist im Bestand jetzt viermal aufgetreten, und dreimal davon in dieser Sitzung.\n\n1) Issue 906ede75: zwei Auswertungswerkzeuge oeffnen die coordinator.db schreibfaehig, obwohl ihr Kopf das Gegenteil zusichert.\n2) rules-cli.md, Wartungsvorbehalt: 'convert_journal_mode' galt als geklaert, weil sein Dateikopf 'braucht exklusiven Zugriff' sagte. Eine Zusage im Kommentar ist aber keine technische Sperre.\n3) Vorgang e9522fe2, zweiter Teil (Build 627): backup_executor.py sicherte seit Build 353 zu 'Quelle read-only' - alle Verbindungen waren schreibfaehig. Behoben.\n4) NEU UND VON MIR SELBST VERURSACHT: Build 625 fuehrte _traegt_inhalt ein, um eine unbrauchbare Sicherung zu erkennen, OHNE sie zu loeschen - ausdruecklich, damit die Teildatei als Beleg erhalten bleibt. Die Funktion oeffnete die Datei gewoehnlich. Liegt daneben ein heisses Journal, spielt SQLite es beim Oeffnen zurueck und verkuerzt die Teildatei auf 0 Byte. Der Beleg wurde also von genau der Funktion vernichtet, die ihn erhalten sollte. In Build 626 behoben.\n\nDAS BESONDERE AN SQLITE: Bei einer gewoehnlichen Datei ist Lesen folgenlos. Bei SQLite ist es das NICHT - das blosse Oeffnen kann ein Journal zurueckspielen, einen Journalmodus setzen oder eine Datei ANLEGEN, die es nicht gab. Wer 'ich lese nur' meint, muss 'file:...?mode=ro' schreiben.\n\nGEMESSEN am 2026-08-01 (Python 3.13):\n  * 'VACUUM INTO' GELINGT auf einer mit mode=ro geoeffneten Quelle - die Zusage laesst sich also einloesen, sie kostet nichts.\n  * 'PRAGMA wal_checkpoint(PASSIVE)' auf mode=ro wirft NICHT, sondern liefert (0,0,0) - es tut STILL NICHTS. Ein Checkpoint gehoert deshalb ausdruecklich auf eine schreibfaehige Verbindung, sonst faellt er unbemerkt aus.\n  * sqlite3.connect() auf einen nicht vorhandenen Pfad LEGT DIE DATEI AN; mit mode=ro scheitert es mit 'unable to open database file'.\n  * Auf einer Datei mit heissem Journal antwortet mode=ro mit 'attempt to write a readonly database' und LAESST DIE DATEI IN RUHE.\n\n(Urspruenglicher Titel, fuer die 80-Zeichen-Grenze gekuerzt: Muster: eine Zusage im Kommentar ist keine technische Sperre - bei SQLite gilt das doppelt)",
+      "expected_behavior": "Aufnahme in documents/rules-coding.md als Regel: Wer eine Verbindung als lesend fuehrt, oeffnet sie mit 'file:...?mode=ro'. Wer davon abweicht, begruendet es an der Aufrufstelle. Durchgesetzt wird das je Modul ueber den Syntaxbaum, nicht ueber eine Textsuche - Muster: tests/test_backup_executor.py BR02.\n\nZu pruefen waere ausserdem, wo im uebrigen Bestand noch lesende Verbindungen schreibfaehig geoeffnet werden. Der Sicherungspfad ist mit Build 627 sauber; 906ede75 ist offen; der Rest ist nicht erhoben.",
+      "actual_behavior": "Die Regel steht bisher nirgends; jeder Fall wird einzeln gefunden.",
+      "status": "resolved",
+      "priority": "medium",
+      "severity": "major",
+      "assigned_to": "Claude",
+      "related_to": [
+        "906ede75",
+        "e9522fe2",
+        "c3f80e54"
+      ],
+      "resolved_in_version": "0.8.649",
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14"
+      },
+      "tags": [
+        "SQLite",
+        "Muster",
+        "Regelwerk",
+        "gemessen",
+        "py6",
+        "regelwerk",
+        "sqlite"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-01T09:40:02.719243+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Beim Abschluss von e9522fe2 (Build 627) aufgeschrieben. Der vierte Fall ist mein eigener aus Build 625 - er zeigt, dass auch das Wissen um das Muster nicht davor schuetzt, solange es keine Regel und keine Pruefung gibt."
+        },
+        {
+          "timestamp": "2026-08-01T22:40:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "BEHOBEN in Build 0.8.649 als eigene Regel PY6 - UND DAS MUSTER IST INZWISCHEN FUENFMAL AUFGETRETEN, nicht viermal.\n\nDER FUENFTE FALL, GEFUNDEN BEI DER ERHEBUNG ZU VORGANG 88dc129b IN DIESEM BUILD: Vier Dateien des Migrationsgeschirrs tragen im eigenen Dateikopf die Zusage 'Rein lesend' - management/migration_fleet/harness/integrity.py, harness/rowcount.py, harness/blob.py und planner.py. Alle vier oeffneten schreibfaehig.\n\nGEMESSEN gegen einen NICHT VORHANDENEN Pfad (Python 3.13):\n  integrity_check        -> IntegrityResult(ok=True, messages=[])\n    Datei danach angelegt? True, 0 Byte\n  table_rowcounts        -> {}\n  read_instance_version  -> 0\n\nDie Unversehrtheitspruefung der Migrationsflotte hat also eine Datenbank bestaetigt, DIE SIE BEIM OEFFNEN SELBST ANGELEGT HAT. Das ist genau der im Vorgang beschriebene Punkt 'sqlite3.connect() auf einen nicht vorhandenen Pfad LEGT DIE DATEI AN' - und es traf die Stelle, an der vor einer Migration entschieden wird, ob eine Datenbank in Ordnung ist. Die Zusage stand seit Build 607 im Kopf dieser Dateien.\n\nNACH DER BEHEBUNG (gemeinsamer Helfer _nur_lesend() in allen vier Dateien):\n  integrity_check -> IntegrityResult(ok=False, messages=['DatabaseError: unable to open database file'])\n  keine Datei angelegt.\n\nDer Helfer traegt die Messung als Kommentar bei sich - nach Regel KO2 gehoert der Anlass dorthin, wo die Abhilfe steht, sonst haelt ihn der naechste Leser fuer Umstaendlichkeit.\n\n=== WAS AUS DEM VORGANG GEWORDEN IST ===\n\ndocuments/rules-coding.md hat eine neue, eigene Regel PY6 - 'Eine Zusage im Kommentar ist keine Sperre'. PY4 (lesend heisst technisch lesend) ist ab jetzt ausdruecklich der SONDERFALL dieser Regel fuer das Lesen; PY6 ist der allgemeine Satz und gilt fuer jede Zusicherung, die ein Dateikopf ueber sein eigenes Verhalten macht: 'oeffnet nur lesend', 'braucht exklusiven Zugriff', 'laesst die Quelle unberuehrt', 'loescht nichts'.\n\nDie fuenf Faelle stehen dort in einer Tabelle, jeder mit Zusage, Wirklichkeit und Behebungsbuild: 906ede75 (Build 629), convert_journal_mode / Wartungsvorbehalt (Builds 610/612), e9522fe2 zweiter Teil (Build 627), _traegt_inhalt aus Build 625 (behoben 626) und das Migrationsgeschirr (Build 649).\n\nDIE ANWENDUNGSREGEL, die daraus folgt: Wer einen solchen Satz in einen Dateikopf schreibt, nennt IN DERSELBEN ZEILE, was ihn haelt - die mode=ro-URI, den Wartungsvorbehalt, den Test mit Kennung. Findet sich nichts zu nennen, ist der Satz zu streichen oder die Sperre zu bauen.\n\nDIE LEHRE AUS FALL 4 UND 5 ZUSAMMEN, und sie ist unbequem: Das WISSEN um das Muster schuetzt nicht davor. PY4 stand seit Build 607 im Regelwerk. Fall 4 ist achtzehn Builds spaeter entstanden - von mir. Fall 5 lag zweiundvierzig Builds lang unbemerkt in einem Verzeichnis, das sich selbst 'rein lesend' nennt. Was schuetzt, ist die Pruefung, nicht der Satz.\n\n=== DIE IM VORGANG AUFGEFUEHRTEN MESSUNGEN SIND UEBERNOMMEN ===\n\nDie vier Messungen vom 2026-08-01 (VACUUM INTO gelingt auf mode=ro; wal_checkpoint(PASSIVE) liefert still (0,0,0); connect() legt eine fehlende Datei an; heisses Journal antwortet mit 'attempt to write a readonly database') stehen unveraendert in der Tabelle in rules-coding.md, Abschnitt 'PY4 im Einzelnen'. Der zweite Punkt hat dort eine eigene Anwendungsregel bekommen: EIN CHECKPOINT GEHOERT AUSDRUECKLICH AUF EINE SCHREIBFAEHIGE VERBINDUNG, weil er sonst STILL ausfaellt - und ein stiller Nichtlauf ist das schlechteste Ergebnis.\n\n=== DURCHSETZUNG, UND WO SIE FEHLT ===\n\nFuer das LESEN bestandsweit: tests/test_py4_lesend.py (PY01-PY10c, Massstab ist der CLI-Katalog) und tests/test_backup_executor.py BR02.\nFuer den EXKLUSIVEN ZUGRIFF: der Wartungsvorbehalt (maintenance/wartungsvorbehalt.py, tests/test_maintenance_wartungsvorbehalt.py).\nFUER ALLE UEBRIGEN ZUSICHERUNGSARTEN GIBT ES KEINE AUTOMATISCHE PRUEFUNG. Das steht so im Regelwerk und ist keine vergessene Zeile - eine Regel, die sich fuer durchgesetzt ausgibt, ohne es zu sein, ist schlechter als eine, die ihre Grenze nennt."
+        }
+      ]
+    },
+    {
+      "id": "c3f80e54-9a16-4d72-bb05-8e194a2f76d1",
+      "type": "improvement",
+      "title": "Muster: schwache Pruefungen erzeugen unwirkliche Testvorrichtungen",
+      "affected_version": "0.8.584",
+      "reporter": "Claude",
+      "reported_at": "2026-07-30T18:00:00+00:00",
+      "description": "Zweimal in Folge musste eine Testvorrichtung angepasst werden, weil sie einen Zustand abbildete, den es real nicht geben kann: test_placeholders::T10 (Tabellen in der Hauptdatenbank statt als tdb) und _con_mit_tdb() (placeholders nur mit id-Spalte). Beide fielen erst auf, als die Produktionspruefung strenger wurde.",
+      "expected_behavior": "Wo eine Pruefung schwach ist, richten sich die Vorrichtungen danach ein - und die Suite prueft gegen eine Welt, die es nicht gibt. Lohnt einen Durchgang durch die uebrigen DB-Vorrichtungen.",
+      "status": "resolved",
+      "priority": "low",
+      "assigned_to": "Claude",
+      "tags": [
+        "Tests",
+        "Lehre",
+        "regelwerk",
+        "tests",
+        "nachstellung"
+      ],
+      "resolved_in_version": "0.8.649",
+      "updates": [
+        {
+          "timestamp": "2026-07-30T18:00:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Als Merkposten festgehalten, nicht als Auftrag."
+        },
+        {
+          "timestamp": "2026-07-30T16:00:38.449208+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build584.json"
+        },
+        {
+          "timestamp": "2026-08-01T22:40:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "BEHOBEN in Build 0.8.649 als Regelblatt documents/rules-nachstellung.md, Abschnitt NS1 - und der Vorgang hat in dieser Sitzung ZWEI weitere Belege bekommen.\n\nDie beiden im Vorgang genannten Faelle (test_placeholders::T10 - Tabellen in der Hauptdatenbank statt als tdb; _con_mit_tdb() - placeholders nur mit id-Spalte) stehen dort in einer Tabelle mit dem, was es real gibt.\n\nDER EIGENTLICHE BEFUND STECKT IM NEBENSATZ DES VORGANGS: 'Beide fielen erst auf, als die Produktionspruefung strenger wurde.' Die Vorrichtung war nicht zufaellig falsch - sie war GENAU SO SCHWACH WIE DIE PRUEFUNG, FUER DIE SIE GEBAUT WURDE. Eine schwache Pruefung erzeugt die Attrappe, die zu ihr passt, und beide bestaetigen einander. Daraus sind drei Saetze geworden:\n  * Die Vorrichtung wird aus derselben Quelle gebaut wie der Betrieb (Schema, Katalog, Anlegefunktion), wo immer das geht.\n  * Wer eine Pruefung VERSCHAERFT, sieht ihre Vorrichtungen durch. Die Verschaerfung ist der Anlass, an dem die Attrappe auffaellt - nicht die Gelegenheit, sie schnell anzupassen, damit es wieder gruen wird.\n  * Eine Anpassung der Vorrichtung ist ein BEFUND und wird als solcher vermerkt (GR1). Sonst steht im Protokoll 'Test angepasst', wo 'die Nachstellung war unwirklich' stehen muesste.\n\nZWEI NEUE BELEGE AUS DIESER SITZUNG, beide von mir verursacht und beide im Blatt aufgefuehrt:\n\n(1) BUILD 648, NACHSTELLUNG ZU VORGANG 96f2b18f: Mein erster Versuch lief als root und zeigte durchgehend das GUTE Verhalten - er haette den Vorgang als unbegruendet erscheinen lassen. root schreibt auch auf eine Datei mit 0444; den fraglichen Zustand GIBT ES UNTER root GAR NICHT. Erst der Wechsel auf einen fremden Benutzer ('nobody', im Unterprozess) hat ihn sichtbar gemacht - und dann war der Befund sogar BREITER als gemeldet. Die Lehre daraus ist unbequem: Eine misslungene Nachstellung sieht genauso aus wie ein widerlegter Vorgang. Wer unter falschen Bedingungen misst, bekommt kein 'unklar', sondern ein ueberzeugendes GEGENTEIL.\n\n(2) BUILD 648, EBENFALLS MEINER: Die erste Fassung von MK01-MK05 ersetzte ServerRegistration.alle_laden durch ZUWEISUNG statt ueber monkeypatch. Die Ersetzung blieb bis zum Ende des Laufs stehen und hat DREI FREMDE TESTS umgebracht - aufgefallen erst im Vollauf, im Einzellauf nie. Der Satz dazu: Eine Vorrichtung, die den eigenen Fall ueberlebt, ist keine Vorrichtung mehr, sondern eine Aenderung am Bestand. Klassenattribute mit monkeypatch, nie mit '='. Und ein Einzellauf ist kein Nachweis; der Vollauf ist es.\n\nDURCHSETZUNG, ehrlich benannt: Diese Regeln sind UEBERWIEGEND REDAKTIONELL. Maschinell greifbar ist heute nur der Rechte-Teil (tests/test_sperrprobe_dreiwertig.py SP01-SP08 faehrt die heiklen Faelle im Unterprozess als 'nobody' und ueberspringt SICHTBAR und namentlich, wo das nicht geht). Fuer 'die Vorrichtung bleibt stehen' gibt es keine automatische Pruefung - der Vollauf ist der Nachweis. Das steht so im Blatt.\n\nDas Blatt ist in documents/rules-index.md eingetragen. NEU dazu: tests/test_regelwerk_register.py (RW01-RW05) haelt die Pflegepflicht der Uebersicht jetzt maschinell - siehe den Kommentar zu 2f8a61d0."
+        }
+      ]
+    },
+    {
+      "id": "2f8a61d0-9b47-4e53-8106-4d7259ca3b8e",
+      "type": "documentation",
+      "title": "Lehre aus der Kette 578-583: den ganzen Weg einer Fehlermeldung pruefen",
+      "affected_version": "0.8.583",
+      "reporter": "Claude",
+      "reported_at": "2026-07-30T16:00:00+00:00",
+      "description": "Vier Anlaeufe fuer eine Fehlermeldung: 578 baute eine Huelle auf einer ungeprueften Annahme (die Ausnahme kam nie an). 579 fand die echte Stelle - der Fehler wurde eine Ebene tiefer geschluckt -, formulierte aber nicht handhabbar. 582 machte die Meldung handhabbar. 583 stellte fest, dass sie den Browser gar nicht erreichte. Jede Stufe war eine Schicht, die etwas verschluckt hat: Datenschicht, Endpunkt, Abrufer.",
+      "expected_behavior": "Wer eine Fehlermeldung baut, prueft ihren ganzen Weg bis zum Auge - nicht nur ihre Entstehung. Konkret: erzeugen, uebertragen, anzeigen, und jede Schicht dazwischen auf stille Rueckfaelle absuchen.",
+      "status": "resolved",
+      "priority": "medium",
+      "assigned_to": "Claude",
+      "tags": [
+        "Lehre",
+        "Grundregel1",
+        "regelwerk",
+        "tests",
+        "nachstellung"
+      ],
+      "resolved_in_version": "0.8.649",
+      "updates": [
+        {
+          "timestamp": "2026-07-30T16:00:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Als Merkposten gefuehrt, damit die naechste Diagnose nicht wieder vier Anlaeufe braucht."
+        },
+        {
+          "timestamp": "2026-07-30T15:20:11.744873+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build583.json"
+        },
+        {
+          "timestamp": "2026-08-01T22:40:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "BEHOBEN in Build 0.8.649 als Regelblatt documents/rules-nachstellung.md, Abschnitt NS2.\n\nDie Kette 578-583 steht dort vollstaendig in einer Tabelle - Build, was getan wurde, warum es nicht reichte. Der Satz, um den es geht: JEDE STUFE WAR EINE SCHICHT, DIE ETWAS VERSCHLUCKT HAT (Datenschicht, Endpunkt, Abrufer). Jeder einzelne Build war fuer sich richtig und hat den Betrieb nicht verbessert, weil die naechste Schicht das Ergebnis wieder kassierte.\n\nDARAUS SIND VIER ARBEITSSAETZE GEWORDEN:\n  * Der Nachweis fuer eine Fehlermeldung ist ihre ANKUNFT, nicht ihre Entstehung. Geprueft wird dort, wo sie gelesen wird - beim Ermittler auf dem Schirm oder im Rueckgabewert des Werkzeugs.\n  * Vor dem Bauen wird der Weg abgeschritten: Wer wirft? Wer faengt? Wer reicht weiter? Wer gibt aus? An jeder Uebergabe ist zu fragen, was dort mit einem Fehler geschieht - 'except Exception: pass' ist die haeufigste Antwort und die schlechteste.\n  * Eine Schicht, die einen Fehler schluckt, ist SELBST der Befund - nicht der Text der Meldung, den man gerade verbessert.\n  * Fuer den Browser gilt zusaetzlich die Reihenfolge aus den Projektanweisungen: erst Konsolenausgabe anfordern, dann einen Machbarkeitsnachweis fuer die Konsole, und erst wenn das traegt, einen Fix fuer die Auslieferung.\n\nDASSELBE MUSTER AUF DER KOMMANDOZEILE, und das ist der Grund, warum dieser Vorgang mit c3f80e54 auf EIN Blatt gehoert: Prueffunktion -> Werkzeug -> RUECKGABEWERT -> Skript, das ihn auswertet. Die drei Faelle aus documents/rules-leerbefund.md (d30b3d95, 0329896b, e9522fe2) sind allesamt NS2-Faelle - die Pruefung LIEF, ihr Ergebnis STAND sogar in der Ausgabe, und wurde eine Schicht weiter nicht mehr ausgewertet. backup_admin list druckte die Spalte 'integrity=FEHLER' und gab trotzdem 0 zurueck.\n\n=== EIN NEBENBEFUND, DEN DIESER VORGANG ZUTAGE GEBRACHT HAT ===\n\nBeim Eintragen des neuen Blattes in documents/rules-index.md ist mir aufgefallen, dass documents/rules-leerbefund.md (Build 647) DORT NIE EINGETRAGEN WORDEN WAR. Es galt zwei Builds lang, war aber fuer niemanden auffindbar, der die Uebersicht liest - genau der Fall, vor dem die Uebersicht in ihrem eigenen Kopf warnt: 'Eine Regel, die nur in einem Dateikopf steht, gilt zwar, ist aber fuer die naechste Person unauffindbar.'\n\nAUFGEFALLEN IST ES DURCH ZUFALL, nicht durch eine Pruefung. Die Pflegepflicht stand seit Build 607 im Blatt und war UNGEPRUEFT - eine Regel ohne Durchsetzung ist eine Bitte.\n\nNEU: tests/test_regelwerk_register.py, RW01-RW05.\n  RW01 - jedes Blatt documents/rules-*.md steht in der Uebersicht.\n  RW02 - die Uebersicht nennt kein Blatt, das es nicht gibt (TE6). Ein Verweis ins Leere ist schlimmer als kein Verweis: er sieht aus wie eine Auskunft.\n  RW03 - jedes Blatt traegt im Kopf einen Stand (Buildnummer und Datum).\n  RW04 - die beiden LEHRBLAETTER nennen die Vorgaenge, aus denen sie stammen (leerbefund: d30b3d95/0329896b/e9522fe2; nachstellung: c3f80e54/2f8a61d0). Ausdruecklich NICHT fuer alle Blaetter - rules-coding.md ist eine Sammlung und nicht aus einem Vorgang abgeleitet; eine solche Forderung waere dort erfunden.\n  RW05 - GEGENPROBE (TE5): faende die Suche keine Blaetter, waeren RW01 und RW03 leere Schleifen und stuenden trotzdem gruen im Lauf.\n\nWAS DIESE SUITE NICHT KANN, und es steht in ihrem Kopf: Sie prueft die AUFFINDBARKEIT, nicht den Inhalt, und sie findet NICHT den Fall, dass eine im Bestand geltende Regel ueberhaupt nicht aufgeschrieben wurde. Genau das ist der Kern der Pflegepflicht und maschinell nicht zu fassen."
+        }
+      ]
+    },
+    {
+      "id": "602c7557-7639-4f73-8bce-5bfbd0aca3e4",
+      "type": "improvement",
+      "title": "Kontrast verbessern in Minimap im Forumfenster",
+      "affected_version": "0.8.575",
+      "reporter": "Alex",
+      "reported_at": "2026-07-30T09:29:16.771248+00:00",
+      "prerequisites": "Es existiert eine Spur zum untersuchten Forennutzer. Diese wird in der rechten Minimap angezeigt.",
+      "description": "Der Kontrast für die Minimap ist recht schwach. Balken .forensic-minimap-trace hat background: rgb(58, 90, 138); und #forensic-minimap hat background: #11141e; Der Kontrast ist hier zu niedrig. Es ist schwer zu erkennen.",
+      "expected_behavior": "Der Kontrast muss stärker sein.",
+      "actual_behavior": "Der Balken für trace ist zu schwer zu erkennen.",
+      "status": "open",
+      "priority": "medium",
+      "severity": "trivial",
+      "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14"
+      },
+      "tags": [
+        "Kontrast",
+        "Minimap",
+        "Spur",
+        "entscheidung-offen"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-07-30T09:29:16.771293+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
+        },
+        {
+          "timestamp": "2026-08-01T22:40:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "ENTSCHEIDUNG BENOETIGT (Claude, Build 649). Ich kann das nicht ohne Dich entscheiden, weil es eine Sehbeurteilung ist und ich den Schirm nicht sehe, auf dem gearbeitet wird.\n\nWAS ICH GERECHNET HABE (WCAG 2.1, Kontrastverhaeltnis der relativen Leuchtdichte):\n  Balken  .forensic-minimap-trace  rgb(58, 90, 138)  = #3A5A8A\n  Grund   #forensic-minimap        #11141e\n  Verhaeltnis: rund 3,0:1.\n\nEINORDNUNG: Fuer TEXT verlangt WCAG AA 4,5:1, fuer grosse Schrift und fuer GRAFISCHE BEDIENELEMENTE 3,0:1. Der Balken ist ein grafisches Element, liegt also GERADE EBEN auf der Grenze - formal nicht regelwidrig, praktisch schwer zu sehen, und Deine Meldung sagt genau das. Auf einem Buerobildschirm mit Tageslicht ist der Unterschied zwischen 3,0 und 4,5 der zwischen 'ist da, wenn man weiss, wo' und 'faellt auf'.\n\nDREI WEGE, alle nur am Balken, der Grund bleibt unveraendert:\n\n  A) #4A72AE  -> rund 4,5:1. Derselbe Blauton, nur heller. Die Minimap bleibt in der Farbwelt der Oberflaeche; ein Blick auf den Bildschirm veraendert sich nicht spuerbar, ausser dass man den Balken sieht. MEIN VORSCHLAG, falls Du keine andere Absicht hast.\n\n  B) #5C8FD6  -> rund 6,5:1. Deutlich, auch bei Streiflicht und auf einem schwachen Schirm. Der Balken traegt dann aber optisch mehr Gewicht als die Beitragsliste daneben - das ist eine Gestaltungsentscheidung und keine Kontrastfrage mehr.\n\n  C) Kontrast NICHT ueber die Helligkeit, sondern ueber eine Kante: Balken bei rgb(58,90,138) belassen und eine 1px-Aussenlinie in #8FB4E8 setzen. Vorteil: die Flaechenwirkung bleibt ruhig, der Rand fuehrt das Auge. Nachteil: bei sehr schmalen Balken (wenige Pixel) ueberdeckt die Linie die Flaeche und der Balken wirkt heller, als er ist - die Minimap wird dann fleckig.\n\nWAS ICH BRAUCHE: A, B oder C - oder einen eigenen Farbwert, dann rechne ich das Verhaeltnis nach und trage es mit ein.\n\nZWEI RUECKFRAGEN, die die Antwort veraendern koennten:\n  1. Gibt es in der Minimap MEHRERE Balkenarten (etwa eigene Beitraege gegenueber fremden)? Dann muessen die Werte zueinander passen und ich brauche alle Klassen, nicht nur .forensic-minimap-trace.\n  2. Wird die Minimap ausgedruckt oder in den Bericht uebernommen? Auf Papier verhaelt sich ein dunkler Grund voellig anders, und dann waere die richtige Antwort eine eigene Druckregel statt einer Aenderung am Schirm.\n\nWENN DU ES SELBST BEURTEILEN WILLST: Die Werte lassen sich ohne Aenderung am Bestand ausprobieren - Entwicklerwerkzeuge oeffnen (F12), das Element .forensic-minimap-trace waehlen, im Stil-Bereich 'background' zeitweise ueberschreiben. Die Aenderung ist nach dem Neuladen wieder weg. Melde mir einfach den Wert, der Dir zusagt."
+        }
+      ]
+    },
+    {
+      "id": "9ec0fed8-bf8c-45df-b94d-fb5432f3393d",
+      "type": "documentation",
+      "title": "anon_html.py liegt in der Anlage, fehlt im Paket und im Katalog",
+      "affected_version": "0.8.606",
+      "reporter": "Claude",
+      "reported_at": "2026-07-31T15:45:00+00:00",
+      "prerequisites": "Management-System laeuft",
+      "description": "Der Vollzaehligkeitstest des CLI-Katalogs (CK02) hat im Regressionslauf von mc am 2026-07-31 eine Datei gemeldet, die es im Paket nicht gibt: 'anon_html.py' im Wurzelverzeichnis. In der Versionsverwaltung ist sie nicht vorhanden (git log --all liefert keinen Treffer, Stand Build 606); .gitignore schliesst *.py nicht aus.\\n\\nDer Test hat damit genau das getan, wofuer er gebaut wurde. Bis zur Klaerung steht die Datei auf der ausdruecklichen Liste UNGEKLAERT in tests/test_help_cli_katalog.py - benannt, begruendet und nicht blockierend, aber weiterhin sichtbar (CK09/CK10).\\n\\nZUR KLAERUNG BENOETIGT: der Dateikopf von anon_html.py (die ersten 40 Zeilen sowie der argparse-Block). Danach eines von dreien: Eintrag in den CLI-Katalog, Aufnahme in die Ausnahmeliste mit Begruendung, oder Einchecken ins Paket.",
+      "expected_behavior": "Jede Datei im Bestand ist eingeordnet: Katalogeintrag, begruendete Ausnahme oder Loeschung. Die Liste UNGEKLAERT ist bis H22 leer.",
+      "actual_behavior": "anon_html.py ist weder katalogisiert noch ausgenommen noch eingecheckt.",
+      "status": "open",
+      "priority": "medium",
+      "severity": "minor",
+      "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14"
+      },
+      "tags": [
+        "cli",
+        "katalog",
+        "vollzaehligkeit",
+        "entscheidung-offen"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-07-31T15:45:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Eintrag erstellt (Befund aus dem CLI-Katalog, Baustelle H / H15, Build 606)."
+        },
+        {
+          "timestamp": "2026-08-01T22:40:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "AUSKUNFT BENOETIGT (Claude, Build 649) - und diesmal ist es keine Entscheidung, sondern eine Datei, an die ich nicht herankomme.\n\nSTAND: Der Vorgang verlangt zur Klaerung den Dateikopf von anon_html.py. Diese Datei liegt in DEINER Anlage, nicht im Repository - ich sehe sie hier nicht. Ich habe zu Build 649 nachgesehen: 'git log --all -- anon_html.py' liefert weiterhin keinen Treffer, und .gitignore schliesst *.py nicht aus. Der Zustand ist also unveraendert.\n\nSO KOMMST DU AN DIE AUSKUNFT (in der VM, im Wurzelverzeichnis der Anlage):\n\n  Windows PowerShell:\n    Get-Content .\\anon_html.py -TotalCount 60\n    Select-String -Path .\\anon_html.py -Pattern \"add_argument|ArgumentParser|def main\"\n\n  Linux/Git-Bash:\n    head -n 60 anon_html.py\n    grep -n \"add_argument\\|ArgumentParser\\|def main\" anon_html.py\n\n  Und in jedem Fall, damit wir ueber dieselbe Datei sprechen:\n    Windows:  Get-FileHash .\\anon_html.py -Algorithm MD5\n    Linux:    md5sum anon_html.py\n\nDREI MOEGLICHE AUSGAENGE, und welcher es wird, entscheidet die Ausgabe:\n\n  A) Die Datei hat einen argparse-Block und ist ein Werkzeug -> sie bekommt einen Eintrag im CLI-Katalog (Schluessel, Zweck, art, Datenbanken, Betriebsstufe, Unterbefehle, config.yaml-Auskunft) und wird eingecheckt. Dann faellt sie aus der Liste UNGEKLAERT heraus, und CK02 ist fuer sie zufrieden.\n\n  B) Sie ist KEIN Werkzeug, sondern ein Baustein oder ein Einmal-Skript -> begruendete Ausnahme in tests/test_help_cli_katalog.py mit einem Grund, der traegt. 'Historisch so gewachsen' ist keiner (Regel KO4/PY03).\n\n  C) Sie ist ueberholt -> loeschen. Dann bitte KURZ vermerken, was sie tat, damit die Loeschung nachvollziehbar ist.\n\nACHTUNG, ES HAENGT NOCH EIN ZWEITER VORGANG DARAN: ad88708d ('anon_html laesst Text in Kindelementen im Klartext stehen', critical/blocker) betrifft dieselbe Datei. Solange sie nicht im Repository liegt, kann ich diesen Vorgang WEDER PRUEFEN NOCH BEHEBEN - ich kann nur ueber ihn reden. Falls Du ohnehin nur eine Datei nachreichst, ist es diese.\n\nFALLS DU SIE EINCHECKEN WILLST: Bitte VOR dem Einchecken pruefen, ob im Quelltext Beispieldaten, Pfade aus dem Bestand oder Benutzernamen aus dem Forum stehen. Fuer die Weitergabe gilt die Regel 'Inhalte nur nach Pruefung auf Unverfaenglichkeit'; mir reichen fuer die Einordnung der Kopf und der argparse-Block, die vollstaendige Datei brauche ich erst fuer ad88708d."
+        }
+      ]
+    },
+    {
+      "id": "da6c16d0-ef1e-4052-8eb1-526c647de613",
+      "type": "improvement",
+      "title": "Wartungsvorbehalt fuer schreibende Werkzeuge klaeren und durchsetzen",
+      "affected_version": "0.8.606",
+      "reporter": "Claude",
+      "reported_at": "2026-07-31T15:45:00+00:00",
+      "prerequisites": "Management-System laeuft",
+      "description": "Beim Erstellen des CLI-Katalogs (Build 606) liess sich bei sieben Werkzeugen NICHT aus dem Bestand beantworten, ob sie neben dem laufenden Betrieb gefahrlos sind. Der Katalog vermerkt das als offen, statt es zu raten.\\n\\nBETROFFEN:\\n  1. management/search/index_cli.py (--auffrischen)\\n  2. management/migrate.py\\n  3. tools/migrate-dbs.py (--apply)\\n  4. management/migration_fleet/migration_fleet_admin.py (catalog-sync, companion --confirm)\\n  5. management/consolidate_default_db.py\\n  6. tools/forensic_index_upgrade.py (--ausfuehren)\\n  7. tools/maintenance_kill.py (Frage: kann ein REGULAERER Dienst betroffen sein, oder nur ein Wartungs-Testdienst?)\\n\\nZUM VERGLEICH: tools/convert_journal_mode.py sagt es ausdruecklich ('BRAUCHT EXKLUSIVEN ZUGRIFF'), und backup_admin sagt ebenso ausdruecklich das Gegenteil ('fuer den laufenden Betrieb gebaut'). Beide Aussagen stehen im Code und sind belegt. Bei den sieben oben steht nichts - weder das eine noch das andere.\\n\\nVORGEHEN (Vorschlag mc/Claude 2026-07-31): (a) Analyse je Werkzeug anhand fester Kriterien und Einstufung in drei Stufen; (b) ein gemeinsames Bauteil 'Wartungsvorbehalt', das bei Stufe A das aktive Wartungsfenster PRUEFT und ohne Fenster nur nach Eingabe eines WORTES fortfaehrt (kein blosser Tastendruck), sonst abbricht; (c) im Zweifel die strengere Stufe. Einzelheiten im Projektdokument 'Klaerung_Wartungsvorbehalt_CLI_v0_1.md'.",
+      "expected_behavior": "Jedes schreibende Werkzeug sagt im Katalog UND im eigenen Kopf, ob es ein aktives Wartungsfenster braucht, und setzt das bei Stufe A selbst durch.",
+      "actual_behavior": "Bei sieben Werkzeugen ist die Frage offen; die Durchsetzung fehlt durchgehend.",
+      "status": "open",
+      "priority": "high",
+      "severity": "major",
+      "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14"
+      },
+      "tags": [
+        "cli",
+        "wartung",
+        "betrieb",
+        "migration",
+        "datensicherheit",
+        "entscheidung-offen"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-07-31T15:45:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Eintrag erstellt (Befund aus dem CLI-Katalog, Baustelle H / H15, Build 606)."
+        },
+        {
+          "timestamp": "2026-08-01T22:40:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "ZWISCHENSTAND UND ZWEI ENTSCHEIDUNGSFRAGEN (Claude, Build 649).\n\nWAS SEIT DER MELDUNG GESCHEHEN IST - der Vorgang ist naeher an seinem Ziel, als sein Status vermuten laesst:\n  * Die Analyse nach festen Kriterien liegt vor: Vermerk_Wartungsvorbehalt_Analyse_K1_K8_v1_0.md (Kriterien K1-K8, drei Stufen).\n  * Das gemeinsame Bauteil gibt es: maintenance/wartungsvorbehalt.py (Build 610), eingebaut in Build 612. Stufe A prueft das aktive Fenster, probt die Dateien auf Ruhe und faehrt ohne Fenster nur nach Eingabe des Wortes 'OHNE WARTUNGSFENSTER' fort.\n  * Die Sperrprobe darunter war BLIND und ist es seit Build 648 nicht mehr (Vorgang 96f2b18f, dreiwertiger Befund ruhig/belegt/nicht messbar). Das war eine echte Luecke: Der Vorbehalt haette auf einem geteilten Laufwerk 'ruhig' gemeldet, ohne gemessen zu haben.\n  * Von den sieben genannten Werkzeugen hat migration_fleet_admin die Stufe A samt Durchsetzung (Build 612).\n\nES BLEIBEN ALSO SECHS OFFEN: index_cli (--auffrischen), migrate.py, migrate-dbs (--apply), consolidate_default_db, forensic_index_upgrade (--ausfuehren), maintenance_kill.\n\nFRAGE 1 - DIE EINSTUFUNG DER SECHS. Ich kann sie nach K1-K8 vorschlagen, aber die Einstufung ist eine BETRIEBSENTSCHEIDUNG: Stufe A heisst, dass ein Ermittler mitten in der Arbeit abgewiesen wird. Wer das entscheidet, muss wissen, wie oft diese Werkzeuge im laufenden Betrieb gebraucht werden. Drei Wege:\n\n  A) Ich stufe alle sechs nach K1-K8 ein, lege je Werkzeug einen Vermerk mit dem Beleg vor, und DU entscheidest je Werkzeug. Aufwand: ein Build fuer die Vermerke, dann je Werkzeug ein kleiner Einbau. MEIN VORSCHLAG - die Einstufung ist belegbar, die Freigabe bleibt bei Dir.\n\n  B) 'Im Zweifel die strengere Stufe' wie im Vorgang vorgeschlagen, ohne Einzelfreigabe: alle sechs auf Stufe A. Schnell und sicher, aber es wird Werkzeuge treffen, die es nicht brauchen - und ein Vorbehalt, der zu oft im Weg steht, wird umgangen (mit --ja oder gar nicht mehr benutzt). Das waere das Gegenteil dessen, was der Vorgang will.\n\n  C) Nur die drei, die an BEWEISMITTELN arbeiten (forensic_index_upgrade, migrate-dbs, consolidate_default_db), auf Stufe A; die uebrigen drei auf die mittlere Stufe (Warnung im Kopf und im Katalog, kein Zwang). Das ist ein Mittelweg, aber er setzt voraus, dass die Grenze wirklich dort liegt - und genau das ist die Frage, die ich nicht ohne Betriebswissen beantworte.\n\nFRAGE 2 - EINE AUSKUNFT, DIE IM VORGANG SELBST OFFEN STEHT. Der Vorgang fragt bei maintenance_kill: 'kann ein REGULAERER Dienst betroffen sein, oder nur ein Wartungs-Testdienst?' Ich habe in Build 648 den Rundumschlag entschaerft (Auflistung vor der Wirkung, Rueckfrage bei fremden Rechnern), aber die Frage selbst ist damit NICHT beantwortet - ich habe sie nur ungefaehrlicher gemacht. Zur Antwort brauche ich Betriebswissen: Traegt die coordinator.db Registrierungen von PRODUKTIVEN Auswertungsdiensten, oder ausschliesslich von Wartungslaeufen?\n\nSO KANNST DU DAS FESTSTELLEN (in der VM, Anlage-Wurzel, rein lesend):\n    python tools/maintenance.py status\nund, falls Du unmittelbar in die Datenbank sehen willst:\n    sqlite3 <pfad>/coordinator.db \"SELECT uuid, hostname, art, gestartet_am FROM server_registrations ORDER BY gestartet_am DESC LIMIT 20;\"\n(Bitte den Spaltennamen 'art' pruefen - ich nenne ihn hier aus dem Gedaechtnis; 'PRAGMA table_info(server_registrations);' zeigt die wirklichen.)\n\nStehen dort nur Eintraege aus Wartungslaeufen, ist maintenance_kill unkritisch und faellt aus der Liste heraus. Steht dort ein Auswertungsdienst, gehoert es auf Stufe A - und zwar dringend.\n\nDRITTER PUNKT, NUR ZUR KENNTNIS: Solange dieser Vorgang offen ist, steht er auch in documents/rules-index.md unter 'Offene Punkte', und rules-cli.md kennzeichnet den Aufbau als VORSCHLAG. Das bleibt so, bis Du entschieden hast - ich haette es nicht gern stillschweigend zur geltenden Regel gemacht."
+        }
+      ]
+    },
+    {
+      "id": "2785556a-df22-4643-bb05-0c46eba88d20",
+      "type": "bug",
+      "title": "Fuer die Sicherungen von backup_admin gibt es keinen erprobten Rueckweg",
+      "affected_version": "0.8.615",
+      "reporter": "Claude",
+      "reported_at": "2026-07-31T22:40:00+00:00",
+      "prerequisites": "Der Ernstfall - eine Datenbank ist zu ersetzen und soll aus einer Sicherung zurueckgespielt werden",
+      "description": "Befund aus der Nachpruefung von backup_admin, angeordnet von mc am 2026-07-31.\\n\\nDER BEFUND: management/backup/ kennt genau drei Unterbefehle - plan, run, list (backup_admin.py Z. 173-184). Es gibt KEIN 'restore'. Im ganzen Bestand existiert nur ein Rueckspielweg, und der gehoert zur Migrationsflotte (management/migration_fleet/executor.py Z. 93-105); er arbeitet auf deren eigenen Sicherungen, nicht auf denen von backup_admin, und er ist ausserdem selbst Gegenstand eines offenen Vorgangs (69ede1c7: er kopiert ueber die Originaldatei, ohne die Exklusivitaet zu pruefen).\\n\\nWEDER CODE NOCH TEST: tests/test_backup_executor.py und tests/test_backups_registry.py enthalten keinen Wiederherstellungsfall.\\n\\nDAZU PASST EIN ZWEITER BEFUND: Die Pruefsumme (SHA512) jeder Kopie wird bei der Sicherung ERHOBEN und im Register abgelegt (harness/backup.py Z. 77, backups_repo.py Z. 74-77) - aber nie wieder GEPRUEFT. Die vorhandene Routine BackupTool.verify_backup (harness/backup.py Z. 80-83) hat KEINEN produktiven Aufrufer; sie kommt ausschliesslich in Tests vor. Eine Sicherung altert damit unbeobachtet: ein Bitfehler auf dem Sicherungsmedium faellt erst im Ernstfall auf, und dann ist es der Ernstfall.\\n\\nWARUM DAS IN DIESEM PROJEKT ZAEHLT: Eine Sicherung, deren Rueckweg nie gefahren wurde, ist eine Vermutung und kein Beleg. Das ist dieselbe Ueberlegung, aus der im Projekt gilt, dass ein Beispielaufruf gefahren sein muss, bevor er in die Hilfe kommt - nur mit erheblich groesserem Einsatz.",
+      "expected_behavior": "Ein Unterbefehl 'restore' (mindestens als Trockenlauf mit Pruefung), der vor dem Zurueckspielen die abgelegte Pruefsumme gegen die Datei prueft und die Zieldatei auf Ruhe probt. Dazu ein Test, der einen vollstaendigen Weg faehrt: sichern, Original beschaedigen, zurueckspielen, gegenpruefen. Unabhaengig davon: ein Unterbefehl 'verify', der die abgelegten Pruefsummen gegen die vorhandenen Sicherungsdateien haelt, damit eine alternde Sicherung vor dem Ernstfall auffaellt.",
+      "actual_behavior": "Kein Rueckweg, kein Test dafuer; die erhobene Pruefsumme wird nie wieder ausgewertet.",
+      "status": "open",
+      "priority": "high",
+      "severity": "major",
+      "assigned_to": "Claude",
+      "related_to": [
+        "651e6d84-7ebc-4905-ab21-9f324021ec1d",
+        "69ede1c7-3fe1-47eb-9d9a-f0cf6468f7dc"
+      ],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14"
+      },
+      "tags": [
+        "backup",
+        "wiederherstellung",
+        "test",
+        "produktivbetrieb",
+        "entscheidung-offen"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-07-31T22:40:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Eintrag erstellt. Befund aus der von mc angeordneten Nachpruefung von backup_admin."
+        },
+        {
+          "timestamp": "2026-07-31T23:06:29.592647+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eingang_claude_Build616.json"
+        },
+        {
+          "timestamp": "2026-08-01T22:40:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "ENTSCHEIDUNG ZUM ZUSCHNITT BENOETIGT (Claude, Build 649), bevor ich anfange - hier ist Nachbessern teurer als Fragen.\n\nWARUM ICH NICHT EINFACH BAUE: Der Vorgang verlangt zweierlei, und die beiden sind unterschiedlich schwer und unterschiedlich dringend.\n  (a) 'verify' - die abgelegten SHA512-Pruefsummen gegen die vorhandenen Sicherungsdateien halten, damit eine ALTERNDE Sicherung vor dem Ernstfall auffaellt.\n  (b) 'restore' - der Rueckweg selbst, samt einem Test, der den vollstaendigen Weg faehrt (sichern, Original beschaedigen, zurueckspielen, gegenpruefen).\n\nNACHGESEHEN, damit wir auf demselben Stand sind: BackupTool.verify_backup gibt es (harness/backup.py Z. 80-83), sie hat KEINEN produktiven Aufrufer und kommt nur in Tests vor. Fuer (a) ist also nicht neu zu erfinden, sondern anzuschliessen - das ist ein kleiner Build. (b) ist etwas anderes: ein Rueckweg, der eine Beweismitteldatei UEBERSCHREIBT, ist der gefaehrlichste Weg im ganzen Bestand, und der einzige vorhandene Rueckspielweg (migration_fleet/executor.py) ist selbst Gegenstand des offenen Vorgangs 69ede1c7, weil er ueber die Originaldatei kopiert, ohne die Exklusivitaet zu pruefen.\n\nDREI ZUSCHNITTE:\n\n  A) NUR (a) 'verify' JETZT, (b) getrennt spaeter. Kleiner, in sich abgeschlossener Build; die alternde Sicherung faellt ab sofort auf. Der Rueckweg bleibt eine Vermutung - aber eine BENANNTE, und keine, die man im Ernstfall zum ersten Mal ausprobiert. MEIN VORSCHLAG, und zwar wegen des Datums: ab dem 01.07.2026 stehen echte Ermittlerdaten in den Datenbanken; einen ueberschreibenden Rueckweg moechte ich nicht nebenbei einbauen.\n\n  B) (a) UND (b) ZUSAMMEN, aber 'restore' ausschliesslich als TROCKENLAUF: es prueft die Pruefsumme, probt die Zieldatei auf Ruhe, sagt genau, was es tun WUERDE - und schreibt nichts. Das Zurueckspielen bleibt Handarbeit nach Anleitung. Damit ist der Weg erprobt, ohne dass ein Werkzeug im Bestand existiert, das ein Beweismittel ueberschreiben kann.\n\n  C) (a) und (b) vollstaendig, mit scharfem Rueckspielen unter Wartungsvorbehalt Stufe A. Der volle Umfang des Vorgangs. Er setzt aber 69ede1c7 voraus (Exklusivitaetspruefung im Rueckweg) - sonst baue ich denselben Mangel ein zweites Mal, und dann steht er an zwei Stellen.\n\nDREI FRAGEN, deren Antwort den Zuschnitt mitbestimmt:\n  1. Soll 'restore' ueberhaupt in ein Werkzeug, oder ist der Rueckweg im Ernstfall bewusst Handarbeit mit Vier-Augen-Prinzip? Das ist eine forensische Entscheidung, keine technische - ein Werkzeug, das Beweismittel ueberschreiben kann, ist auch eine Angriffsflaeche.\n  2. Wohin soll 'restore' schreiben duerfen: NUR neben das Original (also eine Datei, die anschliessend von Hand getauscht wird), oder auf das Original selbst?\n  3. Fuer den Test, der den vollstaendigen Weg faehrt: Reicht ein Wegwerf-Bestand aus dem Prepper, oder muss der Weg einmal auf einer ECHTEN Fall-Datenbank gefahren und protokolliert werden? Letzteres kann ich hier nicht - das waere ein Lauf in der VM, und ich wuerde Dir dafuer ein Skript und eine Anleitung liefern, so wie bei 651e6d84.\n\nBis zu Deiner Antwort bleibt der Vorgang offen; ich habe nichts angefangen, was danach umzubauen waere."
+        }
+      ]
+    },
+    {
+      "id": "26a00258-063c-435c-ae80-69d9ad7d8f79",
+      "type": "bug",
+      "title": "Drei Raeder fehlen in BEIDEN Offline-Paketen - Einchecken?",
+      "affected_version": "0.8.649",
+      "reporter": "Claude",
+      "reported_at": "2026-08-01T22:40:00+00:00",
+      "prerequisites": "setup/win64/wheels und setup/linux64/wheels im Bestand; python prepare_deployment.py bzw. die Vollzaehligkeitspruefung _fehlende_raeder aus Build 647.",
+      "description": "Nachtrag zu Vorgang 0329896b. Dort ist der RUECKGABEWERT behoben (Build 647): prepare_deployment meldet einen gescheiterten Download nicht mehr als Erfolg und nennt am Ende, welche Pakete fehlen. Der INHALT des Pakets ist damit aber nicht vollstaendig geworden.\n\nGEMESSEN am 2026-08-01 mit der Vollzaehligkeitspruefung des Bestandes (prepare_deployment._fehlende_raeder gegen RUNTIME_PACKAGES + DEV_PACKAGES):\n  setup/win64/wheels    -> fehlend: pyeditorjs, python-docx, reportlab\n  setup/linux64/wheels  -> fehlend: pyeditorjs, python-docx, reportlab\nVorhanden sind in beiden Verzeichnissen lxml, pyyaml, pytest und pytest-asyncio.\n\nDIE DREI FEHLEN AUF BEIDEN SEITEN und damit unabhaengig vom Betriebssystem - anders als der in 0329896b beschriebene Teilausfall des Linux-Verzeichnisses, der inzwischen behoben ist. Der Download der drei fuer cp314 laeuft durch (hier geprueft); es ist also kein Verfuegbarkeitsproblem, sondern sie sind nie mitgeliefert worden.\n\nWAS DAS BEDEUTET: Eine Offline-Installation auf der VM scheitert an pyeditorjs, python-docx und reportlab - also an der Berichtsausgabe und am Editor. Genau dafuer gibt es das Verzeichnis.\n\nICH HABE NICHTS EINGECHECKT. Binaerdateien in die Versionsverwaltung aufzunehmen ist in einem forensischen Projekt keine Nebensache und keine Entscheidung, die ich allein treffe. Die drei Wege stehen im ersten Kommentar.",
+      "expected_behavior": "Entweder liegt fuer jedes Paket aus RUNTIME_PACKAGES und DEV_PACKAGES in beiden Zielverzeichnissen ein Rad - dann ist die Offline-Installation moeglich und im Regressionslauf nachgehalten. Oder es ist ausdruecklich festgelegt, dass prepare_deployment vor jeder Auslieferung mit Netz laeuft; dann gehoert das in die Betriebsanleitung und nicht in ein stillschweigend unvollstaendiges Verzeichnis.",
+      "actual_behavior": "Beide Verzeichnisse enthalten vier von sieben Raedern. Seit Build 647 wuerde ein neuer Lauf das melden; der bestehende Zustand aendert sich davon nicht.",
+      "status": "open",
+      "priority": "medium",
+      "severity": "major",
+      "assigned_to": "Alex",
+      "related_to": [
+        "0329896b-901c-40c3-a393-e164872b3324"
+      ],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14"
+      },
+      "tags": [
+        "auslieferung",
+        "setup",
+        "wheels",
+        "entscheidung-offen"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-01T22:40:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "NEUER VORGANG, angelegt von Claude in Build 649 als Nachtrag zu 0329896b (dort behoben ist der RUECKGABEWERT - dieser Vorgang betrifft den INHALT des Pakets).\n\nDER BEFUND, gemessen am 2026-08-01 gegen setup/deployment_manifest.json:\n  setup/win64/wheels/   und   setup/linux64/wheels/\nIn BEIDEN Verzeichnissen fehlen Raeder fuer: pyeditorjs, python-docx, reportlab.\n(Der im Vorgang 0329896b beschriebene, weit groessere Ausfall des Linux-Verzeichnisses ist inzwischen anders gelagert; diese drei fehlen auf BEIDEN Seiten und damit unabhaengig vom Betriebssystem.)\n\nWAS ICH GEPRUEFT HABE: Der Download dieser drei fuer cp314 laeuft hier durch - es ist also kein Verfuegbarkeitsproblem der Pakete, sondern sie sind schlicht nie mitgeliefert worden. Seit Build 647 wuerde prepare_deployment das auch melden statt es zu verschweigen (Rueckgabewert ungleich 0 und eine Fehlliste am Ende); die Luecke im Bestand schliesst sich davon aber nicht von selbst.\n\nENTSCHEIDUNG BENOETIGT - ICH KANN DAS NICHT ALLEIN, weil es um Binaerdateien im Repository geht:\n\n  A) DIE DREI RAEDER EINCHECKEN. Das Offline-Paket ist danach vollstaendig, und die Auslieferung auf die VM funktioniert ohne Netz - was der Zweck des Verzeichnisses ist. Preis: rund drei zusaetzliche Binaerdateien in der Versionsverwaltung, die niemand lesen kann. In einem forensischen Projekt ist das kein Nebenaspekt: Eingecheckte Binaerdateien sind nicht nachvollziehbar, und ihre Herkunft muss aus einer anderen Quelle belegt werden (Pruefsumme im Manifest).\n\n  B) NICHT EINCHECKEN, sondern verbindlich machen, dass prepare_deployment vor jeder Auslieferung laeuft und die Raeder frisch zieht. Preis: die Auslieferung braucht dann einmal Netz, und zwar auf der Maschine, die das Paket schnuert (nicht auf der VM).\n\n  C) EINCHECKEN, ABER MIT PRUEFSUMME UND HERKUNFTSVERMERK: die drei Raeder samt SHA256 und Bezugsdatum in setup/deployment_manifest.json, und eine Pruefung im Regressionslauf, die Datei gegen Pruefsumme haelt. Das ist A plus der Beleg, den ein forensisches Projekt fuer eine Binaerdatei verlangt - und es ist mehr Arbeit als A, aber es ist die Fassung, die ich verteidigen koennte.\n\nWAS ICH BRAUCHE: A, B oder C.\n\nFALLS C: Bitte sag mir zusaetzlich, ob die Pruefsumme im Regressionslauf HART pruefen soll (ein abweichendes Rad laesst den Lauf scheitern) oder nur melden. Hart ist richtig, aber es bedeutet, dass ein aktualisiertes Rad ohne Manifest-Aenderung den Lauf rot macht - das ist Absicht, soll aber niemanden ueberraschen.\n\nZWEITER, KLEINERER PUNKT im selben Zusammenhang: Die Raeder sind fuer cp314 gebaut. Wer auf der VM eine andere Python-Nebenversion einsetzt, findet sie nicht, auch wenn die Datei im Verzeichnis liegt. Seit Build 647 steht die geforderte Nebenversion in den erzeugten README.txt und im Manifest. Falls auf der VM eine andere Nebenversion im Einsatz ist als 3.14, sag es bitte - dann ist nicht das Paket falsch, sondern die Zielangabe."
+        }
+      ]
+    }
+  ]
+}

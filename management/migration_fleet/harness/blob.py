@@ -25,6 +25,35 @@ from typing import Dict, List, Tuple
 from management.migration_fleet.harness.hashing import blob_sha256
 
 
+def _nur_lesend(path: str) -> sqlite3.Connection:
+    """
+    Oeffnet die Datei NUR LESEND - und das ist hier kein Feinschliff.
+
+    BEFUND, GEMESSEN AM 2026-08-01 (Vorgang f51fd838, viertes und fuenftes
+    Auftreten des Musters): Alle Pruefungen dieses Pruefstands sagen in ihrem
+    eigenen Kopf "Rein lesend" und haben die Datei trotzdem gewoehnlich
+    geoeffnet. Bei SQLite ist das NICHT folgenlos:
+
+        integrity_check auf einer NICHT VORHANDENEN Datei
+            -> IntegrityResult(ok=True, messages=[])
+            -> und die Datei ist danach da, 0 Byte gross.
+
+    Der Pruefstand hat also die Unversehrtheit einer Datenbank BESTAETIGT,
+    die er im selben Atemzug selbst angelegt hat. Dasselbe galt fuer
+    table_rowcounts ('{}') und read_instance_version ('0').
+
+    WARUM DAS HIER BESONDERS SCHWER WIEGT: Dieser Pruefstand ist der
+    Vorher/Nachher-Vergleich einer Migration - er soll BELEGEN, dass nichts
+    verlorengegangen ist. Ein vertippter Pfad ergab eine leere
+    Vorher-Aufnahme, und jeder Nachher-Vergleich gegen sie sah danach wie ein
+    ZUGEWINN aus. Ein Verlust konnte so nicht auffallen.
+
+    Mit 'mode=ro' scheitert der Zugriff auf eine nicht vorhandene Datei mit
+    einem klaren Fehler - und das ist die richtige Antwort. Der Pfad, der
+    geprueft werden soll, muss existieren.
+    """
+    return sqlite3.connect("file:%s?mode=ro" % path, uri=True)
+
 @dataclass
 class BlobReport:
     ok: bool
@@ -60,7 +89,7 @@ class BlobVerifier:
         """
         Map "table|column|pk" -> SHA256 (bzw. NULL_MARKER) fuer jeden BLOB-Wert.
         """
-        con = sqlite3.connect(path)
+        con = _nur_lesend(path)
         try:
             digests: Dict[str, str] = {}
             tables = [r[0] for r in con.execute(

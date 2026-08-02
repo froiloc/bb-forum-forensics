@@ -104,9 +104,15 @@
         <input type="hidden" name="new_status" value="resolved">
         <input type="hidden" name="author" value="{{ config.DEFAULT_REPORTER }}">
         <input type="hidden" name="comment" value="Schnell als gelöst markiert">
+        {# BUILD 649 (Vorgang 044ca2ee): Bis Build 648 schickte die
+           Schnellaktion keine Fassung mit, und server.py setzt
+           'resolved_in_version' nur, wenn eine mitkommt. Drei Vorgaenge im
+           Bestand sind so ohne Angabe entstanden. Die laufende Fassung steht
+           in build.json - sie zu nehmen kostet keinen Klick. #}
+        <input type="hidden" name="resolved_version" value="{{ paketfassung }}">
         <button type="submit" class="btn btn-success btn-sm"
                 onclick="return confirm('Issue als gelöst markieren?')">
-            ✅ Als gelöst markieren
+            ✅ Als gelöst markieren ({{ paketfassung }})
         </button>
     </form>
 
@@ -114,6 +120,7 @@
         <input type="hidden" name="new_status" value="closed">
         <input type="hidden" name="author" value="{{ config.DEFAULT_REPORTER }}">
         <input type="hidden" name="comment" value="Schnell geschlossen">
+        <input type="hidden" name="resolved_version" value="{{ paketfassung }}">
         <button type="submit" class="btn btn-danger btn-sm"
                 onclick="return confirm('Issue wirklich schließen?')">
             🔒 Schließen
@@ -197,14 +204,40 @@
     </div>
 </div>
 
+{#
+  BUILD 649 - DIE RUECKRICHTUNG WIRD ANGEZEIGT (Vorgang 08e62af3).
+
+  server.py bildet 'referencing_issues' - alle Vorgaenge, die auf den gerade
+  angezeigten zeigen - seit jeher und uebergab sie an diese Vorlage. Die
+  Zeichenfolge kam hier bis Build 648 nicht vor: die Liste wurde berechnet
+  und verworfen.
+
+  DAS WAR DER ZWEITE GRUND, warum die fuenf Kurzform-Verweise (Vorgang
+  6da63d8b) jahrelang niemandem auffielen - es gab keine Ansicht, in der sie
+  haetten fehlen koennen.
+#}
 {% if related_issues %}
 <div class="card related-issues" style="margin-top: 2rem;">
-    <h3>Verknüpfte Issues</h3>
+    <h3>Verweist auf</h3>
     <ul>
         {% for related in related_issues %}
         <li>
             <a href="/issue/{{ related.id }}">{{ related.title }}</a>
             <span class="badge badge-{{ related.status }}">{{ related.status }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+{% if referencing_issues %}
+<div class="card related-issues" style="margin-top: 1rem;">
+    <h3>Wird verwiesen von</h3>
+    <ul>
+        {% for verweisend in referencing_issues %}
+        <li>
+            <a href="/issue/{{ verweisend.id }}">{{ verweisend.title }}</a>
+            <span class="badge badge-{{ verweisend.status }}">{{ verweisend.status }}</span>
         </li>
         {% endfor %}
     </ul>

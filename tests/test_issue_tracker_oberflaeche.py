@@ -296,21 +296,37 @@ class LaufenderTracker(unittest.TestCase):
         self.assertEqual(antwort.status_code, 303)
         self.assertEqual(_bestand()[self.kennung].get("related_to"), [])
 
-    def test_of05_verworfener_verweis_steht_im_verlauf(self):
-        vorher = len(_bestand()[self.kennung].get("updates") or [])
+    def test_of05_unbekannter_verweis_wird_abgewiesen(self):
+        """
+        GEAENDERT IN BUILD 649 - die Zusage ist STAERKER geworden, nicht
+        schwaecher.
 
-        _client.post("/issue/save",
-                     data=_formularfelder(
-                         self.vorgang,
-                         related_to="99999999-0000-4000-8000-000000000000"),
-                     follow_redirects=False)
+        In Build 645 stand hier: ein verworfener Verweis muss wenigstens im
+        VERLAUF des Vorgangs stehen und nicht nur im Serverprotokoll. Das war
+        der bestmoegliche Behelf, solange die Maske keinen Weg zurueck hatte -
+        sie konnte nur speichern oder mit einem HTTP-Fehler abbrechen, und ein
+        Abbruch haette die Eingabe genauso verloren.
 
-        verlauf = _bestand()[self.kennung]["updates"]
-        self.assertGreater(len(verlauf), vorher)
-        vermerke = " ".join(u.get("comment", "") for u in verlauf[vorher:])
-        self.assertIn("99999999", vermerke,
-                      "Der verworfene Verweis steht nur im Serverprotokoll - "
-                      "wer die Akte liest, erfaehrt nichts davon")
+        Build 649 hat diesen Weg gebaut (Vorgang 04a0a4bc): Es wird GAR NICHTS
+        MEHR VERWORFEN. Der Speichervorgang wird abgewiesen, die Meldung steht
+        am Formular, und die Eingabe bleibt stehen. Damit gibt es keinen
+        'verworfenen Verweis' mehr, den man vermerken koennte - der Fall
+        prueft jetzt die staerkere Zusage.
+        """
+        vorher = _bestand()[self.kennung]
+
+        antwort = _client.post(
+            "/issue/save",
+            data=_formularfelder(self.vorgang,
+                                 related_to="99999999-0000-4000-8000-000000000000"),
+            follow_redirects=False)
+
+        self.assertEqual(antwort.status_code, 400,
+                         "Der unbekannte Verweis wurde angenommen")
+        self.assertIn("99999999", antwort.text,
+                      "Die Eingabe steht nicht mehr im Formular")
+        self.assertEqual(_bestand()[self.kennung], vorher,
+                         "Trotz Abweisung wurde am Vorgang etwas geaendert")
 
     def test_of06_blaettern_erreicht_die_letzte_seite(self):
         gesamt = len(_bestand())

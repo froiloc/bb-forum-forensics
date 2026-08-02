@@ -4,6 +4,38 @@
 
 {% block content %}
 {#
+  BUILD 649 - DIE BEIDEN ADRESSBAUSTEINE.
+
+  Seit der Mehrfachauswahl (Vorgang f42afcd9) kann jeder Filter mehrfach in
+  der Adresse stehen. Beide Bausteine werden deshalb aus Schleifen gebildet
+  und nicht mehr aus Einzelwerten.
+
+  basis_query  - alle Hauptfilter OHNE die Tags, jeder Eintrag mit '&' am
+                 Ende. Ihn benutzen die Verweise der Tag-Wolke: sie setzen
+                 ihre Tags selbst zusammen, weil ein Klick ein Tag hinzufuegt
+                 ODER wegnimmt.
+  filter_query - ALLES, mit '&' am Anfang. Ihn benutzt die
+                 Blaetter-Bedienung, die hinter 'page=N' anhaengt.
+
+  Ein Blaettern, das die Auswahl vergisst, waere die naechste Falle: man
+  filtert, blaettert weiter und steht unbemerkt wieder im ganzen Bestand.
+#}
+{%- set basis_query %}
+{%- for wert in current_filters.status %}status_filter={{ wert|urlencode }}&{% endfor -%}
+{%- for wert in current_filters.type %}type_filter={{ wert|urlencode }}&{% endfor -%}
+{%- for wert in current_filters.priority %}priority_filter={{ wert|urlencode }}&{% endfor -%}
+{%- for wert in current_filters.assigned_to %}assigned_to={{ wert|urlencode }}&{% endfor -%}
+{%- if current_filters.search %}search={{ current_filters.search|urlencode }}&{% endif -%}
+{%- endset %}
+{%- set filter_query %}
+{%- for wert in current_filters.status %}&status_filter={{ wert|urlencode }}{% endfor -%}
+{%- for wert in current_filters.type %}&type_filter={{ wert|urlencode }}{% endfor -%}
+{%- for wert in current_filters.priority %}&priority_filter={{ wert|urlencode }}{% endfor -%}
+{%- for wert in current_filters.assigned_to %}&assigned_to={{ wert|urlencode }}{% endfor -%}
+{%- for wert in current_filters.tag %}&tag_filter={{ wert|urlencode }}{% endfor -%}
+{%- if current_filters.search %}&search={{ current_filters.search|urlencode }}{% endif -%}
+{%- endset %}
+{#
   BUILD 647 (Vorgang 05f65255): Diese Kacheln beschreiben ab jetzt den
   GESAMTBESTAND und nicht mehr die gerade sichtbare Auswahl. Bis Build 646
   wurden sie aus der gefilterten Menge gebildet - wer nach 'offen' filterte,
@@ -43,96 +75,119 @@
 </div>
 
 {#
-  BUILD 647 - DIE AUSWAHLFELDER WERDEN AUS DEN LISTEN DES SERVERS GEBAUT.
+  BUILD 649 - MEHRFACHAUSWAHL (Vorgang f42afcd9, mc).
 
-  Vorgang 7571d4de (mc, Prioritaet 'high'): "Im Dashboard alle moeglichen
-  Status als Filter erlauben". Bis Build 646 standen die Werte hier fest
-  verdrahtet - 4 der 9 Status, 3 der 5 Typen, 4 der 5 Prioritaeten. GEZAEHLT
-  am Bestand: 12 Vorgaenge waren ueber die Filter nicht auffindbar (3 in
-  nicht waehlbaren Status, 8 vom Typ 'documentation', 1 mit Prioritaet
-  'wishlist'), und dass es sie gibt, sah man nirgends.
+  Jedes Auswahlfeld traegt jetzt 'multiple'. Innerhalb eines Feldes gilt
+  ODER, zwischen den Feldern UND - 'kritisch oder hoch' UND 'offen'.
 
-  STATUS_LABELS gab es im Server die ganze Zeit; diese Vorlage hat nur nie
-  hineingesehen. Jetzt kommen alle drei Listen von dort. Wer einen Wert
-  ergaenzt, ergaenzt ihn an EINER Stelle - und er steht sofort im Filter.
+  ZWEI FOLGEN, die man wissen muss:
+
+  (1) DAS ABSENDEN BEI JEDER AENDERUNG IST WEG. Bis Build 648 stand an jedem
+      Feld 'onchange="filterIssues()"'. Bei einem Mehrfachfeld waehlt man mit
+      Strg+Klick nacheinander aus - ein Absenden nach dem ersten Klick machte
+      die Mehrfachauswahl unbenutzbar. Jetzt gilt: auswaehlen, dann 'Filtern'.
+
+  (2) DIE FELDER SIND HOEHER (size). Ein Mehrfachfeld, das nur eine Zeile
+      zeigt, verbirgt genau das, was es kann.
+
+  Die Werte kommen weiterhin aus EINER Quelle im Server (Vorgang 7571d4de);
+  geprueft wird jetzt mit 'in' statt mit '==', weil dort Listen stehen.
 #}
 <form id="filter-form" method="GET" class="filters">
-    <select name="status_filter" onchange="filterIssues()">
-        <option value="">Alle Status</option>
-        {% for wert, beschriftung in status_labels.items() %}
-        <option value="{{ wert }}" {% if current_filters.status == wert %}selected{% endif %}>{{ beschriftung }}</option>
-        {% endfor %}
-    </select>
+    <label class="filterfeld">
+        <span class="filterfeld-name">Status</span>
+        <select name="status_filter" multiple size="5">
+            {% for wert, beschriftung in status_labels.items() %}
+            <option value="{{ wert }}" {% if wert in current_filters.status %}selected{% endif %}>{{ beschriftung }}</option>
+            {% endfor %}
+        </select>
+    </label>
 
-    <select name="type_filter" onchange="filterIssues()">
-        <option value="">Alle Typen</option>
-        {% for wert, beschriftung in type_labels.items() %}
-        <option value="{{ wert }}" {% if current_filters.type == wert %}selected{% endif %}>{{ beschriftung }}</option>
-        {% endfor %}
-    </select>
+    <label class="filterfeld">
+        <span class="filterfeld-name">Typ</span>
+        <select name="type_filter" multiple size="5">
+            {% for wert, beschriftung in type_labels.items() %}
+            <option value="{{ wert }}" {% if wert in current_filters.type %}selected{% endif %}>{{ beschriftung }}</option>
+            {% endfor %}
+        </select>
+    </label>
 
-    <select name="priority_filter" onchange="filterIssues()">
-        <option value="">Alle Prioritäten</option>
-        {% for wert, beschriftung in priority_labels.items() %}
-        <option value="{{ wert }}" {% if current_filters.priority == wert %}selected{% endif %}>{{ beschriftung }}</option>
-        {% endfor %}
-    </select>
+    <label class="filterfeld">
+        <span class="filterfeld-name">Priorität</span>
+        <select name="priority_filter" multiple size="5">
+            {% for wert, beschriftung in priority_labels.items() %}
+            <option value="{{ wert }}" {% if wert in current_filters.priority %}selected{% endif %}>{{ beschriftung }}</option>
+            {% endfor %}
+        </select>
+    </label>
 
     {# Vorgang e2d1f0ae: 'assignees' wurde berechnet und nie angezeigt. #}
     {% if assignees %}
-    <select name="assigned_to" onchange="filterIssues()">
-        <option value="">Alle Zuständigen</option>
-        {% for name in assignees %}
-        <option value="{{ name }}" {% if current_filters.assigned_to == name %}selected{% endif %}>{{ name }}</option>
-        {% endfor %}
-    </select>
+    <label class="filterfeld">
+        <span class="filterfeld-name">Zuständig</span>
+        <select name="assigned_to" multiple size="5">
+            {% for name in assignees %}
+            <option value="{{ name }}" {% if name in current_filters.assigned_to %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+        </select>
+    </label>
     {% endif %}
 
-    <input type="text" name="search" placeholder="Suche (auch in Tags)…" value="{{ current_filters.search or '' }}">
+    <label class="filterfeld">
+        <span class="filterfeld-name">Suche</span>
+        <input type="text" name="search" placeholder="auch in Tags…" value="{{ current_filters.search or '' }}">
+    </label>
 
-    {# Das Tag aus der Wolke muss das Formular ueberleben - sonst hebt jeder
-       Klick auf 'Filtern' die Tag-Auswahl auf, ohne dass es jemand merkt. #}
-    {% if current_filters.tag %}
-    <input type="hidden" name="tag_filter" value="{{ current_filters.tag }}">
-    {% endif %}
+    {# Die Tags aus der Wolke muessen das Formular ueberleben - sonst hebt
+       jeder Klick auf 'Filtern' die Tag-Auswahl auf, ohne dass es auffaellt.
+       Ab Build 649 koennen es mehrere sein. #}
+    {% for tag in current_filters.tag %}
+    <input type="hidden" name="tag_filter" value="{{ tag }}">
+    {% endfor %}
 
-    <button type="submit" class="btn btn-primary">Filtern</button>
+    <div class="filterknoepfe">
+        <button type="submit" class="btn btn-primary">Filtern</button>
+        <a href="/" class="btn btn-sm">Alle Filter aufheben</a>
+        <span class="filterhinweis">Mehrfachauswahl: Strg+Klick (ODER-Verknüpfung)</span>
+    </div>
 </form>
 
 {#
-  BUILD 647 - DIE TAG-WOLKE. Vorgang 2d692c67 (mc):
-  "Ich pflege zwar Tags im Issue-Tracker, aber weder werden die im Dashboard
-   angezeigt, noch kann ich nach diesen filtern oder suchen."
+  DIE TAG-WOLKE - Vorgang 2d692c67 (Build 647), erweitert in Build 649 um
+  Vorgang 01fedc41 (mc): "Mit dem Setzen der Hauptfilter sollen auch die
+  Elemente in der Tag-Cloud aktualisiert (und reduziert) werden."
 
-  Die Wolke wird aus dem GESAMTBESTAND gebildet, nicht aus der Auswahl. Sonst
-  schrumpfte sie bei jedem Klick auf das, was gerade uebrig ist, und nach dem
-  ersten Klick waere jeder andere Weg verschwunden - eine Sackgasse statt
-  einer Bedienung.
+  SIE FOLGT DEN HAUPTFILTERN, ABER NICHT SICH SELBST - die Begruendung steht
+  im Server bei der Bildung der Wolke. Ein gesetztes Tag bleibt immer
+  sichtbar, damit man es wieder abwaehlen kann.
+
+  JEDES TAG SCHALTET UM: ist es gesetzt, fuehrt der Verweis ohne dieses Tag
+  weiter (aber mit allen anderen Filtern); ist es nicht gesetzt, kommt es
+  hinzu. Damit sind auch mehrere Tags gleichzeitig waehlbar - dieselbe
+  ODER-Verknuepfung wie bei den Auswahlfeldern (Vorgang f42afcd9).
 
   Sortiert ist alphabetisch, weil eine Wolke zum SUCHEN da ist; die Groesse
-  zeigt die Haeufigkeit (fuenf Stufen, logarithmisch - gleiche Anzahl ergibt
-  immer dieselbe Stufe).
+  zeigt die Haeufigkeit INNERHALB DER AUSWAHL (fuenf Stufen, logarithmisch -
+  gleiche Anzahl ergibt immer dieselbe Stufe).
 #}
 {% if tag_cloud %}
-{# Offen als Vorgabe: der Wunsch aus 2d692c67 war ausdruecklich, dass die
-   Tags im Dashboard ANGEZEIGT werden. Ein zugeklapptes Feld zeigt nichts.
-   Zuklappen kann man es trotzdem - deshalb <details> und nicht <div>. #}
 <details class="tag-cloud-box" open>
     <summary>
         Tags ({{ tag_cloud|length }})
         {% if current_filters.tag %}
-        &mdash; gefiltert nach <strong>{{ current_filters.tag }}</strong>
+        &mdash; gewählt: <strong>{{ current_filters.tag|join(', ') }}</strong>
         {% endif %}
     </summary>
     <div class="tag-cloud">
         {% for eintrag in tag_cloud %}
-        <a class="tag tag-stufe-{{ eintrag.stufe }}{% if current_filters.tag and current_filters.tag|lower == eintrag.tag|lower %} tag-aktiv{% endif %}"
-           href="/?tag_filter={{ eintrag.tag|urlencode }}"
-           title="{{ eintrag.anzahl }} Vorgänge mit diesem Tag">{{ eintrag.tag }}<span class="tag-anzahl">{{ eintrag.anzahl }}</span></a>
+        {% set aktiv = eintrag.tag in current_filters.tag %}
+        <a class="tag tag-stufe-{{ eintrag.stufe }}{% if aktiv %} tag-aktiv{% endif %}"
+           href="/?{{ basis_query }}{% for t in current_filters.tag %}{% if t != eintrag.tag %}tag_filter={{ t|urlencode }}&{% endif %}{% endfor %}{% if not aktiv %}tag_filter={{ eintrag.tag|urlencode }}{% endif %}"
+           title="{{ eintrag.anzahl }} Vorgänge mit diesem Tag{% if aktiv %} — klicken zum Abwählen{% endif %}">{{ eintrag.tag }}<span class="tag-anzahl">{{ eintrag.anzahl }}</span></a>
         {% endfor %}
     </div>
     {% if current_filters.tag %}
-    <p><a class="btn btn-sm" href="/">Tag-Filter aufheben</a></p>
+    <p><a class="btn btn-sm" href="/?{{ basis_query }}">Tag-Auswahl aufheben</a></p>
     {% endif %}
 </details>
 {% endif %}
@@ -169,14 +224,7 @@
   steht wieder im gesamten Bestand, ohne dass es auffaellt. Deshalb wird jeder
   gesetzte Filter als verstecktes Feld an den Verweis angehaengt.
 #}
-{% set filter_query %}
-{%- if current_filters.status %}&status_filter={{ current_filters.status|urlencode }}{% endif -%}
-{%- if current_filters.type %}&type_filter={{ current_filters.type|urlencode }}{% endif -%}
-{%- if current_filters.priority %}&priority_filter={{ current_filters.priority|urlencode }}{% endif -%}
-{%- if current_filters.assigned_to %}&assigned_to={{ current_filters.assigned_to|urlencode }}{% endif -%}
-{%- if current_filters.search %}&search={{ current_filters.search|urlencode }}{% endif -%}
-{%- if current_filters.tag %}&tag_filter={{ current_filters.tag|urlencode }}{% endif -%}
-{% endset %}
+
 
 {% if pagination and pagination.total_pages > 1 %}
 <nav class="pagination" aria-label="Seiten">

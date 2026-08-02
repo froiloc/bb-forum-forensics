@@ -54,9 +54,15 @@ def read_instance_version(path: str) -> int:
     Liest die aktuelle Schema-Version einer Instanz aus deren eigener
     schema_migrations (MAX(version)). Fehlt die Tabelle (z. B. frische
     Beweis-DB ohne Registry), gilt Version 0 — dann sind alle Katalog-
-    Migrationen ausstehend. Rein lesend (autocommit).
+    Migrationen ausstehend.
+
+    BUILD 649 (Vorgang f51fd838): NUR LESEND geoeffnet - vorher stand "rein
+    lesend" nur im Text. GEMESSEN: Auf einer nicht vorhandenen Datei lieferte
+    die Funktion '0' UND legte die Datei an. 'Version 0' heisst 'alle
+    Migrationen ausstehend' - der Planer haette also fuer eine Datenbank, die
+    es gar nicht gibt, den vollen Migrationsweg geplant.
     """
-    con = sqlite3.connect(path)
+    con = sqlite3.connect("file:%s?mode=ro" % path, uri=True)
     try:
         con.isolation_level = None
         row = con.execute(

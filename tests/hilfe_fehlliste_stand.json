@@ -1,7 +1,7 @@
 {
   "_beschreibung": "Eingecheckter Stand der Hilfe-Fehllisten (Baustelle H, Konzept Hilfesysteme §3.1). Ein Regressionstest vergleicht die ABGELEITETEN Fehllisten mit diesem Stand und laesst sie nur SCHRUMPFEN. Jede Welle schreibt die Datei bewusst fort - das ist der Abnahmenachweis der Welle.",
   "_regel": "Eintraege duerfen entfernt werden (Hilfe wurde geschrieben). Ein NEUER Eintrag ist ein Befund, kein Pflegevorgang: entweder ist eine Sicht ohne Hilfe hinzugekommen oder ein Kapitel verlorengegangen.",
-  "stand_build": 647,
+  "stand_build": 649,
   "stand_datum": "2026-08-01",
   "sichten_ohne_hilfe": [],
   "cli_ohne_tiefe": [],
@@ -13,5 +13,44 @@
     "main"
   ],
   "_cli_konfiguration_hinweis": "cli_ohne_konfiguration: Werkzeuge, bei denen NOCH NICHT ERHOBEN ist, welche Eintraege aus config.yaml sie auswerten (Ticket 60e4236e). NICHT dasselbe wie 'liest keine': ein geprueftes Werkzeug ohne Eintraege traegt KONFIG_KEINE und steht hier NICHT. Erstbefuellung Build 639 mit 63 Eintraegen; SEIT BUILD 641 IST DIE LISTE LEER - ab dem Standbuild 641 verlangt KF08 nicht mehr nur, dass sie schrumpft, sondern dass sie leer BLEIBT.",
-  "cli_ohne_konfiguration": []
+  "cli_ohne_konfiguration": [],
+  "_py4_hinweis": "py4_gemischt_ohne_lesenden_oeffner: Werkzeuge mit art='gemischt', die mindestens einen LESENDEN Unterbefehl haben, aber keinen nur-lesenden Oeffner ('mode=ro') - ihr lesender Unterbefehl oeffnet also schreibfaehig. Muster fuer die Behebung: backup_admin (Build 627, zwei Oeffner). py4_module_schreibfaehig: Module, die KEIN Werkzeug sind und selbst schreibfaehig oeffnen - die 'Repo-Luecke' aus Vorgang 88dc129b. ERHOBEN in Build 649, vorher war nur vermutet, DASS es den Fall gibt. NICHT jeder Eintrag ist ein Befund: viele dieser Module SCHREIBEN zu Recht. Die Liste ist die Arbeitsgrundlage, nicht das Ergebnis. Beide Listen duerfen nur schrumpfen. DURCHSETZUNG: tests/test_py4_lesend.py PY07 (erste Liste; schaltet bei Leere von selbst auf die absolute Forderung um, wie CK07 und KF08) und PY08 (zweite Liste; schlaegt auch bei LEERER eingecheckter Liste an, denn das hiesse 'die Erhebung ist nicht gelaufen' und nicht 'alles gut'). Gegenproben: PY09/PY09b/PY10/PY10b/PY10c.",
+  "py4_gemischt_ohne_lesenden_oeffner": [
+    "ad_sync_admin",
+    "capacity_admin",
+    "case_events_admin",
+    "case_release_admin",
+    "external_admin",
+    "migrate_templates_full_templates",
+    "migration_fleet_admin",
+    "onboarding_admin",
+    "person_admin",
+    "promotion_admin",
+    "rbac_admin",
+    "repair_block_types",
+    "results_admin"
+  ],
+  "py4_module_schreibfaehig": [
+    "core/mode_resolver.py",
+    "core/startup_checks.py",
+    "db/connection_manager.py",
+    "db/evidence_db.py",
+    "db/review_addendum_db.py",
+    "db/search_index_db.py",
+    "forensic_api/annotate.py",
+    "forensic_api/cross_annotation_integrator.py",
+    "forensic_api/results_endpoint.py",
+    "forensic_api/support_presence.py",
+    "maintenance/cli_support.py",
+    "management/backup/backup_executor.py",
+    "management/cases/case_detect.py",
+    "management/distribution/demo_seed.py",
+    "management/maintenance/default_db_merger.py",
+    "management/maintenance/forensic_index_upgrade.py",
+    "management/migration_fleet/executor.py",
+    "management/reports/approval_service.py",
+    "management/reports/approved_reports_db.py",
+    "management/server/management_app.py",
+    "report_render/sqlite_renderer.py"
+  ]
 }

@@ -5,10 +5,33 @@
 {% block content %}
 <div class="card">
     <h2>{{ action }} Issue</h2>
+
+    {#
+      BUILD 649 - DER FEHLERKASTEN (Vorgaenge 237503ce, fd0d5d52, ed9205cc,
+      04a0a4bc).
+
+      Bis Build 648 hatte diese Maske keinen Weg zurueck: server.py konnte
+      nur speichern oder mit einem HTTP-Fehler abbrechen - und ein Abbruch
+      haette die Eingabe genauso verloren. Also wurde stillschweigend
+      zurechtgebogen: der Titel abgeschnitten, die Aufwandsangabe verworfen,
+      der unbekannte Verweis entfernt. Jetzt kommt das Formular MIT DEN
+      EINGABEN zurueck, und hier steht, was zu tun ist.
+    #}
+    {% if fehler %}
+    <div class="fehlerkasten">
+        <strong>Nicht gespeichert &mdash; bitte prüfen:</strong>
+        <ul>
+            {% for meldung in fehler %}
+            <li>{{ meldung }}</li>
+            {% endfor %}
+        </ul>
+        <p class="fehlerhinweis">Die Eingaben stehen unverändert im Formular.</p>
+    </div>
+    {% endif %}
     
     <form method="POST" action="/issue/save">
-        {% if issue %}
-        <input type="hidden" name="issue_id" value="{{ issue.id }}">
+        {% if formular.issue_id %}
+        <input type="hidden" name="issue_id" value="{{ formular.issue_id }}">
         {% endif %}
 
         {#
@@ -28,24 +51,30 @@
           zusammen, damit die Zusicherung nicht an einer einzigen Zeile in
           einer Vorlage haengt.
         #}
-        <input type="hidden" name="related_to"
-               value="{{ issue.related_to|join(', ') if issue and issue.related_to else '' }}">
+        <input type="hidden" name="related_to" value="{{ formular.related_to }}">
         
         <div class="form-row">
             <div class="form-group">
                 <label>Typ *</label>
                 <select name="type" required>
-                    <option value="bug" {% if issue and issue.type == 'bug' %}selected{% endif %}>Bug</option>
-                    <option value="feature_request" {% if issue and issue.type == 'feature_request' %}selected{% endif %}>Feature Request</option>
-                    <option value="improvement" {% if issue and issue.type == 'improvement' %}selected{% endif %}>Verbesserung</option>
-                    <option value="documentation" {% if issue and issue.type == 'documentation' %}selected{% endif %}>Dokumentation</option>
-                    <option value="refactoring" {% if issue and issue.type == 'refactoring' %}selected{% endif %}>Refactoring</option>
+                    <option value="bug" {% if formular.type == 'bug' %}selected{% endif %}>Bug</option>
+                    <option value="feature_request" {% if formular.type == 'feature_request' %}selected{% endif %}>Feature Request</option>
+                    <option value="improvement" {% if formular.type == 'improvement' %}selected{% endif %}>Verbesserung</option>
+                    <option value="documentation" {% if formular.type == 'documentation' %}selected{% endif %}>Dokumentation</option>
+                    <option value="refactoring" {% if formular.type == 'refactoring' %}selected{% endif %}>Refactoring</option>
                 </select>
             </div>
             
             <div class="form-group">
                 <label>Titel * (max. 80 Zeichen)</label>
-                <input type="text" name="title" maxlength="80" value="{{ issue.title if issue else '' }}" required>
+                {#
+                  BUILD 649: 'maxlength' ist entfallen. Es haette die Eingabe
+                  im Browser stillschweigend beschnitten - beim Einfuegen aus
+                  der Zwischenablage sogar ohne jede Rueckmeldung. Genau das
+                  beschreibt Vorgang 237503ce. Jetzt sagt der Server, was zu
+                  lang ist, und die Eingabe bleibt stehen.
+                #}
+                <input type="text" name="title" value="{{ formular.title }}" required>
             </div>
         </div>
         
@@ -53,12 +82,12 @@
             <div class="form-group">
                 <label>Betroffene Version *</label>
                 <input type="text" name="affected_version" placeholder="z.B. 1.2.0" 
-                       value="{{ issue.affected_version if issue else '' }}" required>
+                       value="{{ formular.affected_version }}" required>
             </div>
             
             <div class="form-group">
                 <label>Reporter *</label>
-                <input type="text" name="reporter" value="{{ issue.reporter if issue else '' }}" required>
+                <input type="text" name="reporter" value="{{ formular.reporter }}" required>
             </div>
         </div>
         
@@ -66,89 +95,103 @@
             <div class="form-group">
                 <label>Priorität</label>
                 <select name="priority">
-                    <option value="critical" {% if issue and issue.priority == 'critical' %}selected{% endif %}>Kritisch</option>
-                    <option value="high" {% if issue and issue.priority == 'high' %}selected{% endif %}>Hoch</option>
-                    <option value="medium" {% if issue and issue.priority == 'medium' %}selected{% endif %}>Mittel</option>
-                    <option value="low" {% if issue and issue.priority == 'low' %}selected{% endif %}>Niedrig</option>
-                    <option value="wishlist" {% if issue and issue.priority == 'wishlist' %}selected{% endif %}>Wunschliste</option>
+                    <option value="critical" {% if formular.priority == 'critical' %}selected{% endif %}>Kritisch</option>
+                    <option value="high" {% if formular.priority == 'high' %}selected{% endif %}>Hoch</option>
+                    <option value="medium" {% if formular.priority == 'medium' %}selected{% endif %}>Mittel</option>
+                    <option value="low" {% if formular.priority == 'low' %}selected{% endif %}>Niedrig</option>
+                    <option value="wishlist" {% if formular.priority == 'wishlist' %}selected{% endif %}>Wunschliste</option>
                 </select>
             </div>
             
             <div class="form-group">
                 <label>Schweregrad</label>
                 <select name="severity">
-                    <option value="blocker" {% if issue and issue.severity == 'blocker' %}selected{% endif %}>Blocker</option>
-                    <option value="critical" {% if issue and issue.severity == 'critical' %}selected{% endif %}>Kritisch</option>
-                    <option value="major" {% if issue and issue.severity == 'major' %}selected{% endif %}>Schwerwiegend</option>
-                    <option value="minor" {% if issue and issue.severity == 'minor' %}selected{% endif %}>Gering</option>
-                    <option value="trivial" {% if issue and issue.severity == 'trivial' %}selected{% endif %}>Trivial</option>
-                    <option value="enhancement" {% if issue and issue.severity == 'enhancement' %}selected{% endif %}>Erweiterung</option>
+                    <option value="blocker" {% if formular.severity == 'blocker' %}selected{% endif %}>Blocker</option>
+                    <option value="critical" {% if formular.severity == 'critical' %}selected{% endif %}>Kritisch</option>
+                    <option value="major" {% if formular.severity == 'major' %}selected{% endif %}>Schwerwiegend</option>
+                    <option value="minor" {% if formular.severity == 'minor' %}selected{% endif %}>Gering</option>
+                    <option value="trivial" {% if formular.severity == 'trivial' %}selected{% endif %}>Trivial</option>
+                    <option value="enhancement" {% if formular.severity == 'enhancement' %}selected{% endif %}>Erweiterung</option>
                 </select>
             </div>
         </div>
         
         <div class="form-group">
             <label>Voraussetzungen</label>
-            <textarea name="prerequisites" placeholder="Schritte zur Reproduktion...">{{ issue.prerequisites if issue else '' }}</textarea>
+            <textarea name="prerequisites" placeholder="Schritte zur Reproduktion...">{{ formular.prerequisites }}</textarea>
         </div>
         
         <div class="form-group">
             <label>Beschreibung *</label>
-            <textarea name="description" required>{{ issue.description if issue else '' }}</textarea>
+            <textarea name="description" required>{{ formular.description }}</textarea>
         </div>
         
         <div class="form-row">
             <div class="form-group">
                 <label>Erwartetes Verhalten</label>
-                <textarea name="expected_behavior">{{ issue.expected_behavior if issue else '' }}</textarea>
+                <textarea name="expected_behavior">{{ formular.expected_behavior }}</textarea>
             </div>
             
             <div class="form-group">
                 <label>Tatsächliches Verhalten</label>
-                <textarea name="actual_behavior">{{ issue.actual_behavior if issue else '' }}</textarea>
+                <textarea name="actual_behavior">{{ formular.actual_behavior }}</textarea>
             </div>
         </div>
         
         <div class="form-row">
             <div class="form-group">
                 <label>Zugewiesen an</label>
-                <input type="text" name="assigned_to" value="{{ issue.assigned_to if issue else '' }}">
+                <input type="text" name="assigned_to" value="{{ formular.assigned_to }}">
             </div>
             
             <div class="form-group">
                 <label>Zielversion</label>
                 <input type="text" name="target_version" placeholder="z.B. 1.3.0" 
-                       value="{{ issue.target_version if issue else '' }}">
+                       value="{{ formular.target_version }}">
             </div>
         </div>
         
+        {#
+          BUILD 649: Das Feld fuer den Aufwand gab es in dieser Maske nie -
+          server.py liest es seit jeher (Vorgang ed9205cc). Wer es ueber die
+          Maske setzen wollte, konnte es nicht; wer es per Eingangsdatei
+          gesetzt hatte, verlor es hier auch nicht (das Feld wird nur bei
+          einem Wert geschrieben). Jetzt ist es da, und eine unlesbare
+          Eingabe wird abgewiesen statt verworfen.
+        #}
+        <div class="form-group">
+            <label>Geschätzter Aufwand in Stunden</label>
+            <input type="text" name="estimated_hours" inputmode="decimal"
+                   placeholder="z.B. 4 oder 2,5" value="{{ formular.estimated_hours }}">
+        </div>
+
         <div class="form-group">
             <label>Tags (kommagetrennt)</label>
             <input type="text" name="tags" placeholder="z.B. ui, bug, kritisch" 
-                   value="{{ issue.tags|join(', ') if issue and issue.tags else '' }}">
+                   value="{{ formular.tags }}">
         </div>
         
         <h3>Umgebungsinformationen</h3>
         <div class="form-row">
             <div class="form-group">
                 <label>Betriebssystem</label>
-                <input type="text" name="os" value="{{ issue.environment.os if issue and issue.environment else '' }}">
+                <input type="text" name="os" value="{{ formular.os }}">
             </div>
             
             <div class="form-group">
                 <label>Browser</label>
-                <input type="text" name="browser" value="{{ issue.environment.browser if issue and issue.environment else '' }}">
+                <input type="text" name="browser" value="{{ formular.browser }}">
             </div>
             
             <div class="form-group">
                 <label>Python Version</label>
                 <input type="text" name="python_version" 
-                       value="{{ issue.environment.python_version if issue and issue.environment else '' }}">
+                       value="{{ formular.python_version }}">
             </div>
             
             <div class="form-group">
                 <label>Datenbank</label>
-                <input type="text" name="database" value="{{ issue.environment.database if issue and issue.environment else '' }}">
+                <input type="text" name="database" value="{{ formular.database }}">
             </div>
         </div>
         

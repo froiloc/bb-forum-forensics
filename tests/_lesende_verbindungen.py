@@ -42,14 +42,17 @@
 #   * Sie sagt nichts darueber, ob wirklich geschrieben WIRD - nur darueber,
 #     ob es KOENNTE. Genau das ist der Gegenstand von PY4.
 #
-# Version: v0.8.629 - Build: 629 - 2026-08-01
+# Version: v0.8.649 - Build: 649 - 2026-08-01
+#   Build 649: gemeinsame Wurzel '_alle_verbindungen'; dazu
+#   'lesende_verbindungen' und 'hat_lesenden_oeffner' fuer Vorgang 88dc129b.
+#   Die Beurteilung selbst ist unveraendert.
 # =============================================================================
 
 from __future__ import annotations
 
 import ast
 from dataclasses import dataclass
-from typing import List
+from typing import List, Tuple
 
 
 @dataclass(frozen=True, order=True)
@@ -76,12 +79,23 @@ def _ist_nur_lesend(roh: str) -> bool:
     return "mode=ro" in roh
 
 
-def offene_verbindungen(pfad: str) -> List[Fundstelle]:
+def _alle_verbindungen(pfad: str) -> List[Tuple[Fundstelle, bool]]:
     """
-    Alle schreibfaehigen sqlite3.connect-Aufrufe der Datei.
+    JEDE sqlite3.connect-Fundstelle der Datei, je mit der Beurteilung
+    'ist nur-lesend' (True) oder 'ist schreibfaehig' (False).
 
-    Leere Liste heisst: jede Verbindung dieser Datei ist nur-lesend - oder
-    es gibt gar keine.
+    WARUM DIESE ZWISCHENSTUFE (Build 649): Bis Build 648 gab es nur
+    'offene_verbindungen'. Die verschwieg, ob eine Datei UEBERHAUPT einen
+    nur-lesenden Oeffner besitzt - und genau das ist die Frage bei den
+    Werkzeugen mit art='gemischt' (Vorgang 88dc129b): dort IST eine
+    schreibfaehige Verbindung erlaubt, der Mangel ist das FEHLEN der
+    zweiten, nur-lesenden. Eine zweite Abschrift derselben Suche haette
+    das beantwortet und waere binnen zweier Builds abgewichen; deshalb
+    eine gemeinsame Wurzel und zwei Sichten darauf.
+
+    Die Beurteilung ist unveraendert die aus Build 629 - insbesondere die
+    Aufloesung einfacher Variablen; sie ist hier nur EINMAL aufgeschrieben
+    statt zweimal.
     """
     with open(pfad, encoding="utf-8") as fh:
         baum = ast.parse(fh.read(), filename=pfad)
@@ -98,7 +112,7 @@ def offene_verbindungen(pfad: str) -> List[Fundstelle]:
             p = eltern.get(p)
         return p
 
-    raus: List[Fundstelle] = []
+    raus: List[Tuple[Fundstelle, bool]] = []
     for knoten in ast.walk(baum):
         if not isinstance(knoten, ast.Call):
             continue
@@ -108,10 +122,8 @@ def offene_verbindungen(pfad: str) -> List[Fundstelle]:
             continue
 
         roh = ast.unparse(knoten.args[0]) if knoten.args else ""
-        if _ist_nur_lesend(roh):
-            continue
-
         funktion = _umgebende_funktion(knoten)
+        nur_lesend = _ist_nur_lesend(roh)
 
         # Einfache Variable aufloesen: eine Zuweisung an DENSELBEN Namen
         # innerhalb derselben Funktion (oder auf Modulebene), deren Wert
@@ -119,20 +131,54 @@ def offene_verbindungen(pfad: str) -> List[Fundstelle]:
         # irgendwo mit mode=ro belegt wird, ist ein starkes Indiz, und die
         # Gegenrichtung (falsch als nur-lesend durchgewinkt) verlangt schon
         # eine absichtliche Irrefuehrung.
-        if isinstance(knoten.args[0] if knoten.args else None, ast.Name):
+        if not nur_lesend and isinstance(
+                knoten.args[0] if knoten.args else None, ast.Name):
             name = knoten.args[0].id
             bereich = funktion if funktion is not None else baum
-            belegt_ro = any(
+            nur_lesend = any(
                 isinstance(z, ast.Assign)
                 and any(isinstance(t, ast.Name) and t.id == name
                         for t in z.targets)
                 and _ist_nur_lesend(ast.unparse(z.value))
                 for z in ast.walk(bereich))
-            if belegt_ro:
-                continue
 
-        raus.append(Fundstelle(
+        raus.append((Fundstelle(
             zeile=knoten.lineno,
             funktion=funktion.name if funktion is not None else "(Modulebene)",
-            argument=roh))
+            argument=roh), nur_lesend))
     return sorted(raus)
+
+
+def offene_verbindungen(pfad: str) -> List[Fundstelle]:
+    """
+    Alle SCHREIBFAEHIGEN sqlite3.connect-Aufrufe der Datei.
+
+    Leere Liste heisst: jede Verbindung dieser Datei ist nur-lesend - oder
+    es gibt gar keine. ACHTUNG, das ist zweierlei; wer die Unterscheidung
+    braucht, nimmt 'hat_lesenden_oeffner'.
+    """
+    return [f for f, nur_lesend in _alle_verbindungen(pfad) if not nur_lesend]
+
+
+def lesende_verbindungen(pfad: str) -> List[Fundstelle]:
+    """Alle NUR-LESENDEN sqlite3.connect-Aufrufe der Datei."""
+    return [f for f, nur_lesend in _alle_verbindungen(pfad) if nur_lesend]
+
+
+def hat_lesenden_oeffner(pfad: str) -> bool:
+    """
+    Besitzt diese Datei ueberhaupt einen nur-lesenden Oeffner?
+
+    DAS IST DER MASSSTAB FUER art='gemischt' (Vorgang 88dc129b). Ein
+    Werkzeug, das schreibende UND lesende Unterbefehle hat, braucht ZWEI
+    Oeffner - sonst laeuft auch der lesende Unterbefehl mit Schreibrecht
+    auf ein Beweismittel. Das Hausmuster dafuer ist backup_admin seit
+    Build 627.
+
+    WAS DAS NICHT BELEGT (TE4): dass der lesende Unterbefehl den lesenden
+    Oeffner auch BENUTZT. Ein Werkzeug mit beiden Oeffnern kann den
+    falschen nehmen; das ist am Syntaxbaum nicht zu entscheiden und bleibt
+    Sache der Durchsicht. Hier faellt nur der Fall auf, in dem die zweite
+    Verbindung GAR NICHT EXISTIERT - dann ist der Mangel sicher.
+    """
+    return any(nur_lesend for _f, nur_lesend in _alle_verbindungen(pfad))

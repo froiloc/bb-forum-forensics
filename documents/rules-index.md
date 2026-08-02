@@ -1,6 +1,6 @@
 # Regelwerk AIW — Übersicht
 
-**Stand:** Build 607 · 2026-07-31 · **Klassifikation:** VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
+**Stand:** Build 649 · 2026-08-01 · **Klassifikation:** VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
 
 Dieses Verzeichnis führt die Regeln des Projekts an EINER Stelle zusammen. Bis Build 606 standen sie verteilt: in den Projektanweisungen, in Bauplänen, in Dateiköpfen und in den Kommentaren einzelner Tests. Sie galten deshalb nicht weniger — aber wer sie nachschlagen wollte, musste wissen, wo er suchen muss.
 
@@ -13,6 +13,8 @@ Dieses Verzeichnis führt die Regeln des Projekts an EINER Stelle zusammen. Bis 
 | `rules-ux.md` | Listensichten, Tabellen, Leerbefund gegen Fehlerfall | Entwicklung |
 | `rules-help.md` | Die drei Hilfesysteme: Adressaten, Sprache, Gliederung, Anker | Entwicklung, Redaktion |
 | `rules-cli.md` | Kommandozeilen-Werkzeuge: Katalog, Trockenlauf, Exit-Codes, Wartungsvorbehalt | Entwicklung, Betrieb |
+| `rules-leerbefund.md` | Leerbefund ist kein Erfolg: die dritte Frage, Rückgabewerte, was nicht geprüft wurde | Entwicklung, Betrieb |
+| `rules-nachstellung.md` | Die Nachstellung muß der Wirklichkeit standhalten: unwirkliche Testvorrichtungen, fremde Rechte, der ganze Weg einer Meldung | Entwicklung |
 
 ## Wie diese Sammlung zu lesen ist
 
@@ -30,3 +32,7 @@ Wer eine Regel ändert, ändert sie hier — und zwar in demselben Build, in dem
 
 - Der Wartungsvorbehalt für schreibende Kommandozeilen-Werkzeuge ist noch nicht entschieden (Issue `da6c16d0-ef1e-4052-8eb1-526c647de613`). `rules-cli.md` beschreibt den vorgeschlagenen Aufbau und kennzeichnet ihn als Vorschlag.
 - Die Regeln zur Berichtsredaktion (Vorlagen, Bausteine, Platzhalter) sind hier noch nicht erfasst.
+
+## Nachtrag Build 649
+
+Zwei Blätter sind hinzugekommen, die es bei Abfassung dieser Übersicht (Build 607) noch nicht gab: `rules-leerbefund.md` (Build 647, aus den Vorgängen `d30b3d95`, `0329896b`, `e9522fe2`) und `rules-nachstellung.md` (Build 649, aus den Vorgängen `c3f80e54` und `2f8a61d0`). Beide waren bis dahin nur in Testköpfen und Buildvermerken niedergelegt — sie galten also, waren aber nicht auffindbar. Genau das ist der Fall, den die Pflegepflicht oben verhindern soll; er ist hier vermerkt und nicht stillschweigend nachgetragen.

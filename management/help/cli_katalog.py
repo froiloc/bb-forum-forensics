@@ -2727,7 +2727,17 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
         hinweis="Der Beleg laeuft hier NICHT ueber das Protokollbuch: "
                 "Beweis-Datenbanken fuehren keines. Der forensische Beleg "
-                "ist das verkettete Laufbuch.",
+                "ist das verkettete Laufbuch. "
+                "GEAENDERTES VERHALTEN SEIT BUILD 649 (Vorgang f51fd838): "
+                "Eine benannte Datenbank, die es NICHT GIBT, ist jetzt ein "
+                "Befund und kein Erfolg. Bis Build 648 haben die "
+                "Pruefbausteine der Flotte eine fehlende Datei beim Oeffnen "
+                "ANGELEGT und der Unversehrtheitspruefung anschliessend ein "
+                "'ok' bescheinigt - die Flotte bestaetigte damit eine "
+                "Datenbank, die sie selbst erzeugt hatte. Wer sich auf ein "
+                "frueheres 'ok' zu einem Tippfehler im Pfad verlassen hat, "
+                "hat es zu Recht nicht mehr: die Meldung lautet nun "
+                "'unable to open database file'.",
         # Build 640 (Welle 4): geprueft an migration_fleet_admin.py Z. 59-94.
         # BEIDE Eintraege standen bis Build 640 in KEINER ausgelieferten
         # config.yaml, obwohl das Werkzeug sie liest - wer sie setzen wollte,

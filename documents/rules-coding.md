@@ -88,7 +88,18 @@ Daraus folgen drei Anwendungsregeln:
 
 **Drei begründete Ausnahmen**, alle Diagnosewerkzeuge, bei allen ist das Schreiben *der Gegenstand der Messung*: `diag_migrationsluecke` (`:memory:`), `diag_sqlite_netdrive` und `diag_sqlite_netdrive2` (legen eigene Probe-Datenbanken an und schreiben hinein — ein PRAGMA allein wäre kein Beleg). Sie sind zu Recht als `lesend` geführt: sie verändern keine Datenbank *des Bestandes*.
 
-**Offen und benannt:** Werkzeuge mit `art="gemischt"` prüft PY01 nicht — dort ist eine schreibfähige Verbindung erlaubt, und ob sie beim *lesenden* Unterbefehl vermieden wird, ist am Quelltext nicht ohne Weiteres zu entscheiden. Ebenso ungeprüft: Werkzeuge, die ihre Verbindung über ein Repo in einem anderen Modul öffnen.
+**Die beiden benannten Lücken sind seit Build 649 vermessen** (Vorgang `88dc129b`). Bis Build 648 stand hier, daß es sie *gibt*; wie groß sie sind, war unbekannt. Erhoben:
+
+| Lücke | Erhebung Build 649 | Führung |
+|---|---|---|
+| Werkzeuge mit `art="gemischt"`, die einen *lesenden* Unterbefehl haben und **gar keinen** `mode=ro`-Öffner besitzen | **13** von 22 gemischten | `py4_gemischt_ohne_lesenden_oeffner` in `tests/hilfe_fehlliste_stand.json`, gehalten von PY07 |
+| Module, die kein Werkzeug sind und selbst schreibfähig öffnen („Repo-Lücke") | **21** | `py4_module_schreibfaehig`, gehalten von PY08 |
+
+**Der Mangel bei `gemischt` ist nicht die schreibfähige Verbindung, sondern die fehlende zweite.** Ein Werkzeug, das auch schreibt, *darf* schreibfähig öffnen. Zum Befund wird es, wenn ein als lesend ausgewiesener Unterbefehl existiert und die dafür nötige zweite Verbindung **nirgends im Quelltext vorkommt** — dann läuft die zugesagte Leseoperation mit Schreibrecht auf ein Beweismittel. Das Muster für die Behebung ist `backup_admin` seit Build 627 (`_open_con` schreibend, `_open_con_ro` lesend). PY07 hält die Liste einseitig: sie darf schrumpfen, nicht wachsen, und **schaltet von selbst auf die absolute Forderung um, sobald sie leer ist** — derselbe Weg wie CK07 (Build 620) und KF08 (Build 641).
+
+**Die Modulliste ist ausdrücklich keine Mängelliste.** Viele dieser Module schreiben zu Recht — `db/evidence_db.py` ist die Ablage der Beweismittel und wäre ohne Schreibrecht sinnlos. Sie beantwortet eine andere Frage: *welche Wege gibt es, auf denen ein als lesend geführtes Werkzeug an eine schreibfähige Verbindung kommt, ohne daß PY01 es sieht?* PY01 sieht nur die Datei des Werkzeugs. Der Nutzen liegt deshalb im **Wachstum**, nicht im Bestand; eine leere Liste wäre hier kein erstrebenswerter Zustand, sondern ein Zeichen dafür, daß die Erhebung nicht gelaufen ist. PY08 sagt genau das und schlägt bei einer leeren Liste an.
+
+**Weiterhin ungeprüft und hier benannt:** ob ein Werkzeug mit *beiden* Öffnern im lesenden Unterbefehl auch den richtigen nimmt (das hängt am Ablaufweg, nicht an der Datei), und Zugriffe an `sqlite3` vorbei.
 
 **Der Befund, der zu dieser Verschärfung führte — und er ist meiner.** Build 625 führte `_traegt_inhalt` ein, um eine unbrauchbare Sicherung zu erkennen, **ohne sie zu löschen** — ausdrücklich, damit die Teildatei als Beleg erhalten bleibt. Die Funktion öffnete gewöhnlich. Bei einem heißen Journal hat also genau die Funktion, die den Beleg erhalten sollte, ihn beim Ansehen vernichtet. Behoben in Build 626.
 
@@ -96,6 +107,26 @@ Daraus folgen drei Anwendungsregeln:
 
 **PY5 — Jeder Schreibweg läuft über das Gateway.**
 `CoordinatorWriter(con, AuditLog(con))`. Damit entsteht zu jeder Änderung ein Beleg in der lückenlosen Kette. Ein Schreibweg daran vorbei wäre ein unauditierter Nebeneingang.
+
+**PY6 — Eine Zusage im Kommentar ist keine Sperre** (Vorgang `f51fd838`, seit Build 649 eigene Regel).
+
+PY4 ist der Sonderfall dieser Regel für das Lesen. PY6 ist der allgemeine Satz, und er gilt für **jede** Zusicherung, die ein Dateikopf über sein eigenes Verhalten macht: „öffnet nur lesend", „braucht exklusiven Zugriff", „läßt die Quelle unberührt", „löscht nichts". Solange nichts sie durchsetzt, ist sie eine Absichtserklärung — und die nächste Änderung an derselben Datei nimmt sie nicht zur Kenntnis.
+
+**Das Muster ist im Bestand fünfmal aufgetreten**, viermal davon binnen weniger Builds:
+
+| # | Fall | Die Zusage | Die Wirklichkeit |
+|---|---|---|---|
+| 1 | `906ede75` | zwei Auswertungswerkzeuge sichern im Kopf zu, nur zu lesen | öffnen `coordinator.db` schreibfähig (behoben Build 629, samt zwei weiteren, die erst die Erhebung fand) |
+| 2 | `convert_journal_mode`, `rules-cli.md` | Dateikopf: „braucht exklusiven Zugriff" — galt deshalb als geklärt | keine technische Sperre; der Wartungsvorbehalt entstand erst danach (Builds 610/612) |
+| 3 | `e9522fe2`, zweiter Teil | `backup_executor.py` sichert seit Build 353 zu: „Quelle read-only" | **alle** Verbindungen schreibfähig (behoben Build 627) |
+| 4 | Build 625, **und der ist meiner** | `_traegt_inhalt` erkennt eine unbrauchbare Sicherung, **ohne sie zu löschen** — damit die Teildatei als Beleg erhalten bleibt | öffnete gewöhnlich; bei heißem Journal spielt SQLite es zurück und kürzt die Teildatei auf 0 Byte. Genau die Funktion, die den Beleg erhalten sollte, hat ihn beim Ansehen vernichtet (behoben Build 626) |
+| 5 | Build 649 | vier Dateien des Migrationsgeschirrs (`harness/integrity.py`, `rowcount.py`, `blob.py`, `planner.py`) tragen im Kopf „Rein lesend" | öffneten schreibfähig. Gemessen: `integrity_check` auf einen **nicht vorhandenen** Pfad meldete `ok=True` und **legte die Datei an** — das Geschirr hat die Unversehrtheit einer Datenbank bestätigt, die es selbst erzeugt hatte. Nach der Umstellung: `ok=False, 'unable to open database file'`, keine Datei angelegt |
+
+**Fall 4 und 5 zusammen sind die eigentliche Lehre:** Das *Wissen* um das Muster schützt nicht davor. PY4 stand seit Build 607 in diesem Blatt; Fall 4 entstand achtzehn Builds später, Fall 5 lag zweiundvierzig Builds lang unbemerkt in einem Verzeichnis, das sich selbst „rein lesend" nennt. **Was schützt, ist die Prüfung, nicht der Satz.**
+
+*Anwendungsregel:* Wer einen solchen Satz in einen Dateikopf schreibt, nennt in derselben Zeile, **was ihn hält** — die `mode=ro`-URI, den Wartungsvorbehalt, den Test mit Kennung. Findet sich nichts zu nennen, ist der Satz zu streichen oder die Sperre zu bauen.
+
+*Durchsetzung:* für das Lesen bestandsweit über `tests/test_py4_lesend.py` (PY01–PY10c) und `tests/test_backup_executor.py` BR02; für den exklusiven Zugriff über den Wartungsvorbehalt (`maintenance/wartungsvorbehalt.py`, `tests/test_maintenance_wartungsvorbehalt.py`). **Für alle übrigen Zusicherungsarten gibt es keine automatische Prüfung** — das ist hier ausdrücklich vermerkt und keine vergessene Zeile.
 
 ## 3. Kommentare
 

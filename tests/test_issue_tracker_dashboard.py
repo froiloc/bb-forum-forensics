@@ -347,19 +347,37 @@ class LaufendesDashboard(unittest.TestCase):
                 self.assertEqual(antwort.status_code, 200)
                 self.assertEqual(antwort.text.count('class="issue-item"'), erwartet)
 
-    def test_db04_tagwolke_steht_und_bleibt_vollstaendig(self):
-        # Vorgang 2d692c67. Die Wolke wird aus dem GESAMTBESTAND gebildet -
-        # sonst schrumpfte sie bei jedem Klick auf das, was uebrig ist, und
-        # waere nach dem ersten Klick eine Sackgasse.
+    def test_db04_tagwolke_steht_und_folgt_nicht_sich_selbst(self):
+        """
+        GEAENDERT IN BUILD 649 - und zwar auf Ansage, nicht aus Bequemlichkeit.
+
+        In Build 647 stand hier: die Wolke schrumpft NICHT mit der Auswahl.
+        Das war damals richtig - es gab nur die Tag-Auswahl, und eine Wolke,
+        die ihrem eigenen Filter folgt, ist nach dem ersten Klick eine
+        Sackgasse.
+
+        mc hat mit Vorgang 01fedc41 die andere Haelfte bestellt: "Mit dem
+        Setzen der HAUPTFILTER sollen auch die Elemente in der Tag-Cloud
+        aktualisiert (und reduziert) werden." Beides zusammen ergibt die
+        Regel, die ab Build 649 gilt und die dieser Fall jetzt prueft:
+
+            die Wolke folgt den Hauptfiltern - ABER NICHT SICH SELBST.
+
+        Die erste Haelfte prueft MF03 in tests/test_issue_tracker_formular.py,
+        die zweite steht hier: sie ist die aeltere und die, die man beim
+        Einbauen des neuen Verhaltens am ehesten kaputtmacht.
+        """
         self.assertIn('class="tag-cloud"', self.startseite.text,
                       "Keine Tag-Wolke im Dashboard")
         insgesamt = self.startseite.text.count('class="tag tag-stufe-')
         self.assertGreater(insgesamt, 0)
 
-        gefiltert = _client.get("/?status_filter=closed")
+        wolke = tag_wolke(_bestand())
+        groesstes = max(wolke, key=lambda e: e["anzahl"])["tag"]
+        mit_tag = _client.get(f"/?tag_filter={groesstes}")
         self.assertEqual(
-            gefiltert.text.count('class="tag tag-stufe-'), insgesamt,
-            "Die Wolke schrumpft mit der Auswahl - nach dem ersten Klick "
+            mit_tag.text.count('class="tag tag-stufe-'), insgesamt,
+            "Die Wolke folgt ihrem EIGENEN Filter - nach dem ersten Klick "
             "waere jeder andere Weg verschwunden"
         )
 
