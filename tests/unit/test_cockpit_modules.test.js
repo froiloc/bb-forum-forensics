@@ -502,7 +502,7 @@ describe("Bausteinmodule — Vorschau-Spalte (Build 652)", () => {
 
     // Das Raster selbst.
     expect(css).toMatch(/\.aiw-mod-body\s*\{[^}]*display:\s*grid/);
-    expect(css).toContain('grid-template-areas: "liste maske vorschau"');
+    expect(css).toMatch(/grid-template-areas: "liste liste"/);
     expect(css).toMatch(/\.aiw-mod-vorschaucol\s*\{[^}]*grid-area:\s*vorschau/);
 
     // Und die beiden Umbruchstufen. Ohne sie ginge die Spalte auf schmalen
@@ -510,6 +510,234 @@ describe("Bausteinmodule — Vorschau-Spalte (Build 652)", () => {
     // der Zustand, den das Ticket ausschliesst.
     expect(css).toContain("@media (max-width: 1280px)");
     expect(css).toContain("@media (max-width: 900px)");
-    expect(css).toMatch(/"liste maske"\s*\n\s*"liste vorschau"/);
+    // Build 653 hat die Anordnung geaendert: die Liste liegt jetzt OBEN,
+    // darunter Maske und Vorschau. Der Umbruch stapelt alle drei.
+    expect(css).toMatch(/"liste"\s*\n\s*"maske"\s*\n\s*"vorschau"/);
+  });
+});
+
+/* ===========================================================================
+ * BUILD 653 (Ticket d60e893a) — DIE LISTE ALS TABELLE.
+ *
+ * Gegenstand: die linke Spalte war eine Kette von Schaltflaechen ohne
+ * Sortierung, Filter oder Hoehenbegrenzung. Sie ist jetzt eine Tabelle
+ * (AIWTableKit + Tabulator) im oberen Bereich.
+ *
+ * WARUM EIN STUB UND KEIN ECHTER TABULATOR: die Bibliothek liegt als
+ * vendor-Bundle vor und braucht ein Layout, das JSDOM nicht liefert. Geprueft
+ * wird deshalb DIE VERDRAHTUNG - welche Zeilen, welche Spalten, welche
+ * Optionen und welcher Zeilenklick ankommen. Dass Tabulator daraus eine
+ * Tabelle malt, ist seine Sache und in der VM zu sehen.
+ *
+ * TB01 — moduleRows: abgeleitete Felder, Altzeilen als _ohneKennung.
+ * TB02 — zeilenKennung: module_key, sonst '#id:<n>'. DER ZWEITE ADRESSWEG.
+ * TB03 — die Tabelle bekommt Zeilen, Blaetterung und Hoechstzahl.
+ * TB04 — Zeilenklick fuellt die Maske; Nachtragsmodus bleibt erreichbar.
+ * TB05 — ohne Tabulator: Rueckfall auf die Schaltflaechenliste, MIT Hinweis.
+ * TB06 — "Nur ohne Kennung" setzt und entfernt genau einen Filter.
+ * =========================================================================== */
+describe("Bausteinmodule — Tabelle statt Liste (Build 653)", () => {
+  const _tkSrc = readFileSync(
+    "management/server/static/cockpit_tablekit.js", "utf-8");
+
+  // Ein Tabulator, der sich merkt, was man ihm sagt. Er tut nichts, aber er
+  // luegt auch nicht: jede Methode, die der Code aufruft, ist da.
+  function _stub() {
+    const gemacht = { filter: [], sort: [], headerFilter: [], events: {} };
+    function Stub(container, opts) {
+      this.container = container;
+      this.opts = opts;
+      gemacht.instanz = this;
+      gemacht.opts = opts;
+    }
+    Stub.prototype.on = function (ev, fn) { gemacht.events[ev] = fn; };
+    Stub.prototype.getRows = function () { return []; };
+    Stub.prototype.getDataCount = function () {
+      return (gemacht.opts && gemacht.opts.data) ? gemacht.opts.data.length : 0;
+    };
+    Stub.prototype.getSorters = function () { return []; };
+    Stub.prototype.getHeaderFilters = function () { return []; };
+    Stub.prototype.setHeaderFilterValue = function () {};
+    Stub.prototype.setSort = function () {};
+    Stub.prototype.getFilters = function () { return gemacht.filter.slice(); };
+    Stub.prototype.setFilter = function (field, type, value) {
+      gemacht.filter.push({ field, type, value });
+    };
+    Stub.prototype.removeFilter = function (field, type, value) {
+      gemacht.filter = gemacht.filter.filter(
+        (f) => !(f.field === field && f.type === type && f.value === value));
+    };
+    Stub.prototype.clearHeaderFilter = function () {};
+    Stub.prototype.clearFilter = function () { gemacht.filter = []; };
+    Stub.prototype.destroy = function () { gemacht.zerstoert = true; };
+    return { Stub, gemacht };
+  }
+
+  // Kontext MIT dem Tabellenwerkzeug — wie im Browser, wo cockpit.html
+  // cockpit_tablekit.js vor den Sichten laedt.
+  function _ctxTk() {
+    const dom = new JSDOM(
+      "<!DOCTYPE html><html><body><div id='aiw-main'></div></body></html>",
+      { runScripts: "dangerously", url: "http://localhost" });
+    dom.window.eval(_tkSrc);
+    dom.window.eval(_src);
+    return dom.window;
+  }
+
+  const _mitAlt = () => ({
+    count: 3,
+    modules: _data().modules.concat([
+      { id: 9, module_key: null, title: "Altbaustein ohne Kennung",
+        description: "", role: "legal", topic: "Recht", body: "Alt.",
+        sort_order: 0, is_active: 1, created_by: "red01",
+        created_at: 1, updated_at: 1 },
+    ]),
+  });
+
+  // TB01 --------------------------------------------------------------------
+  it("TB01: moduleRows leitet die Anzeigefelder ab", () => {
+    const api = _api();
+    const rows = api.moduleRows(_mitAlt().modules);
+
+    expect(rows.length).toBe(3);
+    // Sortierung von sortModules bleibt gueltig: body < intro < legal.
+    expect(rows.map((r) => r.role)).toEqual(["body", "intro", "legal"]);
+
+    const alt = rows.find((r) => r.id === 9);
+    expect(alt._ohneKennung).toBe(true);
+    // KEINE LEERE ZELLE: eine leere Zelle sieht aus wie ein Anzeigefehler.
+    expect(alt._kennungText).toBe("— ohne Kennung —");
+    expect(alt._rolleText).toBe("Rechtliches (legal)");
+    expect(alt._aktivText).toBe("ja");
+    // Der ganze Datensatz bleibt in der Zeile — der Klick fuellt daraus.
+    expect(alt.body).toBe("Alt.");
+
+    const mit = rows.find((r) => r.id === 1);
+    expect(mit._ohneKennung).toBe(false);
+    expect(mit._kennungText).toBe("intro.std");
+
+    // is_active === 0 ergibt 'nein', alles andere 'ja'.
+    expect(api.moduleRows([{ id: 1, is_active: 0 }])[0]._aktivText).toBe("nein");
+  });
+
+  // TB02 --------------------------------------------------------------------
+  it("TB02: zeilenKennung haelt BEIDE Adresswege offen", () => {
+    const api = _api();
+    // Der Regelfall.
+    expect(api.zeilenKennung({ id: 3, module_key: "intro.a" })).toBe("intro.a");
+    // Der Fall, der Ticket a1480978 ausgeloest hat: ohne Kennung MUSS die
+    // Zeilen-id adressieren, sonst legt ein Speichern eine ZWEITE Zeile an.
+    expect(api.zeilenKennung({ id: 3, module_key: null })).toBe("#id:3");
+    expect(api.zeilenKennung({ id: 3, module_key: "" })).toBe("#id:3");
+    // Ohne beides gibt es keine Adresse — und das wird gesagt, nicht geraten.
+    expect(api.zeilenKennung({ module_key: null })).toBe(null);
+    expect(api.zeilenKennung(null)).toBe(null);
+  });
+
+  // TB03 --------------------------------------------------------------------
+  it("TB03: die Tabelle bekommt Zeilen, Spalten und Blaetterung", () => {
+    const win = _ctxTk();
+    const { Stub, gemacht } = _stub();
+    win.AIWCockpitModules.renderModules(
+      win.document.getElementById("aiw-main"), _mitAlt(), { Tabulator: Stub });
+
+    expect(gemacht.instanz).toBeTruthy();
+    expect(gemacht.opts.data.length).toBe(3);
+    // Kennung zuerst: sie ist das Feld, ueber das Berichtsvorlagen
+    // verweisen — und das Feld, das den Altzeilen fehlt.
+    expect(gemacht.opts.columns[0].field).toBe("_kennungText");
+    expect(gemacht.opts.columns.map((c) => c.field)).toContain("title");
+    // Die Antwort des Tickets auf "unuebersichtlich": Blaetterung + index.
+    expect(gemacht.opts.pagination).toBe("local");
+    expect(gemacht.opts.paginationSize).toBe(15);
+    expect(gemacht.opts.index).toBe("id");
+    // height:false ist das dokumentierte Muster gegen abgeschnittene
+    // Blaetterleisten — nicht Zufall, sondern Beleg aus cockpit_lectorate.js.
+    expect(gemacht.opts.height).toBe(false);
+    // Kein stiller Leerzustand.
+    expect(String(gemacht.opts.placeholder)).toContain("Kein Baustein");
+    // rowClick gehoert NICHT in die Konstruktoroptionen (Tabulator v6
+    // ignoriert ihn dort lautlos) — das TableKit haengt ihn ueber .on() an.
+    expect(gemacht.opts.rowClick).toBeUndefined();
+    expect(typeof gemacht.events.rowClick).toBe("function");
+  });
+
+  // TB04 --------------------------------------------------------------------
+  it("TB04: der Zeilenklick fuellt die Maske, auch bei Altzeilen", () => {
+    const win = _ctxTk();
+    const { Stub, gemacht } = _stub();
+    const main = win.document.getElementById("aiw-main");
+    win.AIWCockpitModules.renderModules(main, _mitAlt(), { Tabulator: Stub });
+
+    const zeile = (d) => ({ getData: () => d, getElement: () => null });
+    const alt = gemacht.opts.data.find((r) => r.id === 9);
+
+    gemacht.events.rowClick({}, zeile(alt));
+    expect(main.querySelector(".aiw-mod-title").value)
+      .toBe("Altbaustein ohne Kennung");
+    // DER PUNKT: der Nachtragsmodus muss ueber die Tabelle genauso
+    // erreichbar bleiben wie ueber die alte Liste. Ohne Kennung ist das
+    // Feld OFFEN und traegt einen Vorschlag — nie gesperrt und leer.
+    const key = main.querySelector(".aiw-mod-key");
+    expect(key.disabled).toBe(false);
+    expect(key.value).toBe("legal.altbaustein.ohne.kennung");
+    expect(main.querySelector(".aiw-mod-keyhinweis").textContent)
+      .toContain("ENDGUELTIG");
+
+    // Und der Regelfall: mit Kennung ist das Feld fest.
+    gemacht.events.rowClick({},
+      zeile(gemacht.opts.data.find((r) => r.id === 1)));
+    expect(main.querySelector(".aiw-mod-key").value).toBe("intro.std");
+    expect(main.querySelector(".aiw-mod-key").disabled).toBe(true);
+  });
+
+  // TB05 --------------------------------------------------------------------
+  it("TB05: ohne Tabulator bleibt die Sicht BEDIENBAR", () => {
+    const win = _ctxTk();
+    const main = win.document.getElementById("aiw-main");
+    // Kein Konstruktor — weder ueber opts noch am Fenster.
+    win.AIWCockpitModules.renderModules(main, _mitAlt(), {});
+
+    // Die alte Schaltflaechenliste tritt an ihre Stelle. Das ist KEIN
+    // Schoenheitsfehler, den man hinnimmt: ueber die Liste wird AUSGEWAEHLT.
+    // Ein blosser Hinweis mit Zeilenzahl (so macht es tabelleAufbauen fuer
+    // reine Anzeigen) machte die Sicht unbedienbar.
+    const items = main.querySelectorAll(".aiw-mod-item");
+    expect(items.length).toBe(3);
+    // KEIN STILLER AUSFALL: der Rueckfall sagt, dass er einer ist.
+    const warn = main.querySelector(".aiw-mod-empty.ist-warnung");
+    expect(warn).toBeTruthy();
+    expect(warn.textContent).toContain("nicht verfügbar");
+    expect(warn.textContent).toContain("3 Bausteine");
+
+    // Und er funktioniert auch.
+    items[0].click();
+    expect(main.querySelector(".aiw-mod-title").value).toBeTruthy();
+  });
+
+  // TB06 --------------------------------------------------------------------
+  it("TB06: 'Nur ohne Kennung' setzt und entfernt genau einen Filter", () => {
+    const win = _ctxTk();
+    const { Stub, gemacht } = _stub();
+    const main = win.document.getElementById("aiw-main");
+    win.AIWCockpitModules.renderModules(main, _mitAlt(), { Tabulator: Stub });
+
+    const btn = main.querySelector(".aiw-mod-nurohne");
+    expect(btn).toBeTruthy();
+    expect(btn.getAttribute("aria-pressed")).toBe("false");
+
+    btn.click();
+    expect(gemacht.filter).toEqual([
+      { field: "_ohneKennung", type: "=", value: true },
+    ]);
+    expect(btn.getAttribute("aria-pressed")).toBe("true");
+    expect(btn.className).toContain("ist-an");
+
+    btn.click();
+    // removeFilter und NICHT clearFilter: die Kopffilter des Redakteurs
+    // bleiben stehen. Deshalb wird hier auf LEER geprueft und nicht darauf,
+    // dass irgendetwas geraeumt wurde.
+    expect(gemacht.filter).toEqual([]);
+    expect(btn.getAttribute("aria-pressed")).toBe("false");
   });
 });

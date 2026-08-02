@@ -491,12 +491,14 @@ MODULES = Sichthilfe(
         Abschnitt(
             "aufbau", "Aufbau der Sicht",
             (
-                "Überschrift, Hinweis und darunter drei Spalten: links die "
-                "Liste der vorhandenen Bausteine, in der Mitte die "
-                "Bearbeitungsmaske, rechts die Vorschau.",
-                "Reicht die Breite nicht für drei Spalten, rückt die "
-                "Vorschau unter die Maske; auf sehr schmalen Anzeigen steht "
-                "alles untereinander.",
+                "Oben die Tabelle aller vorhandenen Bausteine, darunter "
+                "links die Bearbeitungsmaske und rechts die Vorschau.",
+                "Die Tabelle lässt sich in jeder Spalte filtern und "
+                "sortieren und blättert in Seiten zu 15 Zeilen. Ein Klick "
+                "auf eine Zeile lädt den Baustein in die Maske; die "
+                "geladene Zeile bleibt markiert.",
+                "Reicht die Breite nicht für zwei Spalten, rückt die "
+                "Vorschau unter die Maske.",
                 "Jeder Baustein hat eine feste Kennung, unter der ihn der "
                 "Berichtseditor einfügt. Sie ist die Verbindung — wer sie "
                 "ändert, trennt sie.",
@@ -540,6 +542,9 @@ MODULES = Sichthilfe(
                 "künftige Vermerke; bereits geschriebene bleiben unberührt.",
                 "Einen Baustein außer Gebrauch nehmen: nicht die Kennung "
                 "ändern, sondern einen neuen anlegen.",
+                "Eine fehlende Kennung nachtragen: „Nur ohne Kennung“ "
+                "einschalten, Zeile anklicken, den Vorschlag prüfen oder "
+                "ersetzen, speichern. Danach ist die Kennung endgültig.",
             ),
         ),
         Abschnitt(
@@ -596,10 +601,66 @@ MODULES = Sichthilfe(
             "modules.bedienung.neu", "Neuer Baustein",
             "Leert die Maske für eine Neuanlage. Ein bereits geladener "
             "Baustein wird dabei nicht verändert."),
+        # Build 653 (Ticket d60e893a): aus der Liste wurde eine Tabelle.
+        # Der alte Text sprach von "der Liste links" — sie steht jetzt oben.
         Kontexthilfe(
-            "modules.bedienung.waehlen", "Baustein aus der Liste",
-            "Lädt diesen Baustein in die Maske. Ein Ladevorgang, kein "
-            "Schreibvorgang."),
+            "modules.bedienung.waehlen", "Baustein aus der Tabelle",
+            "Lädt diesen Baustein in die Maske darunter. Ein Ladevorgang, "
+            "kein Schreibvorgang — solange nicht gespeichert wird, ändert "
+            "sich am Bestand nichts. Die geladene Zeile bleibt markiert, "
+            "damit auch nach einem Seitenwechsel erkennbar ist, was gerade "
+            "bearbeitet wird."),
+        Kontexthilfe(
+            "modules.bedienung.nurohne", "Nur ohne Kennung",
+            "Zeigt ausschließlich die Bausteine, denen die Kennung noch "
+            "fehlt. Sie stammen aus der Zeit vor der Kennungspflicht und "
+            "müssen EINZELN nachgetragen werden; eine Sammelvergabe gibt es "
+            "bewusst nicht, weil eine Kennung nach der Vergabe endgültig "
+            "ist. Erneutes Anklicken hebt den Filter auf; die übrigen "
+            "Spaltenfilter bleiben dabei stehen.",
+            verweis="modules#ablaeufe"),
+
+        # --- Die Spalten der Tabelle (Build 653). Die Anker vergibt das
+        # gemeinsame Tabellenwerkzeug aus den Feldnamen; der führende
+        # Unterstrich abgeleiteter Felder fällt dabei weg
+        # (cockpit_tablekit.js hilfeIdNormieren, Build 592).
+        Kontexthilfe(
+            "modules.spalte.kennungtext", "Spalte „Kennung“",
+            "Die feste Kennung, über die Berichtsvorlagen auf den Baustein "
+            "verweisen. Steht hier „ohne Kennung“, ist der Baustein älter "
+            "als die Kennungspflicht und noch nachzutragen.",
+            verweis="modules#aufbau"),
+        Kontexthilfe(
+            "modules.spalte.title", "Spalte „Titel“",
+            "Die Bezeichnung für Menschen — sie steht auch in der Auswahl "
+            "des Berichtseditors."),
+        Kontexthilfe(
+            "modules.spalte.rolletext", "Spalte „Rolle“",
+            "Für welche Aufgabe der Baustein gedacht ist. Die Tabelle ist "
+            "nach dieser Spalte vorsortiert."),
+        Kontexthilfe(
+            "modules.spalte.topic", "Spalte „Thema“",
+            "Das Stichwort, unter dem verwandte Bausteine zusammenstehen."),
+        Kontexthilfe(
+            "modules.spalte.sort_order", "Spalte „Sortierung“",
+            "Die Reihenfolge innerhalb einer Rolle. Ein kleinerer Wert steht "
+            "weiter oben."),
+        Kontexthilfe(
+            "modules.spalte.aktivtext", "Spalte „Aktiv“",
+            "Ob der Baustein im Berichtseditor angeboten wird. Ein "
+            "abgeschalteter Baustein bleibt erhalten und wirkt weiter in "
+            "bereits geschriebenen Vermerken.",
+            verweis="modules#grenzen"),
+        Kontexthilfe(
+            "modules.werkzeug.filter_entfernen", "Filter zurücksetzen",
+            "Entfernt ALLE Spaltenfilter dieser Tabelle auf einmal — auch "
+            "den Filter „Nur ohne Kennung“."),
+        Kontexthilfe(
+            "modules.werkzeug.trefferzahl", "Trefferanzeige",
+            "Wie viele Bausteine gerade sichtbar sind und wie viele es "
+            "insgesamt gibt. Weichen die Zahlen voneinander ab, ist ein "
+            "Filter gesetzt — das ist die erste Frage nach jedem "
+            "Filterwechsel."),
         Kontexthilfe(
             "modules.bedienung.schluessel", "Kennung des Bausteins",
             "Die feste Kennung, unter der der Baustein gefunden wird. Ob das "

@@ -111,6 +111,13 @@ ANKER_PRAEFIXE: Dict[str, str] = {
     "crossref": "crossref",
     "lectorate": "lectorate",
     "mentoring": "mentoring",
+    # Build 653 (Ticket d60e893a): die Baustein-Module haben ihre
+    # Schaltflaechenliste gegen eine Tabelle des gemeinsamen Werkzeugs
+    # getauscht. Damit vergibt tabelleAufbauen() dort Anker der Form
+    # 'modules.spalte.*' und 'modules.werkzeug.*'. Vorher trug die Sicht nur
+    # handgesetzte Marken ('modules.titel', 'modules.bedienung.*'), und der
+    # Praefix stand deshalb noch nicht in dieser Zuordnung.
+    "modules": "modules",
     "mycases": "mycases",
     "myhistory": "myhistory",
     "personnel": "personnel",

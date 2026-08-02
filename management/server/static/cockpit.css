@@ -865,10 +865,19 @@ td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
  *   <=  900px  alles untereinander; darunter traegt auch die Liste keine
  *              300px-Spalte mehr, ohne der Maske den Rest zu nehmen.
  */
+/* Build 653 (Ticket d60e893a) — DIE LISTE WANDERT NACH OBEN.
+ * Aus der 300px-Spalte wurde eine Tabelle ueber die volle Breite. Der
+ * Ticketwortlaut nennt das als Moeglichkeit ("Ggf. sollte diese Tabelle ...
+ * in den oberen Bereich verschoben werden"); sie ist genommen worden, weil
+ * Kopffilter und Blaetterleiste in 300px nicht bedienbar sind. Die
+ * Rasterbereiche heissen weiter liste/maske/vorschau - nur ihre Anordnung
+ * hat sich geaendert.
+ */
 .aiw-mod-body {
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr) minmax(340px, 0.85fr);
-  grid-template-areas: "liste maske vorschau";
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.85fr);
+  grid-template-areas: "liste liste"
+                       "maske vorschau";
   gap: 18px;
   align-items: start;
 }
@@ -883,23 +892,10 @@ td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
 /* Zugeklappt braucht die Spalte keine Breite mehr — sonst bliebe rechts ein
  * leeres Drittel stehen, und das sieht nach Defekt aus, nicht nach Absicht. */
 .aiw-mod-body:has(.aiw-mod-vorschaucol.ist-zu) {
-  grid-template-columns: 300px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 @media (max-width: 1280px) {
-  .aiw-mod-body {
-    grid-template-columns: 300px minmax(0, 1fr);
-    grid-template-areas: "liste maske"
-                         "liste vorschau";
-  }
-  .aiw-mod-body:has(.aiw-mod-vorschaucol.ist-zu) {
-    grid-template-columns: 300px minmax(0, 1fr);
-  }
-  /* Untereinander ergibt Kleben keinen Sinn mehr. */
-  .aiw-mod-vorschaucol { position: static; }
-}
-
-@media (max-width: 900px) {
   .aiw-mod-body {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "liste"
@@ -909,8 +905,37 @@ td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
   .aiw-mod-body:has(.aiw-mod-vorschaucol.ist-zu) {
     grid-template-columns: minmax(0, 1fr);
   }
-  .aiw-mod-listcol { width: auto; }
+  /* Untereinander ergibt Kleben keinen Sinn mehr. */
+  .aiw-mod-vorschaucol { position: static; }
 }
+
+@media (max-width: 900px) {
+  /* Die Werkzeugleiste der Tabelle (Spaltenwahl, Filter zurücksetzen,
+   * Trefferzahl, "Nur ohne Kennung") passt hier nicht mehr in eine Zeile. */
+  .aiw-mod-listcol .aiw-tk-leiste { flex-wrap: wrap; }
+  .aiw-mod-actions { flex-wrap: wrap; }
+}
+
+/* Build 653: Tabellenbereich. Die Hoechsthoehe ist die Antwort auf den
+ * Ticketbefund "Bei einer großen Anzahl an fertigen Elementen wird die Liste
+ * unüberschaubar" — zusammen mit der Seitenblaetterung (15 Zeilen) bleibt
+ * die Maske darunter im Bild. */
+.aiw-mod-tabelle { margin-bottom: 4px; }
+.aiw-mod-tabelle .aiw-tk-host { max-height: 46vh; overflow: auto; }
+/* Die gewaehlte Zeile wird MARKIERT, nicht nur gemerkt: sonst weiss man
+ * nach einem Seitenwechsel nicht mehr, was in der Maske steht. */
+.aiw-mod-tabelle .tabulator-row.is-active {
+  background: #e8f0f6;
+  box-shadow: inset 3px 0 0 0 var(--akzent);
+}
+.aiw-mod-tabelle .tabulator-row { cursor: pointer; }
+/* Der Schalter "Nur ohne Kennung" zeigt seinen Zustand, statt ihn nur zu
+ * haben — ein gedrueckter Knopf, der wie ein ungedrueckter aussieht, ist
+ * eine Falle. */
+.aiw-mod-nurohne.ist-an {
+  background: var(--akzent); color: #fff; border-color: var(--akzent);
+}
+.aiw-mod-empty.ist-warnung { color: #b5730c; font-style: italic; }
 
 .aiw-mod-new, .aiw-mod-drybtn, .aiw-mod-save {
   font: inherit; cursor: pointer; padding: 6px 14px;

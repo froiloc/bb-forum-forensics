@@ -62,7 +62,20 @@
  *   Moment, keine Vorliebe" war. ANNAHME, VON mc ZU BESTAETIGEN ODER ZU
  *   VERWERFEN.
  *
- * Version: v0.8.652 · Build: 652 · 2026-08-02
+ * Build 653 (Ticket d60e893a): DIE LISTE WIRD EINE TABELLE.
+ *   Die linke Spalte war eine Kette von Schaltflaechen ohne Sortierung, ohne
+ *   Filter und ohne Begrenzung der Hoehe. Bei genug Bausteinen ist das keine
+ *   Liste mehr, sondern eine Halde. Sie wird durch AIWTableKit ersetzt
+ *   (cockpit_tablekit.js) und wandert nach OBEN ueber die Maske - in einer
+ *   300px-Spalte waeren Kopffilter und Seitenblaetterung nicht bedienbar.
+ *
+ *   RUECKFALL IST PFLICHT: fehlt Tabulator oder das Werkzeug, baut diese
+ *   Datei die alte Schaltflaechenliste. tabelleAufbauen wuerde stattdessen
+ *   einen Hinweis mit Zeilenzahl zeigen - richtig fuer eine reine Anzeige,
+ *   hier aber falsch: ueber die Liste wird AUSGEWAEHLT. Ohne Rueckfall waere
+ *   die Sicht nicht nur haesslich, sondern unbedienbar.
+ *
+ * Version: v0.8.653 · Build: 653 · 2026-08-02
  */
 (function () {
     'use strict';
@@ -85,7 +98,10 @@
         // Editor-Instanz, vorschauSpaltenStand die EINE Funktion, die den
         // Zuklapp-Zustand anzeigt.
         vorschauEl: null, vorschau: null, vorschauAn: true,
-        vorschauSpalte: null, vorschauSpaltenStand: null
+        vorschauSpalte: null, vorschauSpaltenStand: null,
+        // Build 653: die Tabelle. listEl bleibt daneben bestehen und traegt
+        // NUR im Rueckfall etwas - genau eines der beiden ist je gesetzt.
+        table: null, nurOhneKennung: false, nurOhneBtn: null
     };
 
     // Build 488: Browser-Zwischenspeicher (localStorage) des NOCH NICHT
@@ -179,6 +195,53 @@
     // isValidKey: Client-Spiegel der Server-Regel (Bequemlichkeit).
     function isValidKey(key) {
         return _KEY_RE.test(String(key || ''));
+    }
+
+    // moduleRows (Build 653): aus den Bausteinen die Zeilen der Tabelle.
+    // ------------------------------------------------------------------
+    // REIN und deshalb einzeln pruefbar. Die abgeleiteten Felder tragen
+    // einen Unterstrich, damit man ihnen ansieht, dass sie NICHT aus der
+    // Datenbank kommen und nichts zurueckgeschrieben wird.
+    //
+    // _ohneKennung ist das wichtigste davon: acht Altbausteine haben noch
+    // keinen module_key (Ticket ac36e10b), und wer sie nachtragen soll, muss
+    // sie FINDEN koennen. Als Wahrheitswert laesst er sich filtern - ein
+    // leerer Text liesse sich das nicht.
+    //
+    // _kennungText steht bewusst als sichtbarer Klartext da und nicht als
+    // Leerzelle: eine leere Zelle sieht aus wie ein Anzeigefehler, und
+    // Grundregel 1 verbietet das stille Uebergehen eines Befundes.
+    function moduleRows(list) {
+        return sortModules(list).map(function (m) {
+            var key = (m && m.module_key !== undefined && m.module_key !== null)
+                ? String(m.module_key) : '';
+            var zeile = {};
+            // Der ganze Datensatz bleibt in der Zeile - der Zeilenklick
+            // fuellt daraus die Maske, ohne noch einmal nachzuladen.
+            Object.keys(m || {}).forEach(function (k) { zeile[k] = m[k]; });
+            zeile._kennung = key;
+            zeile._ohneKennung = (key === '');
+            zeile._kennungText = key || '— ohne Kennung —';
+            zeile._rolleText = roleLabel(m && m.role);
+            zeile._aktivText = (m && m.is_active === 0) ? 'nein' : 'ja';
+            return zeile;
+        });
+    }
+
+    // zeilenKennung (Build 653): der Wert, ueber den eine Zeile adressiert
+    // wird. ZWEI ADRESSWEGE, UND DAS MIT ABSICHT: ueber module_key, solange
+    // es einen gibt, sonst ueber die Zeilen-id als '#id:<n>'.
+    //
+    // Das ist die Lehre aus Ticket a1480978: ModuleAuthorRepo.upsert fand
+    // eine Altzeile ohne Kennung ueber den module_key NICHT und legte eine
+    // ZWEITE Zeile an, die alte blieb unerreichbar daneben stehen. Wer diese
+    // Funktion vereinfacht, holt genau diesen Fehler zurueck.
+    function zeilenKennung(m) {
+        if (!m) { return null; }
+        var key = (m.module_key === undefined || m.module_key === null)
+            ? '' : String(m.module_key);
+        if (key !== '') { return key; }
+        return (m.id === undefined || m.id === null) ? null : ('#id:' + m.id);
     }
 
     // schluesselVorschlag: aus einem Titel eine zulaessige Kennung bauen
@@ -482,17 +545,269 @@
         };
     }
 
+    // _aktuelleKennung: was gerade in der Maske steht, als Adresse.
+    // Spiegel von zeilenKennung, nur aus _state statt aus einem Datensatz.
+    function _aktuelleKennung() {
+        if (_state.selKey !== null && _state.selKey !== undefined) {
+            return String(_state.selKey);
+        }
+        return _state.selId ? ('#id:' + _state.selId) : null;
+    }
+
+    // _markActive: markiert die Zeile, die gerade in der Maske steht.
+    // Build 653: BEIDE Darstellungen werden bedient - die Tabelle und der
+    // Rueckfall auf Schaltflaechen. Es waere bequemer, nur die Tabelle zu
+    // kennen; dann bliebe im Rueckfall aber unsichtbar, was gerade
+    // bearbeitet wird, und der Rueckfall waere nur halb einer.
     function _markActive() {
-        if (!_state.listEl) { return; }
-        var items = _state.listEl.querySelectorAll('.aiw-mod-item');
-        Array.prototype.forEach.call(items, function (it) {
-            var kennung = _state.selKey !== null
-                ? _state.selKey
-                : (_state.selId ? ('#id:' + _state.selId) : null);
-            var on = (kennung !== null
-                && it.getAttribute('data-key') === kennung);
-            it.classList.toggle('is-active', on);
+        var kennung = _aktuelleKennung();
+
+        // (a) Tabelle.
+        var t = _state.table;
+        if (t && typeof t.getRows === 'function') {
+            try {
+                t.getRows().forEach(function (row) {
+                    var el = (typeof row.getElement === 'function')
+                        ? row.getElement() : null;
+                    if (!el || !el.classList) { return; }
+                    var d = (typeof row.getData === 'function')
+                        ? row.getData() : null;
+                    var an = (kennung !== null
+                        && zeilenKennung(d) === kennung);
+                    el.classList.toggle('is-active', an);
+                });
+            } catch (e) { log('Zeilenmarkierung nicht setzbar', e); }
+        }
+
+        // (b) Rueckfall-Schaltflaechen.
+        if (_state.listEl) {
+            var items = _state.listEl.querySelectorAll('.aiw-mod-item');
+            Array.prototype.forEach.call(items, function (it) {
+                var an = (kennung !== null
+                    && it.getAttribute('data-key') === kennung);
+                it.classList.toggle('is-active', an);
+            });
+        }
+    }
+
+    // =====================================================================
+    // Build 653 — DIE LISTE ALS TABELLE (Ticket d60e893a).
+    // =====================================================================
+
+    // _tk / _mitHilfe: Zugriff auf das gemeinsame Tabellenwerkzeug und die
+    // Hilfe-Anker der Spaltenkoepfe. LAZY geholt, damit die Ladereihenfolge
+    // diese Sicht nicht lautlos brechen kann (Muster aus cockpit_mentoring.js
+    // :105-127). Die Spalten werden KOPIERT - die Modulkonstante bleibt
+    // unberuehrt, sonst wuechse sie bei jedem Aufruf einen Formatter an.
+    function _tk() {
+        return (typeof window !== 'undefined' && window.AIWTableKit)
+            ? window.AIWTableKit : null;
+    }
+    function _mitHilfe(cols, sicht, doc) {
+        var TK = _tk();
+        if (!TK || !doc || !TK.titelMitHilfe) { return cols; }
+        return cols.map(function (c) {
+            var neu = {};
+            Object.keys(c).forEach(function (k) { neu[k] = c[k]; });
+            if (c.field && !c.titleFormatter) {
+                neu.titleFormatter = TK.titelMitHilfe(
+                    doc, c.title || c.field,
+                    sicht + '.spalte.' + String(c.field).toLowerCase());
+            }
+            return neu;
         });
+    }
+
+    // Die Spalten. Kennung zuerst: sie ist das, worueber Berichtsvorlagen
+    // auf den Baustein verweisen, und das Feld, das acht Altzeilen fehlt.
+    var _SPALTEN = [
+        { title: 'Kennung', field: '_kennungText', headerFilter: 'input',
+          widthGrow: 2 },
+        { title: 'Titel', field: 'title', headerFilter: 'input',
+          widthGrow: 3 },
+        { title: 'Rolle', field: '_rolleText', headerFilter: 'list',
+          widthGrow: 2 },
+        { title: 'Thema', field: 'topic', headerFilter: 'input',
+          widthGrow: 2 },
+        { title: 'Sortierung', field: 'sort_order', hozAlign: 'right',
+          width: 110 },
+        { title: 'Aktiv', field: '_aktivText', headerFilter: 'list',
+          width: 90 }
+    ];
+
+    // _ohneKennungSchalter: Filter auf die Altzeilen ohne module_key.
+    // ------------------------------------------------------------------
+    // WARUM EIGENS DAFUER EIN SCHALTER: Ticket ac36e10b verlangt, acht
+    // Altbausteine einzeln nachzutragen - eine Sammelvergabe gibt es
+    // bewusst nicht, weil die Kennung danach endgueltig ist. Wer diese acht
+    // aus einer nach Rolle sortierten Tabelle heraussuchen muss, sucht
+    // lange. Ein Kopffilter auf '— ohne Kennung —' taete es zwar auch, aber
+    // nur, wenn man den genauen Wortlaut kennt.
+    function _ohneKennungSchalter(doc) {
+        var btn = doc.createElement('button');
+        btn.type = 'button';
+        btn.className = 'aiw-btn aiw-btn-klein aiw-mod-nurohne';
+        btn.textContent = 'Nur ohne Kennung';
+        btn.title = 'Zeigt nur Bausteine, denen die Kennung noch fehlt '
+            + '(Nachtrag nach Ticket ac36e10b).';
+        btn.setAttribute('aria-pressed', 'false');
+        btn.setAttribute('data-hilfe-id', 'modules.bedienung.nurohne');
+        btn.addEventListener('click', function () {
+            _state.nurOhneKennung = !_state.nurOhneKennung;
+            _ohneKennungAnwenden();
+        });
+        _state.nurOhneBtn = btn;
+        return btn;
+    }
+
+    // _ohneKennungAnwenden: setzt oder entfernt den Filter und bringt die
+    // Beschriftung des Schalters auf denselben Stand. EINE Stelle fuer
+    // beides - die Lehre aus Build 575.
+    function _ohneKennungAnwenden() {
+        var t = _state.table;
+        var btn = _state.nurOhneBtn;
+        var an = !!_state.nurOhneKennung;
+        if (btn) {
+            btn.setAttribute('aria-pressed', an ? 'true' : 'false');
+            btn.classList.toggle('ist-an', an);
+        }
+        if (!t) { return; }
+        try {
+            if (an) { t.setFilter('_ohneKennung', '=', true); }
+            // removeFilter und NICHT clearFilter: clearFilter(true) raeumt
+            // auch die Kopffilter weg, die der Redakteur gerade gesetzt hat.
+            else { t.removeFilter('_ohneKennung', '=', true); }
+        } catch (e) { log('Filter nicht setzbar', e); }
+    }
+
+    // _ohneKennungSyncen: der Schalter folgt dem TATSAECHLICHEN Filterstand.
+    // Noetig, weil 'Filter zurücksetzen' aus der Werkzeugleiste des
+    // TableKit den Filter mit wegraeumt (clearFilter(true)). Ohne diesen
+    // Abgleich stuende der Schalter danach auf 'an', ohne dass gefiltert
+    // waere - eine Anzeige, hinter der nichts steht.
+    function _ohneKennungSyncen() {
+        var t = _state.table;
+        if (!t || typeof t.getFilters !== 'function') { return; }
+        var gesetzt = false;
+        try {
+            gesetzt = (t.getFilters() || []).some(function (f) {
+                return f && f.field === '_ohneKennung';
+            });
+        } catch (e) { return; }
+        if (gesetzt !== !!_state.nurOhneKennung) {
+            _state.nurOhneKennung = gesetzt;
+            var btn = _state.nurOhneBtn;
+            if (btn) {
+                btn.setAttribute('aria-pressed', gesetzt ? 'true' : 'false');
+                btn.classList.toggle('ist-an', gesetzt);
+            }
+        }
+    }
+
+    // _listeAufbauen: Tabelle, wenn es geht - sonst die alte Liste.
+    // Rueckgabe: true, wenn eine Tabelle entstanden ist.
+    // Ctor wird DURCHGEREICHT (opts.Tabulator) und faellt sonst auf
+    // window.Tabulator zurueck - Hausmuster der uebrigen Sichten
+    // (cockpit_mentoring.js MT05), damit die Tabelle pruefbar bleibt.
+    function _listeAufbauen(host, rows, doc, Ctor) {
+        var TK = _tk();
+        if (typeof Ctor !== 'function') {
+            Ctor = (typeof window !== 'undefined') ? window.Tabulator : null;
+        }
+        if (!TK || typeof TK.tabelleAufbauen !== 'function'
+                || typeof Ctor !== 'function') {
+            return false;
+        }
+
+        var auf = TK.tabelleAufbauen(doc, host, {
+            sicht: 'modules',
+            rows: rows,
+            columns: _mitHilfe(_SPALTEN, 'modules', doc),
+            Ctor: Ctor,
+            // Die Zahl steht mit dem Substantiv DIESER Sicht, nicht mit
+            // 'Datensätze' (Vorgabe des TableKit).
+            einheit: 'Bausteine',
+            eigene: [_ohneKennungSchalter(doc)],
+            onRowClick: function (e, row) {
+                var d = (typeof row.getData === 'function')
+                    ? row.getData() : null;
+                if (!d) { return; }
+                _fillForm(d);
+                _persistDraft();
+            },
+            tabulator: {
+                // Zeilenidentitaet ueber die Datenbank-id: sie ist das
+                // einzige Feld, das JEDE Zeile hat - der module_key fehlt
+                // acht Altzeilen.
+                index: 'id',
+                // height:false + Seitenblaetterung: das dokumentierte
+                // Muster gegen abgeschnittene Blaetterleisten (Beleg:
+                // cockpit_lectorate.js:596-599, Console-Diagnose 2026-07-10).
+                height: false,
+                pagination: 'local',
+                paginationSize: 15,
+                paginationCounter: 'rows',
+                locale: 'de-de',
+                langs: {
+                    'de-de': {
+                        pagination: {
+                            first: 'Erste', first_title: 'Erste Seite',
+                            last: 'Letzte', last_title: 'Letzte Seite',
+                            prev: 'Zurück', prev_title: 'Vorige Seite',
+                            next: 'Weiter', next_title: 'Nächste Seite',
+                            counter: {
+                                showing: 'Zeige', of: 'von',
+                                rows: 'Zeilen', pages: 'Seiten'
+                            }
+                        }
+                    }
+                },
+                placeholder: 'Kein Baustein passt zu den gesetzten Filtern.',
+                // Nach jedem Filter- und Seitenwechsel: Markierung der
+                // gewaehlten Zeile neu setzen (Tabulator baut die Zeilen
+                // dabei neu auf) und den Schalter mit dem echten
+                // Filterstand abgleichen.
+                dataFiltered: function () { _ohneKennungSyncen(); _markActive(); },
+                renderComplete: function () { _markActive(); }
+            }
+        });
+        _state.table = auf.table;
+        return !!auf.table;
+    }
+
+    // _listeRueckfall: die Schaltflaechenliste aus Build 427 bis 652.
+    // Sie bleibt erhalten, weil ueber die Liste AUSGEWAEHLT wird - ohne sie
+    // waere die Sicht ohne Tabulator nicht bedienbar, sondern nur lesbar.
+    function _listeRueckfall(host, rows, doc) {
+        var hinweis = doc.createElement('p');
+        hinweis.className = 'aiw-mod-empty ist-warnung';
+        hinweis.textContent = 'Tabellenbibliothek nicht verfügbar — es folgt '
+            + 'die einfache Liste. ' + rows.length + ' Bausteine.';
+        host.appendChild(hinweis);
+
+        var list = doc.createElement('div');
+        list.className = 'aiw-mod-list';
+        _state.listEl = list;
+        if (!rows.length) {
+            var empty = doc.createElement('p');
+            empty.className = 'aiw-mod-empty';
+            empty.textContent = 'Noch keine Bausteine angelegt.';
+            list.appendChild(empty);
+        }
+        rows.forEach(function (m) {
+            var it = doc.createElement('button');
+            it.type = 'button';
+            it.className = 'aiw-mod-item';
+            it.setAttribute('data-hilfe-id', 'modules.bedienung.waehlen');
+            it.setAttribute('data-key', zeilenKennung(m) || '');
+            it.textContent = moduleLabel(m);
+            it.addEventListener('click', function () {
+                _fillForm(m);
+                _persistDraft();
+            });
+            list.appendChild(it);
+        });
+        host.appendChild(list);
     }
 
     function _setMsg(text, kind) {
@@ -636,7 +951,10 @@
         var body = document.createElement('div');
         body.className = 'aiw-mod-body';
 
-        // --- Linke Spalte: Liste + "Neu".
+        // --- Oberer Bereich: "Neu" + Tabelle (Build 653, Ticket d60e893a).
+        // Sie spannt ueber die ganze Breite. In einer 300px-Spalte waeren
+        // Kopffilter und Blaetterleiste nicht bedienbar - deshalb der
+        // Umzug nach oben, den das Ticket als Moeglichkeit nennt.
         var left = document.createElement('div');
         left.className = 'aiw-mod-listcol';
         var newBtn = document.createElement('button');
@@ -650,34 +968,18 @@
         });
         left.appendChild(newBtn);
 
-        var list = document.createElement('div');
-        list.className = 'aiw-mod-list';
-        _state.listEl = list;
-        var rows = sortModules(data && data.modules);
-        if (!rows.length) {
-            var empty = document.createElement('p');
-            empty.className = 'aiw-mod-empty';
-            empty.textContent = 'Noch keine Bausteine angelegt.';
-            list.appendChild(empty);
-        }
-        rows.forEach(function (m) {
-            var it = document.createElement('button');
-            it.type = 'button';
-            it.className = 'aiw-mod-item';
-            it.setAttribute('data-hilfe-id', 'modules.bedienung.waehlen');
-            // Altzeilen haben keinen Schluessel - dann traegt der
-            // Eintrag seine id, damit die Markierung nicht auf dem
-            // Text 'null' beruht.
-            it.setAttribute('data-key', m.module_key
-                ? String(m.module_key) : ('#id:' + m.id));
-            it.textContent = moduleLabel(m);
-            it.addEventListener('click', function () {
-                _fillForm(m);
-                _persistDraft();   // Build 488: geladenen Baustein als Entwurf sichern.
-            });
-            list.appendChild(it);
-        });
-        left.appendChild(list);
+        var rows = moduleRows(data && data.modules);
+        _state.listEl = null;
+        _state.table = null;
+        _state.nurOhneKennung = false;
+        _state.nurOhneBtn = null;
+        // Der Tabellenbereich entsteht HIER, wird aber erst nach dem
+        // Einhaengen gefuellt: Tabulator misst seinen Behaelter wie
+        // Editor.js, und auf einem nicht eingehaengten Element sind das
+        // null Pixel (Lehre aus Build 570-573).
+        var tabHost = document.createElement('div');
+        tabHost.className = 'aiw-mod-tabelle';
+        left.appendChild(tabHost);
         body.appendChild(left);
 
         // --- Rechte Spalte: Editor-Maske.
@@ -784,6 +1086,14 @@
         // Build 652: Ziel ist die dritte Rasterspalte, nicht mehr das Formular.
         _vorschauAufbauen(vsCol);
 
+        // BUILD 653: DIE TABELLE EBENFALLS ERST JETZT - aus demselben Grund.
+        // Gelingt sie nicht, tritt die alte Schaltflaechenliste an ihre
+        // Stelle. KEIN STILLER AUSFALL: der Rueckfall sagt im Klartext, dass
+        // er einer ist, und nennt die Zahl der Bausteine.
+        if (!_listeAufbauen(tabHost, rows, document, opts.Tabulator)) {
+            _listeRueckfall(tabHost, rows, document);
+        }
+
         // Beim Tippen mitlaufen, aber entprellt: Editor.js baut je Aktualisierung
         // eine Instanz auf, und das bei jedem Tastendruck waere Verschwendung.
         var vsTimer = null;
@@ -815,6 +1125,16 @@
     }
 
     function cleanup() {
+        // Build 653: die Tabelle haelt Ereignisbindungen und einen eigenen
+        // DOM-Baum. Sie wird ABGEBAUT, nicht nur vergessen - dieselbe Regel
+        // wie fuer die Editor-Instanz der Vorschau.
+        if (_state.table && typeof _state.table.destroy === 'function') {
+            try { _state.table.destroy(); }
+            catch (e) { /* Abbau darf nie werfen */ }
+        }
+        _state.table = null;
+        _state.nurOhneBtn = null;
+        _state.nurOhneKennung = false;
         _state.listEl = null;
         _state.fields = null;
         _state.msgEl = null;
@@ -842,6 +1162,8 @@
         roleLabel: roleLabel,
         moduleLabel: moduleLabel,
         sortModules: sortModules,
+        moduleRows: moduleRows,           // Tabellenzeilen (Build 653)
+        zeilenKennung: zeilenKennung,     // Adressweg einer Zeile (Build 653)
         isValidKey: isValidKey,
         buildPayload: buildPayload,
         schluesselVorschlag: schluesselVorschlag,

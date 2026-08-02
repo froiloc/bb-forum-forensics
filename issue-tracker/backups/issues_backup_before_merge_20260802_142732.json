@@ -3679,12 +3679,12 @@
       "description": "Um das Finden von fertigen Elementen zu ermöglichen und auch die Ordnung zu bewahren, soll das Layout in den Sichten der Redaktion verbessert werden.",
       "expected_behavior": "Die bisherige Liste auf der linken Seite soll durch tabulator.js ersetzt werden. Ggf. sollte diese Tabelle analog zu anderen Sichten mit einer Maximalhöhe und Pagination in den oberen Bereich verschoben werden.",
       "actual_behavior": "Bei einer großen Anzahl an fertigen Elementen wird die Liste unüberschaubar und schwer zu nutzen.",
-      "status": "resolved",
+      "status": "open",
       "priority": "high",
       "severity": "major",
       "assigned_to": "Claude",
       "related_to": [],
-      "resolved_in_version": "0.8.653",
+      "resolved_in_version": null,
       "target_version": "0.8.653",
       "environment": {
         "python_version": "3.14",
@@ -3708,12 +3708,10 @@
           "comment": "Issue erstellt"
         },
         {
-          "timestamp": "2026-08-02T13:00:00+00:00",
+          "timestamp": "2026-08-02T12:00:00+00:00",
           "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "Build 653, ZUNAECHST NUR FUER DIE BAUSTEIN-MODULE. Das Ticket spricht von 'den Sichten der Redaktion' - Platzhalter und Dokumentvorlagen sind NICHT umgestellt und bleiben offen; das wird hier gesagt und nicht durch ein 'resolved' verdeckt. Umgesetzt: AIWTableKit.tabelleAufbauen mit Kopffiltern je Spalte, Seitenblaetterung zu 15 Zeilen, Hoechsthoehe 46vh, index:'id', height:false (Muster gegen abgeschnittene Blaetterleisten, Beleg cockpit_lectorate.js). Die Tabelle steht OBEN ueber der Maske - in einer 300px-Spalte waeren Kopffilter und Blaetterleiste nicht bedienbar. Zusaetzlich ein Schalter 'Nur ohne Kennung' fuer den Nachtrag nach ac36e10b; er benutzt removeFilter statt clearFilter, damit die Kopffilter des Redakteurs stehenbleiben. RUECKFALL AUF DIE ALTE LISTE ist Pflicht geblieben, weil ueber die Liste AUSGEWAEHLT wird. BEFUND AUS DER HILFEPRUEFUNG: SP04 schlug an - der Ankerpraefix 'modules' fehlte in anker_katalog.py, weil die Sicht bis Build 652 nur handgesetzte Marken trug. Nachgetragen. TB01-TB06, Gegenprobe gegen Build 652 gefahren."
+          "action": "comment",
+          "comment": "BEFUND ZUR TAG-LAGE: dieses Ticket trug keinen einzigen Tag. Eine Abfrage nach 'Bausteinmodule' - wie mc sie zu Sitzungsbeginn gefahren hat - haette es uebersehen, obwohl es die Sicht Baustein-Module betrifft und Prioritaet hoch traegt. Tags nachgetragen, damit derselbe Fehler nicht wiederkehrt. Ziel 0.8.653."
         }
       ]
     },
@@ -6171,52 +6169,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eingang_claude_Build651.json"
-        }
-      ]
-    },
-    {
-      "id": "7c1f2a94-5d3e-4b8a-9e01-2f6c8b4d7a53",
-      "type": "feature_request",
-      "title": "Platzhalter-Tabelle Stufe 2: bidirektional in den Bausteintext",
-      "affected_version": "0.8.654",
-      "target_version": null,
-      "reporter": "Alex",
-      "reported_at": "2026-08-02T13:00:00+00:00",
-      "status": "open",
-      "priority": "medium",
-      "severity": "minor",
-      "assigned_to": "Claude",
-      "related_to": [
-        "4b032177-036d-4c60-847a-3c1ed705a100"
-      ],
-      "resolved_in_version": null,
-      "environment": {
-        "python_version": "3.14",
-        "database": "templates.db"
-      },
-      "tags": [
-        "Bausteinmodule",
-        "Management",
-        "Platzhalter",
-        "Editor"
-      ],
-      "attachments": [],
-      "prerequisites": "Setzt die Platzhalter-Tabelle aus Build 654 voraus.",
-      "description": "Aus Ticket 4b032177 herausgeloest. Der Wunsch dort lautet: 'Ideal waere es, wenn diese Tabelle bidirektional waere und Aenderungen in den Feldern der Tabelle sich auf den Inhalt in der textarea auswirken wuerden.' Entscheidung mc vom 2026-08-02: Stufe 1 (lesen, verifizieren, testen) zuerst, das Zurueckschreiben nachziehen.\n\nTechnisch tragfaehig, weil parse() je Chip das Originaltoken in seg.raw mitfuehrt (userinfo/placeholder_chips.js): ein geaenderter Wert wird zu einem neuen Token zusammengesetzt und positionsgenau gegen raw ersetzt.\n\nDREI FALLEN, die vorab zu entscheiden sind:\n1. TRENNZEICHEN. '|' und '}' duerfen in keinem Feld vorkommen (_CHIP_RE benutzt [^|}\&ZeroWidthSpace;\&ZeroWidthSpace;n]). Eingaben mit diesen Zeichen sind ABZUWEISEN, nicht stillschweigend zu entschaerfen.\n2. MEHRFACHVORKOMMEN. Steht ein Name mehrfach im Text, aendert die Tabellenzeile ALLE Vorkommen. Das ist anzuzeigen, BEVOR es geschieht.\n3. EINFUEGEMARKE. Das Zurueckschreiben setzt die Einfuegemarke im Textfeld zurueck. Deshalb erst bei 'change' (Feld verlassen), nicht bei 'input'.",
-      "expected_behavior": "Aenderungen in der Platzhalter-Tabelle wirken zeichengenau auf den Bausteintext zurueck, ohne Verlust bei Sonderzeichen und UTF-8.",
-      "actual_behavior": "",
-      "updates": [
-        {
-          "timestamp": "2026-08-02T13:00:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Angelegt bei der Aufteilung von 4b032177, damit die zurueckgestellte Stufe nicht im Sitzungsprotokoll verschwindet."
-        },
-        {
-          "timestamp": "2026-08-02T12:27:32.005360+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build653.json"
         }
       ]
     }
