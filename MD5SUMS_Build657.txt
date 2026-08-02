@@ -1,0 +1,12 @@
+db345db079fefbe60fe43e9b9981f4ae  build.json
+5c22ec8122f109362104acd625fcae77  main.py
+f04b0099eef24ee44b27443de543e883  management.py
+c24e22f88d1e39ffb9ab52d52b766f7c  management/db_katalog.py
+beab9b1ea95eca92906d5db0b45f9c50  management/db_startbefund.py
+3b041c7aa3c7107d46e881683a7fcc08  management/server/management_app.py
+896547f0f6aeef515fc184258ff5c564  management/server/static/cockpit.js
+cca82b188ca7afa7cd826ec3df0ff656  management/help/cli_katalog.py
+aeb66a0f568c9e0e8a3198e14b538b77  tests/test_db_katalog.py
+559a2079cc88fa4a1d8ae5eea21e42a1  tests/test_help_cli_katalog.py
+1b61d54536fd3b8d008e681e3d31719e  tests/unit/test_cockpit_fetchjson.test.js
+6d60950c33dc14558d023009b5e22fac  issue-tracker/eintraege_claude_Build657.json

@@ -3894,6 +3894,13 @@ class ManagementApp:
         try:
             items = PlaceholderAuthorRepo(con).list()
         except sqlite3.Error as exc:
+            # BUILD 657: DIESE ZEILE HAT AM 2026-08-02 GEFEHLT.
+            # Der Server antwortete mit 500 und schrieb nichts ins
+            # Log - der Befund war da, er stand nur nirgends. Die
+            # Suche kostete eine Stunde. Grundregel 1 gilt auch
+            # fuer den eigenen Ausfall.
+            logger.error("_templates_placeholders: templates.db nicht lesbar (%s) - Pfad: %s",
+                         exc, self._templates_db)
             return Response.json(500, {"error": "templates_read_failed",
                                        "detail": str(exc)})
         finally:
@@ -3992,6 +3999,13 @@ class ManagementApp:
             result = PlaceholderAuthorRepo(tcon).upsert(
                 p, changed_by=changed_by)
         except sqlite3.Error as exc:
+            # BUILD 657: DIESE ZEILE HAT AM 2026-08-02 GEFEHLT.
+            # Der Server antwortete mit 500 und schrieb nichts ins
+            # Log - der Befund war da, er stand nur nirgends. Die
+            # Suche kostete eine Stunde. Grundregel 1 gilt auch
+            # fuer den eigenen Ausfall.
+            logger.error("_templates_placeholder_upsert: Schreiben in templates.db fehlgeschlagen (%s) - Pfad: %s",
+                         exc, self._templates_db)
             return Response.json(500, {"error": "templates_write_failed",
                                        "detail": str(exc)})
         finally:
@@ -4062,6 +4076,13 @@ class ManagementApp:
         try:
             docs = TemplateAuthorRepo(con).list()
         except sqlite3.Error as exc:
+            # BUILD 657: DIESE ZEILE HAT AM 2026-08-02 GEFEHLT.
+            # Der Server antwortete mit 500 und schrieb nichts ins
+            # Log - der Befund war da, er stand nur nirgends. Die
+            # Suche kostete eine Stunde. Grundregel 1 gilt auch
+            # fuer den eigenen Ausfall.
+            logger.error("_templates_documents: templates.db nicht lesbar (%s) - Pfad: %s",
+                         exc, self._templates_db)
             return Response.json(500, {"error": "templates_read_failed",
                                        "detail": str(exc)})
         finally:
@@ -4111,6 +4132,13 @@ class ManagementApp:
         try:
             result = TemplateAuthorRepo(tcon).upsert(t, changed_by=changed_by)
         except sqlite3.Error as exc:
+            # BUILD 657: DIESE ZEILE HAT AM 2026-08-02 GEFEHLT.
+            # Der Server antwortete mit 500 und schrieb nichts ins
+            # Log - der Befund war da, er stand nur nirgends. Die
+            # Suche kostete eine Stunde. Grundregel 1 gilt auch
+            # fuer den eigenen Ausfall.
+            logger.error("_templates_document_upsert: Schreiben in templates.db fehlgeschlagen (%s) - Pfad: %s",
+                         exc, self._templates_db)
             return Response.json(500, {"error": "templates_write_failed",
                                        "detail": str(exc)})
         finally:
@@ -4159,6 +4187,40 @@ class ManagementApp:
     #                                        + Platzhalter-Zaehlung im body),
     #                                        kein Write, kein Audit
     # =====================================================================
+    def _templates_massnahme(self, exc: Exception) -> str:
+        """
+        Aus einem sqlite3-Fehler an der templates.db eine HANDLUNGSANWEISUNG.
+
+        Sie wird NICHT hier erfunden: db/templates_db.py fuehrt mit
+        ERWARTETE_SPALTEN und SPALTEN_MIGRATION bereits die Zuordnung
+        "welche Spalte fehlt -> welches Skript bringt sie" und formuliert den
+        Satz in _spaltenmeldung(). Eine zweite Fassung hier waere die
+        Doppelwahrheit, die beim naechsten Build auseinanderlaeuft.
+
+        FAELLT SIE AUS, GIBT ES EINEN SATZ STATT EINER LEEREN ZEICHENKETTE.
+        Eine Massnahme, die sich nicht ermitteln laesst, ist ein eigener
+        Befund und kein Grund zu schweigen.
+        """
+        try:
+            from db.templates_db import TemplatesDb
+            con = sqlite3.connect("file:%s?mode=ro" % self._templates_db,
+                                  uri=True)
+            try:
+                con.execute('ATTACH DATABASE ? AS tdb', (self._templates_db,))
+                fehlend = TemplatesDb(con).fehlende_spalten()
+                if fehlend:
+                    return TemplatesDb(con)._spaltenmeldung(fehlend)
+            finally:
+                con.close()
+        except Exception as inner:                      # noqa: BLE001
+            logger.warning("Massnahme zur templates.db nicht ermittelbar: %s",
+                           inner)
+            return ("Die Ursache liess sich nicht genauer bestimmen. "
+                    "Bitte 'python3 tools/migrate-dbs.py' ausfuehren - es "
+                    "sagt, welche Migration fehlt.")
+        return ("Der Schemastand ist vollstaendig; der Fehler hat eine "
+                "andere Ursache (siehe 'detail' und das Serverprotokoll).")
+
     def _templates_modules(self, person_id: int) -> Response:
         """Liste der Baustein-Module (read-only)."""
         if not self.resolve_policy(person_id).can(CAP_TEMPLATES_EDIT):
@@ -4168,8 +4230,25 @@ class ManagementApp:
         try:
             modules = ModuleAuthorRepo(con).list()
         except sqlite3.Error as exc:
-            return Response.json(500, {"error": "templates_read_failed",
-                                       "detail": str(exc)})
+            # BUILD 657: DIESE ZEILE HAT AM 2026-08-02 GEFEHLT.
+            # Der Server antwortete mit 500 und schrieb nichts ins
+            # Log - der Befund war da, er stand nur nirgends. Die
+            # Suche kostete eine Stunde. Grundregel 1 gilt auch
+            # fuer den eigenen Ausfall.
+            logger.error("_templates_modules: templates.db nicht lesbar (%s) - Pfad: %s",
+                         exc, self._templates_db)
+            # BUILD 657 - DIE MASSNAHME STEHT SEIT BUILD 584 BEREIT UND WURDE
+            # NIE BENUTZT. db/templates_db.py erzeugt aus derselben Lage den
+            # Satz "Es fehlen die Spalten: report_modules.block_type.
+            # Abhilfe: ... ausfuehren." Der Ermittlerserver zeigt ihn seit
+            # Build 579 (503 statt leerer Liste); der Verwaltungsserver
+            # antwortete mit einem nackten 500. Derselbe Ausfall, zwei
+            # Verhaltensweisen - das war der eigentliche Befund vom
+            # 2026-08-02.
+            return Response.json(500, {
+                "error": "templates_read_failed",
+                "detail": str(exc),
+                "massnahme": self._templates_massnahme(exc)})
         finally:
             con.close()
         return Response.json(200, {"count": len(modules), "modules": modules})
@@ -4288,6 +4367,13 @@ class ManagementApp:
                 body["feld"] = exc.feld
             return Response.json(400, body)
         except sqlite3.Error as exc:
+            # BUILD 657: DIESE ZEILE HAT AM 2026-08-02 GEFEHLT.
+            # Der Server antwortete mit 500 und schrieb nichts ins
+            # Log - der Befund war da, er stand nur nirgends. Die
+            # Suche kostete eine Stunde. Grundregel 1 gilt auch
+            # fuer den eigenen Ausfall.
+            logger.error("_templates_module_upsert: Schreiben in templates.db fehlgeschlagen (%s) - Pfad: %s",
+                         exc, self._templates_db)
             return Response.json(500, {"error": "templates_write_failed",
                                        "detail": str(exc)})
         finally:

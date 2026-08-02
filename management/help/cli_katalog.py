@@ -3800,10 +3800,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         zweck="Den Verwaltungsdienst starten, der die Cockpit-Sichten "
               "ausliefert.",
         art="lesend",
-        datenbanken=("coordinator.db (lesend)",),
+        # Build 657: der Start prueft seit diesem Build den Schemastand ALLER
+        # Datenbanken des Katalogs, nicht mehr nur den der coordinator.db.
+        # Geoeffnet wird dabei ausschliesslich nur-lesend.
+        datenbanken=("coordinator.db (lesend)",
+                     "templates.db (nur-lesend, Schemastand)",
+                     "evidence_<uid>.db, assets_<uid>.db (nur-lesend, "
+                     "Schemastand, zusammengefasst)"),
         betrieb="Der Normalbetrieb. Mit --maintenance ist der Start NUR bei "
-                "aktivem Wartungsfenster erlaubt.",
-        hinweis="Keine Schreibpfade: der Dienst liest.",
+                "aktivem Wartungsfenster erlaubt. Beim Start wird gemeldet, "
+                "ob alle Datenbanken auf dem erwarteten Stand sind; ein "
+                "Rueckstand haelt den Start NICHT an, wird aber deutlich "
+                "benannt.",
+        hinweis="Keine Schreibpfade: der Dienst liest. Er migriert auch "
+                "nicht - er sagt nur, welcher Befehl es taete.",
         # Build 640 (Welle 6): geprueft an management.py Z. 48-86.
         konfiguration=(
             _k("paths.coordinator_db",
@@ -3822,6 +3832,17 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             warnungen=(
                 "ES LAEUFT DAUERHAFT und kehrt erst nach dem Beenden "
                 "zurueck. Vorgabe ist 127.0.0.1:8090.",
+                "BEIM START WIRD DER SCHEMASTAND ALLER DATENBANKEN GEMELDET "
+                "(Build 657). Ein Rueckstand haelt den Start nicht an - "
+                "betroffen waeren einzelne Sichten, nicht der Betrieb. Die "
+                "Meldung nennt den Pfad und den Befehl, der ihn behebt. "
+                "ANLASS war der Vorfall vom 2026-08-02: eine nicht "
+                "angewandte Migration der templates.db liess eine Sicht mit "
+                "HTTP 500 ausfallen, und niemand sagte etwas.",
+                "DER DIENST MIGRIERT NICHT SELBST. Das Anwenden bleibt eine "
+                "bewusste, protokollierte Handlung - bitte den in der "
+                "Meldung genannten Befehl benutzen und KEINEN Pfad von Hand "
+                "eintippen: der Befehl holt ihn aus config.yaml.",
                 "DER OS-BENUTZERNAME MUSS IN DER PERSONENTABELLE STEHEN, "
                 "sonst startet es nicht. Fuer eine Erprobung gibt es "
                 "'--as-user'.",

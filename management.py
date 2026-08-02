@@ -174,6 +174,41 @@ def main(argv=None) -> int:
         print("[management] WARNUNG: Migrationsstand nicht pruefbar: %s" % exc,
               file=sys.stderr)  # verhindern, aber sie schweigt auch nicht.
 
+    # Schritt 3c: SCHEMASTAND ALLER DATENBANKEN (Build 657).
+    #
+    # ANLASS: Vorfall 2026-08-02. Die Sicht "Baustein-Module" antwortete mit
+    # HTTP 500 und schwieg dazu; Ursache war die nicht angewandte Migration
+    # aus Build 655. Schritt 3b darueber prueft AUSSCHLIESSLICH die
+    # coordinator.db - der Servercode liest aber zehn Datenbankpfade. mc:
+    # "Ich hatte mich darauf verlassen, dass der Server bei Start misst, ob
+    # das Migrationslevel ALLER Datenbanken korrekt ist."
+    #
+    # Der Katalog (management/db_katalog.py) fuehrt jede einzelne mit dem
+    # Grund ihrer Einstufung; ein Regressionstest haelt ihn vollzaehlig.
+    # Geheilt wird NICHT - siehe Kopf des Katalogs.
+    from management.db_startbefund import (
+        DbStartbefund, blockierende, meldezeilen, zusammenfassung)
+    try:
+        from core.config_loader import ConfigLoader
+        _befunde = DbStartbefund("verwaltung", ConfigLoader()).erhebe()
+        for line in meldezeilen(_befunde):
+            print(line, file=sys.stderr)
+        print("[management] %s" % zusammenfassung(_befunde))
+        _hart = blockierende(_befunde)
+        if _hart:
+            # Heute kann das nicht eintreten (kein Eintrag mit
+            # blockierend=True gehoert zum Verwaltungsserver). Der Zweig steht
+            # trotzdem da: wer kuenftig einen Eintrag scharf stellt, soll ihn
+            # nicht auch noch hier nachtragen muessen - sonst wirkt eine
+            # Einstufung, die im Katalog steht, an der entscheidenden Stelle
+            # nicht.
+            print("[management] Start abgebrochen: %s"
+                  % "; ".join(b.name for b in _hart), file=sys.stderr)
+            return 1
+    except Exception as exc:  # pragma: no cover - die Pruefung darf nie den
+        print("[management] WARNUNG: Schemastand nicht pruefbar: %s" % exc,
+              file=sys.stderr)                       # Start verhindern.
+
     # Schritt 4: Identitaet aufloesen.
     resolver = IdentityResolver(db_path)
     try:

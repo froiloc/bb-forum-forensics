@@ -515,6 +515,36 @@ def main() -> None:
     logger.info("Alle Startprüfungen bestanden.")
 
     # ------------------------------------------------------------------
+    # Schritt 6b: SCHEMASTAND ALLER DATENBANKEN (Build 657)
+    #
+    # StartupChecker darüber prüft Erreichbarkeit, Schemaversion und
+    # Integrität der forensic_db — nicht aber den MIGRATIONSSTAND der
+    # übrigen Datenbanken. Beim Vorfall vom 2026-08-02 lag die templates.db
+    # im Rückstand; niemand hat es gesagt, obwohl das Werkzeug dafür seit
+    # dem 30. Juli existiert.
+    #
+    # Der Katalog (management/db_katalog.py) führt jede Datenbank mit dem
+    # Grund ihrer Einstufung. GEHEILT WIRD NICHT — der Befund nennt den
+    # Befehl, ausgeführt wird er von einem Menschen.
+    #
+    # Die Prüfung darf den Start NIE verhindern (blockierende Fälle bleiben
+    # beim StartupChecker, wo sie hingehören) und sie darf nie werfen.
+    # ------------------------------------------------------------------
+    try:
+        from management.db_startbefund import (
+            DbStartbefund, meldezeilen, zusammenfassung)
+        _db_befunde = DbStartbefund("ermittler", config).erhebe()
+        for _zeile in meldezeilen(_db_befunde):
+            print(_zeile, file=sys.stderr)
+            logger.warning(_zeile)
+        logger.info(zusammenfassung(_db_befunde))
+        print("[main] %s" % zusammenfassung(_db_befunde))
+    except Exception as exc:  # pragma: no cover
+        logger.warning("Schemastand nicht prüfbar: %s", exc)
+        print("[main] WARNUNG: Schemastand nicht prüfbar: %s" % exc,
+              file=sys.stderr)
+
+    # ------------------------------------------------------------------
     # Schritt 7: HostsManager
     # ------------------------------------------------------------------
     from core.hosts_manager import HostsManager, HostsManagerError

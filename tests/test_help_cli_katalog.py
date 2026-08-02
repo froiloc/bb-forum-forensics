@@ -64,6 +64,20 @@ STAND = os.path.join(os.path.dirname(__file__), "hilfe_fehlliste_stand.json")
 
 AUSGENOMMEN = {
     "management/__init__.py": "Paketkennung, kein Werkzeug",
+    # Build 657: zwei MODULE auf Paketebene, keine Werkzeuge. Sie haben
+    # keinen Einstiegspunkt - kein main(), kein argparse, kein
+    # __main__-Block - und werden ausschliesslich von den beiden Servern
+    # beim Start benutzt. Die Regel "management/*.py ist ein Werkzeug" ist
+    # eine Faustregel; hier trifft sie nicht zu.
+    #
+    # DIE AUSNAHME IST NACHGEPRUEFT, NICHT BEHAUPTET: CK-AX unten misst,
+    # dass keine dieser Dateien eine Befehlszeilenflaeche hat. Damit laesst
+    # sich diese Liste nicht als Hintertuer benutzen, um ein echtes Werkzeug
+    # am Katalog vorbeizuschmuggeln.
+    "management/db_katalog.py":
+        "Datenliste der Datenbanken, kein Werkzeug (keine CLI-Flaeche)",
+    "management/db_startbefund.py":
+        "Pruefklasse fuer den Serverstart, kein Werkzeug (keine CLI-Flaeche)",
 }
 
 # -----------------------------------------------------------------------------
@@ -503,3 +517,51 @@ def test_ck13_kein_beispiel_ohne_wirkung():
         for bsp in e.tiefe.beispiele:
             assert len(bsp.wirkung.split()) >= 4, (
                 "%s: Wirkung zu knapp: %r" % (e.schluessel, bsp.wirkung))
+
+
+# -----------------------------------------------------------------------------
+# CK-AX (Build 657) - DIE AUSNAHMELISTE IST NACHGEPRUEFT.
+#
+# AUSGENOMMEN nimmt Dateien von der Werkzeugpflicht aus. Eine wortlose
+# Ausnahmeliste waere eine Hintertuer: wer ein echtes Werkzeug dort eintraegt,
+# entzieht es dem Katalog, und niemand merkt es. Deshalb wird die Behauptung
+# "das ist kein Werkzeug" GEMESSEN - an der Abwesenheit einer
+# Befehlszeilenflaeche.
+#
+# Verfahren wie bei der Ausnahmeliste der handgebauten Tabellen (UX10) und
+# der Fehlliste der schreibfaehigen Module (PY08): eine Ausnahme darf man
+# haben, aber man muss sie belegen koennen.
+# -----------------------------------------------------------------------------
+def test_ckax_ausgenommene_haben_wirklich_keine_cli():
+    import ast as _ast
+
+    verdaechtig = []
+    for rel, grund in AUSGENOMMEN.items():
+        assert grund and grund.strip(), "Ausnahme ohne Grund: %s" % rel
+        pfad = os.path.join(WURZEL, rel)
+        if not os.path.isfile(pfad):
+            continue
+        with open(pfad, encoding="utf-8") as fh:
+            quelle = fh.read()
+        baum = _ast.parse(quelle)
+
+        hat_main = any(
+            isinstance(k, (_ast.FunctionDef, _ast.AsyncFunctionDef))
+            and k.name == "main" for k in baum.body)
+        # 'if __name__ == "__main__":' auf oberster Ebene.
+        hat_dunder = any(
+            isinstance(k, _ast.If)
+            and "__name__" in _ast.dump(k.test) for k in baum.body)
+        hat_argparse = any(
+            isinstance(k, (_ast.Import, _ast.ImportFrom))
+            and "argparse" in _ast.dump(k) for k in baum.body)
+
+        if hat_main or hat_dunder or hat_argparse:
+            verdaechtig.append(
+                "%s (main=%s, __main__=%s, argparse=%s)"
+                % (rel, hat_main, hat_dunder, hat_argparse))
+
+    assert not verdaechtig, (
+        "Diese Dateien stehen in AUSGENOMMEN, haben aber eine "
+        "Befehlszeilenflaeche - sie sind also doch Werkzeuge und gehoeren in "
+        "den Katalog: %s" % ", ".join(verdaechtig))

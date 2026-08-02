@@ -1031,14 +1031,50 @@
     };
 
     // fetchJson: kleiner Wrapper mit DEV-Logging und klarer Fehlermeldung.
+    // fetchJson: LESENDER Abruf.
+    //
+    // BUILD 657 - DER ANTWORTKOERPER WIRD NICHT MEHR WEGGEWORFEN.
+    //
+    // Bis Build 656 stand hier nur 'HTTP 500 bei <url>'. Der Server schickte
+    // daneben 'detail' und (seit diesem Build) 'massnahme' - also den Satz,
+    // der sagt, WAS ZU TUN IST. Beides landete im Papierkorb, und am
+    // Bildschirm stand eine Zahl.
+    //
+    // Am 2026-08-02 hat genau das eine Stunde gekostet: der Server wusste
+    // 'no such column: block_type', der Browser zeigte '500'. postJson
+    // daneben wertet Fehlerkoerper seit jeher aus ("Grundregel 1: kein
+    // stiller Fehlschlag") - der Lesepfad war der taube von beiden.
+    //
+    // Der Koerper wird DEFENSIV gelesen: eine Fehlerantwort muss kein JSON
+    // sein (ein Proxy, eine Zwischenschicht, ein Absturz vor dem Handler).
+    // Schlaegt das Lesen fehl, bleibt es bei der Zahl - aber dann, weil
+    // wirklich nichts da war, und nicht, weil niemand nachgesehen hat.
     function fetchJson(url) {
         log('fetch', url);
         return fetch(url, { headers: { 'Accept': 'application/json' } })
             .then(function (r) {
-                if (!r.ok) {
-                    throw new Error('HTTP ' + r.status + ' bei ' + url);
-                }
-                return r.json();
+                if (r.ok) { return r.json(); }
+                return r.text().then(function (roh) {
+                    var zusatz = '';
+                    try {
+                        var d = JSON.parse(roh);
+                        // Die MASSNAHME zuerst: sie sagt, was zu tun ist.
+                        // 'detail' nennt die Ursache, 'error' nur die Art.
+                        var teile = [d.massnahme, d.detail, d.error]
+                            .filter(function (x) { return !!x; });
+                        if (teile.length) { zusatz = ' — ' + teile.join(' | '); }
+                    } catch (e) {
+                        var kurz = String(roh || '').trim().slice(0, 200);
+                        if (kurz) { zusatz = ' — ' + kurz; }
+                    }
+                    throw new Error('HTTP ' + r.status + ' bei ' + url
+                                    + zusatz);
+                }, function () {
+                    // Nicht einmal der Text war lesbar. Auch das wird
+                    // gesagt, statt es wie 'kein Grund' aussehen zu lassen.
+                    throw new Error('HTTP ' + r.status + ' bei ' + url
+                                    + ' — Antwortkoerper nicht lesbar.');
+                });
             });
     }
 
@@ -5034,7 +5070,11 @@
         isExportable: isExportable,
         exportParams: exportParams,
         exportUrl: exportUrl,
-        EXPORTABLE_VIEWS: EXPORTABLE_VIEWS
+        EXPORTABLE_VIEWS: EXPORTABLE_VIEWS,
+        // Build 657: der Lesepfad wird pruefbar. Er hat am 2026-08-02 die
+        // Massnahme des Servers weggeworfen und nur die Zahl gezeigt - ein
+        // Verhalten, das ohne Fall in der Suite wiederkommen kann.
+        fetchJson: fetchJson
     };
     if (typeof module !== 'undefined' && module.exports) { module.exports = API; }
     if (typeof window !== 'undefined') { window.AIWCockpit = API; }
