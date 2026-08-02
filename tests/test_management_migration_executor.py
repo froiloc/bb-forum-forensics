@@ -10,7 +10,8 @@
 #       keine Datenaenderung; zweiter Lauf idempotent
 #       BUILD 533: Die evidence-Kette hat jetzt DREI Migrationen (m001
 #       Baseline, m002 annotation_tatzeit, m003 evidence_audit_log). Die
-#       Erwartungen sind entsprechend auf [1, 2, 3] bzw. Version 3 angehoben.
+#       Erwartungen sind entsprechend auf [1, 2, 3, 4] bzw. Version 4
+#       angehoben (Build 660: M004 sort_index TEXT->INTEGER).
 #       (Build 532 hatte sie von [1] auf [1, 2] angehoben.) Dass dieser Test
 #       beim Hinzufuegen einer Migration fehlschlaegt, ist die gewollte Wirkung
 #       eines Ankers — er haelt die Kettenlaenge fest, damit eine neue
@@ -155,8 +156,8 @@ class MigrationExecutorTests(unittest.TestCase):
         con.close()
         # Build 533: m001 (Baseline), m002 (annotation_tatzeit) UND m003
         # (evidence_audit_log + Genesis).
-        self.assertEqual(applied, [1, 2, 3])
-        self.assertEqual(read_instance_version(path), 3)
+        self.assertEqual(applied, [1, 2, 3, 4])
+        self.assertEqual(read_instance_version(path), 4)
         # schema_migrations existiert, Fachdaten unveraendert.
         self.assertEqual(RowcountVerifier.table_rowcounts(path)["annotations"],
                          before["annotations"])
@@ -197,14 +198,14 @@ class MigrationExecutorTests(unittest.TestCase):
                                   dry_run=False, verifier="h002")
         self.assertEqual(res.status, "ok")
         # Build 533: die evidence-Kette endet bei Version 3.
-        self.assertEqual((res.from_version, res.to_version), (0, 3))
-        self.assertEqual(read_instance_version(path), 3)
+        self.assertEqual((res.from_version, res.to_version), (0, 4))
+        self.assertEqual(read_instance_version(path), 4)
         # Ledger: started + ok
         runs = self.ledger.list_runs(db_kind="evidence", uid=18)
         self.assertEqual([r["status"] for r in runs], ["started", "ok"])
         # db_registry aktualisiert
         reg = self.mdb.list_registry("evidence")
-        self.assertEqual(reg[0].current_version, 3)
+        self.assertEqual(reg[0].current_version, 4)
         self.assertEqual(reg[0].last_status, "ok")
         # Backup existiert
         self.assertTrue(os.path.exists(res.backup_path))

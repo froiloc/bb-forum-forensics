@@ -3385,6 +3385,50 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
     ),
     CliEintrag(
+        schluessel="pruefe_sort_index",
+        pfad="tools/pruefe_sort_index.py",
+        aufruf="python tools/pruefe_sort_index.py [--dir data/evidence] [--json]",
+        titel="Voruntersuchung zu M004 (Bausteinreihenfolge)",
+        gruppe="Migration und Reparatur",
+        zweck="Vor dem Scharfschalten von M004 feststellen, welche "
+              "Falldatenbanken den falschen Spaltentyp tragen, ob ihre Werte "
+              "sauber wandelbar sind und ob sich die Reihenfolge der "
+              "Bausteine ueberhaupt aendert.",
+        art="lesend",
+        datenbanken=("alle evidence_<uid>.db des Verzeichnisses "
+                     "(lesend, mode=ro)",),
+        betrieb="Vor jedem 'migrate-dbs.py --apply' aufzurufen; auch im "
+                "Produktivbetrieb unbedenklich, da es keinen Schreibpfad hat.",
+        hinweis="Rueckgabewert 3 heisst NICHT 'Fehler', sondern 'zu "
+                "migrieren, aber jemand muss hinsehen': ein Wert ist keine "
+                "kanonische Ganzzahl und wuerde von M004 per CAST "
+                "uebernommen. Eine Datei, deren Reihenfolge sich aendert, "
+                "hatte bereits gefertigte Vermerke moeglicherweise in "
+                "falscher Ordnung - diese sind nachzusehen.",
+        konfiguration=KONFIG_KEINE,
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/pruefe_sort_index.py --dir ./data/evidence",
+                     "Nennt je Falldatenbank Spaltentyp, Zeilenzahl, ob die "
+                     "Reihenfolge sich aendert und jeden Zweifelsfall mit "
+                     "block_id und Rohwert. Dateien, die nicht die Form "
+                     "evidence_<uid>.db tragen, werden gezaehlt und genannt, "
+                     "nicht stillschweigend uebergangen."),
+                _bsp("python tools/pruefe_sort_index.py --json "
+                     "> phase0_befund.json",
+                     "Maschinenlesbar fuer die Ablage als Phase-0-Artefakt "
+                     "nach dem Datenmigrationsleitfaden."),
+            ),
+            exit_codes=((0, "nichts zu tun - keine Datei traegt TEXT"),
+                        (1, "Aufruffehler (Verzeichnis fehlt)"),
+                        (2, "Migration noetig, alle Werte kanonisch"),
+                        (3, "Migration noetig, aber mindestens ein Wert ist "
+                            "keine kanonische Ganzzahl"),
+                        (4, "mindestens eine Datei war nicht lesbar - der "
+                            "Befund ist unvollstaendig")),
+        ),
+    ),
+    CliEintrag(
         schluessel="poc_m019_weg_a",
         pfad="tools/poc_m019_weg_a.py",
         aufruf="python tools/poc_m019_weg_a.py kopie.db",

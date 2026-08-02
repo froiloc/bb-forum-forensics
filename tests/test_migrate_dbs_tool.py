@@ -240,6 +240,26 @@ class LageEindeutigTests(unittest.TestCase):
         pfad = self.data / "evidence" / "evidence_1488.db"
         con = sqlite3.connect(str(pfad))
         con.execute("CREATE TABLE annotations (id INTEGER)")
+        # BUILD 660: 'report_block_order' gehoert IMMER dazu — beide
+        # Schema-Quellen legen sie an (Prepper stage2/evidence_db_init.py,
+        # db/evidence_db.py:300). Eine Vorrichtung ohne sie bildete eine
+        # Falldatenbank ab, die es nicht gibt, und M004 haette darin nichts
+        # zu tun. Was sich mit 'mit_tabellen' unterscheidet, ist nicht ihre
+        # EXISTENZ, sondern der TYP der Spalte: TEXT ist der Zustand VOR der
+        # Migration, INTEGER der danach. Nur so pruefen LG01/LG02/FA01 die
+        # Wirkung von M004 und nicht deren Abwesenheit.
+        con.execute("CREATE TABLE report_blocks (block_id TEXT PRIMARY KEY)")
+        con.execute("CREATE TABLE report_block_order ("
+                    "block_id TEXT NOT NULL, "
+                    "sort_index %s NOT NULL, "
+                    "last_modified_by TEXT NOT NULL, "
+                    "last_modified_at INTEGER NOT NULL, "
+                    "PRIMARY KEY(block_id), "
+                    "FOREIGN KEY(block_id) REFERENCES report_blocks(block_id) "
+                    "ON DELETE CASCADE)"
+                    % ("INTEGER" if mit_tabellen else "TEXT"))
+        con.execute("CREATE INDEX rbo_sort_idx ON report_block_order "
+                    "(sort_index)")
         if mit_tabellen:
             con.execute("CREATE TABLE annotation_tatzeit (id INTEGER)")
             con.execute("CREATE TABLE evidence_audit_log (id INTEGER)")
@@ -247,7 +267,7 @@ class LageEindeutigTests(unittest.TestCase):
             con.execute("CREATE TABLE schema_migrations (version INTEGER, "
                         "name TEXT, kind TEXT, checksum TEXT, "
                         "applied_at INTEGER)")
-            for v in (1, 2, 3):
+            for v in (1, 2, 3, 4):
                 con.execute("INSERT INTO schema_migrations VALUES "
                             "(?,'x','additive','y',0)", (v,))
         con.commit()
@@ -259,7 +279,7 @@ class LageEindeutigTests(unittest.TestCase):
         pfad = self._evidence(mit_tabellen=False, mit_register=False)
         befund = mdt.fall_befund(pfad, "evidence")
         self.assertEqual(befund["lage"], "wirkung_fehlt")
-        self.assertEqual(befund["fachlich_fehlt"], [2, 3])
+        self.assertEqual(befund["fachlich_fehlt"], [2, 3, 4])
         _, zeilen, _ = mdt.bericht(self.data, 1488, None)
         text = "\n".join(zeilen)
         self.assertIn("annotation_tatzeit", text)
@@ -351,7 +371,26 @@ class FallAnwendenTests(unittest.TestCase):
             "  page_url TEXT NOT NULL);"
             "CREATE TABLE reports (id INTEGER PRIMARY KEY, title TEXT);"
             "CREATE TABLE report_blocks (block_id TEXT PRIMARY KEY, "
-            "  report_id INTEGER);")
+            "  report_id INTEGER, created_at INTEGER);"
+            # BUILD 660: Der Ausgangszustand einer Prepper-Falldatenbank vor
+            # 0.1.128 — 'report_block_order' vorhanden, sort_index als TEXT.
+            # Damit laeuft M004 in FA01 WIRKLICH und wandelt um, statt in den
+            # Zweig 'nichts zu tun' zu fallen; FA02 zeigt danach, dass der
+            # zweite Lauf folgenlos bleibt.
+            "CREATE TABLE report_block_order ("
+            "  block_id TEXT NOT NULL,"
+            "  sort_index TEXT NOT NULL,"
+            "  last_modified_by TEXT NOT NULL,"
+            "  last_modified_at INTEGER NOT NULL,"
+            "  PRIMARY KEY(block_id),"
+            "  FOREIGN KEY(block_id) REFERENCES report_blocks(block_id)"
+            "    ON DELETE CASCADE);"
+            "CREATE INDEX rbo_sort_idx ON report_block_order (sort_index);")
+        for i in (1, 2, 10):
+            con.execute("INSERT INTO report_blocks VALUES (?,1,?)",
+                        ("b%02d" % i, 1000 + i))
+            con.execute("INSERT INTO report_block_order VALUES (?,?,'inv',1000)",
+                        ("b%02d" % i, i))
         con.commit()
         con.close()
         return pfad
@@ -381,7 +420,7 @@ class FallAnwendenTests(unittest.TestCase):
         versionen = [r[0] for r in con.execute(
             "SELECT version FROM schema_migrations ORDER BY version")]
         con.close()
-        self.assertEqual(versionen, [1, 2, 3])
+        self.assertEqual(versionen, [1, 2, 3, 4])
 
     # FA02 ---------------------------------------------------------------
     def test_fa02_zweiter_lauf_wendet_nichts_an(self):

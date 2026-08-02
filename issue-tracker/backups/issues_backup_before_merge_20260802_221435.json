@@ -2518,7 +2518,7 @@
     {
       "id": "99bf0eb5-c888-4823-a116-58394df19606",
       "type": "bug",
-      "status": "testing",
+      "status": "open",
       "priority": "high",
       "severity": "major",
       "title": "report_block_order.sort_index: Prepper legt TEXT an, Webserver erwartet INTEGER",
@@ -2557,18 +2557,8 @@
           "old_value": "",
           "new_value": "",
           "comment": "Ich benötige ein Werkzeug zur Migration für bestehende Datenbanken. Die Schwere des Fehlers macht eine Migration per Prozess notwendig.\r\n\r\nIn `stage2/evidence_db_init.py` habe ich den Datentyp für report_block_order.sort_index von TEXT auf INTEGER gestellt. Dies gilt ab Version 0.1.128."
-        },
-        {
-          "timestamp": "2026-08-02T21:05:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "testing",
-          "comment": "Build 660. Migration M004 (management/migrations/evidence/m004_sort_index_integer.py), KIND='destructive' - die erste destruktive Migration im evidence-Strang. Ort: Webserver, nicht Prepper (offene Entscheidung (2) des Vorgangs, mc 2026-08-02): Engine, Flotte, Backup-Zwang, das Register schema_migrations und migrate-dbs.py liegen hier; der Prepper erzeugt nur neue Dateien und ist dafuer bereits auf INTEGER gestellt.\n\nZWEITE FOLGE DES FEHLERS, im Vorgang bisher nicht verzeichnet und am 2026-08-02 gemessen: get_blocks_for_report sortiert nach COALESCE(rbo.sort_index, 999999) (db/evidence_db.py:1819). Der Ersatzwert ist ein INTEGER-Literal, die Spaltenwerte sind bei TEXT-Affinitaet Zeichenketten, und SQLite ordnet INTEGER VOR TEXT - unabhaengig vom Zahlenwert (SELECT '10' < 999999 liefert 0). Ein Block OHNE Sortierungseintrag fuehrt den Bericht deshalb AN, statt ihn zu beschliessen:\n    TEXT     -> OHNE_ORDNUNG  b00  b01  b10  b02\n    INTEGER  -> b00  b01  b02  b10  OHNE_ORDNUNG\nDas widerspricht der Zusage im Docstring derselben Methode (:1810) und entwertet WARN_UNORDERED_BLOCK. Testfall SI03.\n\nZWEITE ABWEICHUNG ZWISCHEN PREPPER UND WEBSERVER, beim Bau aufgefallen: Die Falldateien tragen an dieser Tabelle ON DELETE CASCADE (evidence_uid.db.schema.sql:84), db/evidence_db.py:300 nicht. Ein Tabellenneubau nach der Webserver-Vorlage haette jeder migrierten Beweisdatei still die Kaskade genommen. M004 leitet die neue DDL deshalb AUS DER VORHANDENEN ab (genau ein Typbezeichner ersetzt) und vergleicht table_info, foreign_key_list und index_list vor/nach. SI05 prueft, dass die Kaskade nicht nur dasteht, sondern wirkt.\n\nZWEIFELSFAELLE (Festlegung mc: umwandeln und vermerken): CAST ist kein sicheres Mittel - gemessen '3.9'->3, '1e3'->1, 'abc'->0, ''->0. M004 prueft jeden Wert gegen die kanonische Ganzzahlform und schreibt jeden Zweifelsfall zusaetzlich in die Hash-Kette evidence_audit_log DER BETROFFENEN DATEI - ein Vermerk allein im Maschinenprotokoll bliebe auf der Migrationsmaschine zurueck. Daraus folgt eine Grenze (SI09): Zweifelsfall UND keine Kette (M003 fehlt) -> Abbruch statt Umwandlung.\n\nVORUNTERSUCHUNG: tools/pruefe_sort_index.py, rein lesend, meldet je Falldatei Spaltentyp, Zweifelsfaelle und - betrieblich am wichtigsten - OB SICH DIE REIHENFOLGE UEBERHAUPT AENDERT. Bei weniger als zehn Bausteinen tut sie das nicht; solche Dateien sind zwar zu migrieren, ihre Vermerke waren aber nie falsch. Nur die uebrigen brauchen eine Nachschau an bereits gefertigten Dokumenten. Eigene Rueckgabewerte 2/3/4.\n\nNEBENBEFUND MITGENOMMEN: tools/migrate-dbs.py prueft die Wirkung einer Migration ueber SPUREN und kannte nur die Art ('tabelle', name). M004 aendert einen Spaltentyp - ohne die neue Spurart 'spaltentyp' waere ihre Wirkung dort unsichtbar und das Werkzeug fiele auf den reinen Registerstand zurueck (die Zweideutigkeit aus Build 586).\n\nREGRESSION: 19 neue Faelle (SI01-SI13, PS01-PS07). Die Gegenprobe steckt in den Faellen: SI02/SI03 halten den FALSCHEN Zustand vor der Migration ausdruecklich fest. Vier bestehende Testdateien nachgezogen (Kette [1,2,3] -> [1,2,3,4]); in test_migrate_dbs_tool.py war die Vorrichtung selbst falsch - sie baute eine evidence-Datei ohne report_block_order. Baucontainer (Python 3.13): Python 3095 passed, JS 1715 passed.\n\nNOCH ZU ENTSCHEIDEN, nicht Teil dieses Builds: db/evidence_db.py:300 traegt weiterhin KEIN ON DELETE CASCADE. Fuer bestehende Dateien ist das jetzt folgenlos (M004 erhaelt, was dasteht), aber die beiden Quellen bleiben verschieden - beim naechsten Umbau ist das wieder eine Falle."
         }
-      ],
-      "resolved_in_version": "0.8.660",
-      "target_version": "0.8.660"
+      ]
     },
     {
       "id": "2dc0b8f0-26e6-4d78-88ae-4849ae217d56",

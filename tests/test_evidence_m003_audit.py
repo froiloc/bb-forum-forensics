@@ -11,7 +11,7 @@
 #
 #   EA01 — Die Migration laeuft ueber die ECHTE Migrationskette und wird in
 #          'schema_migrations' als Version 3 / 'additive' registriert. Die
-#          Kette ist damit [1, 2, 3].
+#          Kette ist damit [1, 2, 3, 4] (M004 seit Build 660).
 #   EA02 — Der Spaltensatz stimmt mit ERWARTETE_SPALTEN ueberein, in der
 #          Reihenfolge — und er ist deckungsgleich mit dem der coordinator-
 #          Kette (audit_log), BIS AUF den FOREIGN KEY, den es in einer
@@ -139,8 +139,13 @@ class TestEvidenceM003Audit(unittest.TestCase):
     # ===================================================================== EA01
     def test_EA01_migration_wird_registriert(self):
         angewandt = self._lauf()
-        self.assertEqual(angewandt, [1, 2, 3],
-                         "Die evidence-Kette muss nach Build 533 [1,2,3] sein.")
+        # Build 660: M004 (sort_index TEXT->INTEGER) ist hinzugekommen.
+        # Die Liste wird MITGEZOGEN und nicht auf ">= [1,2,3]" aufgeweicht -
+        # eine Erwartung, die jede kuenftige Migration stillschweigend
+        # durchliesse, pruefte die Kette nicht mehr.
+        self.assertEqual(angewandt, [1, 2, 3, 4],
+                         "Die evidence-Kette muss nach Build 660 "
+                         "[1,2,3,4] sein.")
         reg = self.con.execute(
             "SELECT version, kind FROM schema_migrations WHERE version = 3"
         ).fetchone()
@@ -188,7 +193,7 @@ class TestEvidenceM003Audit(unittest.TestCase):
         vorher_tz = _inhalts_fingerabdruck(self.con, "annotation_tatzeit")
 
         angewandt = self._lauf()
-        self.assertEqual(angewandt, [3])
+        self.assertEqual(angewandt, [3, 4])
 
         self.assertEqual(_inhalts_fingerabdruck(self.con, "annotations"),
                          vorher_ann,

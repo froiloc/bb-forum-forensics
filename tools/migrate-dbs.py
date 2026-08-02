@@ -110,11 +110,20 @@ FREMDE_DBS = ("default", "translations")
 #
 # (Fuer coordinator.db bleibt das Register massgeblich: es existiert dort seit
 # jeher, und 37 Spuren zu pflegen waere Redundanz ohne Gewinn.)
+#
+# BUILD 660 (Vorgang 99bf0eb5): Es gibt jetzt eine ZWEITE Spurart. Bis Build
+# 659 kannte _spur_da nur ("tabelle", name) — die Wirkung einer Migration war
+# immer "eine neue Tabelle ist da". M004 legt aber keine Tabelle an, sondern
+# aendert den TYP einer Spalte. Ohne die Spurart "spaltentyp" waere ihre
+# Wirkung hier unsichtbar, und das Werkzeug fiele fuer sie auf den reinen
+# Registerstand zurueck — genau die Zweideutigkeit, die Build 586 beseitigt
+# hat ("fehlendes Register" heisst nicht "fachlich nicht geschehen").
 SPUREN = {
     "evidence": {
         1: ("tabelle", "schema_migrations"),
         2: ("tabelle", "annotation_tatzeit"),
         3: ("tabelle", "evidence_audit_log"),
+        4: ("spaltentyp", ("report_block_order", "sort_index", "INTEGER")),
     },
     "assets": {
         1: ("tabelle", "schema_migrations"),
@@ -191,6 +200,22 @@ def _spur_da(pfad: Path, spur) -> bool:
                 "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
                 (wert,)).fetchone()
             return row is not None
+        if art == "spaltentyp":
+            # Build 660: Wirkung = eine Spalte traegt den erwarteten Typ.
+            # Fehlt die Tabelle, ist die Wirkung NICHT da — und das ist die
+            # richtige Antwort: entweder ist es keine Falldatenbank, oder ihr
+            # fehlt etwas, das beide Schema-Quellen anlegen. In beiden Faellen
+            # waere 'Wirkung da' die falsche Auskunft.
+            tabelle, spalte, erwartet = wert
+            try:
+                zeilen = con.execute(
+                    'PRAGMA table_info("%s")' % tabelle).fetchall()
+            except sqlite3.Error:
+                return False
+            for r in zeilen:
+                if r[1] == spalte:
+                    return (r[2] or "").upper() == erwartet.upper()
+            return False
         return False
     finally:
         con.close()
