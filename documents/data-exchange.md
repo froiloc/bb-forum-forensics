@@ -1,12 +1,22 @@
 # Datenaustausch AIW — Übergabe von Arbeitsergebnissen
 
-**Stand:** Build 661 · 2026-08-02 · **Klassifikation:** VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
+**Stand:** Build 662 · 2026-08-02 · **Klassifikation:** VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
 
 **Verbindlich ab 3. August 2026**, das heißt ab `aiw_webserver` **0.8.661** und
 `aiw_sqlite_prepper` **0.1.129**. Festgelegt von Alex am 2026-08-02 nach der
 Erörterung in derselben Sitzung. Diese Fassung ist die maßgebliche für beide
 Bestände; im Prepper liegt unter demselben Pfad nur ein Verweis, damit nicht
 zwei Fassungen derselben Regel entstehen.
+
+---
+
+## 0. Wo dieses Verfahren gilt
+
+**Nur zwischen Bauumgebung und Linux-Entwicklungsbestand.** In der Windows-VM
+ist kein Git verfügbar; dorthin geht stets ein **vollständiger Rollout** des
+fertigen Bestandes. Der Bundle-Weg regelt also den Weg vom Erzeuger zum
+Entwicklungsrechner — nicht den Weg in die Anlage. Beide hier beschriebenen
+Werkzeuge sind Bash-Skripte und laufen unter Linux.
 
 ---
 
@@ -141,11 +151,40 @@ soll:
 git status --porcelain --ignored | grep '^!!' | grep -v '__pycache__\|\.pytest_cache'
 ```
 
-*Durchsetzung:* **keine maschinelle.** Dies ist eine redaktionelle Regel. Eine
-Prüfung im Auslieferungswerkzeug ist möglich und als offener Punkt vermerkt
-(Abschnitt 11).
+*Durchsetzung:* **maschinell, seit Build 662.** `tools/bundle_bauen.sh` bricht
+ab, sobald `git status --porcelain` etwas meldet — verfolgte Änderung oder
+unverfolgte Datei, gleich was:
 
-### 3.4 Bundle erzeugen und belegen
+```
+ABBRUCH: Es liegt Nicht-Committetes im Arbeitsbaum.
+Ein Bundle enthaelt NUR Committetes -- das hier waere spurlos weg:
+?? vergessene_datei.txt
+```
+
+Ignorierte Dateien führen nicht zum Abbruch, werden aber gelistet und ins
+Protokoll geschrieben, samt des verwendeten Rauschfilters.
+
+### 3.4 Bundle erzeugen und belegen — `tools/bundle_bauen.sh`
+
+Seit Build 662 erledigt ein Skript die Schritte 3.3 bis 3.5 in einem Zug:
+
+```
+tools/bundle_bauen.sh <paket> <buildnummer> [testbefehl]
+tools/bundle_bauen.sh aiw_webserver 662
+```
+
+Es prüft den Zweignamen, bricht bei Nicht-Committetem ab, erzeugt die
+MD5-Liste über `tools/md5sums_build.sh` und zieht sie in den letzten Commit
+nach, baut und verifiziert das Bundle, fährt die Regression (**und baut bei
+rotem Ergebnis kein Archiv**, GR2/GR9), schreibt ein Protokoll nach Abschnitt 6
+und packt das Auslieferungsarchiv.
+
+Ohne Testbefehl wird `python run_tests.py` versucht und auf `python3` gewechselt,
+falls `python` nicht vorhanden ist. `-` als Testbefehl überspringt die
+Regression — dann steht im Protokoll ausdrücklich
+`AUSDRUECKLICH UEBERSPRUNGEN` statt eines Ergebnisses (GR1).
+
+*Von Hand gleichbedeutend:*
 
 ```
 git bundle create ../aiw_webserver_661.bundle claude/build661 --not origin/master
@@ -165,14 +204,19 @@ fällt damit auf, statt still durchzugehen.
 
 ### 3.5 Auslieferungspaket
 
-Benennung: `<Modul>_Build<Nr>.zip`, also z. B. `aiw_webserver_Build661.zip`.
+Benennung: `<Modul>_Build<Nr>.zip`, also z. B. `aiw_webserver_Build662.zip`.
 Inhalt:
 
 | Datei | Zweck |
 |---|---|
-| `aiw_webserver_661.bundle` | die Arbeitsergebnisse |
-| `MD5SUMS_Build661.txt` | Prüfsumme der Bundle-Datei **und** der einzelnen geänderten Dateien |
-| `UEBERGABE_Build661.md` | Übergabedokument (Abschnitt 6) |
+| `aiw_webserver_662.bundle` | die Arbeitsergebnisse |
+| `MD5SUMS_Build662.txt` | Einzelprüfsummen der geänderten Dateien |
+| `PROTOKOLL_Build662.md` | maschinell erzeugt, die Punkte 1–7 aus Abschnitt 6 |
+| `UEBERGABE_Build662.md` | von Hand verfasst: Befunde, Begründungen, offene Punkte |
+
+Das Protokoll nimmt dem Übergabedokument die mechanischen Teile ab. Was ein
+Skript nicht wissen kann — warum etwas so gebaut wurde, was aufgefallen und
+nicht behoben ist — bleibt von Hand zu schreiben.
 
 Die Prüfsummen werden zusätzlich im Antworttext genannt, damit sie unabhängig
 vom Archiv nachlesbar sind.
@@ -180,6 +224,40 @@ vom Archiv nachlesbar sind.
 ---
 
 ## 4. Ablauf — Einspielseite
+
+Seit Build 662 fasst `tools/bundle_einspielen.sh` die Schritte 4.1 bis 4.4
+zusammen:
+
+```
+tools/bundle_einspielen.sh <paket> <buildnummer> [testbefehl]
+tools/bundle_einspielen.sh aiw_webserver 662
+```
+
+Es prüft, dass HEAD auf `master` steht (seit dem Umstieg auf eigene
+Arbeitszweige kein Formalismus mehr — sonst landet eine Lieferung versehentlich
+in `alex/thema`), verifiziert das Bundle vor jedem Eingriff, legt liegende
+Arbeit beiseite, holt die Lieferung in `refs/claude/*`, mergt über einen
+Integrationszweig, ruft bei Konflikt `git mergetool`, fährt die Regression und
+zieht `master` erst danach nach.
+
+**Konfliktauflösung.** Eingerichtet ist `kdiff3`:
+
+```
+git config --global merge.tool kdiff3
+git config --global mergetool.keepBackup false
+```
+
+`keepBackup false` verhindert liegenbleibende `.orig`-Dateien. Ohne
+eingerichtetes `merge.tool` oder ohne Terminal überspringt das Skript den
+Aufruf mit einem Hinweis, statt zu hängen.
+
+**Der Rückgabewert von `git mergetool` taugt nicht als Nachweis** — er kann 0
+sein, obwohl das Werkzeug ohne Auflösung verlassen wurde. Geprüft wird deshalb
+`git ls-files -u`; solange dort etwas steht, ist nichts aufgelöst. Und:
+`mergetool` tut, was das Werkzeug tut. Nach der Auflösung gehört ein Blick in
+die Datei, nicht nur einer auf die Erfolgsmeldung.
+
+Die folgenden Abschnitte beschreiben, was das Skript im Einzelnen tut.
 
 ### 4.1 Prüfen, ohne etwas anzufassen
 
@@ -247,6 +325,33 @@ zwischenzeitlich doch bewegt hat.
   ausdrücklichen Refspec: `git push origin 'refs/claude/*:refs/claude/*'`. Von
   allein gehen sie nicht mit. Ob das gewollt ist, ist **noch nicht entschieden**
   (Abschnitt 11).
+
+---
+
+### 4.5 Eigene Arbeitszweige statt Arbeit auf master
+
+**Festlegung 2026-08-02:** Auf `master` wird nicht mehr gearbeitet. Eigene
+Arbeit läuft auf `alex/<thema>`.
+
+Was das leistet — und was nicht. Es beseitigt **nicht** den Bedarf zu mergen:
+die Arbeit muss weiterhin nach `master`, und wer dieselben Zeilen anfasst wie
+eine Lieferung, bekommt weiterhin einen Konflikt. Der entsteht aus zwei
+Bearbeitungen derselben Stelle, nicht aus der Zweigtopologie. Zweige verlegen
+den Konflikt, sie beseitigen ihn nicht.
+
+Was sie leisten:
+
+- `master` steht immer auf einem geprüften Stand; Halbfertiges liegt woanders.
+- Das Einspielskript muss nie stashen — Abschnitt 4.2 wird zum Leerlauf, und
+  mit ihm dessen Stolperfallen.
+- Der Konflikt wandert an die bessere Stelle: auf den eigenen Zweig, mit echter
+  Basis im Graphen, zu einem selbstgewählten Zeitpunkt.
+
+```
+git switch -c alex/thema          # anfangen
+git switch alex/thema && git merge master     # aufschliessen
+git switch master && git merge --no-ff alex/thema   # fertig
+```
 
 ---
 
@@ -387,6 +492,33 @@ Während der Konfliktauflösung in Weg B stand `master` unverrückt auf `794da2f
 **(e) Größe** — 857 Byte Bundle gegen 525 Byte ZIP im Versuch. Der Aufschlag ist
 die mitgeführte Vorgeschichte und fällt nicht ins Gewicht.
 
+**(f) `git bundle create` scheitert auf dem Ausgabe-Mount der Bauumgebung**
+
+```
+fatal: sha1 file '<stdout>' write error: Bad file descriptor
+error: pack-objects died
+```
+
+`zip` und `cp` funktionieren dort dagegen. Die Ursache liegt im Mount, nicht in
+git. `tools/bundle_bauen.sh` baut das Bundle deshalb in einem Stapelverzeichnis
+unter `/tmp` und kopiert es erst danach.
+
+**(g) `git status --porcelain` ist die falsche Probe für „muss ich stashen?"**
+
+Eine einzige unverfolgte Datei genügte, damit das Einspielskript den
+Stash-Zweig betrat. `git stash push` (ohne `-u`) meldete dann
+`No local changes to save`, legte nichts an, und das folgende
+`git rev-parse stash@{0}` brach ab. Die Probe muß genau das messen, was `stash`
+auch mitnimmt: `git diff --quiet && git diff --cached --quiet`.
+
+**(h) `git stash -u` räumt die Bundle-Datei mit beiseite**, wenn sie unverfolgt
+im Arbeitsbaum liegt. Der Fetch scheiterte danach mit `does not appear to be a
+git repository` — zwei Schritte später und ohne erkennbaren Bezug. Deshalb kein
+`-u`, und deshalb wird der Bundle-Pfad vor dem Stash absolut aufgelöst.
+
+**(i) Das Testprotokoll landete im Auslieferungsarchiv**, weil es im
+Stapelverzeichnis lag. Es liegt jetzt außerhalb.
+
 **Umgebung der Messung:** git 2.43.0, Linux-Bauumgebung. Die Bundle-Fassung ist
 seit Git 1.5 unverändert lesbar; eine Fassungsabhängigkeit ist nicht zu erwarten,
 aber beim ersten Einspielen in der VM zu bestätigen.
@@ -395,12 +527,12 @@ aber beim ersten Einspielen in der VM zu bestätigen.
 
 ## 11. Offene Punkte
 
-- **Maschinelle Vorabprobe.** Die Prüfung aus 3.3 ließe sich in ein
-  Auslieferungswerkzeug fassen (`tools/pruefe_auslieferung.py` prüft bereits die
-  MD5-Liste von der Wurzel aus). Bis dahin ist 3.3 eine redaktionelle Regel ohne
-  Durchsetzung.
 - **`refs/claude/*` auf GitHub?** Ob der Auslieferungsstand auch entfernt
   vorgehalten wird, ist nicht entschieden. Es hängt daran, ob GitHub hier Archiv
   oder nur Austauschpunkt ist.
-- **Erste Erprobung in der VM.** Der Weg aus Abschnitt 4 ist bislang in der
-  Bauumgebung gemessen, nicht unter Windows mit UNC-Pfaden gefahren.
+- **Windows.** Erledigt sich: dort ist kein Git verfügbar, die Anlage bekommt
+  einen vollständigen Rollout (Abschnitt 0). Der Bundle-Weg wird dort nie
+  gefahren.
+
+*Erledigt mit Build 662:* die maschinelle Vorabprobe (Abschnitt 3.3, jetzt
+harter Abbruch in `tools/bundle_bauen.sh`).
