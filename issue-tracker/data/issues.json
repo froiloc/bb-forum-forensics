@@ -6693,6 +6693,44 @@
           "comment": "Issue erstellt"
         }
       ]
+    },
+    {
+      "id": "75f84fee-3439-4277-aad5-a969ed20a5e7",
+      "type": "improvement",
+      "title": "Kapazitätspflege Liste von Daten per default nur ab bestehendem Monat azeigen",
+      "affected_version": "0.8.662",
+      "reporter": "Alex",
+      "reported_at": "2026-08-03T12:40:00.948848+00:00",
+      "prerequisites": "Im der Liste der Kapazitätspflege \"Abwesenheiten und Garantien, sowie Feiertage und Abwesenheitsgründe werden ältere Daten aus der Vergangenheit angezeigt.\r\n",
+      "description": "Im der Liste der Kapazitätspflege \"Abwesenheiten und Garantien, sowie Feiertage und Abwesenheitsgründe, sollten per Default nur Daten mit Bezug ab dem aktuellen Monat angezeigt werden. Alle anderen sollen per default ausgeblendet sein. Es soll aber eine Checkbox \"auch historische Daten anzeigen\" geben, die es ermöglicht ältere Daten mit aufzuführen.",
+      "expected_behavior": "Ist die Checkbox gesetzt werden die historischen Daten mit eingeblendet. Ist sie nicht angehakt, beginnen die Daten ab dem 1. des aktuellen Monats. Per default ist der Haken nicht gesetzt.",
+      "actual_behavior": "Alle Daten, auch historische, werde immer angezeigt.",
+      "status": "open",
+      "priority": "medium",
+      "severity": "minor",
+      "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14",
+        "database": "coordinator.db"
+      },
+      "tags": [
+        "Kalender",
+        "Historie"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-03T12:40:00.948880+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
+        }
+      ]
     }
   ]
 }
