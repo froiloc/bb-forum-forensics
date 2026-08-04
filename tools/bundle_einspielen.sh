@@ -79,6 +79,8 @@
 set -euo pipefail
 trap 'echo "" >&2; echo "ABBRUCH in Zeile ${LINENO}: ${BASH_COMMAND}" >&2' ERR
 
+rootpath="$(dirname "$(dirname $0)")"
+
 package="${1:-}"
 build_no="${2:-}"
 # Der Testbefehl ist herausgezogen, weil die Bauumgebung nicht ueberall gleich
@@ -87,9 +89,9 @@ build_no="${2:-}"
 if [ -n "${3:-}" ]; then
     testbefehl="$3"
 elif command -v python >/dev/null 2>&1; then
-    testbefehl="python run_tests.py"
+    testbefehl="python ${rootpath:-'.'}/run_tests.py"
 else
-    testbefehl="python3 run_tests.py"
+    testbefehl="python3 ${rootpath:-'.'}/run_tests.py"
 fi
 
 if [ -z "$package" ] || [ -z "$build_no" ]; then
