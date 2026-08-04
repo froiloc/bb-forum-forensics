@@ -141,7 +141,12 @@ echo "(a) Nichts Uncommittetes im Arbeitsbaum."
 # (b) IGNORIERTE Dateien werden gelistet, nicht abgebrochen. Der Filter ist
 #     ausdruecklich benannt und wandert ins Protokoll -- ein verschwiegener
 #     Filter waere selbst wieder eine stille Auslassung.
-filter='__pycache__|\.pytest_cache|node_modules|\.venv|\.mypy_cache|\.ruff_cache'
+# Build 665: 'logs/' dazu. run_tests.py legt dort seit diesem Build die
+# Testprotokolle ab; ohne den Eintrag meldete JEDE Lieferung sie als
+# 'ignorierte Datei im Baum'. Ein Hinweis, der immer kommt, wird nicht
+# mehr gelesen - und dann faellt der Fall nicht mehr auf, fuer den er
+# gedacht war.
+filter='__pycache__|\.pytest_cache|node_modules|\.venv|\.mypy_cache|\.ruff_cache|^!! logs/'
 ignoriert="$(git status --porcelain --ignored | grep '^!!' | grep -Ev "$filter" || true)"
 if [ -n "$ignoriert" ]; then
     echo "(b) ACHTUNG -- ignorierte Dateien im Baum:"
