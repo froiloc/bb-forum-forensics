@@ -79,7 +79,51 @@
 set -euo pipefail
 trap 'echo "" >&2; echo "ABBRUCH in Zeile ${LINENO}: ${BASH_COMMAND}" >&2' ERR
 
-rootpath="$(dirname "$(dirname $0)")"
+# --- SELBST-VERLAGERUNG (Build 666) ----------------------------------------
+# Dieses Skript raeumt sich sonst waehrend des Laufs selbst weg: Schritt 5
+# mergt eine Lieferung, die tools/bundle_einspielen.sh aendern kann, und
+# frueher stashte Schritt 2 obendrein. Bash liest ein Skript NICHT am Stueck,
+# sondern nach Dateiposition -- aendert sich die Datei mittendrin, fuehrt es
+# ab da Bruchstuecke aus. Beim Erproben am 04.08.2026 ist genau das passiert
+# (ein 'git stash' nahm die frisch kopierte Fassung mit, und es lief die alte).
+#
+# Deshalb: einmal nach /tmp kopieren und von dort neu starten. Danach kann
+# kein Merge, kein Checkout und kein Stash dem laufenden Prozess mehr den
+# Boden wegziehen. 'exec' erhaelt das Arbeitsverzeichnis -- das darunter
+# stehende 'cd' findet also weiterhin das richtige Repository.
+if [ -z "${AIW_EINSPIELEN_KOPIE:-}" ]; then
+    _kopie="$(mktemp -t bundle_einspielen.XXXXXXXX)"
+    cat "$0" > "$_kopie"
+    AIW_EINSPIELEN_KOPIE="$_kopie"
+    # DER URSPRUNGSAUFRUF WIRD MITGENOMMEN. Nach dem exec ist $0 der Pfad der
+    # Wegwerfkopie in /tmp; eine Meldung "einfach erneut aufrufen: $0 ..."
+    # naennte damit einen Pfad, den es beim naechsten Mal nicht mehr gibt.
+    # Gemessen bei der Erprobung am 04.08.2026 - der Zustandsbericht schlug
+    # tatsaechlich '/tmp/bundle_einspielen.ECrTa83n' vor.
+    AIW_EINSPIELEN_AUFRUF="$0"
+    export AIW_EINSPIELEN_KOPIE AIW_EINSPIELEN_AUFRUF
+    exec bash "$_kopie" "$@"
+fi
+# Ab hier gilt: $0 ist die Kopie, $aufruf ist der Weg, den der Mensch getippt hat.
+aufruf="${AIW_EINSPIELEN_AUFRUF:-$0}"
+
+# --- ARBEITSVERZEICHNIS (Build 666) ----------------------------------------
+# Alle folgenden Schritte setzen die Repository-WURZEL voraus -- der
+# Testbefehl ('python run_tests.py') genauso wie die Abnahmeprobe gegen
+# MD5SUMS. Die Wurzel wird bei git ERFRAGT und nicht aus $0 errechnet:
+# seit der Selbst-Verlagerung liegt $0 in /tmp, ein aus dem Skriptpfad
+# abgeleiteter Wurzelpfad zeigte also ins Leere. 'git rev-parse' ist
+# ausserdem unabhaengig davon, ob das Skript ueber einen relativen oder
+# absoluten Pfad aufgerufen wurde.
+#
+# ERSETZT die Loesung aus Commit 717fa12 (rootpath aus $0), die mit der
+# Verlagerung nicht vertraeglich waere. Das Ziel ist dasselbe.
+if ! _wurzel="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+    echo "ABBRUCH: kein Git-Repository im aktuellen Verzeichnis." >&2
+    exit 2
+fi
+cd "$_wurzel"
+echo "Arbeitsverzeichnis: $_wurzel"
 
 package="${1:-}"
 build_no="${2:-}"
@@ -89,18 +133,18 @@ build_no="${2:-}"
 if [ -n "${3:-}" ]; then
     testbefehl="$3"
 elif command -v python >/dev/null 2>&1; then
-    testbefehl="python ${rootpath:-'.'}/run_tests.py"
+    testbefehl="python run_tests.py"
 else
-    testbefehl="python3 ${rootpath:-'.'}/run_tests.py"
+    testbefehl="python3 run_tests.py"
 fi
 
 if [ -z "$package" ] || [ -z "$build_no" ]; then
-    echo "Aufruf: $0 <paket> <buildnummer> [testbefehl]" >&2
-    echo "Beispiel: $0 aiw_webserver 661" >&2
+    echo "Aufruf: ${aufruf} <paket> <buildnummer> [testbefehl]" >&2
+    echo "Beispiel: ${aufruf} aiw_webserver 666" >&2
     exit 2
 fi
 
-# ABSOLUTER Pfad, und zwar BEVOR gestasht wird. Befund aus der Erprobung
+# ABSOLUTER Pfad. Befund aus der Erprobung
 # 02.08.2026: liegt die Bundle-Datei im Arbeitsbaum, raeumt 'git stash -u' sie
 # mit beiseite -- der anschliessende Fetch scheitert dann mit "does not appear
 # to be a git repository", zwei Schritte spaeter und ohne erkennbaren Bezug.
@@ -116,8 +160,12 @@ bundle="${package}_${build_no}.bundle"
 # auseinander (Beispiel: Zweig claude/build661, Lieferung Build 662).
 zweig=""                       # wird in Schritt 1 gesetzt
 ref="refs/claude/build${build_no}"
+# Build 666: Liste und Pruefwerkzeug fuer die Abnahmeprobe (Schritt 8).
+# Das Werkzeug ist EIGENSTAENDIG, damit die Probe auch nachtraeglich und
+# ohne einen ganzen Einspielvorgang gefahren werden kann.
+md5liste="MD5SUMS_Build${build_no}.txt"
+pruefwerkzeug="tools/pruefe_lieferung.sh"
 integration="integration/${build_no}"
-stash_kennung=""
 schon_geholt=0                 # Build 665: Wiederaufnahme (s. Schritt 0)
 
 meld() { printf '\n=== %s ===\n' "$*"; }
@@ -150,19 +198,14 @@ zustandsbericht() {
     else
         echo "  master: traegt die Lieferung NICHT (unveraendert)" >&2
     fi
-    if [ -n "$stash_kennung" ]; then
-        echo "" >&2
-        echo "  ACHTUNG -- EIGENE ARBEIT LIEGT IM STASH:" >&2
-        echo "    ${stash_kennung}" >&2
-        echo "  Sie wurde NICHT zurueckgeholt. Ein zweiter Lauf findet einen" >&2
-        echo "  sauberen Baum und holt sie ebenfalls nicht zurueck." >&2
-        echo "  Von Hand:  git stash list ; git stash apply ${stash_kennung}" >&2
-    fi
+    # Build 666: KEIN STASH MEHR. Seit Schritt 2 bei verfolgten Aenderungen
+    # abbricht, statt sie beiseitezulegen, gibt es hier auch nichts mehr zu
+    # melden -- und nichts mehr, was liegenbleiben koennte.
     echo "" >&2
     echo "  Dieses Skript ist WIEDERAUFSETZBAR: Ursache beheben, auf master" >&2
     echo "  zurueckwechseln und erneut aufrufen. Erledigte Schritte werden" >&2
     echo "  uebersprungen." >&2
-    echo "    git switch master && $0 ${package} ${build_no}" >&2
+    echo "    git switch master && ${aufruf} ${package} ${build_no}" >&2
     echo "------------------------------------" >&2
 }
 
@@ -272,38 +315,74 @@ echo "Quellzweig im Bundle: ${zweig}"
 # --- 2) Arbeitsbaum sichern -------------------------------------------------
 schritt=2
 meld "2) Arbeitsbaum"
-# Die Probe muss GENAU DAS messen, was 'git stash' (ohne -u) auch mitnimmt:
-# verfolgte Aenderungen, im Baum wie im Index. Befund 2026-08-02: mit
-# 'git status --porcelain' als Probe reichte EINE unverfolgte Datei, damit der
-# Zweig betreten wurde -- 'git stash push' meldete dann "No local changes to
-# save", legte nichts an, und das anschliessende 'git rev-parse stash@{0}'
-# brach mit "unknown revision" ab.
+# Geprueft werden VERFOLGTE Aenderungen, im Baum wie im Index. Unverfolgte
+# Dateien sind ausgenommen: der Merge kann sie nicht stillschweigend
+# ueberschreiben -- kollidiert eine, bricht git laut ab.
 if git diff --quiet && git diff --cached --quiet; then
     echo "Keine verfolgten Aenderungen."
     unverfolgt="$(git ls-files --others --exclude-standard)"
     if [ -n "$unverfolgt" ]; then
-        echo "Unverfolgte Dateien bleiben liegen (durch den Merge nicht"
-        echo "gefaehrdet -- kollidiert eine, bricht git laut ab):"
+        echo "Unverfolgte Dateien im Baum:"
         echo "$unverfolgt" | sed 's/^/  /'
+        # BUILD 666, aus der Erprobung: eine unverfolgte Datei, die die
+        # LIEFERUNG mitbringt, laesst den Merge in Schritt 5 scheitern
+        # ("would be overwritten by merge"). Das ist richtig von git -- aber
+        # es faellt erst nach dem fetch auf, also spaet und an einer Stelle,
+        # an der man den Zusammenhang nicht mehr vermutet. Wenn wir es JETZT
+        # schon wissen koennen, sagen wir es JETZT.
+        #
+        # Die Probe braucht die Lieferung; sie laeuft deshalb nur, wenn die
+        # Ref schon vorliegt (Wiederaufnahme). Sonst holt Schritt 5 die
+        # Warnung nach. Auch das wird gesagt, statt es zu verschweigen.
+        if git rev-parse --verify --quiet "$ref" >/dev/null; then
+            kollision="$(git diff --name-only "master...${ref}" \
+                         | grep -Fxf <(echo "$unverfolgt") || true)"
+            if [ -n "$kollision" ]; then
+                echo "" >&2
+                echo "ABBRUCH: diese unverfolgten Dateien werden von der" >&2
+                echo "Lieferung mitgebracht. Der Merge wuerde sie ueber-" >&2
+                echo "schreiben und bricht deshalb ab:" >&2
+                echo "$kollision" | sed 's/^/  /' >&2
+                echo "" >&2
+                echo "Bitte vorher entscheiden: aufheben oder wegraeumen." >&2
+                echo "  mkdir -p /tmp/aiw_beiseite && mv <datei> /tmp/aiw_beiseite/" >&2
+                exit 1
+            fi
+        else
+            echo "(Ob eine davon mit der Lieferung kollidiert, zeigt sich"
+            echo " erst in Schritt 5 -- die Lieferung liegt noch nicht vor.)"
+        fi
     fi
 else
-    echo "Verfolgte Aenderungen auf master:"
-    echo "HINWEIS: Besser waere, diese Arbeit auf einem eigenen Zweig zu"
-    echo "committen. Ein Stash-Konflikt am Ende ist laestiger als ein Merge."
-    git status --short
-    vorher="$(git rev-parse --verify --quiet 'stash@{0}' || true)"
-    # OHNE -u: unverfolgte Dateien bleiben liegen. Sie mitzunehmen vergroessert
-    # nur die Angriffsflaeche -- gemessen hat 'stash -u' einmal die Bundle-Datei
-    # selbst beiseitegeraeumt, worauf der Fetch zwei Schritte spaeter scheiterte.
-    git stash push -m "vor ${package} Build ${build_no}"
-    nachher="$(git rev-parse --verify --quiet 'stash@{0}' || true)"
-    if [ -z "$nachher" ] || [ "$nachher" = "$vorher" ]; then
-        echo "ABBRUCH: 'git stash push' hat keinen neuen Eintrag angelegt." >&2
-        echo "Der Arbeitsbaum wurde nicht veraendert. Bitte von Hand pruefen." >&2
-        exit 1
-    fi
-    stash_kennung="$nachher"
-    echo "Eigener Stash: $stash_kennung"
+    # BUILD 666: KEIN STASH MEHR -- HARTER ABBRUCH MIT ANLEITUNG.
+    #
+    # Frueher legte dieser Schritt die Arbeit per 'git stash' beiseite und
+    # holte sie in Schritt 8 zurueck. Dazwischen liegen fuenf Schritte, von
+    # denen jeder abbrechen kann. Passierte das, blieb der Stash liegen -- und
+    # ein zweiter Lauf fand einen sauberen Baum, legte keinen an und holte in
+    # Schritt 8 folglich auch nichts zurueck. Die Arbeit war nicht verloren,
+    # aber STILL verschwunden, und niemand sagte es (Grundregel 1).
+    #
+    # Der Stash war als einziger Zustand dieses Ablaufs nicht aus Git
+    # ableitbar. Statt ihn kunstvoll zu verwalten, faellt er weg: was nie
+    # beiseitegelegt wird, kann nicht liegenbleiben. Der Preis ist EIN
+    # zusaetzlicher Handgriff vor dem Einspielen -- ein Commit auf einem
+    # eigenen Zweig, den man ohnehin haben will.
+    echo "ABBRUCH: der Arbeitsbaum traegt verfolgte Aenderungen." >&2
+    echo "" >&2
+    git status --short >&2
+    echo "" >&2
+    echo "Diese Arbeit wird NICHT angetastet -- weder beiseitegelegt noch" >&2
+    echo "ueberschrieben. Bitte vorher selbst sichern:" >&2
+    echo "" >&2
+    echo "  git switch -c alex/<thema>" >&2
+    echo "  git add -A && git commit -m \"<was es ist>\"" >&2
+    echo "  git switch master" >&2
+    echo "  ${aufruf} ${package} ${build_no}" >&2
+    echo "" >&2
+    echo "Der Zweig laesst sich spaeter regulaer mergen. Wer die Aenderungen" >&2
+    echo "verwerfen will: 'git restore .' (Achtung, das ist endgueltig)." >&2
+    exit 1
 fi
 
 # --- 3) Lieferung in eigene Ref holen (Arbeitsbaum bleibt unberuehrt) -------
@@ -363,12 +442,18 @@ if [ "$zu_mergen" -eq 1 ] \
     # Lage nicht passte. Die Probe ist 'git ls-files -u': stehen dort keine
     # Eintraege, gab es keinen Konflikt, sondern etwas anderes.
     if ! offene_konflikte; then
+        # KEINE VERMUTUNG UEBER DIE URSACHE. Ein erster Entwurf nannte hier
+        # "haeufig: keine git-Identitaet eingerichtet" - und lag bei der
+        # ersten Erprobung prompt daneben (es war eine unverfolgte Datei, die
+        # der Merge haette ueberschreiben muessen). Eine falsche
+        # Ursachenangabe ist schlimmer als keine: sie lenkt die Suche in die
+        # falsche Richtung. Git hat den Grund gerade selbst genannt.
         echo "MERGE GESCHEITERT, ABER OHNE KONFLIKT." >&2
-        echo "Es liegen keine Dateien mit Konfliktstufe vor - die Ursache" >&2
-        echo "steht in der git-Ausgabe daruber. Haeufig: keine Identitaet" >&2
-        echo "eingerichtet (git config user.name / user.email)." >&2
+        echo "Es liegen keine Dateien mit Konfliktstufe vor. Der Grund steht" >&2
+        echo "in der git-Ausgabe DIREKT DARUEBER - bitte dort nachlesen." >&2
         echo "" >&2
-        echo "Nach dem Beheben einfach erneut aufrufen." >&2
+        echo "Der Arbeitsbaum wurde nicht veraendert. Nach dem Beheben der" >&2
+        echo "Ursache einfach erneut aufrufen." >&2
         exit 1
     fi
     echo "KONFLIKT beim Merge. Das ist der vorgesehene Fall, nicht der Ausnahmefall."
@@ -383,7 +468,6 @@ if [ "$zu_mergen" -eq 1 ] \
         echo "  ${testbefehl}"
         echo "  git switch master && git merge --ff-only ${integration}"
         echo "  git branch -d ${integration}"
-        [ -n "$stash_kennung" ] && echo "  git stash pop          # eigener Eintrag: ${stash_kennung}"
         exit 1
     fi
 fi
@@ -421,34 +505,45 @@ git switch master
 git merge --ff-only "$integration"
 git branch -d "$integration"
 
-# --- 8) Stash zurueckholen -- nur den EIGENEN -------------------------------
-# Befund 02.08.2026: 'git stash' liefert AUCH BEI SAUBEREM BAUM den Wert 0
-# ("No local changes to save"). Ein unbedingtes 'git stash pop' holt dann den
-# naechstbesten aelteren Eintrag hervor -- gemessen landete ein Stash vom Juni
-# kommentarlos im Arbeitsbaum. Deshalb wird die eigene Kennung verglichen.
-if [ -n "$stash_kennung" ]; then
-    schritt=8
-    meld "8) Stash zurueckholen"
-    if [ "$(git rev-parse 'stash@{0}' 2>/dev/null || true)" != "$stash_kennung" ]; then
-        echo "NICHT ZURUECKGEHOLT: stash@{0} ist nicht mehr der eigene Eintrag." >&2
-        echo "Von Hand: git stash list ; git stash apply ${stash_kennung}" >&2
+# --- 8) Abnahmeprobe gegen die MD5-Liste ------------------------------------
+# BUILD 666. Bis hierher wurde geprueft, ob GIT das Richtige getan hat. Diese
+# Probe fragt etwas anderes: liegt im ARBEITSBAUM wirklich das, was geliefert
+# wurde? Genau diese Frage stand am 04.08.2026 im Raum, als ein Testlauf auf
+# dem falschen Zweig lief und eine Datei zu fehlen schien -- wir haben mehrere
+# Wortwechsel gebraucht, wofuer diese Probe fuenf Sekunden braucht.
+#
+# Grundregel 8 verlangt Pruefsummen genau dafuer. Bis Build 665 wurde die
+# Liste bei jeder Lieferung erzeugt, mitgeliefert und committet -- und von
+# niemandem geprueft (gemessen: 173 MD5SUMS-Dateien im Bestand, null
+# Vorkommen von 'md5sum -c').
+schritt=8
+meld "8) Abnahmeprobe (MD5)"
+if [ -f "$md5liste" ] && [ -f "$pruefwerkzeug" ]; then
+    if bash "$pruefwerkzeug" "$md5liste"; then
+        echo "Abnahme bestanden: der Arbeitsbaum entspricht der Lieferung."
+    else
+        echo "" >&2
+        echo "ABNAHME FEHLGESCHLAGEN." >&2
+        echo "Der Merge ist durchgelaufen, aber der Arbeitsbaum entspricht" >&2
+        echo "NICHT der ausgelieferten Fassung. master wurde bereits" >&2
+        echo "nachgezogen -- der Bestand ist also veraendert." >&2
+        echo "" >&2
+        echo "Haeufigste Ursache: eine Konfliktaufloesung hat eine Datei" >&2
+        echo "anders stehenlassen als geliefert. Das kann richtig sein" >&2
+        echo "(eigene Aenderung behalten) oder ein Versehen. Bitte die oben" >&2
+        echo "genannten Dateien einzeln ansehen:" >&2
+        echo "  git diff ${ref} -- <datei>" >&2
         exit 1
     fi
-    # Beruehrt die zurueckgelegte Arbeit dieselbe Datei wie die Lieferung,
-    # endet 'pop' mit einem Konflikt. Der Eintrag bleibt dabei erhalten --
-    # es geht nichts verloren.
-    if ! git stash pop; then
-        echo ""
-        echo "KONFLIKT beim Zurueckholen der eigenen Arbeit."
-        if aufloesen; then
-            git stash drop
-            echo "Aufgeloest, Stash-Eintrag verworfen."
-        else
-            echo "Der Eintrag ${stash_kennung} ist NICHT verbraucht worden."
-            echo "Aufloesen, dann: git stash drop"
-            exit 1
-        fi
-    fi
+else
+    # KEIN STILLES DURCHWINKEN. Eine ausgefallene Pruefung darf nicht wie
+    # eine bestandene aussehen -- das waere die gefaehrlichste Ausgabe dieses
+    # Schrittes.
+    echo "KEINE ABNAHME MOEGLICH:" >&2
+    [ -f "$md5liste" ]     || echo "  ${md5liste} nicht gefunden." >&2
+    [ -f "$pruefwerkzeug" ] || echo "  ${pruefwerkzeug} nicht gefunden." >&2
+    echo "Der Arbeitsbaum wurde NICHT gegen die Lieferung geprueft." >&2
+    echo "Nachholen, sobald vorhanden:  ${pruefwerkzeug} ${build_no}" >&2
 fi
 
 schritt=0

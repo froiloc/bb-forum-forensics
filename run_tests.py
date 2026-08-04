@@ -189,6 +189,26 @@ def _fehlerauszug(zeilen: List[str], marken: Tuple[str, ...]) -> List[str]:
     return auszug
 
 
+def _pytest_version() -> Optional[str]:
+    """
+    Die pytest-Fassung DIESES Interpreters - oder None, wenn er keine hat.
+
+    Bewusst ueber 'sys.executable -m pytest --version' und nicht ueber
+    'import pytest': geprueft werden muss genau der Aufruf, der gleich
+    stattfindet. Ein Import im laufenden Prozess koennte gelingen, waehrend
+    der Unterprozess an etwas anderem scheitert.
+    """
+    try:
+        p = subprocess.run([sys.executable, "-m", "pytest", "--version"],
+                           capture_output=True, text=True, timeout=60,
+                           cwd=str(PROJECT_ROOT))
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if p.returncode != 0:
+        return None
+    return (p.stdout or p.stderr).strip().splitlines()[0] if (p.stdout or p.stderr) else "unbekannt"
+
+
 def run_python_tests(log_pfad: Path, leise: bool = False
                      ) -> Tuple[bool, List[str]]:
     """
@@ -200,7 +220,43 @@ def run_python_tests(log_pfad: Path, leise: bool = False
     zuvor, '-rf' stellt die Liste der gefallenen Tests ans Ende.
     """
     _header("Python-Tests (pytest)")
-    print(f"  Protokoll: {log_pfad}")
+    print(f"  Protokoll:    {log_pfad}")
+    # BUILD 666 -- WOMIT WURDE GEMESSEN. Steht ab jetzt in jedem Lauf und in
+    # jedem Protokoll. Anlass: am 04.08.2026 hat 'pytest --version' auf der
+    # Kommandozeile funktioniert, waehrend derselbe Lauf ueber run_tests.py
+    # an "No module named pytest" scheiterte -- weil auf dem PATH ein pytest
+    # aus dem Benutzerverzeichnis lag, im venv aber keines. Zwei Interpreter
+    # mit womoeglich verschiedenen Paketstaenden fahren dieselbe Suite; dann
+    # kann derselbe Bestand zweimal verschieden ausfallen, ohne dass es am
+    # Code liegt. Fuer ein forensisches Werkzeug ist "womit wurde gemessen"
+    # keine Nebensache, sondern Teil des Befundes.
+    print(f"  Interpreter:  {sys.executable}")
+
+    # VORAUSSETZUNG ZUERST -- und als solche benannt. Die JavaScript-Seite
+    # prueft ihre Voraussetzungen seit jeher (npm, node_modules), die
+    # Python-Seite tat es nicht: eine fehlende Bibliothek sah deshalb aus wie
+    # ein Testfehler. Das ist ein Unterschied ums Ganze - im einen Fall ist
+    # der Bestand kaputt, im anderen die Umgebung.
+    version = _pytest_version()
+    if version is None:
+        meldung = [
+            "VORAUSSETZUNG FEHLT -- ES WURDE NICHT GETESTET.",
+            "",
+            f"Der Interpreter {sys.executable} kennt kein Modul 'pytest'.",
+            "",
+            "ACHTUNG: dass 'pytest --version' auf der Kommandozeile "
+            "funktioniert, beweist das Gegenteil NICHT - dann liegt ein "
+            "pytest auf dem PATH, aber nicht in DIESER Umgebung.",
+            "",
+            "Abhilfe (in der aktiven Umgebung):",
+            "    python -m pip install pytest",
+            "Nachpruefen:",
+            "    python -m pytest --version",
+        ]
+        for z in meldung:
+            print(z)
+        return False, meldung
+    print(f"  pytest:       {version}")
 
     cmd = [sys.executable, "-m", "pytest", "tests/",
            "-q", "--tb=long", "-rf", "--color=yes"]
@@ -218,7 +274,7 @@ def run_js_tests(log_pfad: Path, leise: bool = False
     Rueckgabe: (bestanden, Fehlerauszug).
     """
     _header("JavaScript-Tests (vitest)")
-    print(f"  Protokoll: {log_pfad}")
+    print(f"  Protokoll:    {log_pfad}")
 
     npm_check = subprocess.run(
         ["npm", "--version"],

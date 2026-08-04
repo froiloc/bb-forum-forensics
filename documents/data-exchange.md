@@ -328,6 +328,67 @@ zwischenzeitlich doch bewegt hat.
 
 ---
 
+### 4.4a Abnahmeprobe — Pflicht *(Festlegung 2026-08-04, Build 666)*
+
+**Nach dem Nachziehen von `master` wird die Lieferung gegen die Prüfsummenliste
+abgenommen.** `tools/bundle_einspielen.sh` tut das als Schritt 8 selbst;
+nachträglich und jederzeit von Hand:
+
+```
+./tools/pruefe_lieferung.sh 666
+```
+
+**Wozu.** Bis Build 665 wurde bei jeder Lieferung eine `MD5SUMS_Build<N>.txt`
+erzeugt, mitgeliefert und committet — und **von niemandem geprüft**. Gemessen am
+2026-08-04: 173 solcher Listen im Bestand, null Vorkommen von `md5sum -c` im
+gesamten Projekt. Grundregel 8 verlangt Prüfsummen genau dafür, dass nicht mit
+unterschiedlichen Dateifassungen gearbeitet wird — die Belege lagen vor, die
+Abnahme fehlte.
+
+Am selben Tag hat dieses Fehlen mehrere Wortwechsel gekostet: ein Testlauf lief
+auf dem falschen Zweig, drei Tests fielen, und die Frage „fehlt die Datei
+wirklich, oder schauen wir an die falsche Stelle?" ließ sich nicht in einem Zug
+beantworten. Die Probe beantwortet sie in fünf Sekunden.
+
+**Was die Probe sagt — und was nicht.** Geprüft werden **nur** die Dateien, die
+diese Lieferung angefasst hat. Über den übrigen Bestand sagt sie nichts, und sie
+behauptet es auch nicht: die Ausgabe nennt die geprüfte Zahl ausdrücklich.
+
+**Eine Abweichung ist kein Fehler.** Wurde bei einer Konfliktauflösung bewusst
+die eigene Fassung behalten, **muss** die Datei hier erscheinen. Die Probe fällt
+kein Urteil, sie legt den Unterschied offen:
+
+```
+git diff refs/claude/build<N> -- <datei>
+```
+
+Erster echter Lauf (Build 665, Bestand von Alex): 27 übereinstimmend, eine
+Abweichung — `tools/bundle_einspielen.sh`, erklärt durch Commit `717fa12`.
+
+**Fehlt die Liste oder das Prüfwerkzeug, wird das gesagt.** Eine ausgefallene
+Prüfung darf nicht wie eine bestandene aussehen; das wäre die gefährlichste
+Ausgabe dieses Schrittes.
+
+---
+
+### 4.4b Das Werkzeug liefert sich selbst aus *(Build 666)*
+
+Ändert eine Lieferung `tools/bundle_einspielen.sh`, wird sie noch mit der
+**alten** Fassung eingespielt. Verbesserungen am Einspielen wirken erst ab der
+**nächsten** Lieferung. Das ist nicht zu beheben, aber es wird angesagt:
+`bundle_bauen.sh` schreibt seit Build 666 eine Warnung ins Protokoll.
+
+Am 2026-08-04 ist genau das zweimal passiert — einmal in den fehlerhaften
+Fetch-Refspec, einmal in den Abbruch „Ref existiert bereits", dessen Behebung in
+ebendieser Lieferung steckte.
+
+Damit sich das Skript nicht **während** des Laufs selbst wegräumt (Bash liest
+Skripte nach Dateiposition, nicht am Stück), kopiert es sich beim Start nach
+`/tmp` und startet sich von dort neu. Danach kann ihm kein Merge, kein Checkout
+und kein Stash mehr den Boden wegziehen.
+
+---
+
 ### 4.5 Eigene Arbeitszweige statt Arbeit auf master
 
 **Festlegung 2026-08-02:** Auf `master` wird nicht mehr gearbeitet. Eigene
@@ -342,8 +403,14 @@ den Konflikt, sie beseitigen ihn nicht.
 Was sie leisten:
 
 - `master` steht immer auf einem geprüften Stand; Halbfertiges liegt woanders.
-- Das Einspielskript muss nie stashen — Abschnitt 4.2 wird zum Leerlauf, und
-  mit ihm dessen Stolperfallen.
+- Das Einspielskript stasht seit Build 666 **gar nicht mehr**: ein Arbeitsbaum
+  mit verfolgten Änderungen führt zum Abbruch mit Anleitung. Der Stash war der
+  einzige Zustand des Ablaufs, der sich nicht aus Git ableiten ließ — brach
+  etwas zwischen Beiseitelegen und Zurückholen ab, blieb er liegen, und ein
+  zweiter Lauf fand einen sauberen Baum und holte nichts zurück. Die Arbeit war
+  nicht verloren, aber *still* verschwunden (GR1). Was nie beiseitegelegt wird,
+  kann nicht liegenbleiben. Der Preis ist ein Handgriff, den man ohnehin haben
+  will.
 - Der Konflikt wandert an die bessere Stelle: auf den eigenen Zweig, mit echter
   Basis im Graphen, zu einem selbstgewählten Zeitpunkt.
 
