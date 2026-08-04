@@ -67,6 +67,22 @@ then
 fi
 git add "${ROOTDIR}debug/screenshots/*"
 git commit -a -m "${1:-$(git log -1 | tail -n1 | awk -F. '{print $1 "." $2 "." $3+1}' | sed -E 's#^ +##g')} - ${uuid}"
+
+# Define output location (outside the repo to avoid recursive archives)
+OUTPUT_DIR="/opt/aiw_sqlite_prepper/"
+COMMIT_HASH=$(git rev-parse --short HEAD)
+
+# Create archive of the current state
+git archive --prefix=aiw_webserver/ --format=zip -9 HEAD forensic_api/ tools/ report_render/ management/ maintenance/ db/ userinfo/ editor/ toolbar/ setup/win64/ setup/deployment_manifest.json core/ server/ static/ install.py requirements.txt main.py setup_coordinator_dev.py build.json config.yaml package.json start.bat -o "${OUTPUT_DIR}/webserver-latest.zip"
+
+echo "Created archive of ${COMMIT_HASH}: ${OUTPUT_DIR}/webserver-latest.zip"
+
+old_pwd="${PWD}"
+cd /opt/aiw_webserver
+bash ./.get_md5.sh
+cd "${old_pwd}"
+
+echo "Created new base64-encoded Zip-Archive of current version."
 git push
 git rm "${ROOTDIR}debug/screenshots/*.png" 2>/dev/null
 mkdir -p "${ROOTDIR}debug/screenshots/"
