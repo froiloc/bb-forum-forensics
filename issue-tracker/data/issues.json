@@ -16029,6 +16029,44 @@
           "comment": "Issue erstellt"
         }
       ]
+    },
+    {
+      "id": "95139d2a-5296-465a-92ba-dba0d2172fea",
+      "type": "improvement",
+      "title": "Benutzer auf inaktiv setzen.",
+      "affected_version": "0.8.664",
+      "reporter": "Alex",
+      "reported_at": "2026-08-04T15:15:50.671634+00:00",
+      "prerequisites": "Ein Ermittler scheidet aus.",
+      "description": "Ermittler scheiden auch aus, sie sollten dann auch auf inaktiv innerhalb der GUI gesetzt werden können.",
+      "expected_behavior": "Innerhalb der Personalverwaltung soll es eine Möglichkeit geben eine Person auf inaktiv zu setzen. Sie wird dann per Default in normalen Tabellen nicht mehr angezeigt, sondern ist dann lediglich noch innerhalb der Personalverwaltung zu sehen.",
+      "actual_behavior": "Benutzer sind derzeit dauerhaft eingeblendet, sobald sie einmal eingepflegt worden sind.",
+      "status": "open",
+      "priority": "medium",
+      "severity": "minor",
+      "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14",
+        "database": "coordinator.db"
+      },
+      "tags": [
+        "Person",
+        "Offboarding"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-04T15:15:50.671673+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
+        }
+      ]
     }
   ]
 }
