@@ -87,17 +87,17 @@
       "reporter": "Alex",
       "reported_at": "2026-08-03T11:55:53.195029+00:00",
       "prerequisites": "Man kann derzeit Kapazitaetsgarantien und Einschraenkungen einpflegen. Gruende sind gepflegt.",
-      "description": "STAND NACH BUILD 663: NICHT BEHOBEN, ABER SICHTBAR GEMACHT. Die Ursache ist noch nicht belegt; ohne Beleg wird nichts geraten.\n\nGEMESSEN (Bauumgebung, jsdom, CP22): wird renderCapacityPflege mit zwei Gruenden in data.reasons aufgerufen, enthaelt #aiw-capp-av-grund genau drei Eintraege - '(kein Grund)', 'Urlaub', 'Krankheit'. Der Frontend-Pfad ist damit als Ursache AUSGESCHLOSSEN: was die Sicht bekommt, zeigt sie auch. Gegenprobe im Repository: Build 662 hat am Kapazitaetscode nichts geaendert (git diff 7ca1211..aedc249), die Messung gilt also fuer die gemeldete Version.\n\nOFFEN ist damit, ob GET /api/capacity/stammdaten die Gruende ueberhaupt liefert. Der Lesepfad (management_app.py _capacity_stammdaten -> ReasonRepo.list_reasons -> _geteilt) ist beim Lesen unauffaellig; die Entscheidung faellt an der Produktions-coordinator.db, nicht am Quelltext. Erforderliche Messung an Alex uebergeben (Cockpit-Konsole):\n  fetch('/api/capacity/stammdaten').then(r=>r.json())\n    .then(d=>console.log(d.counts, d.scope, d.reasons));\n\nWAS BUILD 663 TUT: bisher zeigte die Auswahl bei leerem Katalog nur '(kein Grund)', und zwar wortlos - 'es ist noch kein Grund angelegt' war von 'die Gruende sind nicht angekommen' nicht zu unterscheiden. Das ist eine stille Auslassung (GR1) genau dort, wo die Bedienerin eine Erklaerung braucht. Die Maske nennt den leeren Katalog jetzt ausdruecklich und benennt die Gegenprobe ('Stehen unten unter Abwesenheitsgruende Eintraege? Dann ist es ein Fehler'). Test CP23.\n\nABGETRENNT: der Zusatzwunsch 'Eintraege auch im Nachhinein aendern' ist in ein eigenes Ticket ueberfuehrt (7b2f4a19-6c3d-4e58-9a71-0d5c8e2f4b63).",
+      "description": "AUFGEKLAERT (Alex, 2026-08-04): KEIN FEHLER. Der Gruendekatalog war leer - es waren zu diesem Zeitpunkt keine Gruende gepflegt. Dass dann nur '(kein Grund)' zur Wahl steht, ist das richtige Verhalten.\n\nDIE MESSUNG PASST DAZU. CP22 hatte gezeigt: bekommt renderCapacityPflege Gruende in data.reasons, zeigt die Auswahl sie auch. Genau deshalb wurde am Auswahlfeld nichts geaendert - ein Fix ohne Beleg haette hier funktionierenden Code angefasst.\n\nWAS BLEIBT UND WARUM: die Maske zeigte den leeren Katalog WORTLOS. 'Es ist noch kein Grund angelegt' war von 'die Gruende sind nicht angekommen' nicht zu unterscheiden - eine stille Auslassung (GR1) genau an der Stelle, an der eine Erklaerung gebraucht wird. Dieser Vorgang IST der Beleg dafuer, dass die Luecke bedienungsrelevant ist: sie hat eine Fehlermeldung ausgeloest, wo keine Stoerung vorlag. Der Hinweis aus Build 663 (CP23) benennt den leeren Katalog jetzt und nennt die Gegenprobe; er bleibt.\n\nABGETRENNT: der Zusatzwunsch 'Eintraege auch im Nachhinein aendern' ist ein eigenes Ticket (7b2f4a19-6c3d-4e58-9a71-0d5c8e2f4b63) und davon unberuehrt.",
       "expected_behavior": "Die vorhandenen Gruende werden angezeigt.",
-      "actual_behavior": "Nur \"kein Grund\" wird angezeigt und ist auswaehlbar.",
-      "status": "in_progress",
+      "actual_behavior": "Nur '(kein Grund)' - weil der Katalog leer war. Richtiges Verhalten, aber ohne Erklaerung am Bildschirm.",
+      "status": "closed",
       "priority": "high",
       "severity": "minor",
       "assigned_to": "Claude",
       "related_to": [
         "7b2f4a19-6c3d-4e58-9a71-0d5c8e2f4b63"
       ],
-      "resolved_in_version": null,
+      "resolved_in_version": "0.8.663",
       "target_version": null,
       "environment": {
         "python_version": "3.14",
@@ -116,6 +116,14 @@
           "old_value": "open",
           "new_value": "in_progress",
           "comment": "Frontend als Ursache ausgeschlossen (CP22). Symptom in Build 663 sichtbar gemacht (CP23). Wartet auf die Konsolenmessung an der Produktionsinstanz; Zusatzwunsch abgetrennt."
+        },
+        {
+          "timestamp": "2026-08-04T13:30:00+00:00",
+          "author": "Alex",
+          "action": "status_change",
+          "old_value": "in_progress",
+          "new_value": "closed",
+          "comment": "Kein Fehler: es waren keine Gruende gepflegt. Am Auswahlfeld war nichts zu beheben. Der Hinweis auf den leeren Katalog (CP23) bleibt als eigenstaendige Verbesserung."
         }
       ]
     }

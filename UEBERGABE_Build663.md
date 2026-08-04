@@ -10,7 +10,7 @@
 | Ticket | Art | Stand nach diesem Build |
 |---|---|---|
 | `d3f933cd-40fd-44c0-938f-e8f84053d382` | improvement | **behoben** — mit einer benannten Abweichung (§3) |
-| `65a230fd-e31a-40d1-ac61-0e5ae8b98277` | bug | **nicht behoben** — Ursache eingegrenzt, Symptom sichtbar gemacht (§4) |
+| `65a230fd-e31a-40d1-ac61-0e5ae8b98277` | bug | **geschlossen — kein Fehler** (§4) |
 | `7b2f4a19-6c3d-4e58-9a71-0d5c8e2f4b63` | feature_request | **neu angelegt** — abgetrennt aus 65a230fd (§5) |
 
 ---
@@ -60,37 +60,19 @@ Willst du die Übernahme dennoch überall, sind es zwei Zeichen je Aufrufstelle 
 
 ---
 
-## 4. Ticket 65a230fd — gemessen, nicht geraten
+## 4. Ticket 65a230fd -- kein Fehler
 
-**Das Frontend ist als Ursache ausgeschlossen.**
+**Aufgeklaert (Alex, 2026-08-04): der Gruendekatalog war leer.** Dass dann nur „(kein Grund)“ zur Wahl steht, ist das richtige Verhalten. Am Auswahlfeld wurde nichts geaendert.
 
-Messung (`CP22`, jsdom, echter Quelltext): wird `renderCapacityPflege` mit zwei Gründen in `data.reasons` aufgerufen, enthält `#aiw-capp-av-grund` genau
+Die Messung passte dazu. `CP22` (jsdom, echter Quelltext) hatte gezeigt: bekommt `renderCapacityPflege` zwei Gruende in `data.reasons`, enthaelt `#aiw-capp-av-grund` genau
 
 ```
 ['=(kein Grund)', 'urlaub=Urlaub', 'krank=Krankheit']
 ```
 
-Gegenprobe im Repository: `git diff 7ca1211..aedc249` zeigt, dass Build 662 am Kapazitätscode **nichts** geändert hat — die Messung gilt also für die von dir gemeldete Version.
+Deshalb wurde kein Fix gebaut -- und rueckblickend war genau das der Punkt: haette dieser Build auf Verdacht am Auswahlfeld gearbeitet, waere in einer Produktivumgebung funktionierender Code angefasst worden, ohne dass es dort etwas zu beheben gab. `CP22` bleibt als Gegenprobe stehen; faellt sie je um, sitzt der Fehler dann wirklich hier.
 
-**Deshalb wurde kein Fix gebaut.** Ob `GET /api/capacity/stammdaten` die Gründe überhaupt liefert, entscheidet sich an der Produktions-`coordinator.db` und nicht am Quelltext. Der Lesepfad (`_capacity_stammdaten` → `ReasonRepo.list_reasons` → `_geteilt`) ist beim Lesen unauffällig; ein Eingriff ohne Beleg wäre Raten.
-
-**Erforderliche Messung** — Cockpit öffnen, F12, Kapazitätspflege aufrufen:
-
-```js
-window.AIW_COCKPIT_DEBUG = true;
-fetch('/api/capacity/stammdaten').then(r=>r.json())
-  .then(d=>console.log('COUNTS:', d.counts,
-                       '| SCOPE:', d.scope,
-                       '| ENTFERNT:', d.entfernt,
-                       '| REASONS:', JSON.stringify(d.reasons)));
-```
-
-Zu beobachten ist nur die eine Ausgabezeile:
-
-* `REASONS: []` und `counts.reasons: 0` → der Server liefert nichts. Dann liegt es an der Datenbank oder am Lesepfad, und ich suche dort weiter. Bitte in dem Fall zusätzlich `entfernt.reasons` mitschicken: ist die Zahl > 0, sind die Gründe stillgelegt und nicht verschwunden.
-* `REASONS: [...]` gefüllt → dann widerspricht die Produktionsinstanz meiner Messung, und der Fehler sitzt zwischen Antwort und Auswahlfeld. Bitte dann zusätzlich die Zeile `Kapazitaetspflege gerendert: …` aus der Konsole mitschicken.
-
-**Was dieser Build stattdessen tut** — ein GR1-Befund, der unabhängig vom Ursprung gilt: Bisher zeigte die Auswahl bei leerem Katalog nur „(kein Grund)", und zwar wortlos. „Es ist noch kein Grund angelegt" war von „die Gründe sind nicht angekommen" nicht zu unterscheiden — eine stille Auslassung genau dort, wo eine Erklärung gebraucht wird. Die Maske benennt den leeren Katalog jetzt ausdrücklich und nennt die Gegenprobe (`CP23`).
+**Was bleibt und warum.** Die Maske zeigte den leeren Katalog *wortlos*. „Es ist noch kein Grund angelegt“ war von „die Gruende sind nicht angekommen“ nicht zu unterscheiden -- eine stille Auslassung (GR1) genau dort, wo eine Erklaerung gebraucht wird. Dieser Vorgang ist selbst der Beleg dafuer, dass die Luecke bedienungsrelevant ist: sie hat eine Fehlermeldung ausgeloest, wo keine Stoerung vorlag. Der Hinweis aus Build 663 (`CP23`) benennt den leeren Katalog jetzt und nennt die Gegenprobe. Er bleibt.
 
 ---
 
@@ -135,12 +117,12 @@ Zusammenfassung:     beide BESTANDEN
 2. **Browser-Zwischenspeicher leeren** — vier `.js`-Dateien und `cockpit.html` sind geändert.
 3. Kapazitätspflege: Von-Datum setzen → das leere Bis-Feld folgt, und die Ergebniszeile sagt es.
 4. Kapazitätsansicht **und** Annotationsrecherche: Von-Datum setzen → das Bis-Feld **muss leer bleiben**; nur der Kalender darf keinen früheren Tag mehr anbieten. (Das ist die Gegenprobe zu §3.)
-5. Die Konsolenmessung aus §4.
+5. Kapazitätspflege bei **leerem** Gründekatalog: unter dem Grund-Feld muss „Der Gründekatalog ist LEER“ stehen. Nach dem Anlegen eines Grundes muss der Hinweis verschwinden und der Grund wählbar sein.
 
 ---
 
 ## 9. Offene Punkte
 
-* **Wartet auf dich:** die Messung zu 65a230fd (§4) und die Entscheidung zu §3.
+* **Wartet auf dich:** die Entscheidung zu §3 (Übernahme nur in Eingabemasken) und die Freigabe zum Bearbeiten-Modus (§5).
 * **Randbefund, nicht angefasst:** `tools/` enthält zwei Einspielskripte — `bundle-einspielen.sh` (Bindestrich, ältere Fassung: kein kdiff3, keine Stash-Gegenprobe) und `bundle_einspielen.sh` (Unterstrich, aktuell). Verwechslungsgefahr an einer Stelle, an der eine Verwechslung Arbeit kostet. Auf dein Wort entferne ich die alte.
 * **Weiterhin offen aus Build 662:** erster echter kdiff3-Lauf unter Linux.
