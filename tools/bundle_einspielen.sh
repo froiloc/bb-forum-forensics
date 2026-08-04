@@ -9,7 +9,47 @@
 # NUR UNTER LINUX. In der Windows-VM ist kein Git verfuegbar; dort erfolgt
 # stets ein vollstaendiger Rollout des fertigen Bestandes.
 #
-# Version: v0.8.662 - Build: 662 - 2026-08-02
+#
+# BUILD 665 -- WIEDERAUFSETZBAR STATT ROLLBACK (Befund Alex 2026-08-04)
+#
+# ANLASS: ein Lauf brach in Schritt 6 ab (Regression rot). Danach stand
+# HEAD auf dem Integrationszweig -- das Skript sagte es mit keinem Wort,
+# und der naechste Testlauf lief auf dem falschen Zweig. Der Befund war
+# damit nicht der geprueften Sache zuzuordnen. Das ist eine stille
+# Auslassung (GR1) an der Stelle, an der ein Werkzeug am meisten
+# schaden kann: es hat ABGEBROCHEN und trotzdem nicht gesagt, wo es
+# einen stehenlaesst.
+#
+# KEIN ROLLBACK -- UND ZWAR ABSICHTLICH. Drei Gruende:
+#   (1) 'master' bewegt sich als LETZTER Schritt, per --ff-only, nach
+#       gruener Regression. Das Gut, das zu schuetzen waere, ist bereits
+#       geschuetzt; alles davor passiert auf Wegwerf-Refs.
+#   (2) Ein Rollback muesste 'refs/claude/build<N>' mit wegraeumen. Diese
+#       Ref IST der Nachweis darueber, was geliefert wurde
+#       (data-exchange.md 4.4) -- sie zu loeschen vernichtet die Spur
+#       des Vorgangs. Das ist die falsche Richtung.
+#   (3) Der Zustand ist ABLEITBAR; es braucht keine eigene Buchfuehrung.
+#       Git ist das Protokoll: 'rev-parse --verify' sagt, ob geholt
+#       wurde, 'merge-base --is-ancestor' sagt, ob gemergt bzw.
+#       nachgezogen wurde. Eine Zustandsdatei koennte von der
+#       Wirklichkeit abweichen -- ein abgeleiteter Zustand nicht.
+#
+# STATTDESSEN: jeder Schritt prueft, ob er schon erledigt ist, und
+# UEBERSPRINGT sich dann, statt abzubrechen. Ein zweiter Lauf nach einer
+# behobenen Ursache faehrt damit einfach weiter.
+#
+# DIE EINE AUSNAHME ist der Stash: er ist NICHT ableitbar. Bricht etwas
+# zwischen Schritt 2 und Schritt 8 ab, bleibt er liegen, und ein zweiter
+# Lauf findet einen sauberen Baum und holt nichts zurueck. Dagegen steht
+# der EXIT-Trap: er nennt beim Abbruch die Kennung und den Befehl.
+#
+# EXIT-CODES (Build 665): 0 = fertig. Sonst 10 + Schrittnummer, also
+#   12 Arbeitsbaum, 13 fetch, 15 Merge/Konflikt, 16 Regression rot,
+#   17 master nachziehen, 18 Stash zurueckholen. 1 = Vorbedingung
+#   (Schritt 0/1), 2 = falscher Aufruf. Der Code allein sagt damit, wo
+#   es hing -- ohne die Ausgabe zurueckscrollen zu muessen.
+#
+# Version: v0.8.665 - Build: 665 - 2026-08-04
 # -----------------------------------------------------------------------------
 #
 # Aufruf:   ./bundle_einspielen.sh <paket> <buildnummer> [testbefehl]
@@ -66,6 +106,9 @@ bundle="${package}_${build_no}.bundle"
 [ -f "$bundle" ] && bundle="$(cd "$(dirname "$bundle")" && pwd)/$(basename "$bundle")"
 
 # Der Quellzweig wird AUS DEM BUNDLE gelesen, nicht aus der Buildnummer
+# errechnet. ACHTUNG: list-heads liefert den VOLL QUALIFIZIERTEN Ref
+# ("refs/heads/claude/build663") -- $zweig ist hier also etwas anderes
+# als die gleichnamige Variable in bundle_bauen.sh (dort der kurze Name).
 # errechnet: der Zweigname folgt der ersten Buildnummer einer Sitzung, die
 # Lieferung der letzten. Bei einer Sitzung ueber mehrere Builds faellt beides
 # auseinander (Beispiel: Zweig claude/build661, Lieferung Build 662).
@@ -73,8 +116,75 @@ zweig=""                       # wird in Schritt 1 gesetzt
 ref="refs/claude/build${build_no}"
 integration="integration/${build_no}"
 stash_kennung=""
+schon_geholt=0                 # Build 665: Wiederaufnahme (s. Schritt 0)
 
 meld() { printf '\n=== %s ===\n' "$*"; }
+
+# schritt: die zuletzt BEGONNENE Schrittnummer. Der EXIT-Trap bildet daraus
+# den Rueckgabewert und den Zustandsbericht.
+schritt=0
+fertig=0
+
+# zustandsbericht: WO STEHT DER BESTAND JETZT. Wird bei jedem Abbruch
+# ausgegeben. Das ist die Lehre aus dem Befund vom 04.08.2026: ein Abbruch,
+# der nicht sagt, wo er einen stehenlaesst, verlagert den Fehler nur -- der
+# naechste Handgriff passiert dann auf dem falschen Zweig.
+zustandsbericht() {
+    echo "" >&2
+    echo "----- ZUSTAND NACH DEM ABBRUCH -----" >&2
+    echo "  HEAD steht auf: $(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '?')" >&2
+    if git rev-parse --verify --quiet "$ref" >/dev/null 2>&1; then
+        echo "  ${ref}: vorhanden (bleibt stehen -- data-exchange.md 4.4)" >&2
+    else
+        echo "  ${ref}: NICHT vorhanden" >&2
+    fi
+    if git rev-parse --verify --quiet "refs/heads/${integration}" >/dev/null 2>&1; then
+        echo "  ${integration}: vorhanden" >&2
+    else
+        echo "  ${integration}: nicht vorhanden" >&2
+    fi
+    if git merge-base --is-ancestor "$ref" master 2>/dev/null; then
+        echo "  master: TRAEGT die Lieferung bereits" >&2
+    else
+        echo "  master: traegt die Lieferung NICHT (unveraendert)" >&2
+    fi
+    if [ -n "$stash_kennung" ]; then
+        echo "" >&2
+        echo "  ACHTUNG -- EIGENE ARBEIT LIEGT IM STASH:" >&2
+        echo "    ${stash_kennung}" >&2
+        echo "  Sie wurde NICHT zurueckgeholt. Ein zweiter Lauf findet einen" >&2
+        echo "  sauberen Baum und holt sie ebenfalls nicht zurueck." >&2
+        echo "  Von Hand:  git stash list ; git stash apply ${stash_kennung}" >&2
+    fi
+    echo "" >&2
+    echo "  Dieses Skript ist WIEDERAUFSETZBAR: Ursache beheben, auf master" >&2
+    echo "  zurueckwechseln und erneut aufrufen. Erledigte Schritte werden" >&2
+    echo "  uebersprungen." >&2
+    echo "    git switch master && $0 ${package} ${build_no}" >&2
+    echo "------------------------------------" >&2
+}
+
+# beim_beenden: der EXIT-Trap. Er laeuft bei JEDEM Verlassen -- auch beim
+# Abbruch durch 'set -e' und beim Abbruch von Hand (Strg-C loest EXIT mit aus).
+#
+# 'rc=$?' MUSS die erste Anweisung sein: jeder andere Befehl davor
+# ueberschriebe den Rueckgabewert, der hier gerettet werden soll.
+beim_beenden() {
+    local rc=$?
+    if [ "$fertig" -eq 1 ]; then
+        exit "$rc"
+    fi
+    zustandsbericht
+    # Build 665: schrittbezogener Rueckgabewert. Der Code allein sagt dann,
+    # WO es hing, ohne die Ausgabe zurueckscrollen zu muessen. Die
+    # Vorbedingungen (Schritt 0/1) behalten ihre 1 -- dort ist noch nichts
+    # geschehen, und der Ort ist aus der Meldung ohnehin eindeutig.
+    if [ "$rc" -ne 0 ] && [ "$schritt" -ge 2 ]; then
+        exit $((10 + schritt))
+    fi
+    exit "$rc"
+}
+trap beim_beenden EXIT
 
 # Ist noch etwas offen? 'git ls-files -u' listet Eintraege mit Konfliktstufe.
 # Verlaesslicher als der Rueckgabewert von 'git mergetool', der auch dann 0
@@ -120,10 +230,21 @@ if [ "$aktueller_zweig" != "master" ]; then
     exit 1
 fi
 
+# BUILD 665: eine bereits geholte Lieferung ist KEIN Abbruchgrund mehr.
+# Frueher endete hier jeder zweite Lauf -- also genau der Lauf, den man nach
+# einem behobenen Fehler braucht. Der Zustand wird stattdessen FESTGESTELLT
+# und den Schritten mitgegeben; Schritt 3 ueberspringt sich dann.
 if git rev-parse --verify --quiet "$ref" >/dev/null; then
-    echo "ABBRUCH: $ref existiert bereits -- diese Lieferung wurde schon geholt." >&2
-    echo "Pruefen mit: git log --oneline master..$ref" >&2
-    exit 1
+    if git merge-base --is-ancestor "$ref" master 2>/dev/null; then
+        echo "FERTIG: master traegt Build ${build_no} bereits."
+        echo "Nichts zu tun. ($ref bleibt stehen -- data-exchange.md 4.4)"
+        git --no-pager log --oneline -1 master
+        fertig=1
+        exit 0
+    fi
+    echo "WIEDERAUFNAHME: ${ref} ist schon geholt, master traegt sie noch nicht."
+    echo "Schritt 3 wird uebersprungen."
+    schon_geholt=1
 fi
 
 case "$bundle" in
@@ -147,6 +268,7 @@ zweig="$(git bundle list-heads "$bundle" | awk '{print $2}')"
 echo "Quellzweig im Bundle: ${zweig}"
 
 # --- 2) Arbeitsbaum sichern -------------------------------------------------
+schritt=2
 meld "2) Arbeitsbaum"
 # Die Probe muss GENAU DAS messen, was 'git stash' (ohne -u) auch mitnimmt:
 # verfolgte Aenderungen, im Baum wie im Index. Befund 2026-08-02: mit
@@ -183,18 +305,70 @@ else
 fi
 
 # --- 3) Lieferung in eigene Ref holen (Arbeitsbaum bleibt unberuehrt) -------
+schritt=3
 meld "3) fetch"
-git fetch "$bundle" "refs/heads/${zweig}:${ref}"
+if [ "$schon_geholt" -eq 1 ]; then
+    echo "Uebersprungen: ${ref} ist bereits vorhanden."
+else
+    # BUILD 665: OHNE zweites "refs/heads/". 'git bundle list-heads'
+    # liefert den VOLL QUALIFIZIERTEN Ref ("refs/heads/claude/build663");
+    # das Praefix noch einmal davorzusetzen ergab
+    # "refs/heads/refs/heads/claude/build663" und damit "Konnte Remote-
+    # Referenz nicht finden" (Befund Alex, 04.08.2026). In
+    # bundle_bauen.sh ist $zweig dagegen der KURZE Name aus
+    # 'rev-parse --abbrev-ref' -- derselbe Variablenname fuer zwei
+    # verschiedene Dinge, das war die eigentliche Ursache.
+    git fetch "$bundle" "${zweig}:${ref}"
+fi
 git --no-pager log --oneline "master..${ref}"
 
 meld "4) Unterschied zum Bestand"
 git --no-pager diff --stat "master..${ref}"
 
 # --- 5) Integrationszweig ---------------------------------------------------
+schritt=5
 meld "5) Integrationszweig ${integration}"
-git switch -c "$integration" master
-if ! git merge --no-ff "$ref" -m "Uebernahme ${package} Build ${build_no}"; then
+# BUILD 665: ein Integrationszweig aus einem abgebrochenen Lauf ist kein
+# Muell, sondern ein Zwischenstand. Traegt er die Lieferung schon, wird er
+# WIEDERVERWENDET statt neu gebaut -- sonst muesste man ihn von Hand
+# wegraeumen, bevor ein zweiter Lauf ueberhaupt anfangen kann.
+zu_mergen=1
+if git rev-parse --verify --quiet "refs/heads/${integration}" >/dev/null; then
+    if git merge-base --is-ancestor "$ref" "refs/heads/${integration}" 2>/dev/null \
+       && git merge-base --is-ancestor master "refs/heads/${integration}" 2>/dev/null; then
+        echo "WIEDERAUFNAHME: ${integration} traegt Lieferung und master bereits."
+        git switch "$integration"
+        zu_mergen=0
+    else
+        echo "ABBRUCH: ${integration} existiert, traegt aber nicht beides." >&2
+        echo "Das ist ein halber Zwischenstand aus einem frueheren Lauf." >&2
+        echo "Ansehen und dann entscheiden:" >&2
+        echo "  git log --oneline ${integration}" >&2
+        echo "  git branch -D ${integration}     # wenn er verworfen werden soll" >&2
+        exit 1
+    fi
+else
+    git switch -c "$integration" master
+fi
+if [ "$zu_mergen" -eq 1 ] \
+   && ! git merge --no-ff "$ref" -m "Uebernahme ${package} Build ${build_no}"; then
     echo ""
+    # BUILD 665: EIN GESCHEITERTER MERGE IST NICHT ZWANGSLAEUFIG EIN KONFLIKT.
+    # Gemessen bei der Erprobung am 04.08.2026: ohne eingerichtete
+    # git-Identitaet scheitert 'git merge' mit "unable to auto-detect email
+    # address" - das Skript meldete daraufhin einen Konflikt, schickte in die
+    # Konfliktaufloesung und liess einen mit einer Anleitung zurueck, die zur
+    # Lage nicht passte. Die Probe ist 'git ls-files -u': stehen dort keine
+    # Eintraege, gab es keinen Konflikt, sondern etwas anderes.
+    if ! offene_konflikte; then
+        echo "MERGE GESCHEITERT, ABER OHNE KONFLIKT." >&2
+        echo "Es liegen keine Dateien mit Konfliktstufe vor - die Ursache" >&2
+        echo "steht in der git-Ausgabe daruber. Haeufig: keine Identitaet" >&2
+        echo "eingerichtet (git config user.name / user.email)." >&2
+        echo "" >&2
+        echo "Nach dem Beheben einfach erneut aufrufen." >&2
+        exit 1
+    fi
     echo "KONFLIKT beim Merge. Das ist der vorgesehene Fall, nicht der Ausnahmefall."
     if aufloesen; then
         git commit --no-edit
@@ -213,13 +387,33 @@ if ! git merge --no-ff "$ref" -m "Uebernahme ${package} Build ${build_no}"; then
 fi
 
 # --- 6) Regression ----------------------------------------------------------
+schritt=6
 meld "6) Regression"
 echo "\$ ${testbefehl}"
-eval "$testbefehl"
+# BUILD 665: eine ROTE Regression ist der ZWECK dieses Schritts und kein
+# Absturz. Sie bekommt deshalb einen eigenen, benannten Ausgang -- vorher
+# schlug hier nur der ERR-Trap zu ("ABBRUCH in Zeile ...: python
+# run_tests.py"), was wie ein Werkzeugfehler aussieht und nicht wie ein
+# Befund. Wichtig ist die zweite Zeile: master ist unberuehrt.
+if ! eval "$testbefehl"; then
+    echo "" >&2
+    echo "REGRESSION ROT auf ${integration}." >&2
+    echo "MASTER IST UNBERUEHRT -- es wurde nichts uebernommen." >&2
+    echo "" >&2
+    echo "Der Fehler gehoert zur Lieferung, nicht zu diesem Werkzeug." >&2
+    echo "Ansehen (der Testlauf schreibt seit Build 665 ein Protokoll):" >&2
+    echo "  ls -t logs/test_*.log | head -2" >&2
+    echo "" >&2
+    echo "WICHTIG: der naechste eigene Testlauf gehoert AUF DIESEN ZWEIG." >&2
+    echo "Ein Lauf auf master pruefte den Bestand OHNE die Lieferung und" >&2
+    echo "waere dem Befund nicht zuzuordnen." >&2
+    exit 1
+fi
 
 # --- 7) master nachziehen ---------------------------------------------------
 # --ff-only: hat sich master waehrend des Laufs bewegt, scheitert es LAUT,
 # statt still einen zweiten Merge zu bauen.
+schritt=7
 meld "7) master"
 git switch master
 git merge --ff-only "$integration"
@@ -231,6 +425,7 @@ git branch -d "$integration"
 # naechstbesten aelteren Eintrag hervor -- gemessen landete ein Stash vom Juni
 # kommentarlos im Arbeitsbaum. Deshalb wird die eigene Kennung verglichen.
 if [ -n "$stash_kennung" ]; then
+    schritt=8
     meld "8) Stash zurueckholen"
     if [ "$(git rev-parse 'stash@{0}' 2>/dev/null || true)" != "$stash_kennung" ]; then
         echo "NICHT ZURUECKGEHOLT: stash@{0} ist nicht mehr der eigene Eintrag." >&2
@@ -254,6 +449,8 @@ if [ -n "$stash_kennung" ]; then
     fi
 fi
 
+schritt=0
+fertig=1
 meld "Fertig"
 git --no-pager log --oneline -3
 echo ""

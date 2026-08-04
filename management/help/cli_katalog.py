@@ -4098,7 +4098,8 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
     CliEintrag(
         schluessel="run_tests",
         pfad="run_tests.py",
-        aufruf="python run_tests.py [--python-only|--js-only]",
+        aufruf="python run_tests.py [--python-only|--js-only] "
+               "[--leise] [--log-dir VERZEICHNIS]",
         titel="Regressionslauf",
         gruppe="Start und Einrichtung",
         zweck="Beide Testsuiten fahren - die Python-Seite und die "
@@ -4122,9 +4123,15 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "0. Laufzeit rund acht Minuten.",
                      _GEPRUEFT_614),
             ),
+            # Build 665: getrennte Codes. Es sind Bitmasken (1 = Python,
+            # 2 = JavaScript); jeder Aufrufer der Form 'if ! run_tests.py'
+            # verhaelt sich unveraendert.
             exit_codes=((0, "alle gefahrenen Suiten bestanden"),
-                        (1, "mindestens eine Suite ist gescheitert oder war "
-                            "nicht ausfuehrbar")),
+                        (1, "die Python-Suite ist gescheitert oder war nicht "
+                            "ausfuehrbar"),
+                        (2, "die JavaScript-Suite ist gescheitert oder war "
+                            "nicht ausfuehrbar"),
+                        (3, "beide Suiten sind gescheitert")),
             warnungen=(
                 "DER TESTPFAD IST FEST VERDRAHTET ('tests/' bzw. "
                 "'tests/unit/'). Es gibt keine Option, einzelne Dateien oder "
@@ -4140,6 +4147,18 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "eine Zahl mit einem frueheren Lauf vergleicht, sollte "
                 "zusaetzlich 'pytest -rs' fahren.",
                 "Die Suite setzt Python 3.12 oder neuer voraus.",
+                "JEDER LAUF SCHREIBT EIN PROTOKOLL nach 'logs/' - je Suite "
+                "eine Datei mit Zeitstempel. Der Bildschirm kann abschneiden, "
+                "die Datei nicht. Bei einem roten Lauf steht der Fehlerauszug "
+                "zusaetzlich GANZ AM ENDE der Bildschirmausgabe; die "
+                "vollstaendige Fassung nennt der Pfad darunter.",
+                "Der Auszug am Ende ist auf 120 Zeilen begrenzt. Wird "
+                "gekuerzt, steht das in der ersten Zeile des Auszugs - "
+                "vollstaendig ist er nur in der Protokolldatei.",
+                "Die Protokolle enthalten Farb-Steuerzeichen. 'less -R' zeigt "
+                "sie richtig an, ein einfaches 'less' zeigt Zeichensalat.",
+                "'--leise' unterdrueckt NUR die laufende Ausgabe. Protokoll, "
+                "Zusammenfassung und Fehlerauszug bleiben.",
             ),
         ),
     ),

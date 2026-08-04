@@ -1,9 +1,11 @@
-# Übergabe Builds 663 und 664
+# Übergabe Builds 663, 664 und 665
 
-**Baubasis:** 0.8.662 (Commit `aedc249`) · **Lieferung:** 0.8.664 · 2026-08-04
+**Baubasis:** 0.8.662 (Commit `aedc249`) · **Lieferung:** 0.8.665 · 2026-08-04
 **Zweig:** `claude/build663` · **Verfahren:** Git-Bundle nach `documents/data-exchange.md`
 
-Zwei Builds in einer Lieferung, als getrennte Commits im Bundle.
+Drei Builds in einer Lieferung, als getrennte Commits im Bundle.
+
+> **Ein Konflikt ist zu erwarten — und er ist harmlos.** Dein Bestand trägt seit dem 04.08.2026 den Commit `a529338` an `tools/bundle_einspielen.sh`. Build 665 baut dieselbe Datei um und **enthält deinen Fix inhaltlich mit**. Nimm beim Merge die Fassung **aus der Lieferung** — in kdiff3 die Seite mit der Funktion `beim_beenden`. Kein `git revert` nötig, dein Commit bleibt als Beleg in der Geschichte stehen.
 
 ---
 
@@ -98,7 +100,64 @@ Abgetrennt aus 65a230fd, freigegeben mit `mc`, unveraendert nach Bauplan gebaut.
 
 ---
 
-## 6. Hilfe
+## 6. Build 665 -- die Werkzeuge, mit denen wir prüfen
+
+### `run_tests.py`
+
+Gemessen, bevor gebaut wurde (Baucontainer, 3131 Tests):
+
+| Lauf | Zeilen |
+|---|---|
+| `pytest -v --tb=short` (bisher) | **3240** |
+| `pytest -q --tb=long -rf` | **47** |
+| `vitest` (Vorgabe) | 155 |
+
+Das `-v` allein erzeugte 3131 Zeilen `PASSED`. Es fällt weg. Wichtig: `--tb=long` gibt im Fehlerfall **mehr** Zusammenhang als das bisherige `--tb=short` — es geht nichts verloren, es verschwindet nur das Rauschen.
+
+Drei Maßnahmen:
+
+1. **Protokolldatei je Suite** unter `logs/`, mit Zeitstempel. Der Bildschirm kann abschneiden, die Datei nicht. Der Pfad steht auch im Erfolgsfall in der Zusammenfassung — wer ihn erst sucht, wenn er ihn braucht, sucht ihn im ungeeignetsten Moment.
+2. **Der Fehlerauszug steht ganz unten**, nach der Zusammenfassung. Das ist der Kern: was man braucht, gehört ans Ende des Bildlaufs.
+3. **Getrennte Exit-Codes** `0/1/2/3` als Bitmaske (1 = Python, 2 = JavaScript). Jeder Aufrufer der Form `if ! run_tests.py` verhält sich unverändert.
+
+Neu: `--leise` (nur Protokoll, Zusammenfassung, Auszug) und `--log-dir`.
+
+**Gegenprobe gefahren.** Ein absichtlich roter Test ergab mit `--leise` **38 Bildschirmzeilen**, vollständigen Traceback am Ende, Rückgabewert 1.
+
+**Der Runner wird jetzt selbst geprüft** (`RT01`–`RT08`). Er ist das Werkzeug, mit dem alle anderen Zusicherungen geprüft werden; fällt er still aus, meldet die Regression „grün“, ohne dass es jemand merkt — die unangenehmste Sorte stiller Auslassung. `RT06` hält die Reihenfolge fest, `RT02` dass eine Kürzung benannt wird.
+
+### `bundle_einspielen.sh` — kein Rollback, sondern Wiederaufsetzbarkeit
+
+Deine Frage von vorhin, jetzt als Code. **Kein Rollback**, und zwar aus drei Gründen: `master` bewegt sich als letzter Schritt nach grüner Regression, ist also schon geschützt; ein Rollback müsste `refs/claude/build<N>` wegräumen, und die Ref *ist* der Nachweis der Lieferung; und der Zustand ist **ableitbar** — `rev-parse --verify` und `merge-base --is-ancestor` sagen, welche Schritte erledigt sind. Eine eigene Zustandsdatei könnte von der Wirklichkeit abweichen, ein abgeleiteter Zustand nicht.
+
+Stattdessen: jeder Schritt prüft, ob er erledigt ist, und **überspringt sich**. Früher brach Schritt 0 ab, sobald die Ref existierte — also genau bei dem Lauf, den man nach einem behobenen Fehler braucht.
+
+**Erprobt in drei Läufen:**
+
+```
+Lauf 1 (Regression rot)   -> EXIT 16, Zustandsbericht
+Lauf 2 (Wiederaufnahme)   -> Schritt 3 und 5 uebersprungen, master nachgezogen, EXIT 0
+Lauf 3 (alles erledigt)   -> "FERTIG: master traegt Build 665 bereits", EXIT 0
+```
+
+Der Zustandsbericht nennt HEAD, die Refs, ob master die Lieferung trägt, die Stash-Kennung und den Befehl zum Weitermachen. Genau das hat dir heute gefehlt.
+
+**Exit-Codes:** `10 + Schrittnummer` — 12 Arbeitsbaum, 13 fetch, 15 Merge, 16 Regression, 17 master, 18 Stash. Der Code allein sagt, wo es hing.
+
+**Die Stash-Lücke ist nicht geschlossen, aber benannt.** Der Stash ist als einziges nicht ableitbar; der Zustandsbericht nennt ihn samt `git stash apply`.
+
+**Zwei Fehler behoben:**
+
+* das doppelte `refs/heads/` (dein Befund) — Ursache war derselbe Variablenname `$zweig` für zwei verschiedene Dinge in `bauen` und `einspielen`. Steht jetzt als Kommentar an beiden Stellen.
+* **bei der Erprobung mitgefangen:** ein gescheiterter `git merge` ist nicht zwangsläufig ein Konflikt. Ohne eingerichtete git-Identität meldete das Skript einen Konflikt und schickte in eine Auflösung, die zur Lage nicht passte. Probe jetzt: `git ls-files -u`.
+
+### Nebenwirkung
+
+`bundle_bauen.sh` bekommt `logs/` in den Rauschfilter. Ohne das meldete jede Lieferung die Testprotokolle als ignorierte Dateien — ein Hinweis, der immer kommt, wird nicht mehr gelesen, und dann fällt der Fall nicht mehr auf, für den er gedacht war.
+
+---
+
+## 7. Hilfe
 
 Regelgemäß angepasst (`Keine Änderung ohne Anpassung in der Hilfe`):
 
@@ -114,22 +173,24 @@ Regelgemäß angepasst (`Keine Änderung ohne Anpassung in der Hilfe`):
 
 ---
 
-## 7. Regression
+## 8. Regression
 
 Bauumgebung (Container, **Python 3.12.3 — nicht die VM**):
 
 ```
-Python (pytest):     3131 passed, 92 skipped, 51 subtests   (662: 3103)
+Python (pytest):     3140 passed, 92 skipped, 51 subtests   (662: 3103)
 JavaScript (vitest):  122 Dateien, 1747 passed              (662: 1722)
 Zusammenfassung:     beide BESTANDEN
 ```
 
-33 neue Fälle. Build 663: `DP01–DP12` (neue Datei), `CP22–CP26`, `CA09/CA10`, `FS01/FS02`.
+42 neue Fälle.
+Build 663: `DP01–DP12` (neue Datei), `CP22–CP26`, `CA09/CA10`, `FS01/FS02`.
 Build 664: `AV06–AV09`, `KP11b–KP11d`, `CP27/CP27b`, `CP28–CP31`.
+Build 665: `RT01–RT08` (neue Datei).
 
 ---
 
-## 8. Nach dem Einspielen zu prüfen
+## 9. Nach dem Einspielen zu prüfen
 
 1. `python run_tests.py` — die 20 neuen Fälle müssen grün sein.
 2. **Browser-Zwischenspeicher leeren** — vier `.js`-Dateien und `cockpit.html` sind geändert.
@@ -137,11 +198,14 @@ Build 664: `AV06–AV09`, `KP11b–KP11d`, `CP27/CP27b`, `CP28–CP31`.
 4. Kapazitätsansicht **und** Annotationsrecherche: Von-Datum setzen → das Bis-Feld **muss leer bleiben**; nur der Kalender darf keinen früheren Tag mehr anbieten. (Das ist die Gegenprobe zu §3.)
 5. Kapazitätspflege bei **leerem** Gründekatalog: unter dem Grund-Feld muss „Der Gründekatalog ist LEER“ stehen. Nach dem Anlegen eines Grundes muss der Hinweis verschwinden und der Grund wählbar sein.
 6. Eine Abwesenheit über „Bearbeiten“ berichtigen: die Meldung **muss zwei Belegnummern nennen**, und mit eingeblendeten entfernten Zeilen müssen danach **zwei** Zeilen dastehen — die stillgelegte alte und die neue.
+7. `python run_tests.py`: die Zusammenfassung **muss je Suite einen Protokollpfad nennen**. Zur Probe einen Test absichtlich rotfärben — der Fehlerauszug muss als **Letztes** auf dem Bildschirm stehen, Rückgabewert 1 (Python) bzw. 2 (JavaScript).
 
 ---
 
-## 9. Offene Punkte
+## 10. Offene Punkte
 
 * **Wartet auf dich:** die Entscheidung zu §3 (Übernahme nur in Eingabemasken). Sie ist die einzige Stelle, an der ich vom Auftrag abgewichen bin.
-* **Erledigt durch dich:** das doppelte `bundle-einspielen.sh` ist entfernt. Dieses Bundle fässt die Datei nicht an; deine Löschung bleibt beim Zusammenführen bestehen.
+* **Erledigt durch dich:** das doppelte `bundle-einspielen.sh` ist entfernt. Dieses Bundle fasst die Datei nicht an; deine Löschung bleibt beim Zusammenführen bestehen.
+* **Weiterhin offen:** die Stash-Lücke ist benannt, nicht geschlossen. Sie zu schließen hieße, den Stash beim nächsten Lauf wiederzuerkennen — dafür bräuchte es doch eine Notiz außerhalb von Git. Ich würde damit warten, bis der Fall einmal wirklich eintritt.
+* **Weiterhin offen aus Build 662:** der erste echte kdiff3-Lauf. Dieses Mal wird es einen geben — siehe den Kasten oben.
 * **Weiterhin offen aus Build 662:** erster echter kdiff3-Lauf unter Linux.
