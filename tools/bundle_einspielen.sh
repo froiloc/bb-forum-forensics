@@ -184,7 +184,7 @@ fi
 
 # --- 3) Lieferung in eigene Ref holen (Arbeitsbaum bleibt unberuehrt) -------
 meld "3) fetch"
-git fetch "$bundle" "refs/heads/${zweig}:${ref}"
+git fetch "$bundle" "${zweig}:${ref}"
 git --no-pager log --oneline "master..${ref}"
 
 meld "4) Unterschied zum Bestand"
