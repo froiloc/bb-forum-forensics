@@ -1,6 +1,6 @@
 # Regelwerk AIW — Projekt
 
-**Stand:** Build 661 · 2026-08-02 (Abschnitt 4 ergänzt; alles Übrige unverändert seit Build 607)
+**Stand:** Build 662 · 2026-08-02 (Abschnitt 4 ergänzt; alles Übrige unverändert seit Build 607)
 
 ## 1. Die zehn Grundregeln
 
@@ -64,7 +64,7 @@ Seit dem Produktivbetrieb erzeugen Ermittelnde Daten. Daraus folgt:
 
 **Vier Augen bei Texten.** Was Anwender zu lesen bekommen, verfasst der eine und nimmt der andere ab. Maschinelle Prüfungen fangen Muster; sie ersetzen die Lesung nicht (siehe `rules-help.md`).
 
-**Übergabe von Arbeitsergebnissen.** Seit dem 3. August 2026 (`aiw_webserver` 0.8.661, `aiw_sqlite_prepper` 0.1.129) wird als Git-Bundle übergeben, nicht mehr als ZIP-Archiv mit Dateien. Anlass war ein gemessener Befund: ein über den Bestand entpacktes ZIP löscht eine parallel entstandene Änderung still — ein GR1-Verstoß auf der Ebene des Arbeitsweges. Das Verfahren steht in `data-exchange.md`; dieses Regelwerk verweist nur darauf.
+**Übergabe von Arbeitsergebnissen.** Seit dem 3. August 2026 (`aiw_webserver` 0.8.661, `aiw_sqlite_prepper` 0.1.129) wird als Git-Bundle übergeben, nicht mehr als ZIP-Archiv mit Dateien. Anlass war ein gemessener Befund: ein über den Bestand entpacktes ZIP löscht eine parallel entstandene Änderung still — ein GR1-Verstoß auf der Ebene des Arbeitsweges. Das Verfahren steht in `data-exchange.md`; dieses Regelwerk verweist nur darauf. Werkzeuge dazu: `tools/bundle_bauen.sh` und `tools/bundle_einspielen.sh` (Build 662). Auf `master` wird seither nicht mehr gearbeitet — eigene Arbeit läuft auf `alex/<thema>`.
 
 ## 5. Belegpflicht in der Argumentation
 

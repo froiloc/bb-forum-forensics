@@ -1,6 +1,6 @@
 # Regelwerk AIW — Übersicht
 
-**Stand:** Build 661 · 2026-08-02 · **Klassifikation:** VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
+**Stand:** Build 662 · 2026-08-02 · **Klassifikation:** VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
 
 Dieses Verzeichnis führt die Regeln des Projekts an EINER Stelle zusammen. Bis Build 606 standen sie verteilt: in den Projektanweisungen, in Bauplänen, in Dateiköpfen und in den Kommentaren einzelner Tests. Sie galten deshalb nicht weniger — aber wer sie nachschlagen wollte, musste wissen, wo er suchen muss.
 
@@ -15,7 +15,7 @@ Dieses Verzeichnis führt die Regeln des Projekts an EINER Stelle zusammen. Bis 
 | `rules-cli.md` | Kommandozeilen-Werkzeuge: Katalog, Trockenlauf, Exit-Codes, Wartungsvorbehalt | Entwicklung, Betrieb |
 | `rules-leerbefund.md` | Leerbefund ist kein Erfolg: die dritte Frage, Rückgabewerte, was nicht geprüft wurde | Entwicklung, Betrieb |
 | `rules-nachstellung.md` | Die Nachstellung muß der Wirklichkeit standhalten: unwirkliche Testvorrichtungen, fremde Rechte, der ganze Weg einer Meldung | Entwicklung |
-| `data-exchange.md` | Übergabe von Arbeitsergebnissen: Git-Bundle statt ZIP, Integrationszweig, Vorabprobe, Urheberschaft | Entwicklung, Betrieb |
+| `data-exchange.md` | Übergabe von Arbeitsergebnissen: Git-Bundle statt ZIP, Integrationszweig, Vorabprobe, eigene Arbeitszweige | Entwicklung, Betrieb |
 
 ## Wie diese Sammlung zu lesen ist
 
@@ -52,3 +52,18 @@ Regel außerhalb dieser Übersicht duldet.
 Die Regel aus Abschnitt 3.3 jenes Blattes — die Vorabprobe
 `git status --porcelain --ignored` — hat **keine maschinelle Durchsetzung**. Das
 ist dort ausdrücklich vermerkt und als offener Punkt geführt.
+
+## Nachtrag Build 662
+
+Zu `data-exchange.md` sind zwei Werkzeuge hinzugekommen:
+`tools/bundle_bauen.sh` (Erstellerseite) und `tools/bundle_einspielen.sh`
+(Einspielseite). Damit hat die Vorabprobe aus Abschnitt 3.3 jene maschinelle
+Durchsetzung, die im Nachtrag zu Build 661 noch ausdrücklich als fehlend
+vermerkt war: das Bauwerkzeug bricht ab, sobald etwas Nicht-Committetes im
+Arbeitsbaum liegt, weil es im Bundle spurlos fehlen würde.
+
+Zwei weitere Festlegungen desselben Tages sind eingearbeitet: auf `master` wird
+nicht mehr gearbeitet (eigene Zweige `alex/<thema>`, Abschnitt 4.5), und der
+Bundle-Weg gilt ausschließlich zwischen Bauumgebung und
+Linux-Entwicklungsbestand — in der Windows-VM ist kein Git verfügbar, dorthin
+geht stets ein vollständiger Rollout (Abschnitt 0).
