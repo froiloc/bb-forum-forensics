@@ -162,6 +162,23 @@
     }
     fromInp.addEventListener('change', applyRange);
     toInp.addEventListener('change', applyRange);
+
+    // BUILD 663 (Ticket d3f933cd): Von/Bis koppeln -- NUR die untere Schranke,
+    // KEINE Uebernahme des Von-Datums.
+    //
+    // Diese Schiene ist ein FILTER, kein Eingabeformular. Ein leeres Bis-Feld
+    // heisst hier "ohne obere Grenze" (applyRange setzt to=null). Springt es
+    // beim Setzen des Von-Datums stillschweigend auf denselben Tag, verschwinden
+    // alle spaeteren Annotationen aus der Trefferliste, ohne dass jemand danach
+    // gefragt haette -- eine stille Auslassung (Grundregel 1) mitten in der
+    // Recherche. Die Schranke dagegen verhindert nur einen sinnlosen Zustand.
+    var _dp = (typeof window !== 'undefined') ? window.AIWDatumspaar : null;
+    if (_dp && typeof _dp.koppeln === 'function') {
+      _dp.koppeln(fromInp, toInp, { uebernehmen: false, min: true });
+    } else if (typeof console !== 'undefined') {
+      console.warn('[AIR] cockpit_datumspaar.js nicht geladen - '
+                   + 'Zeitraum-Felder bleiben ungekoppelt.');
+    }
     timeBlock.appendChild(fromInp);
     timeBlock.appendChild(el('span', 'air-date-sep', '–'));
     timeBlock.appendChild(toInp);

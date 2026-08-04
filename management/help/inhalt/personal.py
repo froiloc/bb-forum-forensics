@@ -534,10 +534,18 @@ CAPACITY_PFLEGE = Sichthilfe(
             verweis="capacity_pflege#rechte"),
         Kontexthilfe(
             "capacity_pflege.bedienung.av_von", "Von",
-            "Erster Tag der Abwesenheit."),
+            "Erster Tag der Abwesenheit. Ist das Bis-Feld noch LEER, wird es "
+            "beim Setzen dieses Datums damit vorbelegt — für eine "
+            "eintägige Abwesenheit genügt deshalb eine einzige Eingabe. Ein "
+            "bereits gefülltes Bis-Feld wird dabei NIE überschrieben."),
         Kontexthilfe(
             "capacity_pflege.bedienung.av_bis", "Bis",
-            "Letzter Tag der Abwesenheit, einschließlich."),
+            "Letzter Tag der Abwesenheit, einschließlich. Der Kalender lässt "
+            "kein Datum vor dem Von-Datum zu. Steht hier bereits ein früheres "
+            "Datum, wird es nicht stillschweigend berichtigt, sondern rot "
+            "markiert und in der Ergebniszeile benannt — die Korrektur "
+            "bleibt Ihre Entscheidung.",
+            verweis="capacity_pflege#grenzen"),
         Kontexthilfe(
             "capacity_pflege.bedienung.av_rechenart", "Rechenart",
             "WIE die Abwesenheit auf die Kapazität wirkt: abziehen oder "
@@ -548,6 +556,17 @@ CAPACITY_PFLEGE = Sichthilfe(
             "capacity_pflege.bedienung.av_grund", "Grund",
             "Warum die Person abwesend ist — freiwillig. Die Gründe werden "
             "weiter unten auf derselben Seite gepflegt."),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.av_grund_leer",
+            "Hinweis: Gründekatalog leer",
+            "Erscheint nur, wenn die Auswahl außer „(kein Grund)“ nichts "
+            "anzubieten hat. Ohne diesen Hinweis wäre der Zustand nicht von "
+            "einem Übertragungsfehler zu unterscheiden. PRÜFEN SIE die "
+            "Tabelle „Abwesenheitsgründe“ weiter unten: Ist sie ebenfalls "
+            "leer, ist der Katalog schlicht noch nicht gepflegt. Stehen dort "
+            "Einträge, während die Auswahl leer bleibt, ist das ein Fehler "
+            "und zu melden.",
+            verweis="capacity_pflege#grenzen"),
         Kontexthilfe(
             "capacity_pflege.bedienung.av_prozent", "Prozent",
             "Der Anteil, um den die Kapazität sinkt. GENAU EINES von Prozent "

@@ -735,7 +735,10 @@ CAPACITY = Sichthilfe(
             "capacity.bedienung.bis", "Zeitraum bis",
             "Der letzte Tag des ausgewerteten Zeitraums. Ein sehr kurzer "
             "Zeitraum trifft leicht eine einzelne Abwesenheit und verzerrt "
-            "das Bild.",
+            "das Bild. Der Kalender lässt hier kein Datum VOR dem Von-Datum "
+            "zu. Vorbelegt wird das Feld ABSICHTLICH "
+            "nicht: bliebe es leer und spränge auf das Von-Datum, schrumpfte "
+            "die Auswertung unbemerkt auf einen einzigen Tag.",
             verweis="capacity#grenzen"),
         Kontexthilfe(
             "capacity.bedienung.aktualisieren", "Aktualisieren",

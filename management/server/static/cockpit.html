@@ -135,6 +135,13 @@
      Die SELBSTPRUEFUNGSSPERRE wird hier nur ANGEZEIGT; sie wirkt im
      Server (management/qs/qs_repo.py). -->
 <script src="/static/cockpit_qs.js" defer></script>
+<!-- Build 663 (Ticket d3f933cd): Datumspaar-Kopplung "Von" -> "Bis".
+     STEHT VOR den Sichten, die sie benutzen — cockpit_capacity.js gleich
+     darunter und cockpit_capacity_pflege.js weiter unten; beide suchen sie
+     ueber window.AIWDatumspaar. Fehlt die Datei, arbeiten beide Sichten
+     unveraendert weiter: die Kopplung ist eine Bequemlichkeit, keine
+     Voraussetzung — und ihr Ausfall wird protokolliert, nicht verschwiegen. -->
+<script src="/static/cockpit_datumspaar.js" defer></script>
 <script src="/static/cockpit_capacity.js" defer></script>
 <script src="/static/cockpit_policy.js" defer></script>
 <script src="/static/cockpit_mycases.js" defer></script>

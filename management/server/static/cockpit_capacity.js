@@ -193,6 +193,27 @@
                 opts.onPeriodChange(inStart.value, inEnd.value);
             }
         });
+        // BUILD 663 (Ticket d3f933cd): Von/Bis koppeln - hier AUSDRUECKLICH
+        // NUR die untere Schranke, OHNE Uebernahme des Von-Datums.
+        //
+        // Das ist keine Nachlaessigkeit, sondern der Unterschied zwischen
+        // einer EINGABE und einer ZEITRAUMWAHL: hier bestimmen die beiden
+        // Felder, WAS AUSGEWERTET wird. Wuerde das Bis-Feld beim Setzen des
+        // Von-Datums stillschweigend auf denselben Tag springen, schruempfte
+        // die Auswertung auf 24 Stunden, und wer es uebersieht, haelt das
+        // Ergebnis fuer den ganzen Zeitraum. Eine Bequemlichkeitsfunktion
+        // darf keine stille Auslassung erzeugen (Grundregel 1).
+        //
+        // Die Schranke dagegen ist auch hier richtig: ein Ende vor dem Anfang
+        // waere in jedem Fall unsinnig.
+        var dp = (typeof window !== 'undefined') ? window.AIWDatumspaar : null;
+        if (dp && typeof dp.koppeln === 'function') {
+            dp.koppeln(inStart, inEnd, { uebernehmen: false, min: true });
+        } else {
+            log('renderCapacity: cockpit_datumspaar.js nicht geladen - '
+                + 'Von/Bis bleiben ungekoppelt.');
+        }
+
         ctrl.appendChild(inStart);
         ctrl.appendChild(inEnd);
         ctrl.appendChild(btn);

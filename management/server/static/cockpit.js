@@ -1221,6 +1221,14 @@
         if (vpMod && typeof vpMod.cleanup === 'function') {
             vpMod.cleanup();
         }
+        // Build 663 (Ticket d3f933cd): Von/Bis-Kopplung der Kapazitaetspflege
+        // abmelden.
+        if (_capacityPflegeView
+                && typeof _capacityPflegeView.datumspaarAbmelden === 'function') {
+            try { _capacityPflegeView.datumspaarAbmelden(); }
+            catch (e) { log('datumspaarAbmelden', e); }
+        }
+        _capacityPflegeView = null;
     }
 
     // renderError: sichtbarer Fehlerhinweis im Hauptbereich (kein stiller Fehlpfad).
@@ -3158,6 +3166,12 @@
     // der Rueckmeldung ("Gespeichert: Mueller, ab ..."). Eine ID in der
     // Erfolgsmeldung waere fuer den Ausfuellenden wertlos.
     var _capacityPersonen = [];
+    // Build 663 (Ticket d3f933cd): die zuletzt gebaute Pflegesicht.
+    // Sie wird nur festgehalten, um beim Sichtwechsel die Von/Bis-
+    // Kopplung abzumelden. Die DOM-Knoten verschwinden ohnehin; die
+    // ausdrueckliche Abmeldung ist die guenstigere Annahme, wenn ein
+    // Feld spaeter einmal wiederverwendet statt neu gebaut wird.
+    var _capacityPflegeView = null;
     function _personName(personId) {
         var treffer = null;
         _capacityPersonen.forEach(function (p) {
@@ -3310,6 +3324,7 @@
                 cleanupView();
                 _capacityPersonen = data.persons || [];
                 view = mod.renderCapacityPflege(mainEl, data, opts);
+                _capacityPflegeView = view;
                 if (uebergabe.text && view && view.setResult) {
                     view.setResult(uebergabe.text, uebergabe.error);
                 }

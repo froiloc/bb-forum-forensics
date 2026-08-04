@@ -1,0 +1,17 @@
+edecd1b9e071e484bf27678d6a834f3b  UEBERGABE_Build663.md
+658d67ef64abba58ee15ab0ad9688c5c  build.json
+67a48597492bbecdb551dadea7e2c054  forensic_api/static.py
+ea673195b099d1230e4576aa1d2a5803  forensic_api/userinfo.py
+33bc5854161d82882c5fc9e5eab5d061  issue-tracker/eintraege_claude_Build663.json
+ac5976a2c6e6b2eda94a851556a5a89d  management/help/inhalt/kennzahlen.py
+69ff7939117ee992a588fb69861bc8b1  management/help/inhalt/personal.py
+db52b3612847a6fea04985c598c10651  management/server/static/cockpit.html
+a658650b33c351dcf6fe9d45085f9597  management/server/static/cockpit.js
+90e35071ba1fde2fe72ae2c499c3f320  management/server/static/cockpit_capacity.js
+003dfbda8639550e96acee476231c795  management/server/static/cockpit_capacity_pflege.js
+fd87129480f2c4c661c8d106293d5bba  management/server/static/cockpit_datumspaar.js
+5301487e769ec1c9221c02d10271c6e8  tests/test_forensic_static_registry.py
+dd78fe05ff25017f7300f98a86710d14  tests/unit/test_cockpit_capacity.test.js
+81193bad946ffc59247780fc1ce78a31  tests/unit/test_cockpit_capacity_pflege.test.js
+7c33594275a39c4622837603afdab34c  tests/unit/test_cockpit_datumspaar.test.js
+93ced246796106ef699de4765f024b8c  userinfo/annotation_recherche.js

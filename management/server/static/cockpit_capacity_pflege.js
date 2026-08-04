@@ -752,6 +752,11 @@
         ];
 
         var formAv = _el('div', 'aiw-capp-form');
+        // Build 663: Steuerung der Von/Bis-Kopplung. Sie wird mit
+        // zurueckgegeben, damit der Lader sie beim Neuzeichnen abmelden kann —
+        // liegengebliebene Zuhoerer auf entsorgten Knoten sind die Sorte
+        // Fehler, die man spaeter nicht mehr findet.
+        var avKopplung = null;
         var avPerson = null;
         if (anlagenweit) {
             var avPersonFeld = _auswahl('aiw-capp-av-person', personen, 'id',
@@ -772,10 +777,28 @@
         // Die Rechenarten kommen VOM SERVER (data.kinds) — keine zweite Kopie.
         var avArt = _auswahl('aiw-capp-av-art', kinds, 'code', 'label');
         avArt.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.av_rechenart');
+        // BUILD 663 — Ticket 65a230fd. Bis hierher zeigte die Auswahl bei
+        // leerem Katalog NUR "(kein Grund)", und zwar wortlos. Damit war
+        // "es ist noch kein Grund angelegt" von "die Gruende sind nicht
+        // angekommen" nicht zu unterscheiden — eine stille Auslassung
+        // (Grundregel 1) genau an der Stelle, an der die Bedienerin eine
+        // Erklaerung braucht. Die Ursache des gemeldeten Befundes ist damit
+        // NICHT behoben; sie wird sichtbar gemacht. Der Frontend-Pfad selbst
+        // ist durch CP22 als in Ordnung nachgewiesen.
         var avGrund = _auswahl('aiw-capp-av-grund',
             [{ code: '', label: '(kein Grund)' }].concat(reasons),
             'code', 'label');
         avGrund.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.av_grund');
+        var avGrundHinweis = null;
+        if (!reasons.length) {
+            avGrundHinweis = _el('span', 'aiw-hint aiw-error',
+                'Der Gruendekatalog ist LEER — es steht nur "(kein Grund)" '
+                + 'zur Wahl. Sind unten unter "Abwesenheitsgruende" Eintraege '
+                + 'sichtbar, ist das ein Fehler und kein leerer Katalog: '
+                + 'bitte melden.');
+            avGrundHinweis.setAttribute('data-hilfe-id',
+                                        'capacity_pflege.bedienung.av_grund_leer');
+        }
         var avPct = _feld('number', 'aiw-capp-av-pct', 'Prozent');
         avPct.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.av_prozent');
         avPct.setAttribute('data-feld', 'value_pct');
@@ -791,6 +814,34 @@
             formAv.appendChild(_el('label', 'aiw-label', paar[0]));
             formAv.appendChild(paar[1]);
         });
+        if (avGrundHinweis) { formAv.appendChild(avGrundHinweis); }
+
+        // BUILD 663 — Ticket d3f933cd. Die Kopplung sitzt HIER und nicht im
+        // Baustein: nur diese Sicht weiss, dass ihre Rueckmeldungen in die
+        // Ergebniszeile gehoeren, und nur sie weiss, dass ihr Paar eine
+        // EINGABE ist (uebernehmen: true) und keine Filterspanne.
+        // Der Baustein wird SPAET gesucht (nicht beim Laden der Datei):
+        // fehlt er, bleibt die Maske vollstaendig bedienbar — der Ausfall
+        // wird aber benannt und nicht verschwiegen (Grundregel 1).
+        var dp = (typeof window !== 'undefined') ? window.AIWDatumspaar : null;
+        if (dp && typeof dp.koppeln === 'function') {
+            avKopplung = dp.koppeln(avVon, avBis, {
+                uebernehmen: true,
+                min: true,
+                onUebernahme: function (datum) {
+                    // Eine Wertaenderung, die niemand angefordert hat, muss
+                    // sich erklaeren — sonst wirkt sie wie ein Fehler.
+                    setResult('Bis-Datum auf ' + datum + ' vorbelegt (war '
+                        + 'leer). Fuer einen laengeren Zeitraum einfach '
+                        + 'ueberschreiben.', false);
+                },
+                onWarnung: function (text) { setResult(text, true); }
+            });
+        } else {
+            formAv.appendChild(_el('p', 'aiw-hint',
+                'Hinweis: die Datumskopplung (cockpit_datumspaar.js) ist nicht '
+                + 'geladen. Von und Bis sind von Hand zu setzen.'));
+        }
         formAv.appendChild(_el('p', 'aiw-hint',
             'Genau EINES von Prozent oder Minuten ausfuellen — beides zugleich '
             + 'weist der Server zurueck (Schema-Regel, kein Formularfehler).'));
@@ -978,6 +1029,9 @@
             '/ Ersetzen-Modus', ersetztId);
         return { tables: tables, setResult: setResult,
                  rechnerSteuerung: function () { return rechnerAuf; },
+                 datumspaarAbmelden: function () {
+                     if (avKopplung) { avKopplung.abmelden(); avKopplung = null; }
+                 },
                  markiereFeld: markiereFeld,
                  formularLesen: function () {
                      var z = wtNutzlast();

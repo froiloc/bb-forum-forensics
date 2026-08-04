@@ -1,0 +1,123 @@
+{
+  "issues": [
+    {
+      "id": "7b2f4a19-6c3d-4e58-9a71-0d5c8e2f4b63",
+      "type": "feature_request",
+      "title": "Verfuegbarkeits-Eintraege nachtraeglich aendern koennen",
+      "affected_version": "0.8.663",
+      "reporter": "Alex",
+      "reported_at": "2026-08-03T11:55:53.195029+00:00",
+      "prerequisites": "Kapazitaetspflege, voller Pflegeumfang (capacity.edit, scope 'alle'). Bestehende Zeilen in availability_entry.",
+      "description": "ABGETRENNT AUS 65a230fd-e31a-40d1-ac61-0e5ae8b98277 (Freigabe Alex, 2026-08-04). Das dortige Ticket meldet einen Fehler an der Grund-Auswahl; der Zusatzwunsch 'Es waere sehr gut, wenn man Eintraege auch im Nachhinein aendern koennte' ist fachlich ein eigenes Vorhaben und gehoerte nicht in dieselbe Behebung.\n\nGEGENSTAND: eine bestehende Abwesenheits-/Garantiezeile berichtigen, ohne sie zu entfernen und neu anzulegen.\n\nWARUM DAS NICHT TRIVIAL IST: availability_entry ist auditiert. Die Arbeitszeiten (worktime) loesen dieselbe Aufgabe seit Build 555 ueber einen ERSETZEN-Modus: die alte Zeile wird stillgelegt (soft-delete) und eine neue geschrieben, die alte bleibt als Beleg stehen. Ein echtes UPDATE waere hier falsch - es schriebe forensische Historie um. Der Weg fuer die Abwesenheiten sollte deshalb derselbe sein.\n\nVORSCHLAG (noch nicht freigegeben): Aktionsspalte der Abwesenheits-tabelle um 'Bearbeiten' ergaenzen, Formular fuellen, Knopf auf 'Zeile ersetzen' umschalten, Warnhinweis wie bei den Arbeitszeiten, serverseitig Entfernen+Anlegen in EINER auditierten Schreibung. Beruehrt: management/capacity/availability_repo.py, management/server/management_app.py, management/server/static/cockpit_capacity_pflege.js, Hilfe (management/help/inhalt/personal.py), Tests.",
+      "expected_behavior": "Eine bestehende Zeile laesst sich berichtigen. Die urspruengliche Angabe bleibt als Beleg erhalten und ist ueber 'Auch entfernte Zeilen anzeigen' sichtbar.",
+      "actual_behavior": "Nur Anlegen und Entfernen. Eine Berichtigung erfordert zwei Vorgaenge, und der Zusammenhang zwischen ihnen steht nirgends.",
+      "status": "open",
+      "priority": "medium",
+      "severity": "enhancement",
+      "assigned_to": "Claude",
+      "related_to": [
+        "65a230fd-e31a-40d1-ac61-0e5ae8b98277"
+      ],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14",
+        "database": "coordinator.db"
+      },
+      "tags": [
+        "Kapazitaetspflege",
+        "Abwesenheit",
+        "Auditierung"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-04T12:00:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Aus 65a230fd abgetrennt und neu angelegt (Build 663). Der Ursprungseintrag bleibt auf die Grund-Auswahl beschraenkt."
+        }
+      ]
+    },
+    {
+      "id": "d3f933cd-40fd-44c0-938f-e8f84053d382",
+      "type": "improvement",
+      "title": "Auswahl von \"Von\" Datum wird auch \"bis\" Datum",
+      "affected_version": "0.8.662",
+      "reporter": "Alex",
+      "reported_at": "2026-08-03T12:01:38.372097+00:00",
+      "prerequisites": "Man kann bei verschiedenen Masken Zeitraeume eingeben.",
+      "description": "BEHOBEN IN BUILD 663 mit einer bewussten Einschraenkung.\n\nNEU: management/server/static/cockpit_datumspaar.js - koppelt ein Von- an ein Bis-Feld. Zwei getrennt schaltbare Wirkungen:\n  min         - untere Schranke am Bis-Feld (Vorgabe AN)\n  uebernehmen - leeres Bis-Feld bekommt das Von-Datum (Vorgabe AUS)\n\nWARUM GETRENNT: es gibt zwei Arten von Datumspaaren. In einer EINGABEMASKE (Abwesenheit von/bis) heisst ein leeres Bis-Feld 'habe ich noch nicht gesagt' - die Uebernahme ist genau die gewuenschte Abkuerzung. In einer FILTER- oder ZEITRAUMWAHL (Auswertungszeitraum der Kapazitaetsansicht, Zeitraum-Schiene der Annotationsrecherche) heisst es 'ohne obere Grenze'. Spraenge es dort auf das Von-Datum, schrumpfte die Auswertung stillschweigend auf einen Tag, und wer es uebersieht, haelt das Ergebnis fuer den ganzen Zeitraum - eine still herbeigefuehrte Auslassung (GR1), ausgerechnet erzeugt von einer Bequemlichkeitsfunktion. Die Schranke dagegen ist ueberall richtig.\n\nANGEWANDT:\n  Kapazitaetspflege / Abwesenheit von-bis  -> min + uebernehmen\n  Kapazitaetsansicht / Auswertungszeitraum -> nur min\n  Annotationsrecherche / Zeitraum-Schiene  -> nur min\n\nNIE UEBERSCHRIEBEN: ein bereits gefuelltes Bis-Feld bleibt unangetastet (DP03/CP25). Steht dort ein Datum VOR dem Von-Datum, wird es nicht heimlich berichtigt, sondern markiert und in der Ergebniszeile benannt (DP07).\n\nAUSLIEFERUNG: die Datei liegt EINMAL im Management-Baum und wird vom Ermittler-Webserver ueber eine neue Route mitausgeliefert (forensic_api/static.py, _MGMT_STATIC_DIR) - zwei Abschriften desselben Verhaltens laufen unweigerlich auseinander. Weil static.py auf eine fehlende .js-Datei mit einem LEEREN Platzhalter und HTTP 200 antwortet, waere ein Verschieben unsichtbar; tests/test_forensic_static_registry.py (FS01/FS02) faengt das ab.\n\nTESTS: DP01-DP12 (neu), CP24-CP26, CA09/CA10, FS01/FS02.",
+      "expected_behavior": "Wenn das Enddatum noch nicht gesetzt ist, wird es automatisch gesetzt wenn das Anfangsdatum gesetzt wird und zwar auf das Anfangsdatum.",
+      "actual_behavior": "Vor Build 663: der Wert fuer das Enddatum musste voellig neu gesetzt werden, im Kalender vom heutigen Datum ueber alle Monate hinweg.",
+      "status": "resolved",
+      "priority": "medium",
+      "severity": "minor",
+      "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": "0.8.663",
+      "target_version": "0.8.663",
+      "environment": {
+        "python_version": "3.14",
+        "database": "coordinator.db"
+      },
+      "tags": [
+        "Kapazitaetspflege",
+        "Kalender"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-04T12:00:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "resolved",
+          "comment": "Umgesetzt in Build 663. ABWEICHUNG VOM AUFTRAG, ausdruecklich benannt: die Uebernahme des Von-Datums wurde NUR auf die Eingabemaske gelegt, nicht auf die beiden Filter-Paare (Begruendung in der Beschreibung). Alex zur Bestaetigung vorgelegt."
+        }
+      ]
+    },
+    {
+      "id": "65a230fd-e31a-40d1-ac61-0e5ae8b98277",
+      "type": "bug",
+      "title": "Grund fuer Abwesenheit (Kapazitaetsplanung) nicht auswaehlbar",
+      "affected_version": "0.8.662",
+      "reporter": "Alex",
+      "reported_at": "2026-08-03T11:55:53.195029+00:00",
+      "prerequisites": "Man kann derzeit Kapazitaetsgarantien und Einschraenkungen einpflegen. Gruende sind gepflegt.",
+      "description": "STAND NACH BUILD 663: NICHT BEHOBEN, ABER SICHTBAR GEMACHT. Die Ursache ist noch nicht belegt; ohne Beleg wird nichts geraten.\n\nGEMESSEN (Bauumgebung, jsdom, CP22): wird renderCapacityPflege mit zwei Gruenden in data.reasons aufgerufen, enthaelt #aiw-capp-av-grund genau drei Eintraege - '(kein Grund)', 'Urlaub', 'Krankheit'. Der Frontend-Pfad ist damit als Ursache AUSGESCHLOSSEN: was die Sicht bekommt, zeigt sie auch. Gegenprobe im Repository: Build 662 hat am Kapazitaetscode nichts geaendert (git diff 7ca1211..aedc249), die Messung gilt also fuer die gemeldete Version.\n\nOFFEN ist damit, ob GET /api/capacity/stammdaten die Gruende ueberhaupt liefert. Der Lesepfad (management_app.py _capacity_stammdaten -> ReasonRepo.list_reasons -> _geteilt) ist beim Lesen unauffaellig; die Entscheidung faellt an der Produktions-coordinator.db, nicht am Quelltext. Erforderliche Messung an Alex uebergeben (Cockpit-Konsole):\n  fetch('/api/capacity/stammdaten').then(r=>r.json())\n    .then(d=>console.log(d.counts, d.scope, d.reasons));\n\nWAS BUILD 663 TUT: bisher zeigte die Auswahl bei leerem Katalog nur '(kein Grund)', und zwar wortlos - 'es ist noch kein Grund angelegt' war von 'die Gruende sind nicht angekommen' nicht zu unterscheiden. Das ist eine stille Auslassung (GR1) genau dort, wo die Bedienerin eine Erklaerung braucht. Die Maske nennt den leeren Katalog jetzt ausdruecklich und benennt die Gegenprobe ('Stehen unten unter Abwesenheitsgruende Eintraege? Dann ist es ein Fehler'). Test CP23.\n\nABGETRENNT: der Zusatzwunsch 'Eintraege auch im Nachhinein aendern' ist in ein eigenes Ticket ueberfuehrt (7b2f4a19-6c3d-4e58-9a71-0d5c8e2f4b63).",
+      "expected_behavior": "Die vorhandenen Gruende werden angezeigt.",
+      "actual_behavior": "Nur \"kein Grund\" wird angezeigt und ist auswaehlbar.",
+      "status": "in_progress",
+      "priority": "high",
+      "severity": "minor",
+      "assigned_to": "Claude",
+      "related_to": [
+        "7b2f4a19-6c3d-4e58-9a71-0d5c8e2f4b63"
+      ],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14",
+        "database": "coordinator.db"
+      },
+      "tags": [
+        "Kapazitaetspflege",
+        "Grund"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-04T12:00:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "in_progress",
+          "comment": "Frontend als Ursache ausgeschlossen (CP22). Symptom in Build 663 sichtbar gemacht (CP23). Wartet auf die Konsolenmessung an der Produktionsinstanz; Zusatzwunsch abgetrennt."
+        }
+      ]
+    }
+  ]
+}

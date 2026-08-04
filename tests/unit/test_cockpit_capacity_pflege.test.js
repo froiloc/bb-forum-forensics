@@ -40,7 +40,20 @@
  *        Aktionsknoepfe entfallen auf entfernten Zeilen.
  * CP21 — Umschalten ruft den Rueckruf mit dem neuen Zustand.
  *
- * Version: v0.8.563 · Build: 563 · 2026-07-29
+ * BUILD 663 (Tickets 65a230fd und d3f933cd):
+ * CP22 — die Grund-Auswahl enthaelt die gelieferten Gruende. DAS IST DIE
+ *        GEGENPROBE zum gemeldeten Befund "nur (kein Grund) waehlbar": sie
+ *        weist nach, dass die Sicht liefert, was ihr gegeben wird — der
+ *        Fehler liegt also nicht hier.
+ * CP23 — ist der Gruendekatalog leer, STEHT DAS DA. Vorher war "noch nichts
+ *        gepflegt" von "nicht angekommen" nicht zu unterscheiden (GR1).
+ * CP24 — Von setzen fuellt ein leeres Bis-Feld und erklaert es in der
+ *        Ergebniszeile.
+ * CP25 — ein gefuelltes Bis-Feld bleibt unangetastet.
+ * CP26 — ohne den Datumspaar-Baustein bleibt die Maske bedienbar, und der
+ *        Ausfall wird BENANNT statt verschwiegen.
+ *
+ * Version: v0.8.663 · Build: 663 · 2026-08-04
  */
 
 import { describe, it, expect } from "vitest";
@@ -53,6 +66,13 @@ const _tkSrc = readFileSync(
 );
 const _src = readFileSync(
   "management/server/static/cockpit_capacity_pflege.js",
+  "utf-8"
+);
+// Build 663: der Datumspaar-Baustein wird MITGELADEN, weil die Sicht ihn im
+// Betrieb ueber window.AIWDatumspaar findet. Ein Nachbau hier wuerde die
+// Verdrahtung gruen faerben, ohne sie zu pruefen.
+const _dpSrc = readFileSync(
+  "management/server/static/cockpit_datumspaar.js",
   "utf-8"
 );
 
@@ -93,12 +113,15 @@ function _fakeTabulator(doc) {
   };
 }
 
-function _win(mitTk) {
+function _win(mitTk, mitDatumspaar) {
   const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
     runScripts: "dangerously",
     url: "http://localhost",
   });
   if (mitTk !== false) { dom.window.eval(_tkSrc); }
+  // Build 663: der Baustein muss VOR der Sicht im Fenster stehen — genau wie
+  // die Script-Reihenfolge in cockpit.html es festlegt.
+  if (mitDatumspaar !== false) { dom.window.eval(_dpSrc); }
   dom.window.eval(_src);
   return dom.window;
 }
@@ -493,5 +516,82 @@ describe("Kapazitaetspflege (Build 559)", () => {
     box.checked = false;
     box.dispatchEvent(new win.Event("change"));
     expect(zustand).toBe(false);
+  });
+
+  // CP22 --------------------------------------------------------------------
+  it("CP22: die Grund-Auswahl enthaelt die gelieferten Gruende", () => {
+    const daten = _daten("alle");
+    daten.reasons = [
+      { code: "urlaub", label: "Urlaub", sort: 10, audit_seq: 15 },
+      { code: "krank", label: "Krankheit", sort: 20, audit_seq: 16 },
+    ];
+    const { main } = _zeichne(_win(), { _daten: daten });
+    const sel = main.querySelector("#aiw-capp-av-grund");
+    const werte = Array.prototype.map.call(sel.options, (o) => o.value);
+    const texte = Array.prototype.map.call(sel.options, (o) => o.textContent);
+    // GEGENPROBE zum Befund aus Ticket 65a230fd: bekommt die Sicht Gruende,
+    // zeigt sie sie auch. Faellt dieser Fall je um, ist der Fehler HIER.
+    expect(werte).toEqual(["", "urlaub", "krank"]);
+    expect(texte).toEqual(["(kein Grund)", "Urlaub", "Krankheit"]);
+    // Und es steht KEIN Leer-Hinweis da, wenn der Katalog gefuellt ist.
+    expect(main.textContent).not.toContain("Gruendekatalog ist LEER");
+  });
+
+  // CP23 --------------------------------------------------------------------
+  it("CP23: ein leerer Gruendekatalog wird benannt", () => {
+    const daten = _daten("alle");
+    daten.reasons = [];
+    const { main } = _zeichne(_win(), { _daten: daten });
+    const sel = main.querySelector("#aiw-capp-av-grund");
+    expect(sel.options.length).toBe(1);
+    // Der Hinweis muss die GEGENPROBE nennen, sonst hilft er nicht weiter.
+    expect(main.textContent).toContain("Gruendekatalog ist LEER");
+    expect(main.textContent).toContain("Abwesenheitsgruende");
+    expect(main.querySelector(
+      '[data-hilfe-id="capacity_pflege.bedienung.av_grund_leer"]')).toBeTruthy();
+  });
+
+  // CP24 --------------------------------------------------------------------
+  it("CP24: Von setzen fuellt ein leeres Bis und erklaert es", () => {
+    const win = _win();
+    const { main } = _zeichne(win);
+    const von = main.querySelector("#aiw-capp-av-von");
+    const bis = main.querySelector("#aiw-capp-av-bis");
+    expect(bis.value).toBe("");
+    von.value = "2026-09-15";
+    von.dispatchEvent(new win.Event("change"));
+    expect(bis.value).toBe("2026-09-15");
+    expect(bis.getAttribute("min")).toBe("2026-09-15");
+    // Eine Wertaenderung, die niemand angefordert hat, muss sich erklaeren.
+    const meldung = main.querySelector(".aiw-result");
+    expect(meldung.textContent).toContain("2026-09-15");
+  });
+
+  // CP25 --------------------------------------------------------------------
+  it("CP25: ein gefuelltes Bis-Feld bleibt unangetastet", () => {
+    const win = _win();
+    const { main } = _zeichne(win);
+    const von = main.querySelector("#aiw-capp-av-von");
+    const bis = main.querySelector("#aiw-capp-av-bis");
+    bis.value = "2026-12-24";
+    von.value = "2026-09-15";
+    von.dispatchEvent(new win.Event("change"));
+    expect(bis.value).toBe("2026-12-24");
+  });
+
+  // CP26 --------------------------------------------------------------------
+  it("CP26: ohne Datumspaar-Baustein bleibt die Maske bedienbar", () => {
+    const win = _win(true, false);
+    expect(win.AIWDatumspaar).toBeUndefined();
+    const { main } = _zeichne(win);
+    const von = main.querySelector("#aiw-capp-av-von");
+    const bis = main.querySelector("#aiw-capp-av-bis");
+    expect(von).toBeTruthy();
+    expect(bis).toBeTruthy();
+    von.value = "2026-09-15";
+    von.dispatchEvent(new win.Event("change"));
+    expect(bis.value).toBe("");
+    // KEIN STILLER AUSFALL: der fehlende Baustein wird benannt.
+    expect(main.textContent).toContain("cockpit_datumspaar.js");
   });
 });
