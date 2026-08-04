@@ -23,12 +23,18 @@ const _src = readFileSync(
   "management/server/static/cockpit_capacity.js",
   "utf-8"
 );
+// Build 663: der ECHTE Datumspaar-Baustein, nicht ein Nachbau.
+const _dpSrc = readFileSync(
+  "management/server/static/cockpit_datumspaar.js",
+  "utf-8"
+);
 
-function _ctx() {
+function _ctx(mitDatumspaar) {
   const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
     runScripts: "dangerously",
     url: "http://localhost",
   });
+  if (mitDatumspaar !== false) { dom.window.eval(_dpSrc); }
   dom.window.eval(_src);
   return dom.window;
 }
@@ -143,5 +149,41 @@ describe("cockpit_capacity.js — Kapazitaet (Build 360)", () => {
       { ECharts: null });
     expect(inst).toBe(null);
     expect(main.querySelector(".aiw-placeholder")).toBeTruthy();
+  });
+
+  // CA09 (Build 663, Ticket d3f933cd) ----------------------------------------
+  it("CA09: Zeitraum -- Schranke JA, Uebernahme NEIN", () => {
+    const win = _ctx();
+    const api = win.AIWCockpitCapacity;
+    const main = win.document.createElement("main");
+    win.document.body.appendChild(main);
+    api.renderCapacity(main,
+      { scope: "alle", start: "", end: "", capacities: [] },
+      { ECharts: null });
+    const von = main.querySelector("#aiw-cap-start");
+    const bis = main.querySelector("#aiw-cap-end");
+    von.value = "2026-07-01";
+    von.dispatchEvent(new win.Event("change"));
+    // Die Schranke ist auch hier richtig: ein Ende vor dem Anfang ist unsinnig.
+    expect(bis.getAttribute("min")).toBe("2026-07-01");
+    // Die UEBERNAHME waere hier ein Schaden: ein leeres Bis-Feld heisst in
+    // einer Zeitraumwahl "ohne obere Grenze". Spraenge es auf den Von-Tag,
+    // schrumpfte die Auswertung stillschweigend auf 24 Stunden.
+    expect(bis.value).toBe("");
+  });
+
+  // CA10 (Build 663) ---------------------------------------------------------
+  it("CA10: ohne Datumspaar-Baustein bleibt die Zeitraumwahl bedienbar", () => {
+    const win = _ctx(false);
+    expect(win.AIWDatumspaar).toBeUndefined();
+    const api = win.AIWCockpitCapacity;
+    const main = win.document.createElement("main");
+    win.document.body.appendChild(main);
+    const changes = [];
+    api.renderCapacity(main,
+      { scope: "alle", start: "2026-07-01", end: "2026-07-31", capacities: [] },
+      { ECharts: null, onPeriodChange: (a, b) => changes.push([a, b]) });
+    main.querySelector("#aiw-cap-reload").click();
+    expect(changes[0]).toEqual(["2026-07-01", "2026-07-31"]);
   });
 });

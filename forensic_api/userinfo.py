@@ -523,6 +523,11 @@ class UserinfoEndpoint:
   <script src="/_forensic/annotation_timeline.js" defer></script>
   <!-- Build 431: Tag-Netz (ECharts graph) vor der orchestrierenden Sicht laden. -->
   <script src="/_forensic/annotation_tag_network.js" defer></script>
+  <!-- Build 663 (Ticket d3f933cd): Datumspaar-Kopplung der Zeitraum-
+       Schiene. STEHT VOR der orchestrierenden Sicht, die sie ueber
+       window.AIWDatumspaar sucht. Fehlt sie, bleibt die Schiene voll
+       bedienbar -- der Ausfall wird in der Konsole benannt. -->
+  <script src="/_forensic/cockpit_datumspaar.js" defer></script>
   <script src="/_forensic/annotation_recherche.js" defer></script>
 </body>
 </html>"""

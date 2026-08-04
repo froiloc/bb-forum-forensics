@@ -423,6 +423,106 @@ class CapacityApiTests(unittest.TestCase):
             "SELECT deleted_at FROM availability_entry WHERE id=?",
             (entry_id,)).fetchone()["deleted_at"])
 
+    # KP11b (Build 664) ---------------------------------------------------
+    def test_kp11b_availability_replace_ersetzt_in_einem_zug(self):
+        """Ersetzen ueber die Route: eine aktive Zeile, zwei Belege."""
+        self._grant("supervisor", "alle", 1)
+        self._app().dispatch_write(1, "/api/capacity/availability", {
+            "person_id": 2, "period_start": "2026-07-06",
+            "period_end": "2026-07-10", "kind": "einschraenkung",
+            "value_minutes": 600})
+        self._reload()
+        entry_id = self.con.execute(
+            "SELECT id FROM availability_entry").fetchone()["id"]
+
+        r = self._app().dispatch_write(
+            1, "/api/capacity/availability/replace", {
+                "entry_id": entry_id, "person_id": 2,
+                "period_start": "2026-07-06", "period_end": "2026-07-08",
+                "kind": "einschraenkung", "value_minutes": 300})
+        self.assertEqual(r.status, 200, r.body)
+        body = self._body(r)
+        self.assertEqual(EventType.AVAILABILITY_REMOVED,
+                         self._event(body["entfernt_seq"]))
+        self.assertEqual(EventType.AVAILABILITY_SET,
+                         self._event(body["gesetzt_seq"]))
+
+        self._reload()
+        aktiv = self.con.execute(
+            "SELECT id, period_end, value_minutes FROM availability_entry "
+            "WHERE deleted_at IS NULL").fetchall()
+        self.assertEqual(1, len(aktiv))
+        self.assertEqual("2026-07-08", aktiv[0]["period_end"])
+        self.assertEqual(300, aktiv[0]["value_minutes"])
+        # KEIN UPDATE: die alte Zeile steht noch, stillgelegt.
+        alle = self.con.execute(
+            "SELECT COUNT(*) c FROM availability_entry").fetchone()["c"]
+        self.assertEqual(2, alle)
+
+    # KP11c (Build 664) ---------------------------------------------------
+    def test_kp11c_replace_prueft_BEIDE_personen(self):
+        """
+        DIE FALLE: die Zielperson steht in der Nutzlast, die Person der ALTEN
+        Zeile nicht. Wer nur die Zielperson prueft, laesst eine selbst-
+        pflegende Person fremde Zeilen entfernen, indem sie sich selbst als
+        Ziel angibt - der Eintrag der anderen waere weg, und an seiner Stelle
+        stuende einer fuer die Aufrufende.
+        """
+        self._grant("supervisor", "alle", 1)
+        self._app().dispatch_write(1, "/api/capacity/availability", {
+            "person_id": 3, "period_start": "2026-07-06",
+            "period_end": "2026-07-10", "kind": "einschraenkung",
+            "value_minutes": 600})
+        self._reload()
+        entry_id = self.con.execute(
+            "SELECT id FROM availability_entry").fetchone()["id"]
+
+        self._grant("investigator", "eigene", 2)
+        r = self._app().dispatch_write(
+            2, "/api/capacity/availability/replace", {
+                "entry_id": entry_id, "person_id": 2,
+                "period_start": "2026-07-06", "period_end": "2026-07-10",
+                "kind": "einschraenkung", "value_minutes": 60})
+        self.assertEqual(r.status, 403, r.body)
+
+        self._reload()
+        # Nichts entfernt, nichts angelegt.
+        self.assertIsNone(self.con.execute(
+            "SELECT deleted_at FROM availability_entry WHERE id=?",
+            (entry_id,)).fetchone()["deleted_at"])
+        self.assertEqual(1, self.con.execute(
+            "SELECT COUNT(*) c FROM availability_entry").fetchone()["c"])
+
+    # KP11d (Build 664) ---------------------------------------------------
+    def test_kp11d_replace_einer_entfernten_zeile_wird_erklaert(self):
+        """Abweisung MIT Grund und mit Feldangabe - nicht nur mit Fehlercode."""
+        self._grant("supervisor", "alle", 1)
+        self._app().dispatch_write(1, "/api/capacity/availability", {
+            "person_id": 2, "period_start": "2026-07-06",
+            "period_end": "2026-07-10", "kind": "einschraenkung",
+            "value_minutes": 600})
+        self._reload()
+        entry_id = self.con.execute(
+            "SELECT id FROM availability_entry").fetchone()["id"]
+        self._app().dispatch_write(
+            1, "/api/capacity/availability/remove", {"entry_id": entry_id})
+        self._reload()
+
+        r = self._app().dispatch_write(
+            1, "/api/capacity/availability/replace", {
+                "entry_id": entry_id, "person_id": 2,
+                "period_start": "2026-07-06", "period_end": "2026-07-10",
+                "kind": "einschraenkung", "value_minutes": 300})
+        self.assertEqual(r.status, 400, r.body)
+        body = self._body(r)
+        self.assertIn("bereits entfernt", body["detail"])
+        self.assertEqual("entry_id", body.get("feld"))
+
+        self._reload()
+        # Es ist keine neue Zeile entstanden.
+        self.assertEqual(1, self.con.execute(
+            "SELECT COUNT(*) c FROM availability_entry").fetchone()["c"])
+
     # KP12 ---------------------------------------------------------------
     def test_kp12_worktime_ist_append_only(self):
         self._grant("supervisor", "alle", 1)

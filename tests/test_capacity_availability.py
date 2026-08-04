@@ -205,6 +205,125 @@ class CapacityAvailabilityTests(unittest.TestCase):
                               value_minutes=240, actor_id=1)
         self.assertEqual(len(repo.list_availability(2)), 2)
 
+    # AV06 (Build 664) -------------------------------------------------------
+    def test_av06_replace_ersetzt_und_belegt_zweimal(self):
+        """Ersetzen: alte Zeile stillgelegt, neue aktiv, ZWEI Belege."""
+        repo = AvailabilityRepo(self.con, self.writer)
+        repo.set_availability(2, period_start="2026-07-01",
+                              period_end="2026-07-31", kind="einschraenkung",
+                              value_pct=50, note="Urspruenglich", actor_id=1)
+        alt_id = repo.list_availability(2)[0]["id"]
+
+        seqs = repo.replace_availability(
+            alt_id, 2, period_start="2026-07-05", period_end="2026-07-20",
+            kind="einschraenkung", value_minutes=240, note="Berichtigt",
+            actor_id=1)
+
+        # Zwei Belege, einzeln in der Kette - kein Sammelbeleg.
+        self.assertLess(seqs["entfernt_seq"], seqs["gesetzt_seq"])
+        self.assertEqual(
+            "availability_removed",
+            self.con.execute("SELECT event_type FROM audit_log WHERE seq=?",
+                             (seqs["entfernt_seq"],)).fetchone()[0])
+        self.assertEqual(
+            "availability_set",
+            self.con.execute("SELECT event_type FROM audit_log WHERE seq=?",
+                             (seqs["gesetzt_seq"],)).fetchone()[0])
+
+        # Genau EINE aktive Zeile - mit den neuen Werten.
+        aktiv = repo.list_availability(2)
+        self.assertEqual(1, len(aktiv))
+        self.assertNotEqual(alt_id, aktiv[0]["id"])
+        self.assertEqual("2026-07-05", aktiv[0]["period_start"])
+        self.assertEqual(240, aktiv[0]["value_minutes"])
+        self.assertIsNone(aktiv[0]["value_pct"])
+        self.assertEqual("Berichtigt", aktiv[0]["note"])
+
+        # KEIN UPDATE: die alte Zeile steht noch da, stillgelegt, mit ihren
+        # urspruenglichen Werten. Sie ist der Beleg dafuer, was vor der
+        # Korrektur galt.
+        alle = repo.list_availability(2, include_deleted=True)
+        self.assertEqual(2, len(alle))
+        alt = [z for z in alle if z["id"] == alt_id][0]
+        self.assertIsNotNone(alt["deleted_at"])
+        self.assertEqual(50, alt["value_pct"])
+        self.assertEqual("Urspruenglich", alt["note"])
+
+    # AV07 (Build 664) -------------------------------------------------------
+    def test_av07_replace_rollt_bei_wertfehler_vollstaendig_zurueck(self):
+        """Schlaegt das Setzen fehl, bleibt AUCH das Entfernen aus."""
+        repo = AvailabilityRepo(self.con, self.writer)
+        repo.set_availability(2, period_start="2026-07-01",
+                              period_end="2026-07-31", kind="garantie",
+                              value_pct=80, actor_id=1)
+        alt_id = repo.list_availability(2)[0]["id"]
+        vorher_seq = self.con.execute(
+            "SELECT MAX(seq) FROM audit_log").fetchone()[0]
+
+        with self.assertRaises(CapacityError):
+            repo.replace_availability(
+                alt_id, 2, period_start="2026-07-05",
+                period_end="2026-07-20", kind="garantie",
+                value_pct=50, value_minutes=240, actor_id=1)  # BEIDES gesetzt
+
+        # Nichts entfernt, nichts gesetzt, kein Beleg. Eine stillgelegte
+        # Zeile ohne Nachfolger waere ein Verlust, ein Beleg ohne Wirkung
+        # eine Luege in der Akte.
+        aktiv = repo.list_availability(2)
+        self.assertEqual(1, len(aktiv))
+        self.assertEqual(alt_id, aktiv[0]["id"])
+        self.assertIsNone(aktiv[0]["deleted_at"])
+        self.assertEqual(1, len(repo.list_availability(
+            2, include_deleted=True)))
+        self.assertEqual(vorher_seq, self.con.execute(
+            "SELECT MAX(seq) FROM audit_log").fetchone()[0])
+
+    # AV08 (Build 664) -------------------------------------------------------
+    def test_av08_replace_einer_entfernten_zeile_scheitert(self):
+        """Eine stillgelegte Zeile wird nicht ersetzt - und es bleibt dabei."""
+        repo = AvailabilityRepo(self.con, self.writer)
+        repo.set_availability(2, period_start="2026-07-01",
+                              period_end="2026-07-31", kind="garantie",
+                              value_pct=80, actor_id=1)
+        alt_id = repo.list_availability(2)[0]["id"]
+        repo.remove_availability(alt_id, actor_id=1)
+        vorher_seq = self.con.execute(
+            "SELECT MAX(seq) FROM audit_log").fetchone()[0]
+
+        with self.assertRaises(CapacityError):
+            repo.replace_availability(
+                alt_id, 2, period_start="2026-07-05",
+                period_end="2026-07-20", kind="garantie", value_pct=60,
+                actor_id=1)
+
+        # Insbesondere darf die NEUE Zeile nicht entstanden sein: sonst
+        # haette ein gescheiterter Vorgang trotzdem geschrieben.
+        self.assertEqual(0, len(repo.list_availability(2)))
+        self.assertEqual(1, len(repo.list_availability(
+            2, include_deleted=True)))
+        self.assertEqual(vorher_seq, self.con.execute(
+            "SELECT MAX(seq) FROM audit_log").fetchone()[0])
+
+    # AV09 (Build 664) -------------------------------------------------------
+    def test_av09_entfernbeleg_traegt_die_alten_werte(self):
+        """Der Beleg sagt, WAS entfernt wurde - nicht nur, DASS."""
+        import json
+        repo = AvailabilityRepo(self.con, self.writer)
+        repo.set_availability(2, period_start="2026-07-01",
+                              period_end="2026-07-31", kind="einschraenkung",
+                              value_pct=50, note="Freitext bleibt draussen",
+                              actor_id=1)
+        eid = repo.list_availability(2)[0]["id"]
+        seq = repo.remove_availability(eid, actor_id=1)
+        row = self.con.execute(
+            "SELECT content FROM audit_log WHERE seq=?", (seq,)).fetchone()
+        payload = json.loads(row[0]) if isinstance(row[0], str) else row[0]
+        self.assertEqual("2026-07-01", payload["period_start"])
+        self.assertEqual(50, payload["value_pct"])
+        self.assertEqual("einschraenkung", payload["kind"])
+        # DIE NOTIZ IST FREITEXT und hat im Audit-Payload nichts verloren.
+        self.assertNotIn("note", payload)
+
     # CL01 -------------------------------------------------------------------
     def test_cl01_cli_end_to_end(self):
         self.con.close()

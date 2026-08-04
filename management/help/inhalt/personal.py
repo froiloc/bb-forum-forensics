@@ -402,6 +402,12 @@ CAPACITY_PFLEGE = Sichthilfe(
                 "Abwesenheit eintragen: Zeitraum, Rechenart, Grund und "
                 "GENAU EINES von Prozent oder Minuten. Beides zugleich wird "
                 "zurückgewiesen.",
+                "Abwesenheit korrigieren: „Bearbeiten“ in der Zeile. Das "
+                "Formular füllt sich mit den bisherigen Angaben, und das "
+                "Speichern ERSETZT den Eintrag in einem Zug. Danach stehen "
+                "ZWEI Zeilen im Bestand: die stillgelegte alte und die neue. "
+                "Das ist kein Doppeleintrag, sondern der Beleg dafür, was vor "
+                "der Korrektur galt.",
                 "Etwas herausnehmen: „Entfernen“. Die Zeile fällt aus "
                 "Rechnung und Liste, bleibt aber erhalten.",
                 "Entferntes ansehen: die Umschaltung oben. Auch wenn sie aus "
@@ -534,10 +540,18 @@ CAPACITY_PFLEGE = Sichthilfe(
             verweis="capacity_pflege#rechte"),
         Kontexthilfe(
             "capacity_pflege.bedienung.av_von", "Von",
-            "Erster Tag der Abwesenheit."),
+            "Erster Tag der Abwesenheit. Ist das Bis-Feld noch LEER, wird es "
+            "beim Setzen dieses Datums damit vorbelegt — für eine "
+            "eintägige Abwesenheit genügt deshalb eine einzige Eingabe. Ein "
+            "bereits gefülltes Bis-Feld wird dabei NIE überschrieben."),
         Kontexthilfe(
             "capacity_pflege.bedienung.av_bis", "Bis",
-            "Letzter Tag der Abwesenheit, einschließlich."),
+            "Letzter Tag der Abwesenheit, einschließlich. Der Kalender lässt "
+            "kein Datum vor dem Von-Datum zu. Steht hier bereits ein früheres "
+            "Datum, wird es nicht stillschweigend berichtigt, sondern rot "
+            "markiert und in der Ergebniszeile benannt — die Korrektur "
+            "bleibt Ihre Entscheidung.",
+            verweis="capacity_pflege#grenzen"),
         Kontexthilfe(
             "capacity_pflege.bedienung.av_rechenart", "Rechenart",
             "WIE die Abwesenheit auf die Kapazität wirkt: abziehen oder "
@@ -548,6 +562,17 @@ CAPACITY_PFLEGE = Sichthilfe(
             "capacity_pflege.bedienung.av_grund", "Grund",
             "Warum die Person abwesend ist — freiwillig. Die Gründe werden "
             "weiter unten auf derselben Seite gepflegt."),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.av_grund_leer",
+            "Hinweis: Gründekatalog leer",
+            "Erscheint nur, wenn die Auswahl außer „(kein Grund)“ nichts "
+            "anzubieten hat. Ohne diesen Hinweis wäre der Zustand nicht von "
+            "einem Übertragungsfehler zu unterscheiden. PRÜFEN SIE die "
+            "Tabelle „Abwesenheitsgründe“ weiter unten: Ist sie ebenfalls "
+            "leer, ist der Katalog schlicht noch nicht gepflegt. Stehen dort "
+            "Einträge, während die Auswahl leer bleibt, ist das ein Fehler "
+            "und zu melden.",
+            verweis="capacity_pflege#grenzen"),
         Kontexthilfe(
             "capacity_pflege.bedienung.av_prozent", "Prozent",
             "Der Anteil, um den die Kapazität sinkt. GENAU EINES von Prozent "
@@ -567,8 +592,21 @@ CAPACITY_PFLEGE = Sichthilfe(
             "capacity_pflege.bedienung.av_speichern", "Abwesenheit speichern",
             "Schreibt die Abwesenheit fest. Fehlt eine Pflichtangabe oder "
             "sind Prozent und Minuten beide gesetzt, wird nichts "
-            "geschrieben.",
+            "geschrieben. Im Bearbeitungsmodus heißt der Knopf "
+            "„Zeile ersetzen“ und tut auch das.",
             verweis="capacity_pflege#grenzen"),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.av_bearbeiten", "Bearbeiten",
+            "Füllt das Formular mit dieser Zeile und schaltet auf Ersetzen "
+            "um. ES WIRD DABEI NICHTS GESCHRIEBEN. Erst das Speichern legt "
+            "die alte Zeile still und schreibt die neue — beides in einem "
+            "Zug, so dass die Abwesenheit nie für einen Moment aus der "
+            "Rechnung fällt.",
+            verweis="capacity_pflege#ablaeufe"),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.av_abbrechen", "Bearbeitung abbrechen",
+            "Verlässt den Ersetzen-Modus. Der vorhandene Eintrag bleibt, wie "
+            "er ist; geschrieben wurde nichts."),
         Kontexthilfe(
             "capacity_pflege.bedienung.ho_tag", "Tag",
             "Das Datum des Feiertags. Feiertage gelten für alle und werden "

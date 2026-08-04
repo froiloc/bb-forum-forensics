@@ -40,7 +40,32 @@
  *        Aktionsknoepfe entfallen auf entfernten Zeilen.
  * CP21 — Umschalten ruft den Rueckruf mit dem neuen Zustand.
  *
- * Version: v0.8.563 · Build: 563 · 2026-07-29
+ * BUILD 663 (Tickets 65a230fd und d3f933cd):
+ * CP22 — die Grund-Auswahl enthaelt die gelieferten Gruende. DAS IST DIE
+ *        GEGENPROBE zum gemeldeten Befund "nur (kein Grund) waehlbar": sie
+ *        weist nach, dass die Sicht liefert, was ihr gegeben wird — der
+ *        Fehler liegt also nicht hier.
+ * CP23 — ist der Gruendekatalog leer, STEHT DAS DA. Vorher war "noch nichts
+ *        gepflegt" von "nicht angekommen" nicht zu unterscheiden (GR1).
+ * CP24 — Von setzen fuellt ein leeres Bis-Feld und erklaert es in der
+ *        Ergebniszeile.
+ * CP25 — ein gefuelltes Bis-Feld bleibt unangetastet.
+ * CP26 — ohne den Datumspaar-Baustein bleibt die Maske bedienbar, und der
+ *        Ausfall wird BENANNT statt verschwiegen.
+ *
+ * BUILD 664 (Ticket 7b2f4a19, Abwesenheit bearbeiten):
+ * CP27 — die Aktionsspalte der Abwesenheiten bietet Bearbeiten UND Entfernen;
+ *        auf einer entfernten Zeile keines von beidem.
+ * CP28 — 'Bearbeiten' reicht die ROHWERTE weiter (Codes, nicht
+ *        Beschriftungen). Aus 'Urlaub' liesse sich 'urlaub' nicht
+ *        zurueckrechnen, aus '50 %' nicht die Einheit.
+ * CP29 — Ersetzen-Modus: Knopfbeschriftung, Warnhinweis, Abbruch, und das
+ *        Speichern geht auf ERSETZEN statt auf Anlegen (mit entry_id).
+ * CP30 — die Vorbelegung fuellt genau EINES von Prozent/Minuten; das andere
+ *        Feld bleibt LEER und wird nicht zu einer 0.
+ * CP31 — der Abwesenheitsteil ueberlebt das Neuzeichnen (formularLesen).
+ *
+ * Version: v0.8.664 · Build: 664 · 2026-08-04
  */
 
 import { describe, it, expect } from "vitest";
@@ -53,6 +78,13 @@ const _tkSrc = readFileSync(
 );
 const _src = readFileSync(
   "management/server/static/cockpit_capacity_pflege.js",
+  "utf-8"
+);
+// Build 663: der Datumspaar-Baustein wird MITGELADEN, weil die Sicht ihn im
+// Betrieb ueber window.AIWDatumspaar findet. Ein Nachbau hier wuerde die
+// Verdrahtung gruen faerben, ohne sie zu pruefen.
+const _dpSrc = readFileSync(
+  "management/server/static/cockpit_datumspaar.js",
   "utf-8"
 );
 
@@ -93,12 +125,15 @@ function _fakeTabulator(doc) {
   };
 }
 
-function _win(mitTk) {
+function _win(mitTk, mitDatumspaar) {
   const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
     runScripts: "dangerously",
     url: "http://localhost",
   });
   if (mitTk !== false) { dom.window.eval(_tkSrc); }
+  // Build 663: der Baustein muss VOR der Sicht im Fenster stehen — genau wie
+  // die Script-Reihenfolge in cockpit.html es festlegt.
+  if (mitDatumspaar !== false) { dom.window.eval(_dpSrc); }
   dom.window.eval(_src);
   return dom.window;
 }
@@ -399,13 +434,17 @@ describe("Kapazitaetspflege (Build 559)", () => {
       onWorktimeEdit: (z) => { bearbeitet = z; },
       onWorktimeRemove: (id) => { entfernt = id; },
     });
-    const knoepfe = Array.prototype.filter.call(
-      main.querySelectorAll(".aiw-aktionen .aiw-btn-klein"),
-      () => true);
-    expect(knoepfe.length).toBe(2);
-    knoepfe[0].dispatchEvent(new win.Event("click"));
+    // Build 664: seit die Abwesenheiten EBENFALLS eine Aktionsspalte haben,
+    // trifft '.aiw-aktionen' zwei Tabellen. Der Fall wird deshalb ueber die
+    // Hilfe-Marken auf die ARBEITSZEITEN eingegrenzt - er prueft dieselbe
+    // Zusage wie zuvor, nur nicht mehr versehentlich auch die Nachbartabelle.
+    const bE = main.querySelector('[data-hilfe-id$="wt_bearbeiten"]');
+    const bX = main.querySelector('[data-hilfe-id$="wt_entfernen"]');
+    expect(bE).toBeTruthy();
+    expect(bX).toBeTruthy();
+    bE.dispatchEvent(new win.Event("click"));
     expect(bearbeitet.id).toBe(1);
-    knoepfe[1].dispatchEvent(new win.Event("click"));
+    bX.dispatchEvent(new win.Event("click"));
     expect(entfernt).toBe(1);
   });
 
@@ -467,7 +506,12 @@ describe("Kapazitaetspflege (Build 559)", () => {
     expect(zeilen[0]._entfernt).toBe(true);
     // ... und die Aktionsspalte gibt keine Knoepfe her: ein zweites Entfernen
     // wiese der Server ohnehin ab.
-    expect(main.querySelectorAll(".aiw-aktionen .aiw-btn-klein").length).toBe(0);
+    // Build 664: eingegrenzt auf die Arbeitszeiten - nur DEREN Zeile ist in
+    // diesen Daten entfernt. Die Abwesenheitstabelle hat seither eine eigene
+    // Aktionsspalte und ist hier nicht gemeint.
+    expect(main.querySelectorAll(
+      '[data-hilfe-id$="wt_bearbeiten"], [data-hilfe-id$="wt_entfernen"]')
+      .length).toBe(0);
     expect(main.querySelector(".aiw-aktionen").textContent).toBe("entfernt");
     expect(entfernt).toBeNull();
 
@@ -493,5 +537,217 @@ describe("Kapazitaetspflege (Build 559)", () => {
     box.checked = false;
     box.dispatchEvent(new win.Event("change"));
     expect(zustand).toBe(false);
+  });
+
+  // CP22 --------------------------------------------------------------------
+  it("CP22: die Grund-Auswahl enthaelt die gelieferten Gruende", () => {
+    const daten = _daten("alle");
+    daten.reasons = [
+      { code: "urlaub", label: "Urlaub", sort: 10, audit_seq: 15 },
+      { code: "krank", label: "Krankheit", sort: 20, audit_seq: 16 },
+    ];
+    const { main } = _zeichne(_win(), { _daten: daten });
+    const sel = main.querySelector("#aiw-capp-av-grund");
+    const werte = Array.prototype.map.call(sel.options, (o) => o.value);
+    const texte = Array.prototype.map.call(sel.options, (o) => o.textContent);
+    // GEGENPROBE zum Befund aus Ticket 65a230fd: bekommt die Sicht Gruende,
+    // zeigt sie sie auch. Faellt dieser Fall je um, ist der Fehler HIER.
+    expect(werte).toEqual(["", "urlaub", "krank"]);
+    expect(texte).toEqual(["(kein Grund)", "Urlaub", "Krankheit"]);
+    // Und es steht KEIN Leer-Hinweis da, wenn der Katalog gefuellt ist.
+    expect(main.textContent).not.toContain("Gruendekatalog ist LEER");
+  });
+
+  // CP23 --------------------------------------------------------------------
+  it("CP23: ein leerer Gruendekatalog wird benannt", () => {
+    const daten = _daten("alle");
+    daten.reasons = [];
+    const { main } = _zeichne(_win(), { _daten: daten });
+    const sel = main.querySelector("#aiw-capp-av-grund");
+    expect(sel.options.length).toBe(1);
+    // Der Hinweis muss die GEGENPROBE nennen, sonst hilft er nicht weiter.
+    expect(main.textContent).toContain("Gruendekatalog ist LEER");
+    expect(main.textContent).toContain("Abwesenheitsgruende");
+    expect(main.querySelector(
+      '[data-hilfe-id="capacity_pflege.bedienung.av_grund_leer"]')).toBeTruthy();
+  });
+
+  // CP24 --------------------------------------------------------------------
+  it("CP24: Von setzen fuellt ein leeres Bis und erklaert es", () => {
+    const win = _win();
+    const { main } = _zeichne(win);
+    const von = main.querySelector("#aiw-capp-av-von");
+    const bis = main.querySelector("#aiw-capp-av-bis");
+    expect(bis.value).toBe("");
+    von.value = "2026-09-15";
+    von.dispatchEvent(new win.Event("change"));
+    expect(bis.value).toBe("2026-09-15");
+    expect(bis.getAttribute("min")).toBe("2026-09-15");
+    // Eine Wertaenderung, die niemand angefordert hat, muss sich erklaeren.
+    const meldung = main.querySelector(".aiw-result");
+    expect(meldung.textContent).toContain("2026-09-15");
+  });
+
+  // CP25 --------------------------------------------------------------------
+  it("CP25: ein gefuelltes Bis-Feld bleibt unangetastet", () => {
+    const win = _win();
+    const { main } = _zeichne(win);
+    const von = main.querySelector("#aiw-capp-av-von");
+    const bis = main.querySelector("#aiw-capp-av-bis");
+    bis.value = "2026-12-24";
+    von.value = "2026-09-15";
+    von.dispatchEvent(new win.Event("change"));
+    expect(bis.value).toBe("2026-12-24");
+  });
+
+  // CP26 --------------------------------------------------------------------
+  it("CP26: ohne Datumspaar-Baustein bleibt die Maske bedienbar", () => {
+    const win = _win(true, false);
+    expect(win.AIWDatumspaar).toBeUndefined();
+    const { main } = _zeichne(win);
+    const von = main.querySelector("#aiw-capp-av-von");
+    const bis = main.querySelector("#aiw-capp-av-bis");
+    expect(von).toBeTruthy();
+    expect(bis).toBeTruthy();
+    von.value = "2026-09-15";
+    von.dispatchEvent(new win.Event("change"));
+    expect(bis.value).toBe("");
+    // KEIN STILLER AUSFALL: der fehlende Baustein wird benannt.
+    expect(main.textContent).toContain("cockpit_datumspaar.js");
+  });
+
+  // CP27 --------------------------------------------------------------------
+  it("CP27: Abwesenheiten bieten Bearbeiten UND Entfernen", () => {
+    const api = _win().AIWCockpitCapacityPflege;
+    const zeilen = api.availabilityRows(_daten("alle"));
+    expect(zeilen.length).toBe(1);
+
+    const win = _win();
+    const { main } = _zeichne(win);
+    // Die Attrappe ruft die Spalten-Formatter auf; die Knoepfe entstehen
+    // damit wirklich und werden nicht nur behauptet.
+    const knoepfe = Array.prototype.map.call(
+      main.querySelectorAll('[data-hilfe-id$="av_bearbeiten"]'),
+      (b) => b.textContent);
+    expect(knoepfe).toContain("Bearbeiten");
+  });
+
+  // CP27b -------------------------------------------------------------------
+  it("CP27b: auf einer entfernten Abwesenheit gibt es keine Knoepfe", () => {
+    const daten = _daten("alle");
+    daten.availability[0].deleted_at = 1780000000;
+    daten.include_deleted = true;
+    const win = _win();
+    const { main } = _zeichne(win, { _daten: daten });
+    expect(main.querySelector(
+      '[data-hilfe-id$="av_bearbeiten"]')).toBeNull();
+    expect(main.textContent).toContain("entfernt");
+  });
+
+  // CP28 --------------------------------------------------------------------
+  it("CP28: Bearbeiten reicht die ROHWERTE weiter, nicht die Beschriftungen",
+     () => {
+    const win = _win();
+    let uebergeben = null;
+    const { main } = _zeichne(win, {
+      onAvailabilityEdit: (z) => { uebergeben = z; },
+    });
+    main.querySelector('[data-hilfe-id$="av_bearbeiten"]').click();
+    expect(uebergeben).toBeTruthy();
+    // Die SICHTBARE Zelle traegt die Beschriftung ...
+    expect(uebergeben.art).toBe("Einschraenkung");
+    expect(uebergeben.grund).toBe("Urlaub");
+    // ... der Bearbeitungspfad die Codes.
+    expect(uebergeben._roh.kind).toBe("einschraenkung");
+    expect(uebergeben._roh.reason_code).toBe("urlaub");
+    expect(uebergeben._roh.period_start).toBe("2026-07-06");
+    expect(uebergeben._roh.period_end).toBe("2026-07-10");
+    expect(uebergeben._roh.value_pct).toBe(50);
+    expect(uebergeben._roh.value_minutes).toBe(null);
+  });
+
+  // CP29 --------------------------------------------------------------------
+  it("CP29: Ersetzen-Modus -- Beschriftung, Warnung, Abbruch, entry_id", () => {
+    const win = _win();
+    let ersetzt = null;
+    let abgebrochen = false;
+    let angelegt = null;
+    const { main } = _zeichne(win, {
+      formular: { availability: {
+        _ersetzt_id: 5, person_id: 2,
+        period_start: "2026-07-06", period_end: "2026-07-10",
+        kind: "einschraenkung", value_pct: 50, value_minutes: null,
+        reason_code: "urlaub", note: "Jahresurlaub" } },
+      onAvailabilityReplace: (b) => { ersetzt = b; },
+      onAvailabilitySet: (b) => { angelegt = b; },
+      onAvailabilityEditAbort: () => { abgebrochen = true; },
+    });
+
+    const save = main.querySelector("#aiw-capp-av-save");
+    expect(save.textContent).toBe("Zeile ersetzen");
+    // Der Warnhinweis muss die Zeile NENNEN und sagen, was mit der alten
+    // passiert -- sonst wirkt das Ersetzen wie ein Verlust.
+    expect(main.textContent).toContain("ERSETZT Eintrag #5");
+    expect(main.textContent).toContain("Beleg");
+
+    // Das Formular ist gefuellt.
+    expect(main.querySelector("#aiw-capp-av-von").value).toBe("2026-07-06");
+    expect(main.querySelector("#aiw-capp-av-art").value)
+      .toBe("einschraenkung");
+    expect(main.querySelector("#aiw-capp-av-grund").value).toBe("urlaub");
+    expect(main.querySelector("#aiw-capp-av-note").value)
+      .toBe("Jahresurlaub");
+
+    save.click();
+    expect(angelegt).toBe(null);          // NICHT anlegen
+    expect(ersetzt).toBeTruthy();
+    expect(ersetzt.entry_id).toBe(5);
+    expect(ersetzt.period_end).toBe("2026-07-10");
+
+    main.querySelector("#aiw-capp-av-abbrechen").click();
+    expect(abgebrochen).toBe(true);
+  });
+
+  // CP30 --------------------------------------------------------------------
+  it("CP30: die Vorbelegung macht aus einem leeren Feld keine 0", () => {
+    const win = _win();
+    let ersetzt = null;
+    const { main } = _zeichne(win, {
+      formular: { availability: {
+        _ersetzt_id: 7, person_id: 2,
+        period_start: "2026-07-06", period_end: "2026-07-10",
+        kind: "garantie", value_pct: null, value_minutes: 240,
+        reason_code: "", note: "" } },
+      onAvailabilityReplace: (b) => { ersetzt = b; },
+    });
+    // Stuende hier eine 0, wiese der Server die Zeile ab: 'genau EINES von
+    // Prozent oder Minuten'.
+    expect(main.querySelector("#aiw-capp-av-pct").value).toBe("");
+    expect(main.querySelector("#aiw-capp-av-min").value).toBe("240");
+    main.querySelector("#aiw-capp-av-save").click();
+    expect(ersetzt.value_pct).toBe(null);
+    expect(ersetzt.value_minutes).toBe(240);
+    expect(ersetzt.reason_code).toBe(null);
+  });
+
+  // CP31 --------------------------------------------------------------------
+  it("CP31: der Abwesenheitsteil ueberlebt das Neuzeichnen", () => {
+    const win = _win();
+    const { main, view } = _zeichne(win, {
+      formular: { availability: {
+        _ersetzt_id: 9, person_id: 2,
+        period_start: "2026-07-06", period_end: "2026-07-10",
+        kind: "einschraenkung", value_pct: 50, value_minutes: null,
+        reason_code: "urlaub", note: "Jahresurlaub" } },
+    });
+    main.querySelector("#aiw-capp-av-note").value = "Nachtrag";
+    const zustand = view.formularLesen();
+    // Ohne diesen Zustand verliesse eine begonnene Bearbeitung die Maske
+    // beim ersten Serverfehler -- also genau dann, wenn die Eingaben am
+    // dringendsten stehenbleiben muessen.
+    expect(zustand.availability._ersetzt_id).toBe(9);
+    expect(zustand.availability.note).toBe("Nachtrag");
+    expect(zustand.availability.period_start).toBe("2026-07-06");
+    expect(zustand.worktime).toBeTruthy();
   });
 });

@@ -55,6 +55,19 @@ _USERINFO_DIR  = _BASE_DIR / "userinfo"
 _EDITOR_DIR    = _BASE_DIR / "static" / "editor"   # AP-E3: Editor.js-Bundle
 _VENDOR_DIR    = _BASE_DIR / "static" / "vendor"   # Build 084: Vendor-Bibliotheken
 _ICONS_DIR     = _BASE_DIR / "static" / "icons"    # Build 114: Plugin-Icons
+# Build 663 (Ticket d3f933cd): der Datumspaar-Baustein wird von BEIDEN
+# Servern gebraucht (Management-Cockpit und Ermittler-Webserver). Er liegt
+# EINMAL im Management-Baum und wird von hier aus MITAUSGELIEFERT, statt
+# kopiert zu werden -- zwei Abschriften desselben Verhaltens laufen
+# unweigerlich auseinander, und dann verhaelt sich dieselbe Bedienung an
+# zwei Stellen verschieden.
+#
+# DIE KOPPLUNG IST BENANNT: faellt der Management-Baum bei einer Teil-
+# auslieferung weg, liefert die Registry den leeren Platzhalter, und die
+# Recherche arbeitet ohne Datumskopplung weiter (siehe
+# annotation_recherche.js). Es geht dabei nichts verloren -- die Kopplung
+# setzt nur eine untere Schranke und schreibt keine Werte.
+_MGMT_STATIC_DIR = _BASE_DIR / "management" / "server" / "static"
 
 # Ressourcen-Registry: Pfad -> (Dateiname, MIME-Type, Verzeichnis)
 _RESOURCES: dict[str, tuple[str, str, Path]] = {
@@ -141,6 +154,9 @@ _RESOURCES: dict[str, tuple[str, str, Path]] = {
     "/_forensic/annotation_tag_network.js": ("annotation_tag_network.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
     "/_forensic/annotation_recherche.js":   ("annotation_recherche.js",   "application/javascript; charset=utf-8", _USERINFO_DIR),
     "/_forensic/annotation_recherche.css":  ("annotation_recherche.css",  "text/css; charset=utf-8",               _USERINFO_DIR),
+    # Build 663 (Ticket d3f933cd): gemeinsamer Datumspaar-Baustein,
+    # ausgeliefert aus dem Management-Baum (siehe _MGMT_STATIC_DIR).
+    "/_forensic/cockpit_datumspaar.js": ("cockpit_datumspaar.js", "application/javascript; charset=utf-8", _MGMT_STATIC_DIR),
 }
 
 # MIME-Types fuer Editor.js-Bundle-Dateien (AP-E3)
