@@ -2731,6 +2731,105 @@ class ManagementApp:
         return Response.json(200, {"ok": True, "person_id": target_id,
                                    "audit_seq": seq})
 
+    def _capacity_availability_replace(self, actor_person_id: int,
+                                       payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/capacity/availability/replace — {entry_id, person_id,
+        period_start, period_end, kind, value_pct? | value_minutes?,
+        reason_code?, note?}. Recht 'capacity.edit'.   [Build 664]
+
+        ERSETZEN IST EINE EIGENE HANDLUNG und nicht zwei Aufrufe
+        hintereinander: zwischen einem Entfernen und einem Setzen laege sonst
+        ein Zustand, in dem die Abwesenheit gar nicht mehr verzeichnet ist -
+        und bricht der zweite Aufruf ab, bleibt sie darin stehen. Die
+        Kapazitaetsrechnung liefe in diesem Zwischenzustand mit zu hohen
+        Werten. Das Repo fuehrt beides in EINER Transaktion mit ZWEI Belegen
+        aus (audited_write_many).
+
+        DIE SCOPE-PRUEFUNG LAEUFT ZWEIMAL: einmal gegen die Person der ALTEN
+        Zeile, einmal gegen die Zielperson der neuen. Sonst koennte eine
+        selbstpflegende Person eine fremde Zeile entfernen, indem sie als
+        Zielperson sich selbst angibt. (Dieselbe Falle wie bei
+        _capacity_worktime_replace und _capacity_availability_remove.)
+        """
+        entry_id, err = self._capacity_int(payload, "entry_id")
+        if err is not None:
+            return err
+        target_id, err = self._capacity_int(payload, "person_id")
+        if err is not None:
+            return err
+
+        period_start = str(payload.get("period_start", "") or "").strip()
+        period_end = str(payload.get("period_end", "") or "").strip()
+        kind = str(payload.get("kind", "") or "").strip()
+        if not (period_start and period_end and kind):
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "period_start, period_end und kind sind Pflicht.",
+                "feld": ("period_start" if not period_start
+                         else ("period_end" if not period_end else "kind"))})
+
+        value_pct = payload.get("value_pct")
+        value_minutes = payload.get("value_minutes")
+        try:
+            value_pct = None if value_pct is None else int(value_pct)
+            value_minutes = (None if value_minutes is None
+                             else int(value_minutes))
+        except (TypeError, ValueError):
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "value_pct/value_minutes muessen Ganzzahlen sein.",
+                "feld": "value_pct"})
+
+        reason_code = payload.get("reason_code") or None
+        note = payload.get("note") or None
+
+        con = self._rw_con()
+        try:
+            row = con.execute(
+                "SELECT person_id, deleted_at FROM availability_entry "
+                "WHERE id=?", (entry_id,)).fetchone()
+            if row is None:
+                return Response.json(400, {
+                    "error": "bad_request",
+                    "detail": "Unbekannte entry_id=%s." % entry_id,
+                    "feld": "entry_id"})
+            # EINE BEREITS ENTFERNTE ZEILE WIRD NICHT ERSETZT. Das Repo
+            # faengt es ohnehin; hier steht es, damit die Meldung den Grund
+            # nennt statt eines rohen Fachfehlers - und damit die
+            # Oberflaeche nicht anfaengt, entfernte Zeilen zu bearbeiten.
+            if row[1] is not None:
+                return Response.json(400, {
+                    "error": "bad_request",
+                    "detail": "Eintrag #%s ist bereits entfernt und kann "
+                              "nicht ersetzt werden. Lege stattdessen eine "
+                              "neue Zeile an." % entry_id,
+                    "feld": "entry_id"})
+            for pid in (int(row[0]), target_id):
+                denied = self._capacity_guard(actor_person_id,
+                                              target_person_id=pid)
+                if denied is not None:
+                    return denied
+            _, av, _, _ = self._capacity_repos(con)
+            seqs = av.replace_availability(
+                entry_id, target_id, period_start=period_start,
+                period_end=period_end, kind=kind, value_pct=value_pct,
+                value_minutes=value_minutes, reason_code=reason_code,
+                note=note, actor_id=actor_person_id,
+                meta={"quelle": "capacity_ui"})
+        except CapacityError as exc:
+            return self._capacity_fehler(exc)
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Abwesenheit ersetzen fehlgeschlagen")
+            return Response.json(500, {"error": "capacity_availability_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, "entry_id": entry_id,
+                                   "person_id": target_id,
+                                   "audit_seq": seqs["gesetzt_seq"],
+                                   **seqs})
+
     def _capacity_availability_remove(self, actor_person_id: int,
                                       payload: Dict[str, Any]) -> Response:
         """
@@ -7512,6 +7611,8 @@ class ManagementApp:
             return self._capacity_holiday_add(person_id, payload)
         if path == "/api/capacity/holiday/remove":
             return self._capacity_holiday_remove(person_id, payload)
+        if path == "/api/capacity/availability/replace":
+            return self._capacity_availability_replace(person_id, payload)
         if path == "/api/capacity/reason":
             return self._capacity_reason_add(person_id, payload)
 

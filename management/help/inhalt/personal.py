@@ -402,6 +402,12 @@ CAPACITY_PFLEGE = Sichthilfe(
                 "Abwesenheit eintragen: Zeitraum, Rechenart, Grund und "
                 "GENAU EINES von Prozent oder Minuten. Beides zugleich wird "
                 "zurückgewiesen.",
+                "Abwesenheit korrigieren: „Bearbeiten“ in der Zeile. Das "
+                "Formular füllt sich mit den bisherigen Angaben, und das "
+                "Speichern ERSETZT den Eintrag in einem Zug. Danach stehen "
+                "ZWEI Zeilen im Bestand: die stillgelegte alte und die neue. "
+                "Das ist kein Doppeleintrag, sondern der Beleg dafür, was vor "
+                "der Korrektur galt.",
                 "Etwas herausnehmen: „Entfernen“. Die Zeile fällt aus "
                 "Rechnung und Liste, bleibt aber erhalten.",
                 "Entferntes ansehen: die Umschaltung oben. Auch wenn sie aus "
@@ -586,8 +592,21 @@ CAPACITY_PFLEGE = Sichthilfe(
             "capacity_pflege.bedienung.av_speichern", "Abwesenheit speichern",
             "Schreibt die Abwesenheit fest. Fehlt eine Pflichtangabe oder "
             "sind Prozent und Minuten beide gesetzt, wird nichts "
-            "geschrieben.",
+            "geschrieben. Im Bearbeitungsmodus heißt der Knopf "
+            "„Zeile ersetzen“ und tut auch das.",
             verweis="capacity_pflege#grenzen"),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.av_bearbeiten", "Bearbeiten",
+            "Füllt das Formular mit dieser Zeile und schaltet auf Ersetzen "
+            "um. ES WIRD DABEI NICHTS GESCHRIEBEN. Erst das Speichern legt "
+            "die alte Zeile still und schreibt die neue — beides in einem "
+            "Zug, so dass die Abwesenheit nie für einen Moment aus der "
+            "Rechnung fällt.",
+            verweis="capacity_pflege#ablaeufe"),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.av_abbrechen", "Bearbeitung abbrechen",
+            "Verlässt den Ersetzen-Modus. Der vorhandene Eintrag bleibt, wie "
+            "er ist; geschrieben wurde nichts."),
         Kontexthilfe(
             "capacity_pflege.bedienung.ho_tag", "Tag",
             "Das Datum des Feiertags. Feiertage gelten für alle und werden "

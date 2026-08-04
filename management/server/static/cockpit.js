@@ -3158,6 +3158,7 @@
     //   POST /api/capacity/worktime          — Regel-Arbeitszeit (append-only).
     //   POST /api/capacity/availability      — Abwesenheit/Garantie.
     //   POST /api/capacity/availability/remove
+    //   POST /api/capacity/availability/replace  [Build 664]
     //   POST /api/capacity/holiday | /holiday/remove | /reason
     //   KEIN optimistisches UI: nach JEDEM Schreiben wird neu geladen — auch
     //   nach einem Fehler, denn dann zeigt die Liste den tatsaechlichen Stand
@@ -3297,6 +3298,65 @@
                         return 'Abwesenheit entfernt (Soft-Revoke, Beleg #'
                             + res.audit_seq + ').';
                     });
+            },
+            // Build 664 (Ticket 7b2f4a19): eine Zeile berichtigen.
+            onAvailabilityReplace: function (body) {
+                _post('/api/capacity/availability/replace', body,
+                    function (res) {
+                        // BEIDE Belege werden genannt. Nach einer Korrektur
+                        // stehen zwei Zeilen im Bestand; wer nur eine Nummer
+                        // sieht, sucht die andere spaeter vergeblich.
+                        return 'Eintrag #' + body.entry_id + ' ersetzt. Die '
+                            + 'alte Zeile ist stillgelegt und bleibt als '
+                            + 'Beleg erhalten (entfernt #' + res.entfernt_seq
+                            + ', neu #' + res.gesetzt_seq + ').';
+                    },
+                    // Nach dem Ersetzen faellt der Bearbeitungsmodus weg: die
+                    // Zeile, die er festhielt, gibt es nicht mehr.
+                    { availability: {} });
+            },
+            onAvailabilityEdit: function (zeile) {
+                // SCHREIBT NICHTS: fuellt nur das Formular und schaltet den
+                // Modus um. Erst das Speichern ersetzt.
+                //
+                // Die ROHWERTE stammen aus zeile._roh (Build 664) - die
+                // sichtbaren Spalten tragen Beschriftungen, aus denen sich
+                // die Codes nicht zurueckrechnen liessen. Fehlt _roh, wird
+                // das GEMELDET statt ein halbes Formular zu fuellen: eine
+                // Bearbeitung mit stillschweigend leeren Feldern wuerde beim
+                // Speichern Angaben loeschen, die niemand angefasst hat.
+                var roh = zeile && zeile._roh;
+                if (!roh) {
+                    loadCapacityPflege(mainEl, {
+                        text: 'Zeile #' + (zeile && zeile.id)
+                            + ' konnte nicht zum Bearbeiten geladen werden: '
+                            + 'die Rohwerte fehlen. Es wurde nichts '
+                            + 'geaendert.',
+                        error: true, entfernte: uebergabe.entfernte });
+                    return;
+                }
+                var vorgabe = {
+                    person_id: roh.person_id,
+                    period_start: roh.period_start,
+                    period_end: roh.period_end,
+                    kind: roh.kind,
+                    value_pct: roh.value_pct,
+                    value_minutes: roh.value_minutes,
+                    reason_code: roh.reason_code,
+                    note: roh.note,
+                    _ersetzt_id: zeile.id
+                };
+                loadCapacityPflege(mainEl, {
+                    text: 'Eintrag #' + zeile.id + ' zum Bearbeiten geladen. '
+                        + 'Speichern ersetzt ihn; die alte Zeile bleibt als '
+                        + 'Beleg erhalten.',
+                    error: false, entfernte: uebergabe.entfernte,
+                    formular: { availability: vorgabe } });
+            },
+            onAvailabilityEditAbort: function () {
+                loadCapacityPflege(mainEl, {
+                    text: 'Bearbeitung abgebrochen. Es wurde nichts geaendert.',
+                    error: false, entfernte: uebergabe.entfernte });
             },
             onHolidayAdd: function (body) {
                 _post('/api/capacity/holiday', body, function (res) {

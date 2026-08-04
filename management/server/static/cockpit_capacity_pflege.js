@@ -224,7 +224,25 @@
                 note: z.note || '',
                 stand: istEntfernt(z) ? 'entfernt' : 'aktiv',
                 _entfernt: istEntfernt(z),
-                audit_seq: z.audit_seq
+                audit_seq: z.audit_seq,
+                // BUILD 664: die ROHWERTE reisen mit. Die Spalten zeigen
+                // Beschriftungen ('Urlaub', '50 %'), 'Bearbeiten' braucht
+                // aber die Codes - aus 'Urlaub' laesst sich 'urlaub' nicht
+                // zurueckrechnen, und aus '50 %' nicht, ob Prozent oder
+                // Minuten gemeint waren. Sie stehen in keiner Spalte und
+                // sind deshalb unsichtbar; sie sind der Bearbeitungspfad.
+                _roh: {
+                    person_id: z.person_id,
+                    period_start: z.period_start || '',
+                    period_end: z.period_end || '',
+                    kind: z.kind,
+                    value_pct: (z.value_pct === undefined) ? null
+                                                           : z.value_pct,
+                    value_minutes: (z.value_minutes === undefined) ? null
+                                                                  : z.value_minutes,
+                    reason_code: z.reason_code || '',
+                    note: z.note || ''
+                }
             };
         });
     }
@@ -430,6 +448,12 @@
         // Server - genau der Befund von mc.
         var f = opts.formular || {};
         var wtVorgabe = f.worktime || {};
+        // Build 664 (Ticket 7b2f4a19): dasselbe fuer die Abwesenheiten. Ohne
+        // den Formularzustand ginge eine begonnene Bearbeitung beim ersten
+        // Serverfehler verloren - und der Fehler ist genau der Moment, in dem
+        // die Eingaben am dringendsten stehenbleiben muessen.
+        var avVorgabe = f.availability || {};
+        var avErsetztId = avVorgabe._ersetzt_id || null;
 
         var h = _el('h2', 'aiw-pagehead', 'Kapazitaetspflege');
         // Build 603 (Baustelle H / H12): literale Hilfe-Marken.
@@ -744,11 +768,45 @@
             { title: 'Grund', field: 'grund' },
             { title: 'Notiz', field: 'note' },
             { title: 'Beleg', field: 'audit_seq', hozAlign: 'right' },
-            _entfernenSpalte('Aktion', 'id', function (id) {
-                if (typeof opts.onAvailabilityRemove === 'function') {
-                    opts.onAvailabilityRemove(id);
+            // BUILD 664: Bearbeiten UND Entfernen (wie bei den Arbeitszeiten
+            // seit Build 555). 'Bearbeiten' SCHREIBT NICHTS - es fuellt nur
+            // das Formular und schaltet den Modus um.
+            {
+                title: 'Aktion', field: '_aktion', headerSort: false,
+                formatter: function (cell) {
+                    var d = cell.getData ? cell.getData() : {};
+                    var box = _el('span', 'aiw-aktionen');
+                    if (d._entfernt) {
+                        // Kein Knopf auf einer stillgelegten Zeile: ein
+                        // zweites Entfernen wiese der Server ohnehin ab, und
+                        // 'Bearbeiten' wollte eine Zeile ersetzen, die nicht
+                        // mehr gilt.
+                        box.appendChild(_el('span', 'aiw-hint', 'entfernt'));
+                        return box;
+                    }
+                    var bE = _knopf('', 'Bearbeiten', function () {
+                        if (typeof opts.onAvailabilityEdit === 'function') {
+                            opts.onAvailabilityEdit(d);
+                        }
+                    });
+                    bE.classList.add('aiw-btn-klein');
+                    bE.setAttribute('data-hilfe-id',
+                                    'capacity_pflege.bedienung.av_bearbeiten');
+                    bE.setAttribute('data-id', String(d.id));
+                    var bX = _knopf('', 'Entfernen', function () {
+                        if (typeof opts.onAvailabilityRemove === 'function') {
+                            opts.onAvailabilityRemove(d.id);
+                        }
+                    });
+                    bX.classList.add('aiw-btn-klein');
+                    bX.setAttribute('data-hilfe-id',
+                                    'capacity_pflege.bedienung.entfernen');
+                    bX.setAttribute('data-id', String(d.id));
+                    box.appendChild(bE);
+                    box.appendChild(bX);
+                    return box;
                 }
-            }, false)
+            }
         ];
 
         var formAv = _el('div', 'aiw-capp-form');
@@ -762,21 +820,28 @@
             var avPersonFeld = _auswahl('aiw-capp-av-person', personen, 'id',
                                         'display_name');
             avPersonFeld.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.av_person');
+            if (avVorgabe.person_id !== undefined
+                    && avVorgabe.person_id !== null) {
+                avPersonFeld.value = String(avVorgabe.person_id);
+            }
             avPerson = avPersonFeld;
         }
         if (avPerson) {
             formAv.appendChild(_el('label', 'aiw-label', 'Person'));
             formAv.appendChild(avPerson);
         }
-        var avVon = _feld('date', 'aiw-capp-av-von');
+        var avVon = _feld('date', 'aiw-capp-av-von', '',
+                          avVorgabe.period_start || '');
         avVon.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.av_von');
         avVon.setAttribute('data-feld', 'period_start');
-        var avBis = _feld('date', 'aiw-capp-av-bis');
+        var avBis = _feld('date', 'aiw-capp-av-bis', '',
+                          avVorgabe.period_end || '');
         avBis.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.av_bis');
         avBis.setAttribute('data-feld', 'period_end');
         // Die Rechenarten kommen VOM SERVER (data.kinds) — keine zweite Kopie.
         var avArt = _auswahl('aiw-capp-av-art', kinds, 'code', 'label');
         avArt.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.av_rechenart');
+        if (avVorgabe.kind) { avArt.value = avVorgabe.kind; }
         // BUILD 663 — Ticket 65a230fd. Bis hierher zeigte die Auswahl bei
         // leerem Katalog NUR "(kein Grund)", und zwar wortlos. Damit war
         // "es ist noch kein Grund angelegt" von "die Gruende sind nicht
@@ -790,6 +855,7 @@
             'code', 'label');
         avGrund.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.av_grund');
         var avGrundHinweis = null;
+        if (avVorgabe.reason_code) { avGrund.value = avVorgabe.reason_code; }
         if (!reasons.length) {
             avGrundHinweis = _el('span', 'aiw-hint aiw-error',
                 'Der Gruendekatalog ist LEER — es steht nur "(kein Grund)" '
@@ -799,14 +865,25 @@
             avGrundHinweis.setAttribute('data-hilfe-id',
                                         'capacity_pflege.bedienung.av_grund_leer');
         }
-        var avPct = _feld('number', 'aiw-capp-av-pct', 'Prozent');
+        // LEER IST KEINE 0. Die Vorbelegung uebernimmt einen Wert nur, wenn
+        // er wirklich gesetzt ist - sonst stuende nach dem Bearbeiten in
+        // BEIDEN Feldern eine 0, und der Server wiese die Zeile zurueck
+        // ('genau eines von Prozent oder Minuten').
+        var avPct = _feld('number', 'aiw-capp-av-pct', 'Prozent',
+                          (avVorgabe.value_pct === null
+                           || avVorgabe.value_pct === undefined)
+                              ? '' : String(avVorgabe.value_pct));
         avPct.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.av_prozent');
         avPct.setAttribute('data-feld', 'value_pct');
-        var avMin = _feld('number', 'aiw-capp-av-min', 'Minuten');
+        var avMin = _feld('number', 'aiw-capp-av-min', 'Minuten',
+                          (avVorgabe.value_minutes === null
+                           || avVorgabe.value_minutes === undefined)
+                              ? '' : String(avVorgabe.value_minutes));
         avMin.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.av_minuten');
         avMin.setAttribute('data-feld', 'value_minutes');
         avMin.classList.add('aiw-minutenfeld');
-        var avNotiz = _feld('text', 'aiw-capp-av-note', 'Notiz');
+        var avNotiz = _feld('text', 'aiw-capp-av-note', 'Notiz',
+                            avVorgabe.note || '');
         avNotiz.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.av_notiz');
         [['Von', avVon], ['Bis', avBis], ['Rechenart', avArt],
          ['Grund', avGrund], ['Prozent', avPct], ['Minuten', avMin],
@@ -845,23 +922,56 @@
         formAv.appendChild(_el('p', 'aiw-hint',
             'Genau EINES von Prozent oder Minuten ausfuellen — beides zugleich '
             + 'weist der Server zurueck (Schema-Regel, kein Formularfehler).'));
-        var bAvSave = _knopf('aiw-capp-av-save', 'Abwesenheit speichern',
+        // BUILD 664 (Ticket 7b2f4a19): Bearbeitungsmodus. Er wird NUR durch
+        // die Vorgabe getragen, nicht durch einen Zustand im Browser - so
+        // ueberlebt er das Neuzeichnen nach einem Serverfehler.
+        if (avErsetztId) {
+            var avWarnung = _el('p', 'aiw-capp-ersetzt',
+                'Bearbeitungsmodus: Speichern ERSETZT Eintrag #' + avErsetztId
+                + '. Die alte Zeile wird stillgelegt und bleibt als Beleg '
+                + 'erhalten.');
+            formAv.appendChild(avWarnung);
+            var bAvAb = _knopf('aiw-capp-av-abbrechen',
+                'Bearbeitung abbrechen', function () {
+                    if (typeof opts.onAvailabilityEditAbort === 'function') {
+                        opts.onAvailabilityEditAbort();
+                    }
+                });
+            bAvAb.setAttribute('data-hilfe-id',
+                               'capacity_pflege.bedienung.av_abbrechen');
+            formAv.appendChild(bAvAb);
+        }
+
+        // avNutzlast: EINE Stelle baut den Rumpf - Anlegen und Ersetzen
+        // erwarten dieselben Felder. Zwei Bauplaetze liefen unweigerlich
+        // auseinander, und der Unterschied faellt erst am Server auf.
+        function avNutzlast() {
+            var body = {
+                person_id: avPerson ? Number(avPerson.value)
+                                    : (data && data.person_id),
+                period_start: avVon.value, period_end: avBis.value,
+                kind: avArt.value,
+                reason_code: avGrund.value || null,
+                note: avNotiz.value || null
+            };
+            // Leerfelder werden zu null und NICHT zu 0: eine 0 waere eine
+            // Angabe ("null Minuten"), ein leeres Feld ist keine.
+            body.value_pct = avPct.value === '' ? null : Number(avPct.value);
+            body.value_minutes = avMin.value === '' ? null
+                                                    : Number(avMin.value);
+            return body;
+        }
+
+        var bAvSave = _knopf('aiw-capp-av-save',
+            avErsetztId ? 'Zeile ersetzen' : 'Abwesenheit speichern',
             function () {
-                var body = {
-                    person_id: avPerson ? Number(avPerson.value)
-                                        : (data && data.person_id),
-                    period_start: avVon.value, period_end: avBis.value,
-                    kind: avArt.value,
-                    reason_code: avGrund.value || null,
-                    note: avNotiz.value || null
-                };
-                // Leerfelder werden zu null und NICHT zu 0: eine 0 waere eine
-                // Angabe ("null Minuten"), ein leeres Feld ist keine.
-                body.value_pct = avPct.value === '' ? null
-                                                    : Number(avPct.value);
-                body.value_minutes = avMin.value === '' ? null
-                                                        : Number(avMin.value);
-                if (typeof opts.onAvailabilitySet === 'function') {
+                var body = avNutzlast();
+                if (avErsetztId) {
+                    body.entry_id = avErsetztId;
+                    if (typeof opts.onAvailabilityReplace === 'function') {
+                        opts.onAvailabilityReplace(body);
+                    }
+                } else if (typeof opts.onAvailabilitySet === 'function') {
                     opts.onAvailabilitySet(body);
                 }
             });
@@ -1036,7 +1146,12 @@
                  formularLesen: function () {
                      var z = wtNutzlast();
                      z._ersetzt_id = ersetztId;
-                     return { worktime: z };
+                     // Build 664: der Abwesenheitsteil reist mit, sonst
+                     // verlaesst eine begonnene Bearbeitung die Maske beim
+                     // ersten Serverfehler.
+                     var a = avNutzlast();
+                     a._ersetzt_id = avErsetztId;
+                     return { worktime: z, availability: a };
                  } };
     }
 

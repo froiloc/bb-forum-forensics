@@ -1,0 +1,53 @@
+{
+  "issues": [
+    {
+      "id": "7b2f4a19-6c3d-4e58-9a71-0d5c8e2f4b63",
+      "type": "feature_request",
+      "title": "Verfuegbarkeits-Eintraege nachtraeglich aendern koennen",
+      "affected_version": "0.8.663",
+      "reporter": "Alex",
+      "reported_at": "2026-08-03T11:55:53.195029+00:00",
+      "prerequisites": "Kapazitaetspflege, voller Pflegeumfang (capacity.edit, scope 'alle'). Bestehende Zeilen in availability_entry.",
+      "description": "UMGESETZT IN BUILD 664. Freigabe Alex ('mc') 2026-08-04.\n\nREPO: AvailabilityRepo.replace_availability(entry_id, person_id, ...) -> {'entfernt_seq': .., 'gesetzt_seq': ..}. set/remove sind dafuer in WriteUnits zerlegt (_set_unit/_remove_unit), die Validierung ist in _pruefe herausgezogen und wird von beiden Wegen benutzt. Verhalten und Rueckgabe der bestehenden Einzelwege sind unveraendert.\n\nKEIN UPDATE. Die alte Zeile wird stillgelegt und bleibt mit ihren urspruenglichen Werten stehen (AV06). Ein UPDATE schriebe forensische Historie um - danach waere nicht mehr feststellbar, was vor der Korrektur in der Akte stand.\n\nALLES ODER NICHTS. Beide Schreibungen laufen in EINER Transaktion mit ZWEI Belegen (audited_write_many). Schlaegt eine fehl, bleibt weder eine stillgelegte Zeile ohne Nachfolger noch ein Beleg ohne Wirkung; auch die hoechste audit_log-seq ist danach unveraendert (AV07).\n\nROUTE: POST /api/capacity/availability/replace. Die SCOPE-PRUEFUNG LAEUFT ZWEIMAL - gegen die Person der alten Zeile UND gegen die Zielperson. Wer nur die Zielperson prueft, laesst eine selbstpflegende Person fremde Zeilen entfernen, indem sie sich selbst als Ziel angibt (KP11c). Eine bereits entfernte Zeile wird MIT GRUND und mit Feldangabe abgewiesen (KP11d).\n\nOBERFLAECHE: Aktionsspalte 'Bearbeiten' + 'Entfernen'; Bearbeiten SCHREIBT NICHTS, es fuellt nur das Formular und schaltet den Knopf auf 'Zeile ersetzen'. Die Rohwerte reisen unsichtbar in availabilityRows mit ('_roh'), weil sich aus 'Urlaub' kein 'urlaub' und aus '50 %' keine Einheit zurueckrechnen laesst (CP28). Fehlen sie, wird das GEMELDET statt ein halbes Formular zu fuellen. Die Vorbelegung macht aus einem leeren Wertfeld KEINE 0 (CP30); der Zustand ueberlebt das Neuzeichnen (CP31).\n\nHILFE: av_bearbeiten und av_abbrechen neu, av_speichern angepasst; im Kapitel 'Arbeitsablaeufe' steht ausdruecklich, dass nach einer Korrektur ZWEI Zeilen im Bestand stehen.\n\nTESTS: AV06-AV09, KP11b-KP11d, CP27/CP27b, CP28-CP31.",
+      "expected_behavior": "Eine bestehende Zeile laesst sich berichtigen. Die urspruengliche Angabe bleibt als Beleg erhalten und ist ueber 'Auch entfernte Zeilen anzeigen' sichtbar.",
+      "actual_behavior": "Vor Build 664: nur Anlegen und Entfernen. Eine Berichtigung erforderte zwei Vorgaenge, und der Zusammenhang zwischen ihnen stand nirgends.",
+      "status": "resolved",
+      "priority": "medium",
+      "severity": "enhancement",
+      "assigned_to": "Claude",
+      "related_to": [
+        "65a230fd-e31a-40d1-ac61-0e5ae8b98277"
+      ],
+      "resolved_in_version": "0.8.664",
+      "target_version": "0.8.664",
+      "environment": {
+        "python_version": "3.14",
+        "database": "coordinator.db"
+      },
+      "tags": [
+        "Kapazitaetspflege",
+        "Abwesenheit",
+        "Auditierung"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-04T12:00:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Aus 65a230fd abgetrennt und neu angelegt (Build 663)."
+        },
+        {
+          "timestamp": "2026-08-04T13:45:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "resolved",
+          "comment": "Umgesetzt in Build 664 nach Freigabe 'mc'. Der Bauplan wurde unveraendert gebaut; keine Abweichung."
+        }
+      ]
+    }
+  ]
+}
