@@ -249,6 +249,16 @@ def test_ce08_hilfeformat_laesst_den_epilog_roh():
     # ... und die Beschreibung wird trotzdem umbrochen.
     beschreibung = aus[aus.index("probe [-h]"):aus.index("Beispiele")]
     assert lang.strip() not in beschreibung, "Beschreibung nicht umbrochen"
+    # BUILD 667: die Breite ist FESTGELEGT (tests/conftest.py), nicht geraten.
+    # Bis dahin verliess sich diese Zusicherung auf den Rueckfallwert von
+    # shutil.get_terminal_size(), den pytests Ausgabeumleitung zufaellig
+    # erzwang. Unter xdist kam die echte Fensterbreite bei den
+    # Arbeitsprozessen an, und derselbe Test fiel mit "assert 135 <= 80" -
+    # bei unveraendertem Code. Was hier geprueft wird, muss von der Sache
+    # abhaengen und nicht davon, wie breit das Terminal gerade war.
+    assert os.environ["COLUMNS"] == "80", (
+        "tests/conftest.py legt COLUMNS fest; ohne diese Festlegung misst "
+        "dieser Test die Fensterbreite statt den Formatierer.")
     assert max(len(z) for z in beschreibung.split("\n")) <= 80
 
 

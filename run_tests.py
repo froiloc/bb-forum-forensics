@@ -209,7 +209,25 @@ def _pytest_version() -> Optional[str]:
     return (p.stdout or p.stderr).strip().splitlines()[0] if (p.stdout or p.stderr) else "unbekannt"
 
 
-def run_python_tests(log_pfad: Path, leise: bool = False
+def _xdist_da() -> bool:
+    """
+    Ist pytest-xdist in DIESEM Interpreter vorhanden?
+
+    Wie bei _pytest_version: geprueft wird der Interpreter, der gleich fahren
+    soll - nicht der, in dem dieser Code laeuft, und schon gar nicht ein
+    'pytest' auf dem PATH.
+    """
+    try:
+        p = subprocess.run([sys.executable, "-c", "import xdist"],
+                           capture_output=True, timeout=60,
+                           cwd=str(PROJECT_ROOT))
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return p.returncode == 0
+
+
+def run_python_tests(log_pfad: Path, leise: bool = False,
+                     jobs: Optional[str] = None
                      ) -> Tuple[bool, List[str]]:
     """
     Fuehrt Python-Tests via pytest aus. Rueckgabe: (bestanden, Fehlerauszug).
@@ -260,6 +278,27 @@ def run_python_tests(log_pfad: Path, leise: bool = False
 
     cmd = [sys.executable, "-m", "pytest", "tests/",
            "-q", "--tb=long", "-rf", "--color=yes"]
+
+    # BUILD 667 -- PARALLEL FAHREN, WENN MOEGLICH.
+    # Gemessen auf der Maschine von Alex (2026-08-04): 16 min sequenziell
+    # gegen 5 min 39 s mit '-n 8'. Es wird dabei KEINE Abdeckung aufgegeben -
+    # es laufen dieselben 3147 Tests.
+    #
+    # ES DARF ABER NIE VORAUSSETZUNG WERDEN. Die Produktions-VM unter Windows
+    # ist offline; dort laesst sich pytest-xdist nicht nachinstallieren. Fehlt
+    # es, wird deshalb SEQUENZIELL GEFAHREN UND DAS GESAGT - nicht
+    # abgebrochen (dann liefe gar nichts) und nicht verschwiegen (dann
+    # glaubte man, parallel gemessen zu haben).
+    if jobs:
+        if _xdist_da():
+            cmd += ["-n", jobs]
+            print(f"  Parallel:     -n {jobs}")
+        else:
+            hinweis = (f"  Parallel:     ANGEFORDERT (-n {jobs}), ABER NICHT "
+                       f"MOEGLICH - pytest-xdist fehlt in dieser Umgebung.\n"
+                       f"                Es wird SEQUENZIELL gefahren. "
+                       f"Abhilfe: python -m pip install pytest-xdist")
+            print(hinweis)
     code, zeilen = _lauf_mit_protokoll(cmd, log_pfad, leise=leise)
     if code == 0:
         return True, []
@@ -384,6 +423,12 @@ def main() -> int:
              "Zusammenfassung und im Fehlerfall der Auszug.",
     )
     parser.add_argument(
+        "--jobs", default=None, metavar="N",
+        help="Python-Tests parallel fahren (pytest-xdist). 'auto' nimmt die "
+             "Zahl der Kerne. Fehlt xdist, wird sequenziell gefahren und das "
+             "gemeldet.",
+    )
+    parser.add_argument(
         "--log-dir", default=None, metavar="VERZEICHNIS",
         help="Ablage der Protokolle (Vorgabe: <Projektwurzel>/logs).",
     )
@@ -399,7 +444,7 @@ def main() -> int:
 
     if run_python:
         pfad = log_dir / f"test_pytest_{stempel}.log"
-        ok, auszug = run_python_tests(pfad, args.leise)
+        ok, auszug = run_python_tests(pfad, args.leise, args.jobs)
         ergebnisse["Python (pytest)"] = (ok, auszug, pfad)
 
     if run_js:

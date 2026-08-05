@@ -25,6 +25,15 @@
 # RT07 - _lauf_mit_protokoll schreibt die Datei und reicht den Exit-Code durch.
 # RT08 - '--leise' unterdrueckt die laufende Ausgabe, NICHT das Protokoll.
 #
+# BUILD 667:
+# RT09 - die Terminalbreite ist festgelegt. Ohne diese Festlegung haengt das
+#        Ergebnis mancher Tests an der Fensterbreite - sequenziell und
+#        parallel fielen sie dann verschieden aus (Befund 2026-08-04).
+# RT10 - _xdist_da prueft den Interpreter, der fahren soll.
+# RT11 - fehlt xdist bei angefordertem --jobs, wird SEQUENZIELL gefahren und
+#        das gesagt. Kein Abbruch (dann liefe gar nichts) und kein Schweigen
+#        (dann glaubte man, parallel gemessen zu haben).
+#
 # Version: v0.8.665 - Build: 665 - 2026-08-04
 # =============================================================================
 
@@ -167,6 +176,86 @@ class ProtokollTests(unittest.TestCase):
             # ... aber die Datei hat alles.
             self.assertIn("nur-ins-protokoll",
                           pfad.read_text(encoding="utf-8"))
+
+
+class UmgebungTests(unittest.TestCase):
+
+    # RT09 -------------------------------------------------------------------
+    def test_rt09_terminalbreite_ist_festgelegt(self):
+        """
+        WAECHTER. Faellt die Festlegung aus tests/conftest.py je weg, haengen
+        Tests wieder an der Fensterbreite - und der sequenzielle Lauf zeigt
+        es nicht, weil pytests Ausgabeumleitung dort zufaellig 80 erzwingt.
+        Der Fehler taeuchte dann nur unter xdist auf und saehe aus wie ein
+        Fehler von xdist. Genau so ist es am 04.08.2026 passiert.
+        """
+        import os
+        import shutil
+        self.assertEqual("80", os.environ.get("COLUMNS"))
+        self.assertEqual(80, shutil.get_terminal_size().columns)
+
+    # RT10 -------------------------------------------------------------------
+    def test_rt10_xdist_erkennung_prueft_den_richtigen_interpreter(self):
+        # Der laufende Interpreter hat xdist (oder nicht) - beides ist ein
+        # gueltiges Ergebnis. Geprueft wird, dass ueberhaupt eine Aussage
+        # herauskommt und keine Ausnahme.
+        self.assertIn(run_tests._xdist_da(), (True, False))
+
+    # RT11 -------------------------------------------------------------------
+    def test_rt11_fehlendes_xdist_faehrt_sequenziell_und_sagt_es(self):
+        import unittest.mock as mock
+        with TemporaryDirectory() as tmp:
+            pfad = Path(tmp) / "p.log"
+            gerufen = {}
+
+            def _falscher_lauf(cmd, log, **kw):
+                gerufen["cmd"] = cmd
+                log.parent.mkdir(parents=True, exist_ok=True)
+                log.write_text("", encoding="utf-8")
+                return 0, []
+
+            puffer = io.StringIO()
+            with mock.patch.object(run_tests, "_xdist_da", return_value=False), \
+                 mock.patch.object(run_tests, "_pytest_version",
+                                   return_value="pytest 9.9.9"), \
+                 mock.patch.object(run_tests, "_lauf_mit_protokoll",
+                                   side_effect=_falscher_lauf), \
+                 redirect_stdout(puffer):
+                ok, _auszug = run_tests.run_python_tests(pfad, True, "auto")
+
+            # Es wird GEFAHREN, nicht abgebrochen ...
+            self.assertTrue(ok)
+            # ... aber ohne -n ...
+            self.assertNotIn("-n", gerufen["cmd"])
+            # ... und es steht da.
+            text = puffer.getvalue()
+            self.assertIn("NICHT MOEGLICH", text)
+            self.assertIn("SEQUENZIELL", text)
+            self.assertIn("pytest-xdist", text)
+
+    # RT11b ------------------------------------------------------------------
+    def test_rt11b_vorhandenes_xdist_wird_benutzt(self):
+        import unittest.mock as mock
+        with TemporaryDirectory() as tmp:
+            pfad = Path(tmp) / "p.log"
+            gerufen = {}
+
+            def _falscher_lauf(cmd, log, **kw):
+                gerufen["cmd"] = cmd
+                log.parent.mkdir(parents=True, exist_ok=True)
+                log.write_text("", encoding="utf-8")
+                return 0, []
+
+            with mock.patch.object(run_tests, "_xdist_da", return_value=True), \
+                 mock.patch.object(run_tests, "_pytest_version",
+                                   return_value="pytest 9.9.9"), \
+                 mock.patch.object(run_tests, "_lauf_mit_protokoll",
+                                   side_effect=_falscher_lauf), \
+                 redirect_stdout(io.StringIO()):
+                run_tests.run_python_tests(pfad, True, "4")
+            self.assertIn("-n", gerufen["cmd"])
+            self.assertEqual("4",
+                             gerufen["cmd"][gerufen["cmd"].index("-n") + 1])
 
 
 if __name__ == "__main__":
