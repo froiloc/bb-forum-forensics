@@ -1275,7 +1275,7 @@
       "description": "Das Kontextsuchfenster bietet keine sinnvolle Unterstützung beim Arbeiten. Die Suche liefert zu wenige Ergebnisse. Während ich in der erweiterten Suche and das Maximum von 200 Ergebnissen komme, erhalte ich beim selben Suchbegriff in der Kontextsuche nur einen Treffer.",
       "expected_behavior": "Die Suche muss hier mehr Ergebnisse liefern. Wenigstens 20.",
       "actual_behavior": "Bei der Suche nach dem Begriff `viewtopic`, der Forenbeiträge anzeigen sollte, in denen der untersuchte Forennutzer Spuren hinterlassen hat, wird nur ein Treffer angezeigt.",
-      "status": "resolved",
+      "status": "in_progress",
       "priority": "high",
       "severity": "critical",
       "assigned_to": "Claude",
@@ -1283,7 +1283,7 @@
         "1157e5f3-3975-4768-86c2-2ee42569d627",
         "36dcdfd8-592c-483d-8c93-611c63fcff7c"
       ],
-      "resolved_in_version": "0.8.676",
+      "resolved_in_version": null,
       "target_version": "0.8.673",
       "environment": {
         "python_version": "3.14",
@@ -1335,22 +1335,6 @@
           "old_value": "",
           "new_value": "0.8.673",
           "comment": "Umsetzung fuer den naechsten Build vorgemerkt. Die Zielversion ist zugleich noetig, damit dieser Nachtrag beim Einmischen ueberhaupt ankommt - ein Vorgang, der sich nur in den Updates unterscheidet, wird von merge.py stillschweigend uebergangen (Vorgang 7d3c1a95)."
-        },
-        {
-          "timestamp": "2026-08-05T14:09:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "BEHOBEN IN BUILD 676 - und zwar anders, als ich zuerst vorgeschlagen hatte.\n\nDER WEG, DEN WIR NICHT GEGANGEN SIND: die Kontextsuche einfach auf den Server umstellen. Sie haette mehr Treffer geliefert und zugleich die Titelsuche verloren, weil der Serverfilter nur die URL ansah. Mein Vorschlag, danach zusaetzlich oertlich zu filtern, war WIRKUNGSLOS - ein zweiter Filter holt keine Treffer zurueck, die der erste nie geliefert hat.\n\nDER WEG, DEN WIR GEGANGEN SIND (Entscheidung Alex, 05.08.2026), in drei Schritten:\n  1. Der Suchendpunkt liefert die WAHRE Trefferzahl (Vorgang 36dcdfd8).\n  2. Der Freitextfilter des Servers durchsucht URL UND TITEL. Gebunden und identifiziert wird      weiterhin ueber die URL, weil sie eineindeutig ist; beim SUCHEN ist Mehrdeutigkeit kein      Schaden, sondern der Zweck.\n  3. Das Dropdown filtert weiterhin oertlich - schnell, acht Zeilen, kein Scrollen - und      BENENNT seine Grenze in einer Warnleiste: '3 von 214 Treffern - hier werden nur die      geladenen Seiten durchsucht. [Alle 214 anzeigen]'. Der Knopf oeffnet die erweiterte      Suche MIT dem eingetippten Begriff.\n\nWARUM NICHT EINFACH DIE GRENZE VON 200 AUFHEBEN (die andere erwogene Moeglichkeit): das Dropdown ist der schnelle Weg. Bis zu 10.000 Datensaetze hineinzuschuetten macht genau das kaputt, wofuer es da ist - und zwar auf einer VM, deren Leistung wir nicht kennen. Fuer Menge ist die erweiterte Suche gebaut, mit Tabelle und Blaetterwerk.\n\nDIE LEISTE ERSCHEINT NUR, WENN ES ETWAS ZU MELDEN GIBT. Kennt der Server nicht mehr als oertlich sichtbar, bleibt sie weg (WL03) - ein Hinweis, der immer steht, wird nach zwei Tagen nicht mehr gelesen. Bei NULL oertlichen Treffern erscheint sie dagegen sehr wohl (WL06): gerade dann waere 'Keine Seiten gefunden' schlicht falsch. Ist die Zaehlung nicht moeglich, sagt sie das und erfindet keine Zahl (WL05).\n\nRegression: WL01 bis WL06 (JavaScript), SG01 bis SG07 (Python)."
-        },
-        {
-          "timestamp": "2026-08-05T14:11:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "in_progress",
-          "new_value": "resolved",
-          "comment": "Serversuche auf URL und Titel, echte Trefferzahl, Warnleiste mit Uebernahme des Begriffs."
         }
       ]
     },
@@ -7637,14 +7621,14 @@
       "description": "GEMESSEN am 2026-08-05 in der VM (Probe 1, Teil B2).\n\nDER BEFUND: /_forensic/search?q=viewtopic&limit=200 antwortete mit 200 Seiten und total: 200. In forensic_api/search.py (Z. 216) wird total als len(pages) gebildet - also aus der Zahl der GELIEFERTEN Zeilen, nicht aus der Zahl der vorhandenen Treffer. Bei limit=50 (der Weg des Kontext-Dropdowns) wurde entsprechend total: 50 gemeldet.\n\nDamit ist 'die Grenze ist erreicht' von 'es sind genau so viele' nicht zu unterscheiden. Wer 200 liest, haelt das fuer die Trefferzahl.\n\nWARUM DAS IN DIESEM VORHABEN MEHR ALS EIN SCHOENHEITSFEHLER IST: Der Bericht stuetzt sich auf Zahlen, die die Oberflaeche ausweist. Eine Trefferzahl, die in Wahrheit eine Grenze ist, kann in eine Ermittlungsakte geraten und dort nicht mehr als solche erkennbar sein. Solange sie nicht ermittelt wird, ist es ehrlicher, sie nicht auszuweisen, als sie zu raten.",
       "expected_behavior": "Die Antwort weist die Zahl der Treffer VOR der Begrenzung aus (eigene COUNT-Abfrage) und daneben, ob die Begrenzung gegriffen hat. Alternativ wird das Feld weggelassen, statt eine Zahl zu fuehren, die etwas anderes bedeutet als ihr Name sagt.",
       "actual_behavior": "total ist gleich der Zahl der gelieferten Zeilen: bei limit=200 gemessen 200, bei limit=50 gemessen 50.",
-      "status": "resolved",
+      "status": "open",
       "priority": "low",
       "severity": "minor",
       "assigned_to": "Claude",
       "related_to": [
         "d76c412d-3322-40fa-b9c9-d2661f754350"
       ],
-      "resolved_in_version": "0.8.676",
+      "resolved_in_version": null,
       "target_version": null,
       "environment": {
         "os": "Windows (VM)",
@@ -7660,12 +7644,6 @@
       "attachments": [],
       "updates": [
         {
-          "timestamp": "2026-08-05T11:33:56.373418+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build670.json"
-        },
-        {
           "timestamp": "2026-08-05T11:38:00+00:00",
           "author": "Claude",
           "action": "comment",
@@ -7674,20 +7652,10 @@
           "comment": "Beleg: Probe 1 Teil B1/B2 vom 2026-08-05."
         },
         {
-          "timestamp": "2026-08-05T11:39:00+00:00",
-          "author": "Claude",
+          "timestamp": "2026-08-05T11:33:56.373418+00:00",
+          "author": "merge-tool",
           "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "BEHOBEN IN BUILD 676. Der Endpunkt weist jetzt DREI Angaben getrennt aus, damit jede Frage ihre eigene Antwort hat:\n  total     - Treffer VOR der Begrenzung (echte Zaehlung)\n  geliefert - Zeilen in dieser Antwort\n  begrenzt  - hat die Grenze gegriffen? Genau die Frage, die der alte Wert offenliess\n\nGEZAEHLT WIRD DIESELBE ABFRAGE, nur ohne ORDER BY, LIMIT und OFFSET - deshalb steht die Zaehlung in search_pages() selbst (Schalter 'nur_zaehlen') und nicht in einer zweiten Funktion mit eigener Filterlogik. Zwei Abfragen mit zwei Wahrheiten waeren binnen zweier Builds auseinandergelaufen; Testfall SG04 haelt sie zusammen.\n\n'-1' HEISST 'NICHT ERMITTELBAR' und ist ausdruecklich von 0 zu unterscheiden. Ein Aufrufer, der beides gleich behandelt, meldet eine leere Ergebnismenge, wo er 'unbekannt' melden muesste. Eine gescheiterte Zaehlung verhindert die Ergebnisliste NICHT - die Seiten stehen ja schon fest (SG07).\n\nOBERFLAECHE: die Ergebniszeile der erweiterten Suche sagt jetzt '200 von 1234 Ergebnissen (Grenze erreicht)' statt '200 Ergebnisse', und bei gescheiterter Zaehlung '200 Ergebnisse (Gesamtzahl unbekannt)' - sie raet nicht.\n\nRegression: SG01 bis SG07."
-        },
-        {
-          "timestamp": "2026-08-05T11:41:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "Echte Trefferzahl, getrennt von der Zahl der gelieferten Zeilen."
+          "comment": "Importiert aus eintraege_claude_Build670.json"
         }
       ]
     },
@@ -7767,7 +7735,7 @@
       "description": "UMGEHAENGT AM 05.08.2026: Dieser Vorgang gehoert in die ERFASSUNG (Prepper), nicht in den Webserver. Die urspruengliche Fassung vermutete einen Fehler der Spurennavigation. Gemessen wurde etwas anderes und Schwereres.\n\nDIE MESSUNG (forensic_1488.db, 05.08.2026):\n  Profilseiten in pages         :   12\n  Profilseiten in page_aliases  :   13\n  Profil-Erfassungsziele        : 1000  (other_profile 982, profile 17, pgp_probe 1)\n\nALLE ZWOELF Seiten gehoeren DEMSELBEN Benutzer - dem Beschuldigten selbst (id=1488), in verschiedenen Unterseiten: Uebersicht, Abzeichen, Bilder, Einstellungen, Sprache, PGP, Grunddaten, Ignorierliste, Persoenliches, Persoenlichkeit, Privatsphaere. Die Profilseiten der 982 anderen Benutzer, mit denen der Beschuldigte zu tun hatte, FEHLEN VOLLSTAENDIG.\n\nWARUM DAS SCHWER WIEGT: Die Profilseite ist die Seitenart, die fuer die Zuordnung eines Kontos zu einer natuerlichen Person am meisten hergibt - Registrierungsdatum, Signatur, Kontaktangaben, Selbstbeschreibung, PGP-Schluessel. Sie fehlt also genau dort, wo ermittelt wird. Und sie fehlt nicht fuer den Beschuldigten, sondern fuer seine Gegenueber - die Personen, die als naechste in den Blick geraten.\n\nDAS IST KEINE LUECKE DER NAVIGATION. Die Belege sind nicht da. Ob die Faelle deshalb neu erfasst werden muessen, ist eine Frage an die Erfassung; ob eine Nacherfassung ueberhaupt moeglich ist, eine an die Sachlage - das Forum ist beschlagnahmt.\n\nWERKZEUG DAZU (Build 675): tools/pruefe_profilerfassung.py geht alle 'forensic_*.db' eines Verzeichnisses durch, stellt je Fall Ziele und vorhandene Profilseiten gegenueber und nennt am Ende subject_id und Benutzername der betroffenen Faelle - zum Neuerfassen. Nur lesend, 'mode=ro'.\n\nERLEDIGT: die frueher hier vermerkte Abweichung ('der Server fuehrt /forum/profile.php?id=1488 in der Sequenz, mein Werkzeug findet die URL nicht') ist geklaert und war ein Fehler MEINES Werkzeugs. Das einzige 'pgp_probe'-Ziel (st.id 1091) traegt actor_user_id NULL. get_trace_sequence() verzweigt auf den WERT, nicht auf die Spalte, und sucht bei NULL das BLOSSE Fragment '%profile.php?id=%' - trifft damit die erste Profilseite und nimmt sie in die Gruppe 'other'. Mein Nachbau suchte statt dessen nach 'profile.php?id=None'. Das erklaert zugleich die Abweichung 6346 gegen 6347 vollstaendig; meine damalige Deutung ('Beleg fuer die unzugesicherte Reihenfolge von LIMIT 1') ist widerlegt und zurueckgenommen. Berichtigt in Build 675, Testfall SL07.",
       "expected_behavior": "Zu jedem Profil-Erfassungsziel liegt die Profilseite im Bestand - oder das Fehlen ist benannt, gezaehlt und im Bericht sichtbar. Ein Erfassungsziel ohne Beleg ist die Aussage 'hier war eine Spur, und der Beleg dazu fehlt'; die gehoert in die Akte, nicht in ein 'continue'.",
       "actual_behavior": "982 Profilseiten fremder Benutzer fehlen; vorhanden sind ausschliesslich die 12 Unterseiten des Beschuldigten selbst.",
-      "status": "wont_fix",
+      "status": "open",
       "priority": "critical",
       "severity": "critical",
       "assigned_to": "Claude",
@@ -7827,22 +7795,6 @@
           "old_value": "high",
           "new_value": "critical",
           "comment": "Fehlende Belege bei der aussagekraeftigsten Seitenart."
-        },
-        {
-          "timestamp": "2026-08-05T14:10:00+00:00",
-          "author": "Alex",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "ENTSCHEIDUNG VON ALEX am 05.08.2026, sinngemaess wiedergegeben und von ihm so formuliert: Das Fehlen der fremden Profilseiten ist wahrscheinlich ABSICHT. Die Ermittelnden sollen sich auf das untersuchte Profil konzentrieren und nicht durch andere Profile abgelenkt werden. Ein bedeutender Mehrwert detaillierter Profilseiten der Gegenueber ist nicht zu erkennen - diese Benutzer werden gegebenenfalls SPAETER zum eigenen Ermittlungsziel und bekommen dann ihren eigenen Fall. Doppelte Arbeit und doppelte Sichtung sollen vermieden werden, um die Effizienz nicht zu mindern.\n\nDer Aspekt wird nicht weiterverfolgt."
-        },
-        {
-          "timestamp": "2026-08-05T14:12:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "wont_fix",
-          "comment": "Geschlossen als BEWUSSTE Beschraenkung des Erfassungsumfangs, nicht als Fehler.\n\nDer Vorgang bleibt trotzdem stehen, und zwar mit Absicht: die Messung hat gezeigt, dass zu 982 Erfassungszielen kein Beleg existiert. Wer das kuenftig misst - und tools/pruefe_profilerfassung.py wird es jedes Mal wieder melden -, findet hier die Begruendung, statt die Untersuchung ein zweites Mal zu fuehren. Genau dafuer ist ein geschlossener Vorgang da.\n\nGEMESSENER BESTAND (Alex, 05.08.2026, alle Falldatenbanken): in KEINER Datenbank liegen Profilseiten Dritter. Es ist also kein Einzelfall und keine Stoerung, sondern die durchgaengige Bauweise der Erfassung.\n\nOFFEN BLEIBT EIN KLEINER PUNKT, der nicht zur Entscheidung gehoert: die 982 'other_profile'-Erfassungsziele stehen weiter in scrape_targets, obwohl zu ihnen nie eine Seite geholt werden soll. Solange sie dort stehen, sieht jede Auswertung 982 unerfuellte Ziele. Das ist kein Datenverlust und eilt nicht - es waere aber sauberer, den Umfang dort auszudruecken, wo er entschieden wird."
         }
       ]
     }
