@@ -172,6 +172,16 @@ _GEPRUEFT_647 = ("Build 647, 2026-08-01, im Container (Python 3.13), "
                  "Wegwerf-Verzeichnisse unter /tmp")
 
 
+#: Build 671. Gefahren im Container (Python 3.11) gegen einen SELBST GEBAUTEN
+#: Wegwerf-Bestand unter /tmp, der die Form von forensic_<uid>.db nachstellt.
+#: AUSDRUECKLICH NICHT gegen einen echten Fall - der liegt nur in der VM. Die
+#: Zahlen in den Beispielen sind daher die des Wegwerf-Bestandes und nicht die
+#: eines Bestandes aus der Ermittlung.
+_GEPRUEFT_671 = ("Build 671, 2026-08-05, im Container (Python 3.11) gegen "
+                 "einen gebauten Wegwerf-Bestand unter /tmp - NICHT gegen "
+                 "einen echten Fall")
+
+
 def _bsp(aufruf: str, wirkung: str, geprueft: str = _GEPRUEFT) -> CliBeispiel:
     """Kurzform fuer einen GEFAHRENEN Beispielaufruf."""
     return CliBeispiel(aufruf=aufruf, wirkung=wirkung, geprueft=geprueft)
@@ -3593,6 +3603,79 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "Das Werkzeug prueft die AUFBEWAHRUNG. Es sagt nichts "
                 "darueber, ob die Sicherungen des Bestandes brauchbar sind - "
                 "dafuer ist 'backup_admin pruefen' da.",
+            ),
+        ),
+    ),
+    CliEintrag(
+        schluessel="diag_spurensequenz_luecken",
+        pfad="tools/diag_spurensequenz_luecken.py",
+        aufruf="python tools/diag_spurensequenz_luecken.py "
+               "--forensic-db PFAD [--json DATEI] [--ohne-selbstprobe]",
+        titel="Luecken der Spurensequenz auszaehlen",
+        gruppe="Diagnose",
+        zweck="Zaehlt aus, wie viele erfasste Seiten die Spurensequenz "
+              "uebergeht (Vorgang 2f1044b9).",
+        art="lesend",
+        datenbanken=("forensic_<uid>.db (lesend, mode=ro)",),
+        betrieb="Im laufenden Betrieb gefahrlos. Die Datei wird ausschliesslich "
+                "ueber 'mode=ro' geoeffnet; es wird kein PRAGMA gesetzt und "
+                "keine TEMP-VIEW angelegt. Die evidence_<uid>.db wird gar "
+                "nicht erst geoeffnet - 'blob_lookup' ist eine Sicht allein "
+                "ueber fdb.pages und fdb.page_aliases.",
+        ausgabe="diag_spurensequenz_luecken.log im aktuellen Verzeichnis; "
+                "mit '--json' zusaetzlich ein maschinenlesbarer Befund.",
+        hinweis="DIE SELBSTPROBE IST DER GRUND, DEM ERGEBNIS ZU TRAUEN. Vor "
+                "der Messung baut das Werkzeug einen Bestand mit BEKANNTER "
+                "Luecke und verlangt, dass die Messung sie findet. Faellt "
+                "die Probe, wird KEIN Ergebnis ausgewiesen (Rueckgabewert 3) "
+                "- ein 'keine Luecken' von einer blinden Messung beendet die "
+                "Suche, statt sie zu fuehren. Beim Bauen hat genau diese "
+                "Probe eine falsche Erwartung des Verfassers widerlegt.",
+        konfiguration=KONFIG_KEINE,
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/diag_spurensequenz_luecken.py "
+                     "--forensic-db /tmp/probe_forensic.db",
+                     "Selbstprobe bestanden, danach die Messung. Im Versuch "
+                     "gegen einen gebauten Bestand mit 10 Seiten und 7 "
+                     "Erfassungszielen: 5 Eintraege in der Sequenz, 10 "
+                     "erreichbare URLs, 5 uebergangene Seiten - alle fuenf "
+                     "mit Seitenteil. Zusaetzlich ausgewiesen: Gruppe "
+                     "'profile' leer, eine Profilseite in der Gruppe "
+                     "'other', ein Erfassungsziel ohne jede passende Seite. "
+                     "Rueckgabewert 1.",
+                     _GEPRUEFT_671),
+                _bsp("python tools/diag_spurensequenz_luecken.py "
+                     "--forensic-db /tmp/probe_forensic.db --json befund.json",
+                     "Wie oben, zusaetzlich wird der vollstaendige Befund "
+                     "als JSON abgelegt - noetig, weil die Konsole nur die "
+                     "ersten 15 uebergangenen Seiten nennt.",
+                     _GEPRUEFT_671),
+            ),
+            exit_codes=((0, "gelaufen, KEINE Luecke gefunden"),
+                        (1, "gelaufen, LUECKE gefunden - das ist ein BEFUND "
+                            "und kein Fehler"),
+                        (2, "Aufruf- oder Zugriffsfehler: Datei fehlt, ist "
+                            "nicht lesbar, oder eine erwartete Tabelle fehlt"),
+                        (3, "die Selbstprobe ist gefallen - die Messung ist "
+                            "blind, es wird KEIN Ergebnis ausgewiesen")),
+            warnungen=(
+                "'LIMIT 1 ohne ORDER BY' hat keine zugesicherte Reihenfolge. "
+                "WELCHE einzelne Seite je Erfassungsziel in der Sequenz "
+                "landet, kann daher von diesem Nachbau abweichen. WIE VIELE "
+                "Seiten uebergangen werden, kann es nicht - diese Zahl steht "
+                "fest, und sie ist die gesuchte.",
+                "Die TYPE_MAP im Werkzeug ist eine Abschrift aus "
+                "db/forensic_db.py. Wird sie dort geaendert, misst das "
+                "Werkzeug etwas anderes als das, was laeuft. Der Testfall "
+                "SL05 in tests/test_diag_spurensequenz_luecken.py schlaegt "
+                "dann an.",
+                "'--ohne-selbstprobe' schaltet die einzige Absicherung ab. "
+                "Der Lauf sagt das dann auch - aber sein Ergebnis ist ohne "
+                "Gewaehr.",
+                "Fehlt die Tabelle 'page_aliases', wird ohne sie gemessen "
+                "und das im Protokoll benannt. Die Zahlen sind dann "
+                "unvollstaendig, nicht falsch.",
             ),
         ),
     ),

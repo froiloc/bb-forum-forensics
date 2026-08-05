@@ -33,8 +33,27 @@
 #        gelieferte Fassung ALLE dort vorhandenen Update-Zeitstempel.
 # IT04 - keine doppelten Kennungen innerhalb einer Datei.
 # IT05 - Zeitstempel der Updates sind aufsteigend sortiert.
+# IT06 - DIE ANDERE RICHTUNG VON IT03, BUILD 671, wieder aus eigenem Schaden:
+#        IT03 bewacht, dass nichts VERLORENGEHT. Niemand bewachte, dass das
+#        Nachgetragene ANKOMMT.
+#        Am 05.08.2026 wurde eine Datei geliefert, die zu zwei vorhandenen
+#        Vorgaengen je einen Update-Eintrag nachtrug und sonst nichts aenderte.
+#        merge.py meldete "1 Datei(en) eingemischt", loeschte die Datei - und
+#        die beiden Eintraege waren nicht im Bestand. Grund: detect_conflicts()
+#        vergleicht nur die Felder in VERGLEICHSFELDER (merge.py, Z. 431/432);
+#        'updates' steht bewusst nicht darunter. Unterscheiden sich zwei
+#        Fassungen NUR in den Updates, ist der Vorgang weder neu noch
+#        konfliktbehaftet - und faellt durch beide Zweige hindurch.
+#        IT01-IT05 waren dabei alle gruen. Sie pruefen die Datei, nicht ihre
+#        Wirkung.
+#        IT06 schlaegt deshalb an, BEVOR geliefert wird: traegt eine Fassung
+#        neue Updates, muss sie sich auch in einem verglichenen Feld
+#        unterscheiden - sonst kommt sie nicht an.
+#        DAS IST EIN WAECHTER, KEINE BEHEBUNG. Der Fehler sitzt in merge.py;
+#        er ist als eigener Vorgang aufgenommen. Bis dahin verhindert IT06
+#        wenigstens, dass eine Lieferung lautlos ins Leere geht.
 #
-# Version: v0.8.668 - Build: 668 - 2026-08-05
+# Version: v0.8.671 - Build: 671 - 2026-08-05
 # =============================================================================
 
 import json
@@ -44,6 +63,15 @@ from pathlib import Path
 WURZEL = Path(__file__).resolve().parent.parent
 TRACKER = WURZEL / "issue-tracker"
 BESTAND = TRACKER / "data" / "issues.json"
+
+# Die Felder, die merge.py beim Erkennen von Konflikten vergleicht.
+# WORTGLEICHE ABSCHRIFT aus merge.py, detect_conflicts() ('comparable_fields').
+# Nur eine Abweichung in EINEM dieser Felder bringt eine gelieferte Fassung
+# ueberhaupt in den Zweig, der sie in den Bestand schreibt. Wird die Liste
+# dort geaendert, gehoert sie hier nachgezogen - IT06 misst sonst am falschen
+# Massstab.
+VERGLEICHSFELDER = ("title", "description", "status", "priority", "severity",
+                    "assigned_to", "target_version", "affected_version")
 
 
 def _eintragsdateien():
@@ -185,6 +213,56 @@ class EintraegeTests(unittest.TestCase):
                     # Eine Historie, die nicht in der Reihenfolge steht, in der
                     # sie entstanden ist, laedt zu Fehlschluessen ein.
                     self.assertEqual(sorted(stempel), stempel)
+
+    # IT06 -------------------------------------------------------------------
+    def test_it06_nachgetragene_updates_kommen_auch_an(self):
+        """
+        Die Gegenrichtung zu IT03.
+
+        IT03 fragt: geht beim Einmischen Historie VERLOREN?
+        IT06 fragt: kommt das Nachgetragene ueberhaupt AN?
+
+        merge.py kennt fuer einen bereits vorhandenen Vorgang genau zwei
+        Wege: 'neu' (gibt es nicht, die Kennung ist ja bekannt) und
+        'Konflikt' (nur, wenn sich eines der VERGLEICHSFELDER unterscheidet).
+        Eine Fassung, die ausschliesslich Update-Eintraege nachtraegt, nimmt
+        keinen der beiden - und wird stillschweigend verworfen, waehrend das
+        Skript Erfolg meldet und die Quelldatei loescht.
+
+        Gemessen am 05.08.2026 auf einer Wegwerfkopie: zwei nachgetragene
+        Eintraege, Meldung '1 Datei(en) eingemischt', im Bestand danach
+        unveraendert zwei statt drei Updates je Vorgang.
+        """
+        if not BESTAND.is_file():
+            self.skipTest("data/issues.json nicht vorhanden")
+        bestand = {i["id"]: i for i in _lade(BESTAND)["issues"]}
+        blind = []
+        for pfad in _eintragsdateien():
+            for e in _lade(pfad)["issues"]:
+                alt = bestand.get(e["id"])
+                if not alt:
+                    continue                      # neuer Vorgang, kommt an
+                alte_stempel = {u.get("timestamp")
+                                for u in (alt.get("updates") or [])}
+                neue = [u for u in (e.get("updates") or [])
+                        if u.get("timestamp") not in alte_stempel]
+                if not neue:
+                    continue                      # nichts nachzutragen
+                abweichend = [f for f in VERGLEICHSFELDER
+                              if alt.get(f) != e.get(f)]
+                if not abweichend:
+                    blind.append(
+                        "%s (%s): %d neue Update-Zeile(n), aber kein "
+                        "veraendertes Vergleichsfeld - merge.py wird die "
+                        "Lieferung uebergehen und die Datei trotzdem loeschen"
+                        % (e["id"][:8], pfad.name, len(neue)))
+        self.assertEqual(
+            [], blind,
+            "Diese Nachtraege kaemen im Bestand NICHT an, und niemand wuerde "
+            "es merken:\n  " + "\n  ".join(blind)
+            + "\n\nAbhilfe bis zur Behebung in merge.py: die gelieferte "
+              "Fassung muss sich zusaetzlich in einem der Felder "
+              + ", ".join(VERGLEICHSFELDER) + " unterscheiden.")
 
 
 if __name__ == "__main__":
