@@ -1275,6 +1275,20 @@ body {
 
 .forensic-ctx-warnleiste[hidden] { display: none; }
 
+/* Build 677: Wartezustand. Gedaempfter als die fertige Meldung - hier steht
+ * noch keine Aussage, nur der Hinweis, dass gerade gezaehlt wird. Wer den
+ * Wartehinweis genauso laut anmalt wie das Ergebnis, macht aus einem
+ * Zwischenstand eine Behauptung. */
+.forensic-ctx-warnleiste--wartet {
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+}
+
+.forensic-ctx-warnleiste--wartet .forensic-ctx-warntext {
+  color: #8a9abf;
+  font-style: italic;
+}
+
 .forensic-ctx-warntext {
   color: #d8c07a;
   flex: 1 1 auto;

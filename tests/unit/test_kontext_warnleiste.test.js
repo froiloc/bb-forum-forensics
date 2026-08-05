@@ -58,7 +58,7 @@ function schlafe(ms) {
  * gesamtzahl: was der Server auf die Zählanfrage (limit=1) antwortet.
  *             null bedeutet: das Feld 'total' fehlt in der Antwort.
  */
-function baueUmgebung(gesamtzahl) {
+function baueUmgebung(gesamtzahl, verzoegerungMs) {
   const dom = new JSDOM(
     "<!DOCTYPE html><html><body>" +
     '<div id="forensic-toolbar"></div>' +
@@ -76,6 +76,15 @@ function baueUmgebung(gesamtzahl) {
       if (adresse.includes("limit=1")) {
         const koerper = { pages: [], status: "ok" };
         if (gesamtzahl !== null) koerper.total = gesamtzahl;
+        // Build 677: Auf Wunsch antwortet der Stub verzögert — so lässt sich
+        // der Wartehinweis messen, ohne auf eine echte 800-MB-Datenbank
+        // angewiesen zu sein.
+        if (verzoegerungMs) {
+          return new Promise((aufloesen) => {
+            setTimeout(() => aufloesen({ ok: true, json: () => koerper }),
+                       verzoegerungMs);
+          });
+        }
         return Promise.resolve({ ok: true, json: () => koerper });
       }
       return Promise.resolve({
@@ -189,5 +198,63 @@ describe("Warnleiste im Kontext-Dropdown (Vorgang d76c412d)", () => {
     const { leiste, text } = await tippe(umgebung.dom, "gibtesoertlichnicht");
     expect(leiste.hidden).toBe(false);
     expect(text.textContent).toContain("0 von 37");
+  });
+
+  // -- WL07 ------------------------------------------------------------------
+  it("WL07: sagt bei langsamer Antwort, DASS noch gezählt wird", async () => {
+    // Gemessen am 05.08.2026: bei einem großen Fall (Administrator, >10.000
+    // Beiträge, 800 MB) brauchte die Zählung rund eine Minute. Alex sah die
+    // Leiste erst nach der Rückkehr aus einem anderen Fenster und hielt sie
+    // für unzuverlässig. Sie war es nicht — sie war nur noch nicht fertig.
+    umgebung = baueUmgebung(2041, 2600);
+    const d = umgebung.dom.window.document;
+    const btn = d.getElementById("forensic-ctx-dropdown-btn");
+    btn.dispatchEvent(new umgebung.dom.window.Event("click", { bubbles: true }));
+    await schlafe(30);
+
+    const feld = d.getElementById("forensic-ctx-search");
+    feld.value = "view";
+    feld.dispatchEvent(new umgebung.dom.window.Event("input", { bubbles: true }));
+
+    // Nach 2,3 s: Antwort steht noch aus, der Hinweis muss stehen.
+    await schlafe(2300);
+    const leiste = d.getElementById("forensic-ctx-warnleiste");
+    const text = d.getElementById("forensic-ctx-warntext");
+    expect(leiste.hidden).toBe(false);
+    expect(text.textContent).toContain("wird noch gezählt");
+    expect(leiste.className).toContain("forensic-ctx-warnleiste--wartet");
+
+    // Nach der Antwort steht die Zahl da, und der Wartezustand ist weg.
+    await schlafe(900);
+    expect(text.textContent).toContain("von 2041");
+    expect(leiste.className).not.toContain("forensic-ctx-warnleiste--wartet");
+  }, 12000);
+
+  // -- WL08 ------------------------------------------------------------------
+  it("WL08: derselbe Begriff wird nicht zweimal gezählt", async () => {
+    // Eine Minute Wartezeit darf sich nicht wiederholen, nur weil jemand
+    // einen Buchstaben löscht und wieder tippt.
+    umgebung = baueUmgebung(2041);
+    const d = umgebung.dom.window.document;
+    await tippe(umgebung.dom, "view");
+
+    const vorher = umgebung.abfragen.filter(
+      (a) => a.includes("/_forensic/search") && a.includes("limit=1")).length;
+    expect(vorher).toBe(1);
+
+    const feld = d.getElementById("forensic-ctx-search");
+    feld.value = "vie";
+    feld.dispatchEvent(new umgebung.dom.window.Event("input", { bubbles: true }));
+    await schlafe(320);
+    feld.value = "view";
+    feld.dispatchEvent(new umgebung.dom.window.Event("input", { bubbles: true }));
+    await schlafe(320);
+
+    const nachher = umgebung.abfragen.filter(
+      (a) => a.includes("/_forensic/search") && a.includes("limit=1")).length;
+    expect(nachher).toBe(2);   // nur 'vie' kam neu dazu, 'view' aus dem Vorrat
+
+    const text = d.getElementById("forensic-ctx-warntext");
+    expect(text.textContent).toContain("von 2041");
   });
 });

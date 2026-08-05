@@ -204,6 +204,96 @@ class SucheGesamtzahlUndTitelTests(unittest.TestCase):
                          "Ohne erreichte Grenze darf 'begrenzt' nicht wahr "
                          "sein - sonst warnt die Oberflaeche grundlos.")
 
+    # -- SG08 -----------------------------------------------------------------
+    def test_sg08_zaehlung_verbindet_scrape_targets_nicht(self):
+        """
+        BUILD 677, gemessen am 05.08.2026 in der VM.
+
+        Bei einem grossen Fall (Administrator, >10.000 Beitraege, 800 MB)
+        brauchte die Zaehlung rund eine MINUTE. Ursache: die Verbindung zu
+        fdb.scrape_targets verknuepft jede Seite mit jedem Erfassungsziel
+        ueber ein LIKE ohne Anker - bei 6.500 Seiten und 19.000 Zielen sind
+        das ueber 120 Millionen Zeichenkettenvergleiche fuer EINE Zahl.
+
+        Gebraucht wird sie dafuer nicht: sie liefert allein 'trace_count',
+        und in keiner Bedingung kommt sie vor. Dieser Fall haelt fest, dass
+        sie in der Zaehlabfrage auch kuenftig nicht auftaucht - der Gewinn
+        waere sonst beim naechsten Umbau still wieder verloren.
+        """
+        gesehene = []
+
+        class Mitschrift:
+            def __init__(self, echt):
+                self._echt = echt
+
+            def execute(self, sql, *args, **kwargs):
+                gesehene.append(sql)
+                return self._echt.execute(sql, *args, **kwargs)
+
+            def __getattr__(self, name):
+                return getattr(self._echt, name)
+
+        echte = self.db._con
+        self.db._con = Mitschrift(echte)
+        try:
+            self.db.search_pages(q="viewtopic", limit=50, nur_zaehlen=True)
+        finally:
+            self.db._con = echte
+
+        zaehlabfragen = [s for s in gesehene
+                         if s.lstrip().startswith("SELECT COUNT(*) FROM (")]
+        self.assertEqual(1, len(zaehlabfragen), gesehene)
+        self.assertNotIn(
+            "scrape_targets", zaehlabfragen[0],
+            "Die Zaehlung verbindet scrape_targets - das kostet bei grossen "
+            "Faellen eine Minute und traegt zur Zahl nichts bei.")
+        self.assertNotIn(
+            "annotations", zaehlabfragen[0],
+            "Ohne Annotationsfilter wird annotations nicht gebraucht.")
+        self.assertNotIn(
+            "page_visits", zaehlabfragen[0],
+            "Ohne Zeitraumfilter wird page_visits nicht gebraucht.")
+
+    # -- SG09 -----------------------------------------------------------------
+    def test_sg09_bei_annotationsfilter_wird_verbunden(self):
+        """
+        Die Gegenprobe zu SG08: was gebraucht wird, wird auch verbunden. Ohne
+        diesen Fall koennte man die Verbindung ganz entfernen und SG08 bliebe
+        gruen - die Zahl waere dann falsch.
+        """
+        gesehene = []
+
+        class Mitschrift:
+            def __init__(self, echt):
+                self._echt = echt
+
+            def execute(self, sql, *args, **kwargs):
+                gesehene.append(sql)
+                return self._echt.execute(sql, *args, **kwargs)
+
+            def __getattr__(self, name):
+                return getattr(self._echt, name)
+
+        echte = self.db._con
+        self.db._con = Mitschrift(echte)
+        try:
+            zahl = self.db.search_pages(has_annotations=True, limit=50,
+                                        nur_zaehlen=True)
+        finally:
+            self.db._con = echte
+
+        zaehlabfrage = [s for s in gesehene
+                        if s.lstrip().startswith("SELECT COUNT(*) FROM (")][0]
+        self.assertIn("annotations", zaehlabfrage)
+        self.assertNotIn("scrape_targets", zaehlabfrage)
+        # Im Wegwerf-Bestand gibt es keine Annotationen - die Zahl muss 0 sein
+        # und nicht etwa die Zahl aller Seiten.
+        self.assertEqual(0, zahl)
+        self.assertEqual(
+            len(self.db.search_pages(has_annotations=True, limit=50)), zahl,
+            "Zaehlung und Liste muessen auch mit Annotationsfilter "
+            "uebereinstimmen.")
+
     # -- SG07 -----------------------------------------------------------------
     def test_sg07_minus_eins_heisst_unbekannt_nicht_null(self):
         """
