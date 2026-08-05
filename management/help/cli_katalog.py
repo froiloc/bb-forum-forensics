@@ -205,6 +205,16 @@ _GEPRUEFT_675 = ("Build 675, 2026-08-05, im Container (Python 3.11) gegen "
                  "einen echten Fall")
 
 
+#: Build 680. Der Rueckweg (Vorgang 2785556a). Gefahren wurde der GANZE Weg
+#: gegen einen gebauten Wegwerf-Bestand unter /tmp/wh_final: sichern, das Ziel
+#: mit 4096 Null-Bytes zerstoeren, zurueckspielen, VON HAND tauschen und
+#: gegenlesen. Danach standen die 200 Zeilen und die user_version wieder da.
+#: KEIN Lauf gegen einen echten Fall - das waere ein Lauf in der VM.
+_GEPRUEFT_680 = ("Build 680, 2026-08-05, im Container (Python 3.13) gegen "
+                 "einen gebauten Wegwerf-Bestand unter /tmp - NICHT gegen "
+                 "einen echten Fall")
+
+
 def _bsp(aufruf: str, wirkung: str, geprueft: str = _GEPRUEFT) -> CliBeispiel:
     """Kurzform fuer einen GEFAHRENEN Beispielaufruf."""
     return CliBeispiel(aufruf=aufruf, wirkung=wirkung, geprueft=geprueft)
@@ -1814,11 +1824,13 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
     CliEintrag(
         schluessel="backup_admin",
         pfad="management/backup/backup_admin.py",
-        aufruf="python -m management.backup.backup_admin plan|run|list|pruefen",
+        aufruf="python -m management.backup.backup_admin "
+               "plan|run|list|pruefen|restore",
         titel="Datensicherung",
         gruppe="Betrieb und Sicherung",
-        zweck="Die auditierte Datensicherung planen, ausfuehren und die "
-              "vergangenen Laeufe auflisten.",
+        zweck="Die auditierte Datensicherung planen, ausfuehren, die "
+              "vergangenen Laeufe auflisten - und eine Sicherung geprueft "
+              "zurueckspielen (Build 680).",
         art="gemischt",
         datenbanken=("coordinator.db (run schreibend; plan/list/pruefen "
                      "lesend, seit Build 627 mit 'mode=ro' erzwungen)",
@@ -1861,10 +1873,28 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "sind (Build 626). Rein lesend - eine Datei mit heissem "
                "Journal wird nicht einmal geoeffnet, weil SQLite sie dabei "
                "auf 0 Byte verkuerzen wuerde. Rueckgabewert 2 heisst: "
-               "mindestens eine Datenbank hat KEINE brauchbare Sicherung."),
+               "mindestens eine Datenbank hat KEINE brauchbare Sicherung. "
+               "Mit '--pruefsummen' werden die beim Sichern erhobenen "
+               "SHA512 gegengerechnet; dass es NICHT geschehen ist, steht "
+               "im Befund."),
+            _b("restore", "schreibend", "DER RUECKWEG (Build 680, Vorgang "
+               "2785556a). Er prueft die Sicherung gegen die beim Sichern "
+               "erhobene Pruefsumme, sieht sie innen an, probt die "
+               "Zieldatenbank auf Ruhe - und legt die gegengelesene Kopie "
+               "NEBEN das Original, als '<name>.wiederhergestellt'. "
+               "ER UEBERSCHREIBT NIEMALS EINE DATENBANK: der Tausch bleibt "
+               "Handarbeit nach der ausgegebenen Anleitung (Entscheidung "
+               "Alex, 2026-08-05). 'schreibend' bezieht sich allein auf "
+               "die neue Datei neben dem Original und auf den Beleg "
+               "daneben; an der Zieldatenbank und an der coordinator.db "
+               "aendert dieser Unterbefehl nichts. Mit '--trocken' prueft "
+               "er alles und schreibt gar nichts."),
         ),
         ausgabe="Sicherungsdateien und ein Manifest im Sicherungsverzeichnis "
-                "(bei 'run').",
+                "(bei 'run'). Bei 'restore': die Datei "
+                "'<ziel>.wiederhergestellt' neben der Zieldatenbank und "
+                "daneben der vollstaendige Befund als "
+                "'<ziel>.wiederhergestellt.befund.json'.",
         # Build 639 (Ticket 60e4236e, das dieses Werkzeug ausdruecklich
         # nennt): geprueft am Quelltext von management/backup/backup_config.py
         # (from_config, Z. 51-83) und management/backup/backup_admin.py
@@ -1958,25 +1988,103 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "SICHERUNG (1): coordinator', zusaetzlich auf der "
                      "Fehlerausgabe. Rueckgabewert 2 - der Ernstfall.",
                      _GEPRUEFT_626),
+                # --- Der Rueckweg, in der Reihenfolge, in der man ihn faehrt.
+                _bsp("python -m management.backup.backup_admin restore "
+                     "--config ./config.yaml --db-label evidence_18 "
+                     "--trocken",
+                     "Am gesunden Bestand: elf Pruefschritte, davon neun "
+                     "'OK' und zwei 'OFFEN' (geschrieben/gegengelesen - es "
+                     "war ja Trockenlauf). Die Zeile, auf die es ankommt, "
+                     "lautete 'SHA512 stimmt mit der beim Sichern erhobenen "
+                     "ueberein'. Abschluss: 'TROCKENLAUF BESTANDEN'. "
+                     "Rueckgabewert 0.",
+                     _GEPRUEFT_680),
+                _bsp("python -m management.backup.backup_admin restore "
+                     "--config ./config.yaml --db-label evidence_18",
+                     "DER ERNSTFALL. Zuvor waren die ersten 4096 Byte der "
+                     "evidence_18.db mit Nullen ueberschrieben worden. Der "
+                     "Lauf legte die Kopie ab ('Kopie nachgelesen: SHA512 "
+                     "gleich der Sicherung, integrity_check ok'), schrieb "
+                     "den Beleg daneben und gab die Tauschanleitung aus - "
+                     "mit dem Vorbehalt 'DIE ZIELDATENBANK IST SELBST "
+                     "BESCHAEDIGT' VOR Schritt 1. Rueckgabewert 1: die "
+                     "Kopie ist in Ordnung, das ZIEL ist es nicht.",
+                     _GEPRUEFT_680),
+                _bsp("python -m management.backup.backup_admin restore "
+                     "--config ./config.yaml --db-label evidence_18 "
+                     "--trocken",
+                     "SCHRITT 4 DER ANLEITUNG, nach dem Tausch von Hand "
+                     "(Original nach '.vor_wiederherstellung' verschoben, "
+                     "Kopie an seine Stelle). Jetzt meldete auch "
+                     "'ziel_in_ruhe' ein 'Zieldatei in Ruhe (exklusiv "
+                     "erhalten)', und die Pruefsummenzeile stimmte - die "
+                     "zertifizierte Sicherung lag an ihrem Platz. "
+                     "Gegengelesen: 200 Zeilen, user_version 7, "
+                     "integrity_check ok. Rueckgabewert 0.",
+                     _GEPRUEFT_680),
             ),
             exit_codes=((0, "'plan': Vorabpruefung bestanden. 'run': ALLE "
                             "Datenbanken gesichert UND integer. 'list': "
                             "ausgegeben, keine als defekt vermerkt. "
-                            "'pruefen': nichts zu beanstanden"),
+                            "'pruefen': nichts zu beanstanden. 'restore': "
+                            "die gegengelesene Kopie liegt bereit und am "
+                            "Ziel steht nichts entgegen"),
                         (1, "'run': mindestens eine Sicherung ist "
                             "fehlgeschlagen oder nicht integer. 'list': "
                             "mindestens eine registrierte Sicherung ist als "
                             "nicht integer vermerkt. 'pruefen': Befunde im "
                             "Ordner, aber jede Datenbank hat noch mindestens "
-                            "eine brauchbare Generation"),
+                            "eine brauchbare Generation. 'restore': DIE "
+                            "KOPIE LIEGT BEREIT, ABER AM ZIEL STEHT ETWAS "
+                            "ENTGEGEN - im haeufigsten Fall ist das genau "
+                            "die Nachricht 'deine Zieldatenbank ist "
+                            "beschaedigt, die Ersatzdatei steht daneben'"),
                         (2, "'plan'/'run': die Vorabpruefung ist "
                             "fehlgeschlagen (etwa zu wenig Platz); bei "
                             "'run' wurde dann NICHTS gesichert. 'pruefen': "
                             "DER ERNSTFALL - mindestens eine Datenbank hat "
-                            "KEINE brauchbare Sicherung"),
+                            "KEINE brauchbare Sicherung. 'restore': es "
+                            "liegt KEINE Kopie bereit, obwohl die Sicherung "
+                            "taugt (Platz, Schreibfehler, Gegenprobe "
+                            "gescheitert)"),
                         (3, "'pruefen': das Sicherungsverzeichnis ist nicht "
-                            "lesbar - es ist gar nichts festgestellt")),
+                            "lesbar - es ist gar nichts festgestellt. "
+                            "'restore': DIE SICHERUNG SELBST TAUGT NICHT - "
+                            "falsche oder fehlende Pruefsumme, nicht "
+                            "integer, leer, gar nicht gefunden. Der "
+                            "schwerste Fall: hier ist nicht der Rueckweg "
+                            "gescheitert, sondern das, worauf man sich "
+                            "verlassen wollte")),
             warnungen=(
+                "'restore' TAUSCHT NICHT. Es legt die gepruefte Kopie NEBEN "
+                "das Original und ueberschreibt keine Datenbank - der Tausch "
+                "bleibt Handarbeit nach der ausgegebenen Anleitung "
+                "(Entscheidung Alex, 2026-08-05). Das ist Absicht: ab dem "
+                "01.07.2026 stehen echte Ermittlerdaten in den Datenbanken, "
+                "und ein Werkzeug, das ein Beweismittel ueberschreiben KANN, "
+                "ist dauerhaft eine Angriffsflaeche - nicht nur im "
+                "Ernstfall. Wer die Anleitung faehrt, LOESCHT DAS ORIGINAL "
+                "NICHT, sondern legt es auf '.vor_wiederherstellung' "
+                "beiseite: es ist das einzige Stueck, das noch Daten aus der "
+                "Zeit NACH dem Sicherungszeitpunkt tragen koennte.",
+                "'restore' SCHREIBT KEINEN AUDITBELEG in die coordinator.db, "
+                "und das ist bewusst und nicht vergessen: im Ernstfall kann "
+                "ausgerechnet die coordinator.db die Datenbank sein, die zu "
+                "ersetzen ist - ein Rueckweg, der einen Schreibzugriff auf "
+                "sie voraussetzt, waere dann nicht zu fahren. "
+                "EventType.RESTORE_PERFORMED bleibt deshalb reserviert und "
+                "gehoert zum TAUSCH, den ein Mensch verantwortet. Belegt ist "
+                "der Lauf trotzdem: der vollstaendige Befund liegt als "
+                "'<ziel>.wiederhergestellt.befund.json' neben der Kopie und "
+                "gehoert zur Akte.",
+                "EINE SICHERUNG OHNE ERHOBENE PRUEFSUMME WIRD VON 'restore' "
+                "NICHT DURCHGEWUNKEN. Liegt zu einer Datei keine "
+                "registrierte SHA512 vor - etwa weil sie von Hand vom "
+                "Sicherungsmedium geholt wurde oder die Registrierung "
+                "unlesbar ist -, ist das ein BEFUND mit Rueckgabewert 3 und "
+                "kein Durchmarsch. Genau dieser Zustand ist der Anlass des "
+                "Vorgangs 2785556a gewesen: die Summe wurde seit Build 354 "
+                "erhoben und bis Build 626 nie wieder ausgewertet.",
                 "DIE AUFBEWAHRUNG ZAEHLT SEIT BUILD 625 NUR BRAUCHBARE "
                 "GENERATIONEN. Bis Build 624 behielt die Aufraeumung je "
                 "Datenbank die neuesten Kopien allein nach dem Zeitstempel im "

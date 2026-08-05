@@ -1,0 +1,72 @@
+{
+  "issues": [
+    {
+      "id": "2785556a-df22-4643-bb05-0c46eba88d20",
+      "type": "bug",
+      "title": "Fuer die Sicherungen von backup_admin gibt es keinen erprobten Rueckweg",
+      "affected_version": "0.8.615",
+      "reporter": "Claude",
+      "reported_at": "2026-07-31T22:40:00+00:00",
+      "prerequisites": "Der Ernstfall - eine Datenbank ist zu ersetzen und soll aus einer Sicherung zurueckgespielt werden",
+      "description": "Befund aus der Nachpruefung von backup_admin, angeordnet von mc am 2026-07-31.\n\nDER BEFUND: management/backup/ kennt genau drei Unterbefehle - plan, run, list (backup_admin.py Z. 173-184). Es gibt KEIN 'restore'. Im ganzen Bestand existiert nur ein Rueckspielweg, und der gehoert zur Migrationsflotte (management/migration_fleet/executor.py Z. 93-105); er arbeitet auf deren eigenen Sicherungen, nicht auf denen von backup_admin, und er ist ausserdem selbst Gegenstand eines offenen Vorgangs (69ede1c7: er kopiert ueber die Originaldatei, ohne die Exklusivitaet zu pruefen).\n\nWEDER CODE NOCH TEST: tests/test_backup_executor.py und tests/test_backups_registry.py enthalten keinen Wiederherstellungsfall.\n\nDAZU PASST EIN ZWEITER BEFUND: Die Pruefsumme (SHA512) jeder Kopie wird bei der Sicherung ERHOBEN und im Register abgelegt (harness/backup.py Z. 77, backups_repo.py Z. 74-77) - aber nie wieder GEPRUEFT. Die vorhandene Routine BackupTool.verify_backup (harness/backup.py Z. 80-83) hat KEINEN produktiven Aufrufer; sie kommt ausschliesslich in Tests vor. Eine Sicherung altert damit unbeobachtet: ein Bitfehler auf dem Sicherungsmedium faellt erst im Ernstfall auf, und dann ist es der Ernstfall.\n\nWARUM DAS IN DIESEM PROJEKT ZAEHLT: Eine Sicherung, deren Rueckweg nie gefahren wurde, ist eine Vermutung und kein Beleg. Das ist dieselbe Ueberlegung, aus der im Projekt gilt, dass ein Beispielaufruf gefahren sein muss, bevor er in die Hilfe kommt - nur mit erheblich groesserem Einsatz.",
+      "expected_behavior": "Ein Unterbefehl 'restore' (mindestens als Trockenlauf mit Pruefung), der vor dem Zurueckspielen die abgelegte Pruefsumme gegen die Datei prueft und die Zieldatei auf Ruhe probt. Dazu ein Test, der einen vollstaendigen Weg faehrt: sichern, Original beschaedigen, zurueckspielen, gegenpruefen. Unabhaengig davon: ein Unterbefehl 'verify', der die abgelegten Pruefsummen gegen die vorhandenen Sicherungsdateien haelt, damit eine alternde Sicherung vor dem Ernstfall auffaellt.",
+      "actual_behavior": "Kein Rueckweg, kein Test dafuer; die erhobene Pruefsumme wird nie wieder ausgewertet.",
+      "status": "testing",
+      "priority": "high",
+      "severity": "major",
+      "assigned_to": "Claude",
+      "related_to": [
+        "651e6d84-7ebc-4905-ab21-9f324021ec1d",
+        "69ede1c7-3fe1-47eb-9d9a-f0cf6468f7dc"
+      ],
+      "resolved_in_version": "0.8.680",
+      "target_version": "0.8.680",
+      "environment": {
+        "python_version": "3.14"
+      },
+      "tags": [
+        "backup",
+        "wiederherstellung",
+        "test",
+        "produktivbetrieb"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-07-31T22:40:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Eintrag erstellt. Befund aus der von mc angeordneten Nachpruefung von backup_admin."
+        },
+        {
+          "timestamp": "2026-07-31T23:06:29.592647+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eingang_claude_Build616.json"
+        },
+        {
+          "timestamp": "2026-08-01T22:40:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "ENTSCHEIDUNG ZUM ZUSCHNITT BENOETIGT (Claude, Build 649), bevor ich anfange - hier ist Nachbessern teurer als Fragen.\n\nWARUM ICH NICHT EINFACH BAUE: Der Vorgang verlangt zweierlei, und die beiden sind unterschiedlich schwer und unterschiedlich dringend.\n  (a) 'verify' - die abgelegten SHA512-Pruefsummen gegen die vorhandenen Sicherungsdateien halten, damit eine ALTERNDE Sicherung vor dem Ernstfall auffaellt.\n  (b) 'restore' - der Rueckweg selbst, samt einem Test, der den vollstaendigen Weg faehrt (sichern, Original beschaedigen, zurueckspielen, gegenpruefen).\n\nNACHGESEHEN, damit wir auf demselben Stand sind: BackupTool.verify_backup gibt es (harness/backup.py Z. 80-83), sie hat KEINEN produktiven Aufrufer und kommt nur in Tests vor. Fuer (a) ist also nicht neu zu erfinden, sondern anzuschliessen - das ist ein kleiner Build. (b) ist etwas anderes: ein Rueckweg, der eine Beweismitteldatei UEBERSCHREIBT, ist der gefaehrlichste Weg im ganzen Bestand, und der einzige vorhandene Rueckspielweg (migration_fleet/executor.py) ist selbst Gegenstand des offenen Vorgangs 69ede1c7, weil er ueber die Originaldatei kopiert, ohne die Exklusivitaet zu pruefen.\n\nDREI ZUSCHNITTE:\n\n  A) NUR (a) 'verify' JETZT, (b) getrennt spaeter. Kleiner, in sich abgeschlossener Build; die alternde Sicherung faellt ab sofort auf. Der Rueckweg bleibt eine Vermutung - aber eine BENANNTE, und keine, die man im Ernstfall zum ersten Mal ausprobiert. MEIN VORSCHLAG, und zwar wegen des Datums: ab dem 01.07.2026 stehen echte Ermittlerdaten in den Datenbanken; einen ueberschreibenden Rueckweg moechte ich nicht nebenbei einbauen.\n\n  B) (a) UND (b) ZUSAMMEN, aber 'restore' ausschliesslich als TROCKENLAUF: es prueft die Pruefsumme, probt die Zieldatei auf Ruhe, sagt genau, was es tun WUERDE - und schreibt nichts. Das Zurueckspielen bleibt Handarbeit nach Anleitung. Damit ist der Weg erprobt, ohne dass ein Werkzeug im Bestand existiert, das ein Beweismittel ueberschreiben kann.\n\n  C) (a) und (b) vollstaendig, mit scharfem Rueckspielen unter Wartungsvorbehalt Stufe A. Der volle Umfang des Vorgangs. Er setzt aber 69ede1c7 voraus (Exklusivitaetspruefung im Rueckweg) - sonst baue ich denselben Mangel ein zweites Mal, und dann steht er an zwei Stellen.\n\nDREI FRAGEN, deren Antwort den Zuschnitt mitbestimmt:\n  1. Soll 'restore' ueberhaupt in ein Werkzeug, oder ist der Rueckweg im Ernstfall bewusst Handarbeit mit Vier-Augen-Prinzip? Das ist eine forensische Entscheidung, keine technische - ein Werkzeug, das Beweismittel ueberschreiben kann, ist auch eine Angriffsflaeche.\n  2. Wohin soll 'restore' schreiben duerfen: NUR neben das Original (also eine Datei, die anschliessend von Hand getauscht wird), oder auf das Original selbst?\n  3. Fuer den Test, der den vollstaendigen Weg faehrt: Reicht ein Wegwerf-Bestand aus dem Prepper, oder muss der Weg einmal auf einer ECHTEN Fall-Datenbank gefahren und protokolliert werden? Letzteres kann ich hier nicht - das waere ein Lauf in der VM, und ich wuerde Dir dafuer ein Skript und eine Anleitung liefern, so wie bei 651e6d84.\n\nBis zu Deiner Antwort bleibt der Vorgang offen; ich habe nichts angefangen, was danach umzubauen waere."
+        },
+        {
+          "timestamp": "2026-08-05T18:30:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "ZUSCHNITT ENTSCHIEDEN (Alex, 2026-08-05). Von den drei in Build 649 vorgelegten Wegen wurde B gewaehlt, in der engeren Fassung: 'restore' prueft und legt die Kopie NEBEN das Original; der Tausch bleibt Handarbeit nach ausgegebener Anleitung. Dazu: der Test faehrt einen Wegwerf-Bestand (kein Lauf auf einer echten Fall-Datenbank), und die Sicherung wird aus der Registrierung gewaehlt, mit dem Ordner als Rueckfall.\n\nEINE FESTSTELLUNG VORWEG, die die Frage von Build 649 kleiner macht: TEIL (a) WAR BEREITS ERLEDIGT. 'backup_admin pruefen --pruefsummen' rechnet die abgelegten SHA512 seit Build 626 gegen (backup_pruefer.py Z. 343-366, CLI-Schalter backup_admin.py). Ein eigener Unterbefehl 'verify' waere eine zweite Tuer zum selben Raum gewesen. Offen war allein der Rueckweg."
+        },
+        {
+          "timestamp": "2026-08-05T19:10:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "testing",
+          "comment": "BEHOBEN IN 0.8.680 - der Rueckweg ist gebaut UND gefahren. Status auf 'testing' und NICHT auf 'resolved': maschinell belegt ist er, aber der Lauf in der VM steht aus. Dasselbe Vorgehen wie bei 651e6d84.\n\nWAS GELIEFERT IST:\n  * management/backup/backup_wiederhersteller.py (neu) - das Bauteil. Prueffolge: Sicherung vorhanden/nicht leer/kein heisses Journal, SHA512 gegen die erhobene, integrity_check + Seitenzahl + Schema, beim ZIEL erst das Journal und DANN die Sperrprobe, Platz, Schreiben, Gegenlesen.\n  * 'restore' in backup_admin.py mit --db-label / --sicherung / --ziel / --stand / --trocken / --json.\n  * tests/test_backup_restore.py (neu) - WH01 bis WH12 und CR01 bis CR03.\n  * Hilfe: cli_katalog.py mit drei GEFAHRENEN Beispielen, Rueckgabewerten und drei Warnungen.\n\nWH01 IST DER TEST, UM DEN ES GING: sichern, das Original mit 4096 Null-Bytes zerstoeren, zurueckspielen, VON HAND tauschen, gegenpruefen - danach stehen Zeilenzahl, Inhalt und user_version wieder da, und die Datei am Platz traegt genau die zertifizierte Pruefsumme.\n\nDER ZWEITE TEIL DES VORGANGS - die erhobene Pruefsumme wird nie wieder geprueft - ist damit an beiden Stellen erledigt: 'pruefen --pruefsummen' (Build 626) rechnet sie im Ordner gegen, 'restore' macht sie zur Eintrittskarte. FEHLT sie, ist das ein Befund mit Rueckgabewert 3 und kein Durchmarsch (WH03).\n\nZWEI KONSTRUKTIONSFEHLER, die erst der eigene Test und der eigene Probelauf aufgedeckt haben - beide gehoeren in die Akte, weil sie den Entwurf geaendert haben:\n  (1) Der erste Entwurf liess JEDEN Befund das Schreiben der Kopie verhindern, auch einen am ZIEL. Damit verweigerte der Rueckweg ausgerechnet den haeufigsten Ernstfall: ist die Zieldatenbank zerstoert, kann SQLite sie nicht oeffnen, die Sperrprobe meldet 'nicht messbar' - und das Werkzeug haette die Arbeit eingestellt. WH01 ist darueber rot geworden. Getrennt wird jetzt: 'darf die Kopie entstehen' (dagegen spricht nur eine untaugliche Sicherung oder fehlender Platz) und 'darf getauscht werden' (das haengt am Ziel).\n  (2) Ist das Ziel selbst beschaedigt, wird die Sperrprobe NIE 'frei' melden. Wer das wie einen Halter behandelt, laesst den Ermittler ohne Tauschanleitung stehen. Die Anleitung erscheint deshalb, aber mit einem Vorbehalt VOR Schritt 1: der Nachweis der Ruhe ist hier am Betrieb zu fuehren, nicht an der Datei.\n\nAUSDRUECKLICH NICHT GETAN, damit es nicht still bleibt:\n  * Kein scharfes Ueberschreiben der Zieldatenbank. Das ist der gewaehlte Zuschnitt und keine Luecke.\n  * Kein Auditbeleg in der coordinator.db. Im Ernstfall kann sie selbst das Ersetzungsziel sein; ein Rueckweg, der Schreibzugriff auf sie voraussetzt, waere dann nicht zu fahren. EventType.RESTORE_PERFORMED bleibt reserviert. Der Lauf ist trotzdem belegt: '<ziel>.wiederhergestellt.befund.json' liegt neben der Kopie. OB DAS GENUEGT, ist eine Entscheidung fuer die Hauptermittlung und hier bewusst offengelassen.\n  * Kein Lauf auf einer echten Fall-Datenbank - das waere ein Lauf in der VM.\n\n69ede1c7 BLEIBT DAVON UNBERUEHRT und ist NICHT miterledigt: der Rueckweg der Migrationsflotte kopiert weiterhin ueber die Originaldatei, ohne die Exklusivitaet zu pruefen. Dieser Vorgang hat ihn nicht angefasst."
+        }
+      ]
+    }
+  ]
+}

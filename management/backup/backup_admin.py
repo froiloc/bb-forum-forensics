@@ -14,6 +14,12 @@
 #           viele BRAUCHBARE Generationen uebrig sind (Build 626, rein
 #           lesend). 'list' liest die Registrierung und sagt, was GESCHEHEN
 #           IST; 'pruefen' sieht auf die Platte und sagt, was DA IST.
+#   restore — DER RUECKWEG (Build 680, Vorgang 2785556a): prueft eine
+#           Sicherung gegen die beim Sichern erhobene Pruefsumme, probt die
+#           Zieldatenbank auf Ruhe und legt die gegengelesene Kopie NEBEN
+#           das Original. UEBERSCHREIBT NIEMALS EINE DATENBANK - der Tausch
+#           bleibt Handarbeit nach der ausgegebenen Anleitung
+#           (Entscheidung Alex, 2026-08-05).
 #
 # Pfade und Rahmenbedingungen kommen aus config.yaml (paths.* / backup.*),
 # override per --coordinator-db moeglich. Muster wie rbac_admin.
@@ -23,11 +29,14 @@
 # Build 625: 'run' legt Rechenschaft ueber die Aufbewahrung ab.
 # Build 626: 'pruefen' kommt hinzu; 'list' liefert bei defekt vermerkten
 #   Sicherungen 1 statt immer 0 (Vorgang e9522fe2).
-# Version: v0.8.626 · Build: 626 · 2026-08-01
+# Build 680: 'restore' kommt hinzu (Vorgang 2785556a). Damit ist der
+#   Rueckweg zum ersten Mal gefahren und nicht mehr bloss angenommen.
+# Version: v0.8.680 · Build: 680 · 2026-08-05
 # =============================================================================
 
 import argparse
 import getpass
+import os
 import json
 import sqlite3
 import sys
@@ -41,6 +50,14 @@ from management.backup.backup_executor import (
 from management.backup.backup_planner import BackupPlanner
 from management.backup.backup_pruefer import (
     SicherungsPruefer, bericht_json, bericht_text,
+)
+# Build 680 (Vorgang 2785556a): der Rueckweg. Die Namen werden umbenannt
+# importiert, weil dieses Werkzeug jetzt ZWEI Berichte kennt - der Pruefer
+# beurteilt einen Ordner, der Wiederhersteller einen einzelnen Rueckweg.
+from management.backup.backup_wiederhersteller import (
+    RC_UNBRAUCHBAR as WH_RC_UNBRAUCHBAR,
+    Wiederhersteller, bericht_json as wh_bericht_json,
+    bericht_text as wh_bericht_text,
 )
 from management.backup.backups_repo import BackupsRepo
 from management.gateway.coordinator_writer import CoordinatorWriter
@@ -379,10 +396,255 @@ def cmd_pruefen(args) -> int:
     return befund.rueckgabewert()
 
 
+# =============================================================================
+# restore - DER RUECKWEG (Build 680, Vorgang 2785556a)
+# =============================================================================
+# ZWEI ENTSCHEIDUNGEN STEHEN HINTER DIESER ROUTE, und beide gehoeren
+# ausgesprochen:
+#
+# (1) ES WIRD NICHTS UEBERSCHRIEBEN. Die gepruefte Kopie wird NEBEN das
+#     Original gelegt; der Tausch bleibt Handarbeit nach der ausgegebenen
+#     Anleitung (Entscheidung Alex, 2026-08-05). Das Bauteil setzt das durch,
+#     nicht dieses Werkzeug - siehe backup_wiederhersteller._schreiben.
+#
+# (2) DIESE ROUTE SCHREIBT NICHT IN DIE coordinator.db - auch keinen
+#     Auditbeleg. Das ist bewusst und nicht vergessen: Im Ernstfall kann
+#     ausgerechnet die coordinator.db die Datenbank sein, die ersetzt werden
+#     soll. Ein Rueckweg, der einen Schreibzugriff auf sie voraussetzt, waere
+#     dann nicht zu fahren. EventType.RESTORE_PERFORMED ist im Bestand
+#     ausdruecklich als 'reserviert, noch nicht aktiv' gefuehrt
+#     (management/audit/event_types.py Z. 383-384); er gehoert zum TAUSCH,
+#     den ein Mensch verantwortet, nicht zu dieser Vorbereitung.
+#
+#     DAMIT DER LAUF TROTZDEM BELEGT IST, wird der vollstaendige Befund als
+#     JSON neben die Kopie gelegt ('<ziel>.wiederhergestellt.befund.json').
+#     Ein Rueckweg ohne Beleg waere genau die Vermutung, gegen die dieser
+#     Vorgang geschrieben ist (Grundregel 1).
+# =============================================================================
+
+#: Die Endung der Protokolldatei neben der Kopie.
+ENDUNG_BEFUND = ".befund.json"
+
+
+def _registrierung_lesen(args, cfg):
+    """
+    Die registrierten Sicherungen - oder eine leere Liste und ein Hinweis.
+
+    KEIN ABBRUCH bei unlesbarer Registrierung. Die Registrierung ist hier
+    die BESSERE, aber nicht die einzige Quelle: im Ernstfall kann sie selbst
+    beschaedigt sein. Was dann fehlt, ist die erhobene Pruefsumme - und das
+    wird gesagt, nicht verschwiegen.
+    """
+    try:
+        con = _open_con_ro(_coordinator_db(args, cfg))
+        try:
+            return list(BackupsRepo(con, None).list_backups(limit=100000)), ""
+        finally:
+            con.close()
+    except Exception as exc:                       # pragma: no cover
+        return [], ("Die Registrierung war nicht lesbar (%s). Damit steht "
+                    "KEINE erhobene Pruefsumme zur Verfuegung; ohne sie ist "
+                    "nicht feststellbar, ob die Sicherungsdatei noch die "
+                    "ist, die beim Sichern zertifiziert wurde." % exc)
+
+
+def _summe_zu_pfad(rows, pfad: str) -> Optional[str]:
+    """Die erhobene Pruefsumme zu einer Sicherungsdatei - oder None."""
+    ziel = os.path.abspath(pfad)
+    for r in rows:
+        if r["backup_path"] and os.path.abspath(r["backup_path"]) == ziel:
+            return r["sha512"]
+    return None
+
+
+def _quelle_zu_pfad(rows, pfad: str) -> Optional[str]:
+    """Woher die Sicherung stammte (src_path) - oder None."""
+    ziel = os.path.abspath(pfad)
+    for r in rows:
+        if r["backup_path"] and os.path.abspath(r["backup_path"]) == ziel:
+            return r["src_path"]
+    return None
+
+
+def _aus_registrierung(rows, db_label: str, stand: Optional[str]):
+    """
+    Die juengste brauchbare registrierte Sicherung eines db_label.
+
+    'brauchbar' heisst hier: beim Sichern als integer vermerkt UND die Datei
+    liegt noch da. Eine Zeile, deren Datei fehlt, ist eine Buchhaltung ohne
+    Gegenstand - sie wird uebergangen, aber gezaehlt, damit der Grund im
+    Hinweis stehen kann.
+
+    Die Liste kommt aus list_backups() bereits nach run_ts absteigend
+    sortiert (backups_repo.py, ORDER BY run_ts DESC) - die erste passende
+    Zeile ist deshalb die juengste.
+    """
+    verworfen_defekt = 0
+    verworfen_weg = 0
+    for r in rows:
+        if r["db_label"] != db_label:
+            continue
+        if stand and not str(r["run_ts"] or "").startswith(stand):
+            continue
+        if not r["integrity_ok"]:
+            verworfen_defekt += 1
+            continue
+        if not r["backup_path"] or not os.path.isfile(r["backup_path"]):
+            verworfen_weg += 1
+            continue
+        return r, verworfen_defekt, verworfen_weg
+    return None, verworfen_defekt, verworfen_weg
+
+
+def _aus_ordner(bcfg, db_label: str, stand: Optional[str]):
+    """
+    DER RUECKFALL: die juengste brauchbare Generation im Sicherungsordner,
+    ohne Registrierung.
+
+    Es wird derselbe Pruefer benutzt wie bei 'pruefen' - eine zweite
+    Beurteilung derselben Frage waere eine zweite Wahrheit. Die
+    Pruefsummenpruefung entfaellt hier notwendigerweise: sie stammt aus der
+    Registrierung, die gerade nicht zur Verfuegung steht.
+    """
+    befund = SicherungsPruefer(bcfg.dest_dir).pruefen(
+        registrierte={}, mit_pruefsummen=False)
+    for label in befund.labels:
+        if label.label != db_label:
+            continue
+        for datei in label.brauchbar:
+            if stand and not datei.ts.startswith(stand):
+                continue
+            return datei
+    return None
+
+
+def cmd_restore(args) -> int:
+    """
+    Eine Sicherung pruefen und neben ihr Original legen.
+
+    DER WEG IN VIER SCHRITTEN, und der dritte ist der, um den es geht:
+      1. Die Sicherung waehlen - aus der Registrierung, hilfsweise aus dem
+         Ordner.
+      2. Die erhobene Pruefsumme dazuholen.
+      3. Der Wiederhersteller faehrt die Prueffolge und legt die Kopie ab.
+      4. Der Befund wird ausgegeben und neben die Kopie protokolliert.
+    """
+    cfg = _load_cfg(args.config)
+    bcfg = BackupConfig.from_loader(cfg)
+    rows, reg_hinweis = _registrierung_lesen(args, cfg)
+    hinweise = [reg_hinweis] if reg_hinweis else []
+
+    sicherung: Optional[str] = None
+    ziel: Optional[str] = args.ziel
+
+    if args.sicherung:
+        # AUSDRUECKLICH BENANNT. Dann wird sie genommen - auch wenn sie nicht
+        # registriert ist. Das ist der Ernstfall-Weg: eine von Hand vom
+        # Sicherungsmedium geholte Datei. Ob eine Pruefsumme dazu vorliegt,
+        # entscheidet sich gleich, und ihr Fehlen ist ein BEFUND.
+        sicherung = args.sicherung
+        if not ziel:
+            ziel = _quelle_zu_pfad(rows, sicherung)
+            if ziel:
+                hinweise.append(
+                    "Das Ziel wurde der Registrierung entnommen (src_path "
+                    "der Sicherung): %s. Wenn diese Anlage inzwischen an "
+                    "einem anderen Ort laeuft, ist '--ziel' ausdruecklich "
+                    "anzugeben." % ziel)
+    else:
+        if not args.db_label:
+            print("[backup_admin] restore braucht entweder --sicherung "
+                  "oder --db-label.", file=sys.stderr)
+            return WH_RC_UNBRAUCHBAR
+        zeile, defekt, weg = _aus_registrierung(rows, args.db_label,
+                                                args.stand)
+        if zeile is not None:
+            sicherung = zeile["backup_path"]
+            if not ziel:
+                ziel = zeile["src_path"]
+            if defekt or weg:
+                hinweise.append(
+                    "Uebergangen wurden %d als nicht integer vermerkte und "
+                    "%d registrierte, aber nicht mehr vorhandene "
+                    "Sicherung(en) desselben db_label. Das ist kein Fehler - "
+                    "es steht hier, damit die getroffene Auswahl "
+                    "nachvollziehbar ist." % (defekt, weg))
+        else:
+            datei = _aus_ordner(bcfg, args.db_label, args.stand)
+            if datei is None:
+                print("[backup_admin] KEINE brauchbare Sicherung fuer "
+                      "db_label '%s'%s - weder registriert noch im Ordner "
+                      "'%s'."
+                      % (args.db_label,
+                         (" mit Stand '%s'" % args.stand) if args.stand
+                         else "", bcfg.dest_dir),
+                      file=sys.stderr)
+                return WH_RC_UNBRAUCHBAR
+            sicherung = datei.pfad
+            hinweise.append(
+                "DIE SICHERUNG STAMMT AUS DEM ORDNER, nicht aus der "
+                "Registrierung: zu '%s' ist dort keine brauchbare Zeile "
+                "vorhanden. Damit gibt es keine erhobene Pruefsumme, gegen "
+                "die sich gegenrechnen liesse." % args.db_label)
+
+    if not ziel:
+        print("[backup_admin] Kein Ziel bestimmbar. '--ziel <pfad>' angeben "
+              "- die Registrierung kennt zu dieser Sicherung keinen "
+              "src_path.", file=sys.stderr)
+        return WH_RC_UNBRAUCHBAR
+
+    summe = _summe_zu_pfad(rows, sicherung)
+
+    werkzeug = Wiederhersteller(sicherung, ziel)
+    befund = werkzeug.fahren(erwartete_summe=summe,
+                             schreiben=not args.trocken)
+
+    if args.json:
+        daten = wh_bericht_json(befund)
+        if hinweise:
+            daten["hinweise"] = hinweise
+        print(json.dumps(daten, ensure_ascii=True, indent=2))
+    else:
+        print(wh_bericht_text(befund))
+        for h in hinweise:
+            print("")
+            for zeile in _umbruch("HINWEIS: " + h, 78):
+                print(zeile)
+
+    # --- DER BELEG NEBEN DER KOPIE ---------------------------------------
+    # Nur wenn wirklich geschrieben wurde. Ein Protokoll ohne Kopie waere
+    # ein Beleg ueber nichts.
+    if befund.geschrieben:
+        protokoll = befund.geschrieben + ENDUNG_BEFUND
+        daten = wh_bericht_json(befund)
+        daten["hinweise"] = hinweise
+        try:
+            with open(protokoll, "w", encoding="utf-8") as fh:
+                json.dump(daten, fh, ensure_ascii=True, indent=2)
+            print("")
+            print("  Beleg: %s" % protokoll)
+        except OSError as exc:
+            # AUF DIE FEHLERAUSGABE, und der Rueckgabewert bleibt davon
+            # unberuehrt: die Kopie liegt und ist gegengelesen. Ein
+            # fehlendes Protokoll ist ein Mangel am Beleg, nicht an der
+            # Wiederherstellung - aber er darf nicht untergehen.
+            print("  BELEG NICHT GESCHRIEBEN (%s): %s" % (protokoll, exc),
+                  file=sys.stderr)
+
+    # Der Ernstfall zusaetzlich auf die Fehlerausgabe - wie bei 'pruefen'.
+    if not befund.ok:
+        print("[backup_admin] RUECKWEG MIT BEFUND (%d): %s"
+              % (len(befund.offene_befunde),
+                 ", ".join(s.name for s in befund.offene_befunde)),
+              file=sys.stderr)
+    return befund.rueckgabewert()
+
+
 # ---------------------------------------------------------------- arg parser
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Auditierte Datensicherung (plan/run/list).",
+        description="Auditierte Datensicherung "
+                    "(plan/run/list/pruefen/restore).",
         epilog=cli_epilog.epilog("backup_admin"),
         formatter_class=cli_epilog.HilfeFormat)
     sub = parser.add_subparsers(dest="action", required=True)
@@ -418,13 +680,45 @@ def _build_parser() -> argparse.ArgumentParser:
     p_list.add_argument("--db-label", default=None, dest="db_label")
     p_list.add_argument("--limit", type=int, default=100)
 
+    # BUILD 680 (Vorgang 2785556a): DER RUECKWEG. Er steht hier ans Ende und
+    # nicht zwischen die lesenden Unterbefehle, weil er als einziger eine
+    # Datei ANLEGT - wenn auch niemals die Zieldatenbank selbst.
+    p_restore = sub.add_parser(
+        "restore", parents=[common],
+        help="Eine Sicherung pruefen und NEBEN ihr Original legen. "
+             "Ueberschreibt nichts - der Tausch bleibt Handarbeit nach der "
+             "ausgegebenen Anleitung.")
+    p_restore.add_argument(
+        "--db-label", default=None, dest="db_label",
+        help="Welche Datenbank (z. B. 'coordinator', 'evidence_18'). Es "
+             "wird die juengste brauchbare Generation genommen. Entweder "
+             "dies oder --sicherung.")
+    p_restore.add_argument(
+        "--sicherung", default=None,
+        help="Eine bestimmte Sicherungsdatei - der Ernstfall-Weg fuer eine "
+             "von Hand vom Sicherungsmedium geholte Datei.")
+    p_restore.add_argument(
+        "--ziel", default=None,
+        help="Die Datenbank, die ersetzt werden soll. Ohne Angabe wird der "
+             "src_path aus der Registrierung genommen.")
+    p_restore.add_argument(
+        "--stand", default=None,
+        help="Eine bestimmte Generation ueber den Anfang ihres "
+             "Zeitstempels waehlen (z. B. '20260805').")
+    p_restore.add_argument(
+        "--trocken", action="store_true",
+        help="Nur pruefen und sagen, was geschehen WUERDE. Schreibt nichts.")
+    p_restore.add_argument("--json", action="store_true",
+                           help="Befund als JSON statt als Text.")
+
     return parser
 
 
 def main(argv=None) -> int:
     args = _build_parser().parse_args(argv)
     return {"plan": cmd_plan, "run": cmd_run, "list": cmd_list,
-            "pruefen": cmd_pruefen}[args.action](args)
+            "pruefen": cmd_pruefen,
+            "restore": cmd_restore}[args.action](args)
 
 
 if __name__ == "__main__":  # pragma: no cover
