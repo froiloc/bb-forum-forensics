@@ -4159,6 +4159,14 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "sie richtig an, ein einfaches 'less' zeigt Zeichensalat.",
                 "'--leise' unterdrueckt NUR die laufende Ausgabe. Protokoll, "
                 "Zusammenfassung und Fehlerauszug bleiben.",
+                "Die Kopfzeile nennt den verwendeten Interpreter und die "
+                "pytest-Fassung. Das ist kein Beiwerk: dass 'pytest "
+                "--version' auf der Kommandozeile funktioniert, beweist "
+                "NICHT, dass derselbe Interpreter pytest hat - liegt eines "
+                "im Benutzerverzeichnis und keines in der aktiven Umgebung, "
+                "scheitert der Lauf mit 'No module named pytest'.",
+                "Fehlt pytest, wird das als FEHLENDE VORAUSSETZUNG gemeldet "
+                "und nicht als Testfehler. Es wurde dann NICHTS geprueft.",
             ),
         ),
     ),

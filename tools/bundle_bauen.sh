@@ -176,6 +176,28 @@ if [ "${#geloescht[@]}" -gt 0 ] && [ -n "${geloescht[0]}" ]; then
 fi
 
 meld "3) MD5-Liste"
+# BUILD 666 -- HENNE-EI-WARNUNG. Aendert eine Lieferung das EINSPIELWERKZEUG
+# selbst, dann wird sie mit der ALTEN Fassung eingespielt. Verbesserungen am
+# Einspielen wirken also erst ab der NAECHSTEN Lieferung. Das ist nicht zu
+# beheben (das Werkzeug liefert sich selbst aus), aber es ist anzusagen:
+# Befund 04.08.2026 -- Alex lief zweimal in genau diese Falle, einmal in den
+# fehlerhaften Fetch-Refspec und einmal in den Abbruch "Ref existiert
+# bereits", dessen Behebung in ebendieser Lieferung steckte.
+selbstaenderung=0
+for _d in "${geaendert[@]}"; do
+    if [ "$_d" = "tools/bundle_einspielen.sh" ]; then selbstaenderung=1; fi
+done
+if [ "$selbstaenderung" -eq 1 ]; then
+    echo ""
+    echo "ACHTUNG -- DIESE LIEFERUNG AENDERT DAS EINSPIELWERKZEUG SELBST."
+    echo "Sie wird noch mit der ALTEN Fassung von bundle_einspielen.sh"
+    echo "eingespielt. Alles, was dieser Build am Einspielen verbessert,"
+    echo "wirkt erst ab der NAECHSTEN Lieferung."
+    echo "Ein Konflikt an dieser Datei ist zu erwarten, falls im Bestand"
+    echo "ebenfalls daran gearbeitet wurde."
+    echo ""
+fi
+
 bash tools/md5sums_build.sh "$build_no" "${geaendert[@]}"
 
 # Die MD5-Liste gehoert in den Commit -- sonst weicht der ausgelieferte Stand
