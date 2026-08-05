@@ -35,11 +35,12 @@
 #     * stimmt die Pruefsumme noch mit der beim Sichern erhobenen ueberein?
 #
 #   DIE PRUEFSUMME IST DER EIGENTLICHE GEWINN. Sie wird seit Build 354 bei
-#   jeder Sicherung erhoben und abgelegt - und danach nie wieder ausgewertet
-#   (Vorgang 2785556a). Eine Sicherung altert damit unbeobachtet. Hier wird
-#   sie erstmals gegengerechnet. WEIL DAS TEUER IST (die Datei wird ganz
-#   gelesen), ist es eine ausdrueckliche Option; dass es NICHT geschehen ist,
-#   steht im Befund (Grundregel 1).
+#   jeder Sicherung erhoben und abgelegt - und wurde bis Build 626 nie wieder
+#   ausgewertet (Vorgang 2785556a). Eine Sicherung alterte damit unbeobachtet.
+#   Hier wird sie erstmals gegengerechnet; seit Build 680 rechnet auch der
+#   Rueckweg sie gegen ('backup_admin restore'). WEIL DAS TEUER IST (die
+#   Datei wird ganz gelesen), ist es eine ausdrueckliche Option; dass es
+#   NICHT geschehen ist, steht im Befund (Grundregel 1).
 #
 # REIN LESEND. Kein Schreiben, kein Umbenennen, kein Loeschen, keine
 #   Datenbankverbindung ausser lesend auf die Sicherungsdateien selbst. Das
@@ -52,7 +53,12 @@
 #   Bauteil ohne coordinator.db pruefbar, und die Route zur Registrierung
 #   liegt an einer Stelle: im Werkzeug.
 #
-# Version: v0.8.626 - Build: 626 - 2026-08-01
+# Build 680: Der Schlusssatz des Berichts ist berichtigt. Bis hierher stand
+#   dort 'fuer eine Wiederherstellung gibt es im Bestand keinen erprobten
+#   Weg' - das war richtig und ist es seit 'backup_admin restore' nicht mehr.
+#   Eine stehengebliebene Aussage waere ein Fehlbeleg in die falsche
+#   Richtung: sie liesse jemanden glauben, es gebe nichts zu fahren.
+# Version: v0.8.680 - Build: 680 - 2026-08-05
 # =============================================================================
 
 from __future__ import annotations
@@ -510,8 +516,15 @@ def bericht_text(b: Bestandsbefund) -> str:
     if not b.pruefsummen_geprueft:
         z.append("  - Ob die Datei noch die ist, die zertifiziert wurde.")
         z.append("    Dafuer '--pruefsummen' setzen (liest jede Datei ganz).")
-    z.append("  - Ob eine Wiederherstellung gelingt. Dafuer gibt es im")
-    z.append("    Bestand keinen erprobten Weg (Vorgang 2785556a).")
+    # BUILD 680: Hier stand bis zum Rueckweg 'dafuer gibt es im Bestand
+    # keinen erprobten Weg'. Das war richtig und ist es nicht mehr - eine
+    # stehengebliebene Aussage waere ein Fehlbeleg, und zwar einer, der in
+    # die falsche Richtung zeigt (Grundregel 1).
+    z.append("  - Ob eine Wiederherstellung gelingt. Diese Pruefung sieht")
+    z.append("    die Sicherung nur an. Fahren laesst sich der Rueckweg mit")
+    z.append("    'backup_admin restore --trocken' - er prueft die")
+    z.append("    Pruefsumme, probt die Zieldatei auf Ruhe und schreibt")
+    z.append("    dabei nichts (Build 680, Vorgang 2785556a).")
     return "\n".join(z)
 
 
