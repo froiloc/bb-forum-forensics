@@ -52,6 +52,12 @@
 # BD08 - der Stand nennt sein Verfahren UND seine Grenzen (TE4)
 # BD10 - Build 637: die Fehlliste ist LEER und bleibt es. Kein Bedienelement
 #        ohne Text - ohne Einschraenkung, ohne Ausnahmeliste
+# BD03c- Build 684 (Vorgang e3b6c0d4): die GESAMTZAHL im Kopf des Standes ist
+#        die gemessene. Bis dahin pruefte BD03 nur die innere Stimmigkeit und
+#        BD03b nur die Fehlmenge - die Kennzahl selbst konnte beliebig weit
+#        abweichen und tat es auch (170 eingecheckt, 175 gemessen).
+# BD03d- GEGENPROBE dazu: die Erhebung zaehlt ein hinzugefuegtes Bedienelement
+#        wirklich mit. Sonst waere BD03c gruen, weil nie etwas gezaehlt wird.
 # BD09 - Build 634, DIE GEGENRICHTUNG: kein Bedienungs-TEXT ohne Marke. Was
 #        heute noch ohne ist, steht namentlich im Stand und darf nur weniger
 #        werden. SP02 nimmt den Bereich 'bedienung' aus - zu Unrecht, denn
@@ -63,7 +69,7 @@
 #   '_grenzen' des Standes. Am gerenderten Baum misst UX11, aber nur fuer die
 #   acht Sichten seines REGISTERs.
 #
-# Version: v0.8.637 - Build: 637 - 2026-08-01
+# Version: v0.8.684 - Build: 684 - 2026-08-05
 # =============================================================================
 
 import json
@@ -165,6 +171,76 @@ class BedienelementeTests(unittest.TestCase):
         self.assertLessEqual(
             offen_jetzt, _stand()["davon_offen"],
             "Es sind mehr Bedienelemente offen als eingecheckt.")
+
+    # --- BD03c --------------------------------------------------------------
+    def test_bd03c_die_gesamtzahl_ist_die_gemessene(self):
+        """
+        BUILD 684, VORGANG e3b6c0d4 - DIE LUECKE ZWISCHEN BD03 UND BD03b.
+
+        DER BEFUND, DER DAZU GEFUEHRT HAT: Der Stand fuehrte von Build 637 bis
+        680 die Zahl 170. Gemessen wurden zuletzt 175. Die Differenz ist
+        zwischen 638 und 677 entstanden; alle fuenf Zusaetze waren erklaert,
+        die Fehlliste war und blieb leer. Aufgefallen ist es trotzdem nicht -
+        und zwar aus einem benennbaren Grund:
+
+          BD03  prueft nur die INNERE Stimmigkeit des Standes
+                (gesamt == erklaert + offen). Eine Zahl, die zu allen anderen
+                Zahlen im Kopf passt, kann trotzdem falsch sein.
+          BD03b prueft nur, dass nicht MEHR offen ist als eingecheckt. Bei
+                'offen == 0' ist das eine Aussage ueber nichts.
+          BD01/BD02 bewachen die FEHLLISTE, nicht die Gesamtzahl.
+
+        Die Sperre sass also auf 'offen' - und dort hat sie gehalten. Die
+        Kennzahl im Kopf war trotzdem eine Falschauskunft, und genau diesen
+        Befund soll BD03 fuer die Einzelzahlen verhindern.
+
+        WARUM AUF GLEICHHEIT UND NICHT AUF EINE OBERGRENZE: Eine steigende
+        Gesamtzahl ist NORMAL - es kommen Bedienelemente hinzu. Eine
+        Obergrenze waere deshalb entweder wirkungslos oder ein Verbot, neue
+        Bedienelemente zu bauen. Gleichheit erzwingt statt dessen das
+        Richtige: wer eines baut, zieht den Stand mit. Das kostet eine Zeile
+        und ist derselbe Handgriff, den BD01/BD02 fuer die Fehlliste schon
+        verlangen.
+        """
+        lage = _lage()
+        gemessen = sum(b.gesamt for b in lage.values())
+        offen = sum(len(b.offen) for b in lage.values())
+        stand = _stand()
+        self.assertEqual(
+            gemessen, stand["bedienelemente_gesamt"],
+            "Die Erhebung findet %d Bedienelemente, der eingecheckte Stand "
+            "fuehrt %d. Eine Kennzahl, die etwas anderes zaehlt als der "
+            "Bestand, ist eine Falschauskunft - und sie faellt sonst erst "
+            "auf, wenn jemand nachrechnet. Nachzutragen in "
+            "tests/hilfe_bedienung_stand.json: 'bedienelemente_gesamt': %d, "
+            "'davon_erklaert': %d, 'davon_offen': %d."
+            % (gemessen, stand["bedienelemente_gesamt"],
+               gemessen, gemessen - offen, offen))
+        self.assertEqual(
+            gemessen - offen, stand["davon_erklaert"],
+            "Die Zahl der erklaerten Bedienelemente im Stand passt nicht zur "
+            "Erhebung (gemessen %d, eingecheckt %d)."
+            % (gemessen - offen, stand["davon_erklaert"]))
+
+    def test_bd03d_gegenprobe_die_gesamtzahl_wird_wirklich_gezaehlt(self):
+        """
+        GEGENPROBE zu BD03c. Eine Pruefung, die nie anschlaegt, belegt nichts
+        (TE5) - und BD03c ist gruen, solange niemand etwas baut. Hier wird
+        deshalb ein Bedienelement HINZUGEFUEGT und nachgesehen, ob die
+        Erhebung die Gesamtzahl mitzaehlt. Taete sie es nicht, waere BD03c
+        eine Zusicherung ohne Deckung.
+        """
+        p = _js("(function () {\n"
+                "    function zeichne(doc) {\n"
+                "        var b = doc.createElement('button');\n"
+                "        b.setAttribute('data-hilfe-id', 'probe.bedienung.x');\n"
+                "        var i = doc.createElement('input');\n"
+                "        i.setAttribute('data-hilfe-id', 'probe.bedienung.y');\n"
+                "    }\n"
+                "})();\n")
+        befund = erhebung(p.parent)["cockpit_probe.js"]
+        self.assertEqual(2, befund.gesamt)
+        self.assertEqual([], list(befund.offen))
 
     # --- BD04 / BD05 --------------------------------------------------------
     def test_bd04_die_suche_findet_ein_unmarkiertes_bedienelement(self):
