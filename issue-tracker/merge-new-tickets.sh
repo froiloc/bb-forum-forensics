@@ -40,6 +40,28 @@
 # =============================================================================
 set -euo pipefail
 
+# BUILD 669: ein Abbruch muss sich erklaeren. Beim ersten echten Lauf am
+# 05.08.2026 wies merge.py eine Datei ab (Titel zu lang), 'set -e' beendete
+# das Skript - und auf dem Bildschirm stand nur die Ausgabe von merge.py, ohne
+# ein Wort darueber, WAS das Skript jetzt gemacht hat und was nicht. Genau die
+# Lehre aus bundle_einspielen.sh, hier noch einmal.
+aktuelle_datei=""
+trap 'rc=$?; if [ "$rc" -ne 0 ]; then
+    echo "" >&2
+    echo "----- ABGEBROCHEN -----" >&2
+    [ -n "$aktuelle_datei" ] && echo "  bei: ${aktuelle_datei}" >&2
+    echo "  Diese Datei wurde NICHT geloescht." >&2
+    echo "  merge.py bricht vor dem Schreiben ab, wenn eine Quelldatei" >&2
+    echo "  ungueltige Vorgaenge enthaelt - der Bestand ist dann unveraendert." >&2
+    echo "  Der Grund steht in der Ausgabe direkt darueber." >&2
+    echo "" >&2
+    echo "  Bereits eingemischte Dateien sind erledigt und entfernt." >&2
+    echo "  Nach dem Beheben einfach erneut aufrufen - die uebrigen Dateien" >&2
+    echo "  werden dann verarbeitet." >&2
+    echo "  Sicherungen: backups/" >&2
+    echo "-----------------------" >&2
+fi' EXIT
+
 cd "$(dirname "$0")"
 
 trocken=0
@@ -62,21 +84,45 @@ if [ ! -e "${dateien[0]}" ]; then
 fi
 
 echo "Gefunden: ${#dateien[@]} Datei(en)."
-[ "$trocken" -eq 1 ] && echo "TROCKENLAUF -- es wird nichts geaendert und nichts geloescht."
+if [ "$trocken" -eq 1 ]; then
+    echo "TROCKENLAUF -- es wird nichts geaendert und nichts geloescht."
+    # BUILD 669, aus dem ersten echten Lauf: der Trockenlauf prueft JEDE
+    # Datei gegen den AKTUELLEN Bestand, nicht gegen den Zustand, den die
+    # vorherigen Dateien hinterlassen wuerden. Am 05.08.2026 meldete er fuer
+    # Build664 "1 neu, 0 Konflikte"; im echten Lauf war es "0 neu, 1
+    # Konflikt", weil Build663 denselben Vorgang kurz zuvor angelegt hatte.
+    # Beides ist richtig - es sind verschiedene Fragen. Wer das nicht weiss,
+    # haelt die Abweichung fuer einen Fehler.
+    echo "HINWEIS: jede Datei wird gegen den JETZIGEN Bestand geprueft."
+    echo "Im echten Lauf wirken die Dateien nacheinander; Zahlen koennen"
+    echo "sich dadurch verschieben (aus 'neu' wird 'Konflikt')."
+fi
 echo ""
 
 verarbeitet=0
 for f in "${dateien[@]}"; do
+    aktuelle_datei="$f"
     echo "=== ${f} ==="
     if [ "$trocken" -eq 1 ]; then
         "$py" merge.py "$f" --auto-resolve source --dry-run
     else
-        # --force: keine Rueckfragen. Die Entscheidung ist mit
-        # '--auto-resolve source' schon gefallen; eine zusaetzliche Rueckfrage
-        # je Datei wuerde nur dazu verleiten, sie durchzuklicken.
+        # BUILD 669: KEIN --force MEHR.
+        #
+        # Nachgelesen, was der Schalter wirklich tut: er hebt genau die
+        # Sperre auf, die uns schuetzt. OHNE ihn bricht merge.py ab, BEVOR
+        # etwas geschrieben wird, sobald eine Quelldatei ungueltige Vorgaenge
+        # enthaelt ("Es wurde NICHTS geschrieben"). MIT ihm werden die
+        # gueltigen Vorgaenge eingepflegt und die ungueltigen mit einer
+        # Warnung uebergangen - in einer Datei mit mehreren Eintraegen faende
+        # sich der uebergangene nur noch in einer Zeile weiter oben.
+        #
+        # Zusammen mit dem 'rm' darunter waere das die Sorte Verlust, gegen
+        # die dieses Skript gebaut wurde. Der Preis fuer den Verzicht ist ein
+        # Abbruch, den man beheben muss - und das ist der richtige Preis.
+        #
         # KEIN --no-backup: merge.py legt vor jeder Aenderung eine Sicherung
         # in backups/ an, und die wollen wir behalten.
-        "$py" merge.py "$f" --auto-resolve source --force
+        "$py" merge.py "$f" --auto-resolve source
         rm -- "$f"
         echo "  eingemischt und entfernt: ${f}"
     fi
@@ -88,6 +134,7 @@ if [ "$trocken" -eq 1 ]; then
     echo "TROCKENLAUF beendet: ${verarbeitet} Datei(en) geprueft, nichts geaendert."
     echo "Zum wirklichen Einmischen ohne '--trocken' aufrufen."
 else
+    aktuelle_datei=""
     echo "Fertig: ${verarbeitet} Datei(en) eingemischt."
     echo "Sicherungen liegen in backups/. Bitte data/issues.json committen."
 fi

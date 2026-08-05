@@ -3,7 +3,7 @@
     {
       "id": "f39ad572-6b41-4e28-8c07-5d1962b8ae43",
       "type": "bug",
-      "title": "merge-new-tickets.sh kann nicht funktionieren - Eintraege sammeln sich seit Build 661",
+      "title": "merge-new-tickets.sh konnte nie laufen - Eintraege stauten sich seit Build 661",
       "affected_version": "0.8.667",
       "reporter": "Claude",
       "reported_at": "2026-08-05T09:30:00+00:00",
@@ -36,6 +36,14 @@
           "old_value": "open",
           "new_value": "resolved",
           "comment": "Skript repariert, Konfliktquelle vervollstaendigt, Waechter IT03."
+        },
+        {
+          "timestamp": "2026-08-05T12:10:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Titel gekuerzt (war 85 Zeichen, Schema erlaubt 80). Der Erstversuch wurde von merge.py abgewiesen, bevor etwas geschrieben wurde - der Bestand blieb unveraendert."
         }
       ]
     }
