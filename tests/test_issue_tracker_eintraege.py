@@ -163,6 +163,65 @@ class EintraegeTests(unittest.TestCase):
             "Die Einspielseite wuerde diese Vorgaenge abweisen:\n  "
             + "\n  ".join(verstoesse))
 
+    # IT07 -------------------------------------------------------------------
+    def test_it07_historie_aus_noch_offenen_dateien_geht_nicht_verloren(self):
+        """
+        DIE LUECKE VON IT03, BUILD 673 - beim Bauen dieser Lieferung selbst
+        aufgefallen.
+
+        IT03 vergleicht die gelieferte Fassung mit dem BESTAND. Liegen aber
+        mehrere Eintragsdateien nebeneinander und beruehren denselben Vorgang,
+        wirken sie NACHEINANDER: die erste schreibt in den Bestand, die zweite
+        ersetzt danach denselben Vorgang. Eine zweite Datei, die auf dem Stand
+        VOR der ersten gebaut wurde, ist gegen den heutigen Bestand tadellos -
+        und loescht beim Einmischen genau das, was die erste kurz zuvor
+        eingetragen hat.
+
+        Genau das waere am 05.08.2026 passiert: die Datei zu Build 673 wurde
+        zuerst auf dem Bestand OHNE die noch nicht eingemischte Datei zu Build
+        672 gebaut. IT01 bis IT06 waren gruen. Die zwei Update-Zeilen aus 672
+        waeren beim Einmischen von 673 wieder verschwunden.
+
+        Dieser Fall vergleicht deshalb jede Datei auch gegen die ANDEREN noch
+        offenen Eintragsdateien.
+        """
+        dateien = _eintragsdateien()
+        if len(dateien) < 2:
+            self.skipTest("weniger als zwei offene Eintragsdateien")
+
+        # Kennung -> {Zeitstempel} je Datei
+        je_datei = {}
+        for pfad in dateien:
+            je_datei[pfad] = {
+                e["id"]: {u.get("timestamp") for u in (e.get("updates") or [])}
+                for e in _lade(pfad)["issues"]
+            }
+
+        verluste = []
+        for pfad, vorgaenge in je_datei.items():
+            for anderer, andere_vorgaenge in je_datei.items():
+                if anderer == pfad or anderer.name >= pfad.name:
+                    # Nur FRUEHERE Dateien betrachten: sie wirken zuerst.
+                    # Die Reihenfolge ist die des Einmischskripts (sortiert).
+                    continue
+                for kennung, stempel in vorgaenge.items():
+                    frueher = andere_vorgaenge.get(kennung)
+                    if not frueher:
+                        continue
+                    fehlend = frueher - stempel
+                    for t in sorted(fehlend):
+                        verluste.append(
+                            "%s: %s traegt die Zeile %s nicht mit, die %s "
+                            "kurz zuvor eintraegt"
+                            % (kennung[:8], pfad.name, t, anderer.name))
+
+        self.assertEqual(
+            [], verluste,
+            "Die spaetere Datei wuerde die Eintraege der frueheren wieder "
+            "entfernen - lautlos:\n  " + "\n  ".join(verluste)
+            + "\n\nAbhilfe: die spaetere Fassung auf dem Stand NACH dem "
+              "Einmischen der frueheren bauen.")
+
     # IT03 -------------------------------------------------------------------
     def test_it03_keine_historie_geht_beim_einmischen_verloren(self):
         """

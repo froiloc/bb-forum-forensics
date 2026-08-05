@@ -435,7 +435,57 @@ class IssueMergeEngine:
             for field in comparable_fields:
                 if target_issue.get(field) != source_issue.get(field):
                     conflicting_fields.append(field)
-            
+
+            # ---------------------------------------------------------------
+            # BUILD 673 - DER DRITTE ZWEIG (Vorgang 7d3c1a95).
+            #
+            # Bis hierher kannte diese Funktion nur zwei Ausgaenge: 'neu'
+            # (Kennung unbekannt, oben abgefangen) und 'Konflikt' (eines der
+            # acht Vergleichsfelder weicht ab). Eine gelieferte Fassung, die
+            # AUSSCHLIESSLICH Update-Zeilen nachtraegt, nahm keinen der beiden
+            # und fiel zwischen ihnen hindurch: nichts wurde geschrieben,
+            # merge.py meldete Erfolg, und merge-new-tickets.sh loeschte die
+            # Quelldatei. Gemessen am 05.08.2026 auf einer Wegwerfkopie - zwei
+            # Update-Zeilen spurlos verloren.
+            #
+            # 'updates' gehoert NICHT in comparable_fields, und das bleibt so:
+            # sonst waere jede Historienerweiterung eine Abweichung, und der
+            # Lauf fragte bei jedem zweiten Vorgang nach. Der Nachtrag braucht
+            # aber trotzdem einen Weg in den Bestand. Er bekommt hier einen
+            # eigenen Konflikttyp - UPDATE_TIMELINE gab es in der Aufzaehlung
+            # schon, benutzt wurde er nie.
+            #
+            # WARUM ALS 'Konflikt' UND NICHT ALS STILLE UEBERNAHME: weil der
+            # Vorgang damit durch dieselbe Muehle laeuft wie jede andere
+            # Aenderung - er wird gezaehlt, benannt und im Trockenlauf
+            # angezeigt. Eine Sonderbehandlung, die an der Zaehlung vorbei
+            # schreibt, waere die naechste stille Stelle.
+            # ---------------------------------------------------------------
+            nachgetragene_updates = []
+            if not conflicting_fields:
+                vorhandene_stempel = {
+                    u.get("timestamp")
+                    for u in (target_issue.get("updates") or [])
+                }
+                nachgetragene_updates = [
+                    u for u in (source_issue.get("updates") or [])
+                    if u.get("timestamp") not in vorhandene_stempel
+                ]
+
+            if nachgetragene_updates:
+                conflicts.append(Conflict(
+                    issue_id=issue_id,
+                    type=ConflictType.UPDATE_TIMELINE,
+                    description=(
+                        f"Nur Historie: {len(nachgetragene_updates)} neue "
+                        f"Update-Zeile(n), keine Feldabweichung"
+                    ),
+                    target_data=target_issue,
+                    source_data=source_issue,
+                    conflicting_fields=["updates"],
+                ))
+                continue
+
             if conflicting_fields:
                 # BUILD 642 - HIER STANDEN ZWEI TOTE ZEILEN: 'target_time' und
                 # 'source_time' wurden aus 'reported_at' gebildet und danach
@@ -599,6 +649,21 @@ class IssueMergeEngine:
     
     def auto_resolve_conflict(self, conflict: Conflict) -> ResolutionStrategy:
         """Automatische Konfliktlösung basierend auf Strategie"""
+        # BUILD 673 (Vorgang 7d3c1a95): Ein reiner Historien-Nachtrag wird
+        # IMMER zusammengefuehrt, unabhaengig von der gewaehlten Strategie.
+        #
+        # Begruendung: bei diesem Konflikttyp ist per Konstruktion kein
+        # Vergleichsfeld abweichend - es gibt also nichts zu entscheiden, nur
+        # etwas anzuhaengen. 'target' waere hier ein Datenverlust mit
+        # Erfolgsmeldung (genau der behobene Fehler), 'source' waere zwar
+        # inhaltlich gleichwertig, ersetzt aber den ganzen Vorgang und wuerde
+        # damit alles verlieren, was die gelieferte Fassung nicht mitbringt.
+        # MERGE_UPDATES haengt nur die fehlenden Zeilen an und laesst den
+        # Bestand sonst unberuehrt. Das ist die einzige Strategie, die hier
+        # nichts kaputtmachen kann.
+        if conflict.type == ConflictType.UPDATE_TIMELINE:
+            return ResolutionStrategy.MERGE_UPDATES
+
         if self.auto_resolve == "newer":
             target_time = self._get_last_update_time(conflict.target_data)
             source_time = self._get_last_update_time(conflict.source_data)
