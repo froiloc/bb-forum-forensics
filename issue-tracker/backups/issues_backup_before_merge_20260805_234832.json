@@ -8046,15 +8046,15 @@
       "type": "bug",
       "title": "Keine Pruefung haelt die Gesamtzahl der Bedienelemente gegen die Erhebung",
       "affected_version": "0.8.677",
-      "target_version": "0.8.684",
+      "target_version": null,
       "reporter": "Claude",
       "reported_at": "2026-08-05T19:14:00+00:00",
-      "status": "resolved",
+      "status": "open",
       "priority": "low",
       "severity": "minor",
-      "assigned_to": "Claude",
+      "assigned_to": null,
       "related_to": [],
-      "resolved_in_version": "0.8.684",
+      "resolved_in_version": null,
       "environment": {
         "python_version": "3.14"
       },
@@ -8080,14 +8080,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Build681.json"
-        },
-        {
-          "timestamp": "2026-08-05T21:25:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "Build 684. NEU: BD03c haelt 'bedienelemente_gesamt' UND 'davon_erklaert' gegen die Erhebung. AUF GLEICHHEIT, NICHT AUF EINE OBERGRENZE - das war die einzige Entscheidung dieses Vorgangs, und sie steht schon im Vorgangstext: eine steigende Gesamtzahl ist NORMAL, es kommen Bedienelemente hinzu. Eine Obergrenze waere deshalb entweder wirkungslos (wenn sie mitwaechst) oder ein Verbot, neue Bedienelemente zu bauen. Gleichheit erzwingt das Richtige: wer eines baut, zieht den Stand mit - derselbe Handgriff, den BD01/BD02 fuer die Fehlliste schon verlangen. Damit das ein Handgriff bleibt und keine Rechenaufgabe, nennt die Fehlermeldung die drei einzutragenden Zahlen im Wortlaut. NEU: BD03d, die GEGENPROBE (TE5). BD03c ist gruen, solange niemand etwas baut - eine Pruefung, die nie anschlaegt, belegt nichts. BD03d legt deshalb eine Wegwerfdatei mit zwei markierten Bedienelementen an und sieht nach, dass die Erhebung sie in 'gesamt' mitzaehlt. Ohne sie waere BD03c eine Zusicherung ohne Deckung. GEGENPROBE AM LEBENDEN STAND gefahren, nicht nur an einer Wegwerfdatei: mit zurueckgesetzter Zahl (170) schlaegt BD03c an und meldet '177 != 170' samt der Werte, die einzutragen sind; mit der richtigen Zahl laeuft die Suite durch. KEIN PRODUKTIVCODE BERUEHRT. Der Build besteht aus einer Pruefung, ihrer Gegenprobe und dem Vermerk im Stand ('_stand_684'). Die Zahl selbst war schon in Build 681 berichtigt; offen war die Sperre, die verhindert, dass sie wieder auseinanderlaeuft. WAS DAMIT NICHT BEHOBEN IST und im Kopf der Suite auch so steht (TE4): die Erhebung zaehlt am QUELLTEXT. Ihre Zahl ist eine Untergrenze - sie kann zu niedrig sein, nie zu hoch. BD03c sichert also die Uebereinstimmung von Stand und Erhebung, nicht die Vollzaehligkeit gegenueber dem gerenderten Baum. Dafuer misst UX11, aber nur fuer die acht Sichten seines Registers."
         }
       ]
     }
