@@ -7588,14 +7588,14 @@
       "description": "GEMESSEN am 2026-08-05 in der VM (Probe 1, Teil B1).\n\nDER BEFUND: /_forensic/search lieferte fuer '/forum/viewtopic.php?id=120870&p=2' den Wert traceCountTotal: 0. Dieselbe Seite weist in der Toolbar 40 Spuren aus (Sektion 'Spur': '/ 40'). Auch die beiden anderen gemessenen Treffer standen auf 0.\n\nDIE STELLE: search_pages() (db/forensic_db.py Z. 1109-1123) verbindet fdb.scrape_targets ueber eine LIKE-Bedingung, die die Seiten-URL gegen die zusammengesetzte ID des Erfassungsziels haelt:\n\n    AND REPLACE(p.url_canonical, :base_url, '') LIKE\n        '%' || COALESCE(CAST(st.topic_id AS TEXT), ...) || '%'\n\nGezaehlt wird daraus COUNT(DISTINCT st.id). Warum das Ergebnis 0 bleibt, ist noch nicht gemessen - die Verbindungsbedingung ist der naechstliegende Verdacht, aber es koennte ebenso an der Basis-URL-Ersetzung liegen. Der Wert selbst ist belegt, die Ursache nicht.\n\nWARUM DAS ZAEHLT: Die Spurenzahl ist in der Seitenuebersicht und in der erweiterten Suche eine der Groessen, nach denen Ermittelnde entscheiden, welche Seite sie sich als naechste vornehmen - sie ist sogar als Sortierung waehlbar ('traces_desc'). Steht dort ueberall 0, ist die Sortierung wirkungslos und die Anzeige irrefuehrend. Sie sagt nicht 'unbekannt', sie sagt 'keine'.",
       "expected_behavior": "traceCountTotal weist die Zahl der Spuren aus, die auf der Seite tatsaechlich vorliegen. Laesst sie sich nicht ermitteln, wird das als 'unbekannt' dargestellt und nicht als 0.",
       "actual_behavior": "traceCountTotal ist 0 - gemessen an drei Treffern, darunter eine Seite mit 40 Spuren.",
-      "status": "resolved",
+      "status": "open",
       "priority": "medium",
       "severity": "major",
       "assigned_to": "Claude",
       "related_to": [
         "d76c412d-3322-40fa-b9c9-d2661f754350"
       ],
-      "resolved_in_version": "0.8.678",
+      "resolved_in_version": null,
       "target_version": null,
       "environment": {
         "os": "Windows (VM)",
@@ -7631,22 +7631,6 @@
           "old_value": "",
           "new_value": "",
           "comment": "NEUER BEFUND VOM 05.08.2026, der diesen Vorgang wertvoller macht, als er aussah: DIE VERBINDUNG, DIE IMMER 0 LIEFERT, IST ZUGLEICH DIE TEUERSTE DER GANZEN ABFRAGE.\n\nsearch_pages() verbindet fdb.scrape_targets ueber ein LIKE ohne Anker mit jeder Seite. Bei 6.500 Seiten und 19.000 Erfassungszielen sind das ueber 120 Millionen Zeichenkettenvergleiche. In der VM brauchte die Zaehlung bei einem grossen Fall (Administrator, mehr als 10.000 Beitraege, 800 MB) dadurch rund EINE MINUTE.\n\nFuer die ZAEHLUNG ist die Verbindung in Build 677 entfallen - sie traegt dort nichts bei (Testfall SG08). Fuer die LISTE bleibt sie, weil traceCountTotal daraus stammt. Nur: dieser Wert ist gemessen immer 0. Der teuerste Teil der Abfrage liefert also nichts.\n\nDARAUS FOLGT EIN ZUSATZNUTZEN: wer diesen Vorgang behebt, berichtigt nicht nur eine irrefuehrende Anzeige, sondern beschleunigt die Seitenuebersicht spuerbar. Eine tragfaehige Zaehlung der Spuren gehoert vermutlich ohnehin nicht in ein LIKE ohne Anker, sondern an die Stelle, an der die Zuordnung Seite-zu-Ziel schon bekannt ist."
-        },
-        {
-          "timestamp": "2026-08-05T11:38:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "BEHOBEN IN BUILD 678. Die Ursache stand die ganze Zeit lesbar im SQL.\n\nDIE VERBINDUNG FRAGTE NACH GRUPPENNAMEN STATT NACH url_type-WERTEN:\n     (st.url_type = 'topic'   AND st.topic_id     IS NOT NULL)\n  OR (st.url_type = 'pm'      AND st.pm_topic_id  IS NOT NULL)\n  OR (st.url_type = 'profile' AND st.actor_user_id IS NOT NULL)\n  OR (st.url_type = 'forum')\n\n'topic', 'pm' und 'forum' sind die GRUPPEN der Spurennavigation. In scrape_targets.url_type stehen 'viewtopic', 'viewforum', 'pmsnew_topic', 'pmsnew_post', 'pms_partner', 'profile', 'other_profile', 'wholikes' und so fort - nachzulesen in der TYPE_MAP von get_trace_sequence(), die am realen Bestand belegt ist. Von den vier Zweigen konnte also nur EINER je zutreffen ('profile'). Fuer jede Themen-, Forums- und PN-Seite kam zwangslaeufig 0 heraus - genau der gemeldete Befund.\n\nWARUM ICH DIE WERTE NICHT EINFACH BERICHTIGT HABE: dann gaebe es eine ZWEITE Vorschrift, was eine Spur auf einer Seite ist. Die erste steht in get_trace_elements_for_page() und wird vom Werkzeug bereits benutzt - sie liefert die Marken, die Minimap und Spurennavigation anzeigen. Zwei Vorschriften waeren binnen weniger Builds auseinandergelaufen, und dann haette die Uebersicht eine andere Zahl gezeigt als die Seite selbst. Welche gilt dann?\n\nGEZAEHLT WIRD JETZT MIT DERSELBEN FUNKTION, und zwar nur fuer die GELIEFERTEN Zeilen - hoechstens so viele, wie 'limit' zulaesst. Die alte Fassung rechnete fuer alle Seiten und kam trotzdem auf 0. Laesst sich die Zahl fuer eine Seite nicht ermitteln, steht dort -1 fuer 'unbekannt' und NICHT 0; 0 hiesse 'keine Spuren' und waere eine Behauptung.\n\nMITGENOMMEN: die teuerste Verbindung der Abfrage ist damit auch aus der LISTE verschwunden. Sie verglich per LIKE ohne Anker jede Seite mit jedem Erfassungsziel - im Bestand 1488 ueber 120 Millionen Zeichenkettenvergleiche. Die Seitenuebersicht sollte spuerbar schneller werden; gemessen ist das noch nicht.\n\nEIN VERLUST, DER BENANNT GEHOERT: 'sort=traces_desc' laesst sich nicht mehr bedienen. Die Spurenzahl steht erst nach der Auswahl fest, danach kann nicht mehr sortiert werden, und in Python zu sortieren waere falsch, solange die Begrenzung vorher greift. Bemerken wird das niemand - die Sortierung war wirkungslos, weil die Zahl immer 0 war, sie sortierte also nach einer Konstanten. Der Unterschied ist, dass die Wirkungslosigkeit jetzt ANGESCHRIEBEN steht: der Endpunkt liefert 'sortierung_ersetzt' mit Bestellung, Lieferung und Grund. Die Oberflaeche benutzt diese Sortierung nicht.\n\nRegression: TC01 bis TC05."
-        },
-        {
-          "timestamp": "2026-08-05T11:40:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "Spurenzahl aus derselben Vorschrift wie die Seite; die falsche und teure Verbindung ist weg."
         }
       ]
     },
