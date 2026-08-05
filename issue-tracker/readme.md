@@ -9,6 +9,45 @@ Die Serverdatei heißt seit Build 650 `tracker_server.py` (Vorgang `7c7a738f`);
 `server.py` hieß wie das Paket `server/` des Webservers und wurde beim Laden
 aus dem Wurzelverzeichnis heraus mit diesem verwechselt.
 
+# Was sich in Build 673 geändert hat
+
+**Zwei Änderungen zum Vorgang `7d3c1a95` — beide betreffen den Umgang mit
+`merge-new-tickets.sh`.**
+
+1. **Ein reiner Historien-Nachtrag kommt jetzt an.** Bis Build 672 kannte
+   `merge.py` für einen bereits vorhandenen Vorgang nur zwei Wege: *neu*
+   (Kennung unbekannt) und *Konflikt* (eines von acht Vergleichsfeldern weicht
+   ab). Eine gelieferte Fassung, die ausschließlich Update-Zeilen nachträgt,
+   nahm keinen der beiden — es wurde nichts geschrieben, und das Werkzeug
+   meldete trotzdem Erfolg. Neu ist ein dritter Zweig mit dem Konflikttyp
+   `UPDATE_TIMELINE`; er wird **immer** über `MERGE_UPDATES` gelöst, auch bei
+   `--auto-resolve target`. Bei diesem Typ ist per Konstruktion kein Feld
+   abweichend — es gibt nichts zu entscheiden, nur etwas anzuhängen.
+
+2. **Gelöscht wird erst nach der Gegenprobe.** `merge-new-tickets.sh` ruft nach
+   dem Einmischen `pruefe_einmischung.py` auf. Das Skript sieht im **Bestand**
+   nach, ob jede Kennung und jede Update-Zeile der Quelldatei dort steht, und
+   erst dann wird die Quelldatei entfernt. Fällt die Probe, bricht der Lauf ab,
+   die Datei bleibt liegen, und der EXIT-Trap erklärt die Lage.
+
+   *Warum das wichtiger ist als Punkt 1:* Punkt 1 schließt eine bekannte Lücke.
+   Punkt 2 sorgt dafür, dass die **nächste** Lücke keine Daten mehr kostet. Eine
+   Erfolgsmeldung ist eine Behauptung; der Bestand ist der Beleg. Dasselbe
+   Verhältnis wie zwischen `bundle_bauen.sh` und `pruefe_lieferung.sh`.
+
+   Aufruf von Hand, falls einmal getrennt nötig:
+
+   ```
+   python pruefe_einmischung.py <quelldatei.json> [--bestand data/issues.json]
+   ```
+
+   Rückgabe: `0` alles angekommen · `1` etwas fehlt, Datei behalten ·
+   `2` Aufruf-/Lesefehler.
+
+Auf der **Erstellerseite** wacht seit Build 671 zusätzlich `IT06`
+(`tests/test_issue_tracker_eintraege.py`): er meldet einen Nachtrag, der mangels
+Feldabweichung nicht ankäme, schon vor der Lieferung.
+
 # Was sich in Build 642 geändert hat
 
 Vier Punkte, die den Umgang mit dem Werkzeug betreffen:

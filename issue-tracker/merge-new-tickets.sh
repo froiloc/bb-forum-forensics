@@ -123,8 +123,26 @@ for f in "${dateien[@]}"; do
         # KEIN --no-backup: merge.py legt vor jeder Aenderung eine Sicherung
         # in backups/ an, und die wollen wir behalten.
         "$py" merge.py "$f" --auto-resolve source
+
+        # BUILD 673 - GELOESCHT WIRD ERST NACH DER GEGENPROBE (7d3c1a95 b).
+        #
+        # Bis hierher war die Erfolgsmeldung von merge.py der einzige Beleg
+        # dafuer, dass etwas angekommen ist. Am 05.08.2026 hat sich gezeigt,
+        # was das wert ist: merge.py meldete Erfolg, ohne etwas geschrieben zu
+        # haben, und das 'rm' vernichtete daraufhin den einzigen verbliebenen
+        # Traeger des Nachtrags.
+        #
+        # Eine Meldung ist eine Behauptung. Der Bestand ist der Beleg. Es wird
+        # deshalb im BESTAND nachgesehen, ob jede Kennung und jede
+        # Update-Zeile der Quelldatei dort steht - und nur dann geloescht.
+        # 'set -e' beendet den Lauf, wenn die Probe faellt; der EXIT-Trap
+        # erklaert die Lage, und die Datei bleibt liegen.
+        #
+        # Dasselbe Verhaeltnis wie zwischen bundle_bauen.sh und
+        # pruefe_lieferung.sh: nicht das Werkzeug sagt, dass es geklappt hat.
+        "$py" pruefe_einmischung.py "$f"
         rm -- "$f"
-        echo "  eingemischt und entfernt: ${f}"
+        echo "  eingemischt, geprueft und entfernt: ${f}"
     fi
     verarbeitet=$((verarbeitet + 1))
     echo ""
