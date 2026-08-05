@@ -7607,7 +7607,7 @@
       "description": "GEMESSEN am 2026-08-05 in der VM auf /forum/viewtopic.php?id=120870&p=2.\n\nDER BEFUND: _seqIndexForUrl() (toolbar/toolbar.js Z. 5352) vergleicht zeichengenau mit === und liefert -1, wenn die Seite nicht in der Sequenz steht. _nextTargetForDirection() (Z. 5368) uebernimmt diese -1 ungeprueft:\n\n    var seqIdx = _state.traceSeqIndex;\n    if (seqIdx < 0) seqIdx = _seqIndexForUrl(_currentUrl());   // bleibt -1\n    ...\n    var nextSeq = seqIdx + 1;      // = 0\n    if (nextSeq < seq.length) { return { seqIdx: nextSeq, ... } }\n\nBei -1 wird aus 'naechste Seite' der Rang 0 - also der ERSTE Eintrag der gesamten Sequenz. Wer auf der letzten Spur einer nicht gefuehrten Seite weiterblaettert, landet nicht auf der Folgeseite, sondern am Anfang der Ermittlung. In der Gegenrichtung ergibt sich -2, die Bedingung faellt, und der Knopf bleibt deaktiviert.\n\nMESSWERTE (Probe 1 A4/A5, Probe 2 D1):\n  - traceSeqIndex: -1 (auf einer Seite mit 40 Spuren)\n  - Knopf 'Spur zurueck': deaktiviert\n  - Knopf 'Spur weiter':  aktiv - er wuerde an den Anfang springen\n\nDIE ZWEITE HAELFTE DES BEFUNDES: Der Vergleich koennte die Seite finden. Gemessen wurde, dass '/forum/viewtopic.php?id=120870' (also die URL ohne Seitenteil) den Rang 1501 traegt. Ein Rueckfall auf den Themen-Eintrag ist damit moeglich - er ist aber KEIN Ersatz fuer die Behebung von 2f1044b9, sondern nur eine Notbremse. Solange die Sequenz die Seite nicht kennt, kann keine Navigation sie ansteuern.\n\nZUSAMMENHANG: Solange 2f1044b9 offen ist, tritt dieser Fall bei JEDEM mehrseitigen Thema ein. Behoben werden muessen beide - der eine Fehler erzeugt den Zustand, der andere behandelt ihn falsch.",
       "expected_behavior": "Ist der Rang der aktuellen Seite unbekannt, wird das benannt und nicht wie Rang -1 weitergerechnet. Ein Sprung an den Anfang der Sequenz darf nur erfolgen, wenn er gemeint ist.",
       "actual_behavior": "Bei unbekanntem Rang liefert die Vorwaertsnavigation den Eintrag 0 - einen Sprung an den Anfang der gesamten Sequenz. Die Rueckwaertsnavigation bleibt wortlos deaktiviert.",
-      "status": "resolved",
+      "status": "open",
       "priority": "high",
       "severity": "major",
       "assigned_to": "Claude",
@@ -7615,8 +7615,8 @@
         "2f1044b9-818d-49bb-9621-04fbf5208791",
         "c658fc41-b368-4b06-9142-5ff519b8d9c9"
       ],
-      "resolved_in_version": "0.8.685",
-      "target_version": "0.8.685",
+      "resolved_in_version": null,
+      "target_version": null,
       "environment": {
         "os": "Windows (VM)",
         "browser": "Chromium",
@@ -7631,12 +7631,6 @@
       "attachments": [],
       "updates": [
         {
-          "timestamp": "2026-08-05T11:33:56.373409+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build670.json"
-        },
-        {
           "timestamp": "2026-08-05T11:34:00+00:00",
           "author": "Claude",
           "action": "comment",
@@ -7645,20 +7639,10 @@
           "comment": "Belege: Probe 1 Teil A4/A5, Probe 2 Teil D1 vom 2026-08-05."
         },
         {
-          "timestamp": "2026-08-05T21:05:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "BEHOBEN in Build 685, toolbar/toolbar.js.\n\n(1) EINE STELLE FUER DEN RANG. Neu ist die Funktion _rang(): sie liest _state.traceSeqIndex und faellt nur dann auf _seqIndexForUrl() zurueck, wenn dort kein Rang steht. Bis Build 682 stand dieselbe Zeile DREIMAL im Modul (_nextTargetForDirection, _update, _navigate). Das war nicht bloss Doppelung: zwei der drei Stellen zogen aus einem unbekannten Rang verschiedene Schluesse, und genau daraus entstand der gemeldete Fehler.\n\n(2) EIN UNBEKANNTER RANG WIRD NICHT WEITERGERECHNET. In _nextTargetForDirection() steht vor JEDEM Seitenwechsel-Zweig jetzt 'if (!rangBekannt) return null;'. Innerhalb der Seite bleibt alles wie bisher - dafuer braucht es den Rang nicht.\n\n(3) DER GRUND STEHT AM KNOPF. _updateButtonLabels() setzt bei unbekanntem Rang an beiden Spur-Knoepfen und an der Gesamtzahl einen title/aria-label: 'Diese Seite steht nicht in der Spurenliste - ein Vorher oder Nachher laesst sich hier nicht bestimmen. Ueber die Seitenuebersicht (Alt+K) zu einer Seite mit Spuren wechseln.' Ein Knopf, der ohne Begruendung nicht reagiert, wird fuer kaputt gehalten; im schlimmeren Fall haelt der Ermittler die Spurenliste fuer zu Ende - und das beruehrt Grundregel 1.\n\n(4) EIN ZWEITER, HIER MITGEFUNDENER BEFUND: init() schrieb den Rang nur 'if (idx >= 0)'. Ein unbekannter Rang liess also den Rang der VORHERIGEN Seite stehen, und die Navigation rechnete Vorher und Nachher relativ zu einer Seite aus, auf der man gar nicht mehr ist. Ein veralteter Wert ist schlimmer als gar keiner: er sieht gueltig aus. Der Rang wird jetzt immer geschrieben.\n\nNICHT BEHOBEN und ausdruecklich offen: 2f1044b9 (die Sequenz kennt von mehrseitigen Themen nur eine Seite) ist die URSACHE des Zustands, waehrend dieser Vorgang nur seine BEHANDLUNG betraf. Der im Vorgang erwogene Rueckfall auf den Themen-Eintrag wurde NICHT gebaut - er wuerde einen Rang vortaeuschen, den die Seite nicht hat, und den offenen Befund unsichtbar machen."
-        },
-        {
-          "timestamp": "2026-08-05T21:10:00+00:00",
-          "author": "Claude",
+          "timestamp": "2026-08-05T11:33:56.373409+00:00",
+          "author": "merge-tool",
           "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "REGRESSION: tests/unit/test_spurnav_unbekannter_rang.test.js, Faelle UR01 bis UR05. Der Test faehrt den echten Ladeweg in JSDOM (gestubbte Endpunkte /_forensic/page, /_forensic/trace_sequence, /_forensic/annotations, /_forensic/search).\n\nGEGENPROBE GEGEN DEN ALTEN STAND (toolbar.js aus Build 682, Commit 02f4bde): UR01+UR03, UR02 und UR05 fallen, UR04 bleibt gruen. Ein Waechter, der auch auf dem alten Code gruen ist, belegt nichts.\n\nANMERKUNG ZUR ERSTEN FASSUNG DES TESTS - sie unterschied NICHT scharf genug: bei '_currentIdx = -1' liegt das naechste Ziel ohnehin innerhalb der Seite, die Beschriftung stand also auch alt auf '▶'. Erst UR05 springt ueber das Spurennummern-Feld auf die LETZTE Spur - dort fragt die Navigation nach der naechsten SEITE, und dort zeigte der alte Code '▶▶' mit dem Ziel 'Thema A' an einem Knopf, der sich nicht druecken liess. Das ist die Stelle, an der gerechnet wurde.\n\nLAUF 685: JS 125 Dateien / 1797 Faelle gruen. Python 3217 gruen; PY08 und PY10 fallen containerbedingt (Python 3.11 kann die PEP-701-f-string in editor/html_renderer.py:349 nicht parsen) - sie fallen ebenso auf unberuehrtem origin/master und sind KEIN Befund dieser Lieferung.\n\nHILFESYSTEM: keine Anpassung noetig. Die Aenderung betrifft die Ermittler-Toolbar, nicht das Management; im Hilfebestand gibt es zur Spur-Navigation keinen Eintrag (geprueft per Volltextsuche ueber management/ und templates/)."
+          "comment": "Importiert aus eintraege_claude_Build670.json"
         }
       ]
     },
