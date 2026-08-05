@@ -20,6 +20,16 @@
  * PT08 — pruefe V5/V6: Abweichung vom Katalog, Mehrfachvergabe.
  * PT09 — teste: Eingabe gegen BEIDE Regeln, samt Abweichung.
  * PT10 — erzeuge: die Tabelle im DOM, leerer Text, fehlende Kataloge.
+ *
+ * Build 681 (Vorgang 7c1f2a94), das Zurueckschreiben:
+ * PT11 — ohne Rueckruf bleibt die Tabelle ANZEIGE. Kein Eingabefeld, das
+ *        nirgends ankommt.
+ * PT12 — mit Rueckruf: vier beschreibbare Felder, der NAME nicht. Die
+ *        Aenderung geht bei 'change' hinaus, nicht bei 'input' (F3).
+ * PT13 — F1: ein Trennzeichen wird abgewiesen, das Feld faellt zurueck, der
+ *        Grund steht an der Zelle - und der Rueckruf wird NICHT gerufen.
+ * PT14 — F2: Mehrfachvorkommen. Die dauerhafte Anzeige steht da, die
+ *        Rueckfrage kommt, und ein Nein aendert nichts.
  */
 
 import { describe, it, expect } from "vitest";
@@ -416,5 +426,232 @@ describe("cockpit_baustein_platzhalter — die Tabelle (Build 654)", () => {
     t.aus();
     expect(host.querySelector(".aiw-mod-ph-tabelle")).toBe(null);
     expect(host.querySelector(".aiw-mod-ph-meldung").textContent).toBe("");
+  });
+});
+
+// ===========================================================================
+// BUILD 681 (Vorgang 7c1f2a94): DAS ZURUECKSCHREIBEN
+// ===========================================================================
+// Geprueft wird die BEDIENUNG. Was beim Zurueckschreiben gerechnet wird,
+// prueft test_cockpit_baustein_ph_schreiben.test.js - hier geht es darum, ob
+// die Tabelle das Richtige RUFT und das Falsche NICHT.
+
+const _schr = readFileSync(
+  "management/server/static/cockpit_baustein_ph_schreiben.js", "utf-8");
+
+/** Fenster MIT dem Rechenwerk zum Zurueckschreiben. */
+function _ctxS() {
+  const win = _ctx();
+  win.eval(_schr);
+  return win;
+}
+
+/**
+ * Baut eine Tabelle mit Rueckruf und gibt alles zurueck, was die Pruefung
+ * braucht. 'rufe' sammelt jeden Auftrag - eine Behauptung "es wurde
+ * geschrieben" ist damit belegbar und nicht nur plausibel.
+ */
+function _mitSchreiben(text, opts) {
+  opts = opts || {};
+  const win = _ctxS();
+  const host = win.document.getElementById("host");
+  const rufe = [];
+  const t = _api(win).erzeuge(host, {
+    tpl: win.AIWCockpitTemplates,
+    chips: win.PlaceholderChips,
+    schr: win.AIWBausteinPhSchreiben,
+    frage: opts.frage || (() => true),
+    schreibe: (auftrag) => {
+      rufe.push(auftrag);
+      return opts.antwort || { ok: true, meldung: "Ein Vorkommen geändert." };
+    },
+  });
+  t.zeige(text, {}, REGELN);
+  return { win, host, rufe, t };
+}
+
+function _feld(host, schluessel, welches) {
+  const trs = host.querySelectorAll(".aiw-mod-ph-tabelle tbody tr");
+  for (const tr of trs) {
+    if (tr.getAttribute("data-name") === schluessel) {
+      return tr.querySelector('[data-feld-eingabe="' + welches + '"]');
+    }
+  }
+  return null;
+}
+function _meldung(host, schluessel, welches) {
+  const trs = host.querySelectorAll(".aiw-mod-ph-tabelle tbody tr");
+  for (const tr of trs) {
+    if (tr.getAttribute("data-name") === schluessel) {
+      return tr.querySelector('[data-feld="' + welches + '"]');
+    }
+  }
+  return null;
+}
+
+describe("PT11 ohne Rueckruf bleibt die Tabelle Anzeige", () => {
+  it("baut kein einziges beschreibbares Feld", () => {
+    const win = _ctxS();
+    const host = win.document.getElementById("host");
+    // KEIN opts.schreibe - der Stand von Build 654.
+    _api(win).erzeuge(host, { tpl: win.AIWCockpitTemplates,
+                              chips: win.PlaceholderChips })
+             .zeige("{{m:x|v}}", {}, {});
+    expect(host.querySelectorAll(".aiw-mod-ph-schreibfeld").length).toBe(0);
+    // Und sie sagt es, statt es den Redakteur ausprobieren zu lassen.
+    expect(host.querySelector(".aiw-mod-ph-meldung").textContent)
+      .toContain("schreibt nicht");
+  });
+});
+
+describe("PT12 mit Rueckruf: vier Felder, und 'change' statt 'input'", () => {
+  it("macht Art, Vorgabe, Beschreibung und Prüfmuster beschreibbar", () => {
+    const { host } = _mitSchreiben("{{m:x|v|b|rule:spurennummer}}");
+    ["typ", "vorgabe", "beschreibung", "regelfeld"].forEach((w) => {
+      expect(_feld(host, "m:x", w)).not.toBe(null);
+    });
+    // Der NAME ist KEIN Eingabefeld (Entscheidung mc): er ist die Identitaet
+    // des Platzhalters.
+    expect(_feld(host, "m:x", "name")).toBe(null);
+    expect(host.querySelector(".aiw-mod-ph-name").textContent).toBe("x");
+
+    // Im Feld steht die TEXTFORM, darunter die Aufloesung.
+    expect(_feld(host, "m:x", "regelfeld").value).toBe("rule:spurennummer");
+    expect(host.querySelector(".aiw-mod-ph-muster-klartext").textContent)
+      .toContain(REGELN.spurennummer.pattern);
+
+    // Die Hilfe-Marken sitzen literal an den Bedienelementen (BD09/BD10).
+    expect(_feld(host, "m:x", "typ").getAttribute("data-hilfe-id"))
+      .toBe("modules.bedienung.phart");
+    expect(_feld(host, "m:x", "vorgabe").getAttribute("data-hilfe-id"))
+      .toBe("modules.bedienung.phvorgabe");
+  });
+
+  it("schreibt bei 'change' und NICHT bei 'input' (F3)", () => {
+    const { win, host, rufe } = _mitSchreiben("{{m:x|v}}");
+    const feld = _feld(host, "m:x", "vorgabe");
+    expect(feld.value).toBe("v");
+
+    feld.value = "neu";
+    feld.dispatchEvent(new win.Event("input"));
+    expect(rufe).toHaveLength(0);      // F3: beim Tippen passiert NICHTS
+
+    feld.dispatchEvent(new win.Event("change"));
+    expect(rufe).toHaveLength(1);
+    expect(rufe[0].alt).toEqual({ typ: "m", name: "x" });
+    expect(rufe[0].neu).toEqual({ typ: "m", name: "x", vorgabe: "neu",
+                                  beschreibung: "", regelfeld: "" });
+  });
+
+  it("ruft nicht, wenn sich nichts geaendert hat", () => {
+    const { win, host, rufe } = _mitSchreiben("{{m:x|v}}");
+    const feld = _feld(host, "m:x", "vorgabe");
+    feld.dispatchEvent(new win.Event("change"));
+    expect(rufe).toHaveLength(0);
+  });
+
+  it("reicht auch eine umgestellte Art durch", () => {
+    const { win, host, rufe } = _mitSchreiben("{{m:x}}");
+    const wahl = _feld(host, "m:x", "typ");
+    expect(wahl.value).toBe("m");
+    wahl.value = "o";
+    wahl.dispatchEvent(new win.Event("change"));
+    expect(rufe).toHaveLength(1);
+    expect(rufe[0].neu.typ).toBe("o");
+  });
+
+  it("meldet einen Fehlschlag an der Zelle und setzt das Feld zurueck", () => {
+    const { win, host, rufe } = _mitSchreiben("{{m:x|v}}",
+      { antwort: { ok: false, meldung: "Nicht mehr zu finden." } });
+    const feld = _feld(host, "m:x", "vorgabe");
+    feld.value = "neu";
+    feld.dispatchEvent(new win.Event("change"));
+    expect(rufe).toHaveLength(1);
+    return Promise.resolve().then(() => {
+      expect(feld.value).toBe("v");
+      expect(_meldung(host, "m:x", "vorgabe").textContent)
+        .toContain("Nicht mehr zu finden.");
+    });
+  });
+});
+
+describe("PT13 F1 — Trennzeichen werden abgewiesen", () => {
+  it("weist ab, setzt zurueck, begruendet — und ruft NICHT", () => {
+    const { win, host, rufe } = _mitSchreiben("{{m:x|v}}");
+    const feld = _feld(host, "m:x", "beschreibung");
+    feld.value = "a|b";
+    feld.dispatchEvent(new win.Event("change"));
+
+    // DER KERN: der Rueckruf wird gar nicht erst erreicht.
+    expect(rufe).toHaveLength(0);
+    // Das Feld faellt auf seinen alten Wert zurueck (hier: leer).
+    expect(feld.value).toBe("");
+    // Und der Grund steht an DER Zelle, in der die Eingabe stand.
+    const m = _meldung(host, "m:x", "beschreibung");
+    expect(m.textContent).toContain("senkrechter Strich");
+    expect(m.className).toContain("ist-fehler");
+  });
+
+  it("weist auch die geschweifte Klammer ab", () => {
+    const { win, host, rufe } = _mitSchreiben("{{m:x}}");
+    const feld = _feld(host, "m:x", "vorgabe");
+    feld.value = "x}y";
+    feld.dispatchEvent(new win.Event("change"));
+    expect(rufe).toHaveLength(0);
+    expect(_meldung(host, "m:x", "vorgabe").textContent)
+      .toContain("geschweifte Klammer");
+  });
+});
+
+describe("PT14 F2 — Mehrfachvorkommen", () => {
+  const TEXT = "{{m:x|v}} dazwischen {{m:x|v}} und noch {{m:x|v}}";
+
+  it("sagt DAUERHAFT, dass alle Vorkommen betroffen sind", () => {
+    const { host } = _mitSchreiben(TEXT);
+    const zelle = host.querySelector(".aiw-mod-ph-zahl");
+    expect(zelle.className).toContain("ist-mehrfach");
+    expect(zelle.textContent).toContain("3");
+    expect(host.querySelector(".aiw-mod-ph-mehrfach").textContent)
+      .toBe("ändert alle 3");
+  });
+
+  it("fragt VOR dem Schreiben zurueck und zaehlt die Stellen auf", () => {
+    const gefragt = [];
+    const { win, host, rufe } = _mitSchreiben(TEXT, {
+      frage: (t) => { gefragt.push(t); return true; },
+    });
+    const feld = _feld(host, "m:x", "vorgabe");
+    feld.value = "neu";
+    feld.dispatchEvent(new win.Event("change"));
+
+    expect(gefragt).toHaveLength(1);
+    expect(gefragt[0]).toContain("3-mal");
+    expect(gefragt[0]).toContain("ALLE 3 Vorkommen");
+    // Die betroffenen Stellen stehen im WORTLAUT in der Rueckfrage.
+    expect(gefragt[0]).toContain("{{m:x|v}}");
+    expect(rufe).toHaveLength(1);
+  });
+
+  it("aendert NICHTS, wenn die Rueckfrage verneint wird", () => {
+    const { win, host, rufe } = _mitSchreiben(TEXT, { frage: () => false });
+    const feld = _feld(host, "m:x", "vorgabe");
+    feld.value = "neu";
+    feld.dispatchEvent(new win.Event("change"));
+    expect(rufe).toHaveLength(0);
+    expect(feld.value).toBe("v");
+    expect(_meldung(host, "m:x", "vorgabe").textContent)
+      .toContain("Rückfrage wurde verneint");
+  });
+
+  it("fragt bei einem einzigen Vorkommen NICHT", () => {
+    const gefragt = [];
+    const { win, host, rufe } = _mitSchreiben("{{m:x|v}}", {
+      frage: (t) => { gefragt.push(t); return true; },
+    });
+    const feld = _feld(host, "m:x", "vorgabe");
+    feld.value = "neu";
+    feld.dispatchEvent(new win.Event("change"));
+    expect(gefragt).toHaveLength(0);
+    expect(rufe).toHaveLength(1);
   });
 });

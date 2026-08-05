@@ -606,6 +606,81 @@
         _state.eingabe.setze(_state.blockStand.type, _state.blockStand.data);
     }
 
+    // _platzhalterSchreiben (Build 681, Vorgang 7c1f2a94).
+    // ------------------------------------------------------------------
+    // DER WEG, DEN EINE AENDERUNG AUS DER PLATZHALTER-TABELLE NIMMT:
+    //
+    //   Tabelle  ->  hier  ->  eingabe.lies()      (der WIRKLICHE Stand)
+    //                      ->  ph_schreiben.schreibe()  (pruefen, bauen,
+    //                                                    zurueckprobieren,
+    //                                                    ersetzen)
+    //                      ->  eingabe.setze()     (Editor.js neu aufbauen)
+    //                      ->  _blockStandLesen()  (Spiegel + _state)
+    //                      ->  _persistDraft() + _vorschauAktualisieren()
+    //
+    // WARUM NICHT IN DIE textarea: sie ist seit Build 656 der
+    // SCHREIBGESCHUETZTE Klartextspiegel (Zeile 1262 in dieser Datei),
+    // gespeichert wird body: _klartext(stand) aus block_data (Zeile 706),
+    // und _blockStandLesen() ueberschreibt sie bei jedem Editor-Ereignis
+    // (Zeile 735). Eine Aenderung dort waere wirkungslos und binnen eines
+    // Tastendrucks verschwunden - OHNE Fehlermeldung. Der Vorgangstext
+    // stammt aus Build 654, also aus der Zeit davor.
+    //
+    // WARUM eingabe.lies() UND NICHT _state.blockStand: blockStand ist der
+    // zuletzt GELESENE Stand. Zwischen dem letzten Lesen und dem Klick in
+    // die Tabelle kann getippt worden sein. Auf einem veralteten Bild zu
+    // schreiben hiesse, die Tastenanschlaege dazwischen zu verwerfen.
+    //
+    // Gibt ein Versprechen auf {ok, meldung} - die Tabelle meldet den Grund
+    // an der Zelle, in der die Eingabe steht.
+    function _platzhalterSchreiben(auftrag) {
+        var schr = (typeof window !== 'undefined')
+            ? window.AIWBausteinPhSchreiben : null;
+        var pc = (typeof window !== 'undefined')
+            ? window.PlaceholderChips : null;
+        if (!schr || !pc || typeof pc.mapBlockTexts !== 'function') {
+            return Promise.resolve({ ok: false, meldung:
+                'Das Rechenwerk zum Zurückschreiben ist nicht geladen '
+                + '(cockpit_baustein_ph_schreiben.js bzw. '
+                + 'placeholder_chips.js). Es ist NICHTS geändert worden.' });
+        }
+        if (!_state.eingabe || typeof _state.eingabe.lies !== 'function') {
+            return Promise.resolve({ ok: false, meldung:
+                'Die Eingabe des Bausteininhalts ist nicht geladen. Ohne sie '
+                + 'gibt es nichts, worin geschrieben werden könnte.' });
+        }
+        return _state.eingabe.lies().then(function (b) {
+            // GRUNDREGEL 1: in ungueltiges JSON wird NICHT geschrieben. Der
+            // Rohmodus gibt bei einem Syntaxfehler den zuletzt gueltigen
+            // Stand zurueck; wuerde darauf geschrieben, verloere der
+            // Redakteur genau die Zeilen, an denen er gerade arbeitet.
+            if (b.rohFehler) {
+                return { ok: false, meldung:
+                    'Die Rohansicht enthält kein gültiges JSON (' + b.rohFehler
+                    + '). Solange sie nicht gültig ist, wird nichts '
+                    + 'zurückgeschrieben — sonst gingen die Zeilen verloren, '
+                    + 'an denen gerade gearbeitet wird.' };
+            }
+            var erg = schr.schreibe({
+                daten: b.data,
+                alt: auftrag.alt,
+                neu: auftrag.neu,
+                chips: pc
+            });
+            if (!erg.ok) { return erg; }
+
+            // F4: das kostet den Rueckgaengig-Verlauf des Editors. Es gibt
+            // keinen Weg daran vorbei - Editor.js baut sein DOM aus den
+            // Daten, und geaenderte Daten heissen ein neues DOM.
+            _state.eingabe.setze(b.type, erg.daten);
+            return _blockStandLesen().then(function () {
+                _persistDraft();
+                _vorschauAktualisieren();
+                return erg;
+            });
+        });
+    }
+
     // _platzhalterAufbauen (Build 654, Ticket 4b032177).
     // ------------------------------------------------------------------
     // Der Bauteil liegt in cockpit_baustein_platzhalter.js. Fehlt er, sagt
@@ -621,7 +696,11 @@
             host.classList.add('ist-warnung');
             return;
         }
-        _state.platzhalter = ph.erzeuge(host, {});
+        // BUILD 681 (Vorgang 7c1f2a94): der Rueckruf zum Zurueckschreiben.
+        // Ohne ihn bleibt die Tabelle reine Anzeige - siehe ihren Kopf.
+        _state.platzhalter = ph.erzeuge(host, {
+            schreibe: _platzhalterSchreiben
+        });
         // Die Kataloge kommen ueber das Netz und treffen spaeter ein als der
         // erste Text. Sie werden deshalb NACHGEREICHT, statt den Aufbau auf
         // sie warten zu lassen - eine Tabelle, die erst nach zwei

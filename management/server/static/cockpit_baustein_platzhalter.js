@@ -10,10 +10,49 @@
  *   ALLEN Parametern, einer Spalte zur Verifikation und einer Spalte zum
  *   Testen einer Eingabe gegen das Pruefmuster.
  *
- *   Diese Datei ist STUFE 1: lesen, verifizieren, testen. Das bidirektionale
- *   Zurueckschreiben in den Bausteintext ist ein eigenes Ticket
- *   (7c1f2a94-..., Entscheidung mc vom 2026-08-02) - dort stehen auch die
- *   drei Fallen, die es mit sich bringt.
+ *   Diese Datei war STUFE 1: lesen, verifizieren, testen. Das bidirektionale
+ *   Zurueckschreiben (Vorgang 7c1f2a94) ist SEIT BUILD 681 dabei - siehe den
+ *   naechsten Abschnitt.
+ *
+ * =========================================================================
+ * BUILD 681 (Vorgang 7c1f2a94): STUFE 2, DAS ZURUECKSCHREIBEN
+ * =========================================================================
+ *   Vier Spalten sind beschreibbar: ART, VORGABE, BESCHREIBUNG und
+ *   PRUEFMUSTER. Der NAME ist es NICHT (Entscheidung mc vom 05.08.2026):
+ *   ein Name, den der Katalog nicht kennt, bleibt im Vermerk leer, und der
+ *   Fehler faellt erst am fertigen Dokument auf.
+ *
+ *   WOHIN GESCHRIEBEN WIRD - und warum nicht dorthin, wo der Vorgang es
+ *   sagt: Der Vorgangstext verlangt eine Wirkung "auf den Inhalt in der
+ *   textarea". Die textarea ist seit Build 656 der SCHREIBGESCHUETZTE
+ *   Klartextspiegel (cockpit_modules.js:1262); gespeichert wird, was aus
+ *   block_data erzeugt wird (:706), und bei jedem Tastendruck im Editor wird
+ *   sie ueberschrieben (:735). Ein Zurueckschreiben dorthin waere wirkungslos
+ *   und binnen eines Tastendrucks verschwunden - ohne Fehlermeldung.
+ *   Geschrieben wird deshalb nach block_data. Die Rechnerei dazu steht in
+ *   cockpit_baustein_ph_schreiben.js (Projektregel 10); DIESE Datei bedient
+ *   nur und reicht durch.
+ *
+ *   DIESE DATEI SCHREIBT NICHT SELBST. Sie ruft opts.schreibe() - den
+ *   Rueckruf, den cockpit_modules.js stellt. Ohne diesen Rueckruf bleiben
+ *   alle Zellen wie vor Build 681 reine Anzeige. Das ist kein Rueckfall,
+ *   sondern die Vorgabe: ein Bauteil, das seinen Weg zum Editor nicht kennt,
+ *   soll nicht so tun, als koenne es etwas aendern.
+ *
+ *   DIE VIER FALLEN, und wo sie behandelt werden:
+ *     F1 TRENNZEICHEN — '|' und '}' werden ABGEWIESEN, nicht entschaerft.
+ *        Geprueft in ph_schreiben.feldPruefen, gemeldet an der Zelle, in der
+ *        die Eingabe steht; das Feld faellt auf seinen alten Wert zurueck.
+ *     F2 MEHRFACHVORKOMMEN — die Spalte 'Vorkommen' sagt DAUERHAFT, dass
+ *        eine Aenderung alle Vorkommen trifft, und vor dem Schreiben kommt
+ *        eine Rueckfrage mit den betroffenen Rohtoken im Wortlaut. Zwei
+ *        Stufen: sehen, bevor man tippt - bestaetigen, bevor es wirkt.
+ *     F3 EINFUEGEMARKE — geschrieben wird bei 'change' (Feld verlassen),
+ *        NICHT bei 'input'.
+ *     F4 RUECKGAENGIG-VERLAUF — im Komfortmodus baut das Zurueckschreiben
+ *        Editor.js neu auf. Das kostet ausser der Einfuegemarke auch den
+ *        Rueckgaengig-Verlauf des Editors. Der Preis steht in der Hilfe
+ *        (Kapitel modules#platzhaltertabelle) und wird nicht versteckt.
  *
  * WARUM EINE EIGENE DATEI: Projektregel 10 (so modular wie moeglich, jede
  *   Klasse in eine eigene Datei) und das Vorbild cockpit_baustein_vorschau.js.
@@ -87,12 +126,23 @@
  *   pruefe(eintrag, kat, regeln)   -- {stufe, befunde:[{art, text}]}
  *   teste(eintrag, kat, regeln, eingabe) -- {chip, katalog}
  *   -- DOM:
- *   erzeuge(hostEl, opts)          -- {zeige(text, kat, regeln), aus()}
+ *   erzeuge(hostEl, opts)          -- {zeige(text, kat, regeln), kataloge(),
+ *                                      aus()}
+ *     opts.schreibe({alt,neu})     -- Build 681: der Rueckruf zum Editor.
+ *                                     Fehlt er, bleibt die Tabelle Anzeige.
+ *                                     Gibt {ok, meldung} oder ein Versprechen
+ *                                     darauf.
+ *     opts.frage(text)             -- Rueckfrage bei Mehrfachvorkommen (F2).
+ *                                     Vorgabe: window.confirm. Injizierbar,
+ *                                     damit die Pruefung ohne Dialog laeuft.
+ *     opts.schr                    -- ph_schreiben (injizierbar)
  *
- * Version: v0.8.654 · Build: 654 · 2026-08-02
- * Beleg: Ticket 4b032177; userinfo/placeholder_chips.js:73 (_CHIP_RE);
+ * Version: v0.8.681 · Build: 681 · 2026-08-05
+ * Beleg: Ticket 4b032177 (Stufe 1), Vorgang 7c1f2a94 (Stufe 2);
+ *        userinfo/placeholder_chips.js:73 (_CHIP_RE);
  *        userinfo/validation_rules.js:33-38 (beide Formen des 5. Feldes);
- *        management/server/static/cockpit_templates.js:315 (testRule).
+ *        management/server/static/cockpit_templates.js:315 (testRule);
+ *        management/server/static/cockpit_modules.js:706, :735, :1262.
  */
 (function () {
     'use strict';
@@ -475,11 +525,39 @@
     var _KOPF = ['Typ', 'Name', 'Vorgabe', 'Beschreibung', 'Prüfmuster',
                  'Vorkommen', 'Verifikation', 'Testeingabe'];
 
+    // Die BESCHREIBBAREN Felder (Build 681). Der Name fehlt hier mit Absicht
+    // - er ist die Identitaet des Platzhalters, und ein Umbenennen aus der
+    // Tabelle heraus faellt erst am fertigen Vermerk auf (Entscheidung mc).
+    //
+    // Die Hilfe-Marken stehen LITERAL an den Abnahmestellen weiter unten und
+    // nicht hier: eine ueber eine Variable gesetzte Marke ist im Quelltext
+    // nicht auffindbar, und die Vollstaendigkeitspruefung BD09/BD10 saehe
+    // dann Bedienelemente ohne Hilfe und Hilfetexte ohne Bedienelement
+    // (Fabrikregel aus Build 633).
+    var _FELDNAME = {
+        typ: 'Die Art',
+        vorgabe: 'Die Vorgabe',
+        beschreibung: 'Die Beschreibung',
+        regelfeld: 'Das Prüfmuster'
+    };
+
+    // _schreiber: das Rechenwerk fuer das Zurueckschreiben. Injizierbar, weil
+    // die Pruefung es ohne Browserfenster braucht.
+    function _schreiber(opts) {
+        if (opts && opts.schr) { return opts.schr; }
+        return (typeof window !== 'undefined')
+            ? window.AIWBausteinPhSchreiben : null;
+    }
+
     function erzeuge(hostEl, opts) {
         opts = opts || {};
         var doc = (hostEl && hostEl.ownerDocument) || document;
         var zustand = { text: null, kat: null, regeln: null,
-                        eingaben: {} };   // Testeingaben ueberleben Neuaufbau
+                        eingaben: {},     // Testeingaben ueberleben Neuaufbau
+                        // Build 681: welches Feld hatte die Einfuegemarke,
+                        // als zurueckgeschrieben wurde. Nach dem Neuzeichnen
+                        // geht sie dorthin zurueck (F4).
+                        fokus: null };
 
         var meldung = doc.createElement('p');
         meldung.className = 'aiw-mod-ph-meldung';
@@ -592,6 +670,213 @@
             return td;
         }
 
+        // =================================================================
+        // BUILD 681 (Vorgang 7c1f2a94): DIE BESCHREIBBAREN ZELLEN
+        // =================================================================
+
+        // _schreibbar: nur wenn ein Rueckruf DA ist UND das Rechenwerk
+        // geladen ist. Sonst bleibt die Tabelle genau das, was sie in Build
+        // 654 war - eine Anzeige. Ein Eingabefeld, dessen Eingabe nirgends
+        // ankommt, waere schlimmer als gar keines.
+        function _schreibbar() {
+            return typeof opts.schreibe === 'function' && !!_schreiber(opts);
+        }
+
+        // _zeileSuchen: die Zeile zu einem Schluessel im AKTUELLEN Baum.
+        // Ueber die Kinder statt ueber einen Selektor: der Schluessel kommt
+        // aus dem Bausteintext, und ein Selektor mit fremdem Text darin ist
+        // eine Einladung, die dieses Werkzeug nicht aussprechen muss.
+        function _zeileSuchen(schluessel) {
+            var trs = rumpf.getElementsByTagName('tr');
+            for (var i = 0; i < trs.length; i += 1) {
+                if (trs[i].getAttribute('data-name') === schluessel) {
+                    return trs[i];
+                }
+            }
+            return null;
+        }
+
+        function _teilSuchen(tr, attribut, wert) {
+            if (!tr) { return null; }
+            var alle = tr.getElementsByTagName('*');
+            for (var i = 0; i < alle.length; i += 1) {
+                if (alle[i].getAttribute(attribut) === wert) { return alle[i]; }
+            }
+            return null;
+        }
+
+        // _meldeAnZeile: die Meldung sitzt AN DER ZELLE, in der die Eingabe
+        // steht - nicht in einer Sammelzeile am Kopf der Tabelle. Wer eine
+        // Eingabe abgewiesen bekommt, soll nicht suchen muessen, welche.
+        function _meldeAnZeile(schluessel, welches, text, art) {
+            var el = _teilSuchen(_zeileSuchen(schluessel), 'data-feld', welches);
+            if (!el) { return; }
+            el.textContent = _s(text);
+            el.className = 'aiw-mod-ph-fehler' + (art ? (' ist-' + art) : '');
+        }
+
+        // _fokusHerstellen: nach dem Neuzeichnen zurueck in das Feld, in dem
+        // gerade gearbeitet wurde. F4 nimmt uns die Einfuegemarke IM EDITOR;
+        // sie in der Tabelle auch noch zu verlieren, waere vermeidbarer
+        // Verdruss - und die Tabelle zeichnet sich bei jedem Tastendruck neu.
+        function _fokusHerstellen() {
+            var f = zustand.fokus;
+            if (!f) { return; }
+            zustand.fokus = null;
+            var el = _teilSuchen(_zeileSuchen(f.schluessel),
+                                 'data-feld-eingabe', f.feld);
+            if (el && typeof el.focus === 'function') {
+                try { el.focus(); } catch (e) { /* nie werfen */ }
+            }
+        }
+
+        // _alt: der Stand, wie er IM TEXT steht. Gegen ihn wird verglichen,
+        // und auf ihn wird zurueckgesetzt, wenn eine Eingabe abgewiesen wird.
+        function _alt(e) {
+            return { typ: e.typ, vorgabe: e.vorgabe,
+                     beschreibung: e.beschreibung, regelfeld: e.regelfeld };
+        }
+
+        // _abweisen: F1 in Reinform. Der alte Wert kommt zurueck, der Grund
+        // steht an der Zelle. NICHTS wird stillschweigend zurechtgebogen.
+        function _abweisen(e, s, welches, meldung) {
+            var a = _alt(e);
+            Object.keys(s).forEach(function (k) {
+                if (s[k]) { s[k].value = _s(a[k]); }
+            });
+            _meldeAnZeile(e.typ + ':' + e.name, welches, meldung, 'fehler');
+        }
+
+        // _frage: die Rueckfrage bei Mehrfachvorkommen (F2). Injizierbar,
+        // damit die Pruefung ohne Dialog laufen kann; ohne Fenster wird NICHT
+        // geschrieben - eine unbeantwortbare Rueckfrage als Zustimmung zu
+        // werten, hiesse die Sicherung abzuschalten, sobald sie stoert.
+        function _frage(text) {
+            if (typeof opts.frage === 'function') { return !!opts.frage(text); }
+            if (typeof window !== 'undefined'
+                    && typeof window.confirm === 'function') {
+                return !!window.confirm(text);
+            }
+            return false;
+        }
+
+        // _aendere: der ganze Vorgang an einer Zeile.
+        // Reihenfolge: unveraendert? -> F1 pruefen -> F2 rueckfragen ->
+        // schreiben lassen. Beim ersten Fehlschlag ohne jede Wirkung.
+        function _aendere(e, s, welches) {
+            var schr = _schreiber(opts);
+            var altSchluessel = e.typ + ':' + e.name;
+            var a = _alt(e);
+            var neu = {
+                typ: s.typ ? s.typ.value : e.typ,
+                name: e.name,
+                vorgabe: s.vorgabe ? s.vorgabe.value : e.vorgabe,
+                beschreibung: s.beschreibung ? s.beschreibung.value
+                                             : e.beschreibung,
+                regelfeld: s.regelfeld ? s.regelfeld.value : e.regelfeld
+            };
+
+            if (neu.typ === a.typ && neu.vorgabe === a.vorgabe
+                    && neu.beschreibung === a.beschreibung
+                    && neu.regelfeld === a.regelfeld) {
+                _meldeAnZeile(altSchluessel, welches, '', '');
+                return;
+            }
+
+            // --- F1: abweisen, BEVOR gefragt wird. ----------------------
+            var p = schr.typPruefen(neu.typ);
+            if (!p.ok) { _abweisen(e, s, 'typ', p.meldung); return; }
+            var reihen = [['vorgabe', neu.vorgabe],
+                          ['beschreibung', neu.beschreibung],
+                          ['regelfeld', neu.regelfeld]];
+            for (var i = 0; i < reihen.length; i += 1) {
+                p = schr.feldPruefen(reihen[i][1], _FELDNAME[reihen[i][0]]);
+                if (!p.ok) { _abweisen(e, s, reihen[i][0], p.meldung); return; }
+            }
+
+            // --- F2: Rueckfrage bei Mehrfachvorkommen. ------------------
+            if (e.vorkommen > 1) {
+                var text = 'Der Platzhalter "' + e.name + '" steht '
+                    + e.vorkommen + '-mal im Bausteininhalt. Diese Änderung '
+                    + 'wirkt auf ALLE ' + e.vorkommen + ' Vorkommen:\n\n'
+                    + e.rohtoken.join('\n') + '\n\nSoll das geschehen?';
+                var ja = false;
+                try { ja = _frage(text); } catch (ex) { ja = false; }
+                if (!ja) {
+                    _abweisen(e, s, welches,
+                        'Nicht geändert — die Rückfrage wurde verneint.');
+                    _meldeAnZeile(altSchluessel, welches,
+                        'Nicht geändert — die Rückfrage wurde verneint.',
+                        'hinweis');
+                    return;
+                }
+            }
+
+            // --- F3/F4: schreiben lassen. -------------------------------
+            // Die Marke fuer den Fokus wird VOR dem Schreiben gesetzt: der
+            // Rueckruf zeichnet die Tabelle neu, und das geschieht, bevor
+            // dieses Versprechen einloest.
+            var neuSchluessel = neu.typ + ':' + neu.name;
+            zustand.fokus = { schluessel: neuSchluessel, feld: welches };
+
+            function _fertig(r) {
+                r = r || {};
+                if (r.ok) {
+                    _meldeAnZeile(neuSchluessel, welches, _s(r.meldung), 'ok');
+                    return;
+                }
+                zustand.fokus = null;
+                _abweisen(e, s, welches, _s(r.meldung)
+                    || 'Es ist nichts geschrieben worden.');
+            }
+            function _gescheitert(ex) {
+                _fertig({ ok: false, meldung:
+                    'Das Zurückschreiben ist gescheitert: '
+                    + (ex && ex.message ? ex.message : String(ex)) });
+            }
+
+            var antwort;
+            try {
+                antwort = opts.schreibe({
+                    alt: { typ: e.typ, name: e.name },
+                    neu: neu
+                });
+            } catch (ex2) { _gescheitert(ex2); return; }
+            Promise.resolve(antwort).then(_fertig, _gescheitert);
+        }
+
+        // _schreibZelle: eine beschreibbare Zelle mit ihrer Meldungszeile.
+        // Die HILFE-MARKE SETZT DER AUFRUFER, literal - Fabrikregel aus
+        // Build 633: eine ueber eine Variable gesetzte Marke ist im
+        // Quelltext nicht auffindbar, und BD09/BD10 saehen dann ein
+        // Bedienelement ohne Hilfe.
+        function _schreibZelle(welches, wert, klasse) {
+            var td = doc.createElement('td');
+            td.className = 'aiw-mod-ph-feld' + (klasse ? (' ' + klasse) : '');
+            var el;
+            if (welches === 'typ') {
+                el = doc.createElement('select');
+                ['a', 'm', 'o'].forEach(function (t) {
+                    var o = doc.createElement('option');
+                    o.value = t;
+                    o.textContent = typLabel(t);
+                    el.appendChild(o);
+                });
+            } else {
+                el = doc.createElement('input');
+                el.type = 'text';
+            }
+            el.className = 'aiw-mod-ph-schreibfeld';
+            el.value = _s(wert);
+            el.setAttribute('data-feld-eingabe', welches);
+            td.appendChild(el);
+            var fehler = doc.createElement('div');
+            fehler.className = 'aiw-mod-ph-fehler';
+            fehler.setAttribute('data-feld', welches);
+            td.appendChild(fehler);
+            return { td: td, steuer: el };
+        }
+
         function _zeichne() {
             _leeren(rumpf);
             var pc = opts.chips || (typeof window !== 'undefined'
@@ -643,6 +928,7 @@
             tab.appendChild(thead);
 
             var tbody = doc.createElement('tbody');
+            var schreibbar = _schreibbar();
             z.eintraege.forEach(function (e) {
                 var erg = pruefe(e, zustand.kat, zustand.regeln);
                 if (erg.stufe === 'fehler') { fehler += 1; }
@@ -651,14 +937,12 @@
                 var tr = doc.createElement('tr');
                 tr.className = 'ist-' + erg.stufe;
                 tr.setAttribute('data-name', e.typ + ':' + e.name);
-                tr.appendChild(_zelle(doc, typLabel(e.typ), 'aiw-mod-ph-typ'));
-                tr.appendChild(_zelle(doc, e.name, 'aiw-mod-ph-name'));
-                tr.appendChild(_zelle(doc, e.vorgabe || '—'));
-                tr.appendChild(_zelle(doc, e.beschreibung || '—'));
 
                 // Das Pruefmuster wird DEKODIERT angezeigt. Base64 im
                 // Klartext hilft niemandem beim Nachsehen, ob das Muster
-                // stimmt - und genau darum geht es hier.
+                // stimmt - und genau darum geht es hier. Beschreibbar ist
+                // dagegen das ROHE fuenfte Feld: was dort steht, ist das,
+                // was im Text steht.
                 var m = musterAus(e.regelfeld, zustand.regeln);
                 var mtext;
                 if (m.form === '') { mtext = '—'; }
@@ -666,10 +950,87 @@
                 else if (m.form === 'regel') {
                     mtext = 'rule:' + m.quelle + ' → ' + m.muster;
                 } else { mtext = m.muster; }
-                tr.appendChild(_zelle(doc, mtext, 'aiw-mod-ph-muster'));
 
-                tr.appendChild(_zelle(doc, String(e.vorkommen),
-                                      'aiw-mod-ph-zahl'));
+                if (!schreibbar) {
+                    // Der Stand von Build 654: reine Anzeige.
+                    tr.appendChild(_zelle(doc, typLabel(e.typ),
+                                          'aiw-mod-ph-typ'));
+                    tr.appendChild(_zelle(doc, e.name, 'aiw-mod-ph-name'));
+                    tr.appendChild(_zelle(doc, e.vorgabe || '—'));
+                    tr.appendChild(_zelle(doc, e.beschreibung || '—'));
+                    tr.appendChild(_zelle(doc, mtext, 'aiw-mod-ph-muster'));
+                    tr.appendChild(_zelle(doc, String(e.vorkommen),
+                                          'aiw-mod-ph-zahl'));
+                } else {
+                    // BUILD 681: vier beschreibbare Felder. Der NAME bleibt
+                    // Anzeige - er ist die Identitaet des Platzhalters.
+                    var s = {};
+                    var zTyp = _schreibZelle('typ', e.typ, 'aiw-mod-ph-typ');
+                    zTyp.steuer.setAttribute('data-hilfe-id',
+                        'modules.bedienung.phart');
+                    zTyp.steuer.setAttribute('aria-label',
+                        'Art von ' + e.name);
+                    s.typ = zTyp.steuer;
+                    tr.appendChild(zTyp.td);
+
+                    tr.appendChild(_zelle(doc, e.name, 'aiw-mod-ph-name'));
+
+                    var zVor = _schreibZelle('vorgabe', e.vorgabe);
+                    zVor.steuer.setAttribute('data-hilfe-id',
+                        'modules.bedienung.phvorgabe');
+                    zVor.steuer.setAttribute('aria-label',
+                        'Vorgabe von ' + e.name);
+                    s.vorgabe = zVor.steuer;
+                    tr.appendChild(zVor.td);
+
+                    var zBes = _schreibZelle('beschreibung', e.beschreibung);
+                    zBes.steuer.setAttribute('data-hilfe-id',
+                        'modules.bedienung.phbeschreibung');
+                    zBes.steuer.setAttribute('aria-label',
+                        'Beschreibung von ' + e.name);
+                    s.beschreibung = zBes.steuer;
+                    tr.appendChild(zBes.td);
+
+                    var zMus = _schreibZelle('regelfeld', e.regelfeld,
+                                             'aiw-mod-ph-muster');
+                    zMus.steuer.setAttribute('data-hilfe-id',
+                        'modules.bedienung.phmuster');
+                    zMus.steuer.setAttribute('aria-label',
+                        'Prüfmuster von ' + e.name);
+                    s.regelfeld = zMus.steuer;
+                    // Die Auflösung steht UNTER dem Feld: im Feld das, was im
+                    // Text steht, darunter, was es bedeutet.
+                    var klar = doc.createElement('div');
+                    klar.className = 'aiw-mod-ph-muster-klartext';
+                    klar.textContent = mtext;
+                    zMus.td.appendChild(klar);
+                    tr.appendChild(zMus.td);
+
+                    // F3: 'change', nicht 'input'. Das Zurueckschreiben baut
+                    // den Editor neu auf; bei jedem Tastendruck waere das
+                    // Arbeiten unmoeglich.
+                    ['typ', 'vorgabe', 'beschreibung', 'regelfeld']
+                        .forEach(function (welches) {
+                            s[welches].addEventListener('change', function () {
+                                _aendere(e, s, welches);
+                            });
+                        });
+
+                    // F2: die DAUERHAFTE Anzeige. Sie steht da, bevor jemand
+                    // tippt - die Rueckfrage kommt erst danach.
+                    var vk = doc.createElement('td');
+                    vk.className = 'aiw-mod-ph-zahl';
+                    vk.textContent = String(e.vorkommen);
+                    if (e.vorkommen > 1) {
+                        vk.classList.add('ist-mehrfach');
+                        var warn = doc.createElement('div');
+                        warn.className = 'aiw-mod-ph-mehrfach';
+                        warn.textContent = 'ändert alle ' + e.vorkommen;
+                        vk.appendChild(warn);
+                    }
+                    tr.appendChild(vk);
+                }
+
                 tr.appendChild(_befundZelle(erg));
                 tr.appendChild(_testZelle(e));
                 tbody.appendChild(tr);
@@ -685,7 +1046,18 @@
                 satz += '. Der Platzhalter-Katalog ist NICHT geladen — '
                     + 'gegen ihn wird nicht geprüft.';
             }
+            // Build 681: die Tabelle sagt selbst, ob sie schreiben kann.
+            // Ein Redakteur soll nicht durch Ausprobieren herausfinden, ob
+            // seine Eingabe ankommt.
+            satz += schreibbar
+                ? '. Änderungen in Art, Vorgabe, Beschreibung und Prüfmuster '
+                  + 'wirken beim Verlassen des Feldes auf den '
+                  + 'Bausteininhalt zurück.'
+                : '. Diese Tabelle schreibt nicht — sie zeigt nur an.';
             _melde(satz, fehler > 0 || !zustand.kat);
+
+            // F4: zurueck in das Feld, in dem gearbeitet wurde.
+            _fokusHerstellen();
         }
 
         return {

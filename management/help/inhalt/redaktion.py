@@ -577,12 +577,21 @@ MODULES = Sichthilfe(
             "platzhaltertabelle", "Die Platzhalter-Tabelle",
             (
                 "Unter dem Bausteintext stehen alle Platzhalter, die er "
-                "enthält — mit Typ, Name, Vorgabe, Beschreibung, Prüfmuster "
+                "enthält — mit Art, Name, Vorgabe, Beschreibung, Prüfmuster "
                 "und der Zahl der Vorkommen. Die Tabelle läuft beim Tippen "
-                "mit und SCHREIBT NICHTS.",
+                "mit.",
+                "VIER SPALTEN LASSEN SICH ÄNDERN: Art, Vorgabe, "
+                "Beschreibung und Prüfmuster. Was dort eingetragen wird, "
+                "wirkt beim VERLASSEN des Feldes auf den Bausteininhalt "
+                "zurück — nicht schon beim Tippen. Der NAME lässt sich "
+                "NICHT ändern: er ist die Identität des Platzhalters, und "
+                "ein Name, den es nicht gibt, bleibt im Vermerk leer, ohne "
+                "dass jemand etwas davon merkt.",
                 "Das Prüfmuster steht im Klartext da, auch wenn es im "
                 "Bausteintext verschlüsselt hinterlegt ist oder nur als "
-                "Verweis auf eine benannte Formatregel.",
+                "Verweis auf eine benannte Formatregel. Geändert wird "
+                "allerdings die TEXTFORM — das Feld enthält, was im Text "
+                "steht; darunter steht, was es bedeutet.",
                 "Die Spalte „Verifikation“ nennt jeden Befund im Klartext "
                 "und nicht nur als Farbe. Sechs Dinge werden geprüft:",
             ),
@@ -603,6 +612,37 @@ MODULES = Sichthilfe(
                 "V6 — Derselbe Name steht mehrfach im Text, aber mit "
                 "verschiedenen Angaben. Beim Ausfüllen gewinnt eine Fassung, "
                 "und welche, sieht man dem Text nicht an.",
+            ),
+        ),
+        # Build 681 (Vorgang 7c1f2a94): das Zurueckschreiben.
+        Abschnitt(
+            "platzhalteraendern", "Platzhalter aus der Tabelle ändern",
+            (
+                "Art, Vorgabe, Beschreibung und Prüfmuster lassen sich in "
+                "der Tabelle ändern. Die Änderung geht in den "
+                "Bausteininhalt, sobald das Feld verlassen wird. Vier Dinge "
+                "sind dabei zu wissen:",
+            ),
+            liste=(
+                "EIN SENKRECHTER STRICH UND EINE GESCHWEIFTE KLAMMER KÖNNEN "
+                "IN KEINEM FELD STEHEN. Sie trennen die Angaben eines "
+                "Platzhalters voneinander. Eine solche Eingabe wird "
+                "abgewiesen und der Grund an der Zelle genannt — das Feld "
+                "fällt auf seinen alten Wert zurück. Sie stillschweigend zu "
+                "entschärfen hieße, einen Wert in den Vermerk zu schreiben, "
+                "den niemand eingegeben hat.",
+                "STEHT DERSELBE PLATZHALTER MEHRFACH IM TEXT, ÄNDERT EINE "
+                "ZEILE ALLE VORKOMMEN. Die Spalte „Vorkommen“ sagt das "
+                "dauerhaft, und vor dem Schreiben kommt eine Rückfrage, die "
+                "die betroffenen Stellen im Wortlaut aufzählt.",
+                "GESCHRIEBEN WIRD BEIM VERLASSEN DES FELDES, nicht beim "
+                "Tippen. Der Grund steht im nächsten Punkt.",
+                "DAS ZURÜCKSCHREIBEN BAUT DIE EINGABE DARÜBER NEU AUF. Das "
+                "kostet die Einfügemarke UND den Rückgängig-Verlauf: Was "
+                "vorher mit „rückgängig“ erreichbar war, ist es danach nicht "
+                "mehr. Der Bausteininhalt selbst bleibt vollständig — nur "
+                "der Verlauf beginnt von vorn. In die Tabellenzelle, in der "
+                "gearbeitet wurde, springt die Einfügemarke zurück.",
             ),
         ),
         Abschnitt(
@@ -768,9 +808,11 @@ MODULES = Sichthilfe(
         Kontexthilfe(
             "modules.bedienung.phtabelle", "Platzhalter im Bausteintext",
             "Führt jeden Platzhalter des Textes mit allen Angaben auf und "
-            "prüft ihn. Die Tabelle läuft beim Tippen mit und schreibt "
-            "nichts. Jeder Befund steht im Klartext dabei — die Farbe allein "
-            "wäre keine Auskunft.",
+            "prüft ihn. Die Tabelle läuft beim Tippen mit. Jeder Befund "
+            "steht im Klartext dabei — die Farbe allein wäre keine Auskunft. "
+            "Art, Vorgabe, Beschreibung und Prüfmuster lassen sich hier "
+            "ÄNDERN; die Änderung wirkt auf den Bausteininhalt zurück. Der "
+            "Name lässt sich nicht ändern.",
             verweis="modules#platzhaltertabelle"),
         Kontexthilfe(
             "modules.bedienung.phtest", "Testeingabe",
@@ -779,6 +821,40 @@ MODULES = Sichthilfe(
             "Gibt es zwei Regeln — eine am Platzhalter und eine hinterlegte "
             "— stehen BEIDE Urteile da. Weichen sie voneinander ab, wird das "
             "ausdrücklich gesagt: beim Ausfüllen gilt die hinterlegte.",
+            verweis="modules#platzhaltertabelle"),
+        # Build 681 (Vorgang 7c1f2a94): die beschreibbaren Zellen.
+        Kontexthilfe(
+            "modules.bedienung.phart", "Art des Platzhalters",
+            "Ob der Platzhalter automatisch gefüllt (a), verpflichtend (m) "
+            "oder freiwillig (o) ist. Eine Änderung wirkt beim Verlassen des "
+            "Feldes auf den Bausteininhalt zurück. ACHTUNG: Wird hier auf "
+            "„automatisch“ umgestellt, sind Vorgabe und Prüfmuster "
+            "bedeutungslos — der Wert kommt dann aus dem hinterlegten "
+            "Platzhalter, und den muss es geben. Die Spalte Verifikation "
+            "sagt sofort, ob das der Fall ist.",
+            verweis="modules#platzhaltertabelle"),
+        Kontexthilfe(
+            "modules.bedienung.phvorgabe", "Vorgabe",
+            "Der Wert, der eingetragen ist, wenn niemand etwas anderes "
+            "einträgt. Die Änderung wirkt beim VERLASSEN des Feldes, nicht "
+            "beim Tippen: das Zurückschreiben baut die Eingabe darüber neu "
+            "auf, und bei jedem Tastendruck wäre kein Arbeiten möglich.",
+            verweis="modules#platzhaltertabelle"),
+        Kontexthilfe(
+            "modules.bedienung.phbeschreibung", "Beschreibung des Feldes",
+            "Der Hilfetext, den jemand beim Ausfüllen des Vermerks zu diesem "
+            "Feld sieht. Ein senkrechter Strich und eine geschweifte Klammer "
+            "können hier nicht stehen — sie trennen die Angaben eines "
+            "Platzhalters. Eine solche Eingabe wird ABGEWIESEN und nicht "
+            "stillschweigend entschärft.",
+            verweis="modules#platzhaltertabelle"),
+        Kontexthilfe(
+            "modules.bedienung.phmuster", "Prüfmuster",
+            "Das fünfte Feld des Platzhalters, so wie es IM TEXT steht — "
+            "entweder ein Verweis auf eine benannte Formatregel "
+            "(„rule:name“) oder ein verschlüsselt hinterlegtes Muster. "
+            "Darunter steht, was es bedeutet. Wer hier etwas einträgt, "
+            "trägt die Textform ein, nicht die Auflösung.",
             verweis="modules#platzhaltertabelle"),
         # Build 656 (Ticket 8f2b64d9): Editor.js als Eingabe plus Rohmodus.
         Kontexthilfe(

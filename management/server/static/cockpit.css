@@ -1013,6 +1013,38 @@ td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
 .aiw-mod-ph-urteil .ist-fehler { color: var(--rot); font-weight: 600; }
 .aiw-mod-ph-test.ist-leer, .aiw-mod-ph-urteil.ist-leer { color: var(--muted); }
 
+/* Build 681 (Vorgang 7c1f2a94): die beschreibbaren Zellen der
+   Platzhalter-Tabelle. Sie sehen wie Eingabefelder aus, WEIL sie welche
+   sind - eine Zelle, die sich erst beim Hineinklicken als beschreibbar
+   herausstellt, wird nicht gefunden. */
+.aiw-mod-ph-feld { vertical-align: top; }
+.aiw-mod-ph-schreibfeld {
+    font: inherit; width: 100%; min-width: 110px; box-sizing: border-box;
+    padding: 3px 6px; border: 1px solid var(--line); border-radius: 4px;
+    background: #fff;
+}
+.aiw-mod-ph-feld.aiw-mod-ph-muster .aiw-mod-ph-schreibfeld {
+    font-family: var(--mono, monospace); font-size: 12px;
+}
+/* Die Aufloesung des Pruefmusters: im Feld steht, was im Text steht -
+   darunter, was es bedeutet. */
+.aiw-mod-ph-muster-klartext {
+    margin-top: 3px; font-size: 11px; color: var(--muted);
+    word-break: break-all;
+}
+/* Die Meldung sitzt an der Zelle, in der die Eingabe steht. */
+.aiw-mod-ph-fehler { margin-top: 3px; font-size: 11px; }
+.aiw-mod-ph-fehler:empty { display: none; }
+.aiw-mod-ph-fehler.ist-fehler  { color: var(--rot); font-weight: 600; }
+.aiw-mod-ph-fehler.ist-hinweis { color: #8a5a00; }
+.aiw-mod-ph-fehler.ist-ok      { color: var(--gruen); }
+/* F2: die dauerhafte Anzeige, dass eine Aenderung ALLE Vorkommen trifft.
+   Sie steht da, bevor jemand tippt - die Rueckfrage kommt erst danach. */
+.aiw-mod-ph-zahl.ist-mehrfach { color: #8a5a00; font-weight: 600; }
+.aiw-mod-ph-mehrfach {
+    font-size: 11px; font-weight: 400; white-space: nowrap;
+}
+
 /* ==========================================================================
  * Build 656 (Ticket 8f2b64d9) — EINGABE: Editor.js + Rohmodus.
  *

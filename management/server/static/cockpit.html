@@ -214,6 +214,13 @@
      Zeitpunkt geladen, weil alle Skripte 'defer' tragen und damit in
      Dokumentreihenfolge laufen. -->
 <script src="/static/cockpit_baustein_platzhalter.js" defer></script>
+<!-- Build 681 (Vorgang 7c1f2a94): das Rechenwerk zum Zurueckschreiben der
+     Platzhalter-Tabelle in block_data. STEHT VOR cockpit_modules.js, das es
+     ueber window.AIWBausteinPhSchreiben sucht, und braucht
+     placeholder_chips.js (mapBlockTexts, weiter oben). Fehlt diese Datei,
+     bleibt die Tabelle reine Anzeige und sagt das im Klartext - sie tut
+     nicht so, als koenne sie etwas aendern. -->
+<script src="/static/cockpit_baustein_ph_schreiben.js" defer></script>
 <!-- Build 656 (Ticket 8f2b64d9): Editor.js als Eingabe plus Rohmodus.
      STEHT VOR cockpit_modules.js (das sie ueber window.AIWBausteinEingabe
      sucht) und NACH cockpit_baustein_vorschau.js, dessen Werkzeugliste sie
