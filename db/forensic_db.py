@@ -1131,8 +1131,20 @@ class ForensicDb:
                         CAST(st.forum_id AS TEXT),
                         ''
                     ) || '%'
-            WHERE 1=1
         """
+        # ---------------------------------------------------------------------
+        # BUILD 677: Filterbedingungen werden GESAMMELT, nicht angehaengt.
+        #
+        # Grund: die Zaehlung (nur_zaehlen) braucht dieselben Bedingungen, aber
+        # NICHT dieselben Verbindungen (JOINs). Solange die Bedingungen direkt
+        # an die grosse Abfrage gehaengt wurden, liess sich das eine nicht ohne
+        # das andere haben - und die Zaehlung schleppte eine Verbindung mit,
+        # die sie nie braucht und die eine Minute kostet. Naeheres bei
+        # 'zaehl_sql' weiter unten.
+        # ---------------------------------------------------------------------
+        where_teile: list[str] = []
+        having_teile: list[str] = []
+
         params: dict = {
             "base_url": self.get_forum_base_url() or "",
             "limit":    limit,
@@ -1155,41 +1167,42 @@ class ForensicDb:
         # sondern der Zweck: wer einen Betreff eingibt, will alle Seiten
         # sehen, die so heissen.
         if q:
-            sql += (" AND (REPLACE(p.url_canonical, :base_url, '') LIKE :q_like"
-                    "      OR p.title LIKE :q_like)")
+            where_teile.append(
+                "(REPLACE(p.url_canonical, :base_url, '') LIKE :q_like"
+                " OR p.title LIKE :q_like)")
             params["q_like"] = f"%{q}%"
 
         # scrape_context-Filter
         if scrape_context_filter:
             placeholders = ", ".join(f":ctx_{i}" for i in range(len(scrape_context_filter)))
-            sql += f" AND p.scrape_context IN ({placeholders})"
+            where_teile.append(f"p.scrape_context IN ({placeholders})")
             for i, ctx in enumerate(scrape_context_filter):
                 params[f"ctx_{i}"] = ctx
 
         # fetch_failed-Filter (http_status != 200 gilt als fehlgeschlagen)
         if fetch_failed_only:
-            sql += " AND (p.html IS NULL OR p.http_status != 200)"
+            where_teile.append("(p.html IS NULL OR p.http_status != 200)")
 
         # Betrachtungszeitraum (viewed_from / viewed_to in Unix-ms)
         if viewed_from is not None:
-            sql += " AND MAX(pv.ts) * 1000 >= :viewed_from"
+            where_teile.append("MAX(pv.ts) * 1000 >= :viewed_from")
             params["viewed_from"] = viewed_from
         if viewed_to is not None:
-            sql += " AND MAX(pv.ts) * 1000 <= :viewed_to"
+            where_teile.append("MAX(pv.ts) * 1000 <= :viewed_to")
             params["viewed_to"] = viewed_to
 
-        sql += " GROUP BY p.id"
-
         # HAVING-Filter (nach Aggregation)
-        having_clauses = []
-
         if has_annotations is True:
-            having_clauses.append("ann_count > 0")
+            having_teile.append("ann_count > 0")
         elif has_annotations is False:
-            having_clauses.append("ann_count = 0")
+            having_teile.append("ann_count = 0")
 
-        if having_clauses:
-            sql += " HAVING " + " AND ".join(having_clauses)
+        # Bedingungen zusammensetzen - fuer die grosse Abfrage.
+        bedingungen = " WHERE " + " AND ".join(["1=1"] + where_teile)
+        gruppierung = " GROUP BY p.id"
+        nachbedingung = (" HAVING " + " AND ".join(having_teile)
+                         if having_teile else "")
+        sql += bedingungen + gruppierung + nachbedingung
 
         # Sortierung (Bauplan KN §8.2)
         sort_map = {
@@ -1219,7 +1232,56 @@ class ForensicDb:
         # HAVING) traegt: COUNT(*) darueber zaehlt Gruppen, nicht Zeilen.
         # ---------------------------------------------------------------------
         if nur_zaehlen:
-            zaehl_sql = "SELECT COUNT(*) FROM (" + sql + ")"
+            # -----------------------------------------------------------------
+            # BUILD 677 - DIE ZAEHLUNG LAESST WEG, WAS SIE NICHT BRAUCHT.
+            #
+            # GEMESSEN am 05.08.2026 in der VM: die Warnleiste brauchte bei
+            # einem grossen Fall (Administrator, >10.000 Beitraege, 800 MB)
+            # rund eine Minute fuer die Zahl. Alex sah sie erst nach der
+            # Rueckkehr aus einem anderen Fenster.
+            #
+            # DIE URSACHE liegt in der Verbindung zu fdb.scrape_targets. Sie
+            # verknuepft JEDE Seite mit JEDEM Erfassungsziel ueber ein LIKE
+            # ohne Anker: bei 6.500 Seiten und 19.000 Zielen sind das ueber
+            # 120 Millionen Zeichenkettenvergleiche - fuer EINE Zahl.
+            #
+            # SIE WIRD FUER DIE ZAEHLUNG NICHT GEBRAUCHT. Der Beleg ist
+            # nachlesbar und nicht bloss plausibel:
+            #   * Ein LEFT JOIN entfernt keine Zeile der linken Seite.
+            #   * Gruppiert wird nach p.id, gezaehlt werden also SEITEN.
+            #   * scrape_targets kommt in KEINER Bedingung vor - weder in
+            #     WHERE noch in HAVING. Es liefert allein 'trace_count', und
+            #     das braucht nur die Liste, nicht die Zahl.
+            # Dieselbe Ueberlegung gilt fuer annotations und page_visits: sie
+            # werden nur dann verbunden, wenn ein Filter sie wirklich
+            # anspricht.
+            #
+            # DASS BEIDE WEGE DASSELBE ERGEBEN, ist nicht nur argumentiert,
+            # sondern gemessen: Testfall SG04 vergleicht die Zahl mit der
+            # Laenge der Liste ueber mehrere Filterkombinationen, SG08 haelt
+            # ausdruecklich fest, dass die Zaehlabfrage scrape_targets nicht
+            # erwaehnt.
+            # -----------------------------------------------------------------
+            zaehl_von = ["fdb.pages p"]
+            zaehl_auswahl = ["p.id"]
+
+            # annotations nur, wenn ein HAVING sie anspricht.
+            if having_teile:
+                zaehl_von.append(
+                    "LEFT JOIN annotations a "
+                    "ON a.page_url = REPLACE(p.url_canonical, :base_url, '')")
+                zaehl_auswahl.append("COUNT(DISTINCT a.id) AS ann_count")
+
+            # page_visits nur, wenn der Betrachtungszeitraum gefiltert wird.
+            if viewed_from is not None or viewed_to is not None:
+                zaehl_von.append(
+                    "LEFT JOIN page_visits pv "
+                    "ON pv.page_url = REPLACE(p.url_canonical, :base_url, '')")
+
+            zaehl_innen = ("SELECT " + ", ".join(zaehl_auswahl)
+                           + " FROM " + " ".join(zaehl_von)
+                           + bedingungen + gruppierung + nachbedingung)
+            zaehl_sql = "SELECT COUNT(*) FROM (" + zaehl_innen + ")"
             try:
                 row = self._con.execute(zaehl_sql, params).fetchone()
             except Exception as exc:

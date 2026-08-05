@@ -7683,6 +7683,11 @@
 
       // Cache-Invalidierung → neu laden wenn Dropdown offen
       ForensicToolbar.events.on("navigator:cache_invalidated", function () {
+        // Build 677: Der Zaehlvorrat gilt nur fuer den Seitenstand, aus dem
+        // er stammt. Eine neue Annotation kann die Trefferzahl aendern - eine
+        // Zahl aus dem Vorrat waere dann still veraltet, und gerade bei
+        // dieser Leiste ist eine falsche Zahl schlimmer als keine.
+        _zaehlVorrat = {};
         if (_isOpen) {
           _showLoading();
           _loadAndRender();
@@ -7831,6 +7836,46 @@
     // laenger dauern.
     var _zaehlLauf = 0;
 
+    // Zaehlergebnisse je Suchbegriff. GEMESSEN am 05.08.2026: bei einem
+    // grossen Fall (Administrator, >10.000 Beitraege, 800 MB) brauchte die
+    // Zaehlung rund eine Minute. Wer einen Buchstaben loescht und wieder
+    // tippt, soll nicht noch einmal eine Minute warten. Der Vorrat gilt nur
+    // fuer den aktuellen Seitenstand und wird bei page:loaded geleert - die
+    // Trefferzahl kann sich mit neuen Annotationen aendern.
+    var _zaehlVorrat = {};
+
+    // Nach dieser Zeit ohne Antwort wird gesagt, DASS noch gesucht wird.
+    // 2000 ms nach Alex' Vorschlag vom 05.08.2026: kurz genug, dass niemand
+    // die Leiste fuer vergessen haelt, lang genug, dass sie bei normalen
+    // Faellen gar nicht erst erscheint.
+    var WARTEHINWEIS_MS = 2000;
+
+    /**
+     * _zeigeZahl — die fertige Zahl in die Leiste schreiben.
+     *
+     * Ausgelagert, weil sie an zwei Stellen gebraucht wird: nach der Antwort
+     * des Servers und beim Treffer aus dem Vorrat. Zwei Fassungen desselben
+     * Textes waeren binnen weniger Builds auseinandergelaufen.
+     */
+    function _zeigeZahl(gesamt, oertlicheTreffer, begriff, leiste, textEl, btn) {
+      if (gesamt <= oertlicheTreffer) {
+        // Nichts verborgen - dann auch keine Leiste. Ein Hinweis, der auch
+        // dann steht, wenn es nichts zu warnen gibt, wird nach zwei Tagen
+        // nicht mehr gelesen.
+        leiste.hidden = true;
+        return;
+      }
+      textEl.textContent = oertlicheTreffer + " von " + gesamt
+                         + " Treffern — hier werden nur die geladenen "
+                         + "Seiten durchsucht.";
+      btn.textContent = "Alle " + gesamt + " anzeigen";
+      btn.setAttribute("aria-label",
+        "Alle " + gesamt + " Treffer zu " + begriff
+        + " in der erweiterten Suche anzeigen");
+      leiste.hidden = false;
+      _dbg("[CtxDropdown] Warnleiste:", oertlicheTreffer, "von", gesamt);
+    }
+
     /**
      * _aktualisiereWarnleiste(oertlicheTreffer)
      *
@@ -7853,12 +7898,44 @@
       }
 
       var lauf = ++_zaehlLauf;
+
+      // Schon gezaehlt? Dann sofort anzeigen, ohne Netzverkehr.
+      if (Object.prototype.hasOwnProperty.call(_zaehlVorrat, begriff)) {
+        _zeigeZahl(_zaehlVorrat[begriff], oertlicheTreffer, begriff,
+                   leiste, textEl, btn);
+        return;
+      }
+
+      // Wartehinweis: erscheint NUR, wenn die Antwort auf sich warten laesst.
+      // Ohne ihn wirkt die Leiste bei grossen Faellen wie vergessen - Alex
+      // hat sie am 05.08.2026 erst nach der Rueckkehr aus einem anderen
+      // Fenster gesehen und hielt sie fuer unzuverlaessig. Sie war es nicht;
+      // sie war nur noch nicht fertig. Das ist ein Unterschied, den die
+      // Oberflaeche aussprechen muss.
+      var warteUhr = setTimeout(function () {
+        if (lauf !== _zaehlLauf) return;
+        textEl.textContent = "Es wird noch gezählt … bei sehr umfangreichen "
+                           + "Fällen dauert das eine Weile.";
+        btn.textContent = "In der erweiterten Suche öffnen";
+        btn.setAttribute("aria-label",
+          "Suche nach " + begriff + " in der erweiterten Suche öffnen");
+        leiste.hidden = false;
+        leiste.classList.add("forensic-ctx-warnleiste--wartet");
+      }, WARTEHINWEIS_MS);
+
+      function fertig() {
+        clearTimeout(warteUhr);
+        leiste.classList.remove("forensic-ctx-warnleiste--wartet");
+      }
+
       ajaxGet(ForensicToolbar.config.API_SEARCH
               + "?q=" + encodeURIComponent(begriff) + "&limit=1")
         .then(function (data) {
-          if (lauf !== _zaehlLauf) return;          // veraltete Antwort
+          if (lauf !== _zaehlLauf) { clearTimeout(warteUhr); return; }
+          fertig();
           var gesamt = (data && typeof data.total === "number")
                      ? data.total : -1;
+          if (gesamt >= 0) { _zaehlVorrat[begriff] = gesamt; }
 
           if (gesamt < 0) {
             // Die Zaehlung ist gescheitert. Dann wird das GESAGT und keine
@@ -7874,26 +7951,11 @@
             return;
           }
 
-          if (gesamt <= oertlicheTreffer) {
-            // Nichts verborgen - dann auch keine Leiste. Ein Hinweis, der
-            // auch dann steht, wenn es nichts zu warnen gibt, wird nach
-            // zwei Tagen nicht mehr gelesen.
-            leiste.hidden = true;
-            return;
-          }
-
-          textEl.textContent = oertlicheTreffer + " von " + gesamt
-                             + " Treffern — hier werden nur die geladenen "
-                             + "Seiten durchsucht.";
-          btn.textContent = "Alle " + gesamt + " anzeigen";
-          btn.setAttribute("aria-label",
-            "Alle " + gesamt + " Treffer zu " + begriff
-            + " in der erweiterten Suche anzeigen");
-          leiste.hidden = false;
-          _dbg("[CtxDropdown] Warnleiste:", oertlicheTreffer, "von", gesamt);
+          _zeigeZahl(gesamt, oertlicheTreffer, begriff, leiste, textEl, btn);
         })
         .catch(function (err) {
-          if (lauf !== _zaehlLauf) return;
+          if (lauf !== _zaehlLauf) { clearTimeout(warteUhr); return; }
+          fertig();
           // Auch ein Netzfehler wird benannt statt verschwiegen: der
           // Ermittler soll wissen, dass die 3 Treffer nicht das Ganze sind.
           _dbg("[CtxDropdown] Zaehlung fehlgeschlagen:", err);
