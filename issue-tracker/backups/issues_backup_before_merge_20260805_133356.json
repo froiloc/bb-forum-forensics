@@ -1275,14 +1275,11 @@
       "description": "Das Kontextsuchfenster bietet keine sinnvolle Unterstützung beim Arbeiten. Die Suche liefert zu wenige Ergebnisse. Während ich in der erweiterten Suche and das Maximum von 200 Ergebnissen komme, erhalte ich beim selben Suchbegriff in der Kontextsuche nur einen Treffer.",
       "expected_behavior": "Die Suche muss hier mehr Ergebnisse liefern. Wenigstens 20.",
       "actual_behavior": "Bei der Suche nach dem Begriff `viewtopic`, der Forenbeiträge anzeigen sollte, in denen der untersuchte Forennutzer Spuren hinterlassen hat, wird nur ein Treffer angezeigt.",
-      "status": "in_progress",
+      "status": "open",
       "priority": "high",
       "severity": "critical",
-      "assigned_to": "Claude",
-      "related_to": [
-        "1157e5f3-3975-4768-86c2-2ee42569d627",
-        "36dcdfd8-592c-483d-8c93-611c63fcff7c"
-      ],
+      "assigned_to": "",
+      "related_to": [],
       "resolved_in_version": null,
       "target_version": null,
       "environment": {
@@ -1303,22 +1300,6 @@
           "old_value": "",
           "new_value": "",
           "comment": "Issue erstellt"
-        },
-        {
-          "timestamp": "2026-08-05T11:42:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "URSACHE GEMESSEN am 2026-08-05 in der VM. Sie ist eindeutig und braucht keine weitere Messung.\n\nDER SUCHBEGRIFF ERREICHT DEN SERVER NIE. ContextNavigatorModule.getPages() (toolbar.js Z. 7303-7304) holt EINMALIG\n\n    /_forensic/search?limit=50&sort=last_viewed_desc\n\nalso OHNE q. Die Sucheingabe im Dropdown filtert dieses Ergebnis nur noch im Browser (Z. 7645-7648). Die erweiterte Suche dagegen sendet q= und limit=200 (Z. 4256, 4271 ff.) und trifft damit den Volldatenbestand.\n\nMESSWERTE fuer denselben Begriff 'viewtopic':\n  - Dropdown-Abfrage: 50 Seiten geliefert, davon 3 nach dem oertlichen Filter\n  - Serverabfrage q=viewtopic&limit=200: 200 Seiten (Grenze erreicht)\n  - Fehlbetrag: mindestens 197\n\nZWEITE VERENGUNG: Von den 50 gelieferten Seiten waren nur 19 ueberhaupt schon einmal betrachtet. sort=last_viewed_desc waehlt also ein Fenster nach Betrachtungszeit aus - eine Ordnung, die mit dem Suchbegriff nichts zu tun hat. Wonach gesucht wird, entscheidet damit nicht der Ermittler, sondern der Zufall der zuletzt geoeffneten Seiten.\n\nDER ENDPUNKT KANN, WAS GEBRAUCHT WIRD. forensic_api/search.py nimmt q entgegen und reicht es an search_pages() weiter (db/forensic_db.py Z. 1133-1135). Er wird nur nicht gefragt. Zu klaeren bleibt, ob q serverseitig auch auf den Titel wirken soll - derzeit filtert er ausschliesslich auf die URL, waehrend der oertliche Filter im Dropdown URL UND Titel durchsucht. Ein Wechsel auf die Serversuche wuerde die Titelsuche also stillschweigend verlieren, wenn das nicht mitbedacht wird.\n\nZWEI NEBENBEFUNDE aus derselben Messung sind als 1157e5f3 (traceCountTotal ist 0) und 36dcdfd8 (total ist nur die Zahl der gelieferten Zeilen) abgetrennt."
-        },
-        {
-          "timestamp": "2026-08-05T11:43:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "in_progress",
-          "comment": "Ursache belegt. Umsetzung offen; eine Entscheidung zur Titelsuche steht aus."
         }
       ]
     },
@@ -1333,14 +1314,11 @@
       "description": "Es gibt die Schaltflächen #forensic-btn-nav-prev und #forensic-btn-nav-next in der Toolbar. Allerdings scheinen diese funktionslos zu sein. Durch Anklicken wird keine andere Seite geöffnet, obwohl Spuren auf anderen Seiten verfügbar sind.",
       "expected_behavior": "Die aktuelle Seite verfügt innerhalb der Spuren um einen bestimmten Rang/Postion. Mit Verwendung von #forensic-btn-nav-prev sollte zur vorherigen Spur beinhaltenden Seite gewechselt werden und mit #forensic-btn-nav-next zur nächsten.",
       "actual_behavior": "Nix passiert.",
-      "status": "in_progress",
+      "status": "open",
       "priority": "high",
       "severity": "critical",
-      "assigned_to": "Claude",
-      "related_to": [
-        "2f1044b9-818d-49bb-9621-04fbf5208791",
-        "c290939f-1bfa-4da0-8a6b-b84e5a28db88"
-      ],
+      "assigned_to": "",
+      "related_to": [],
       "resolved_in_version": null,
       "target_version": null,
       "environment": {
@@ -1361,22 +1339,6 @@
           "old_value": "",
           "new_value": "",
           "comment": "Issue erstellt"
-        },
-        {
-          "timestamp": "2026-08-05T11:40:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "URSACHEN GEMESSEN am 2026-08-05 in der VM, auf /forum/viewtopic.php?id=120870&p=2 (drei Seiten, 40 Spuren). Es sind DREI voneinander unabhaengige Fehler, nicht einer.\n\n(1) DER WEITER-KNOPF IST DEAKTIVIERT, UND ZWAR AUF JEDER SEITE. _detectPagination() (toolbar.js Z. 2182) sucht ausschliesslich a[rel='next']. Die ausgelieferte Seite traegt aber nur am Zurueck-Verweis ein rel-Attribut:\n\n    <li class=\"previous\"><a href=\"viewtopic.php?id=120870\" rel=\"prev\">Vorherige</a></li>\n    <li class=\"next\">    <a href=\"viewtopic.php?id=120870&p=3\">N</a></li>\n\nGemessen: a[rel='next'] im ganzen Dokument 0-mal, a[rel='prev'] 2-mal. Damit ist nextBtn.disabled dauerhaft wahr (Z. 2191), und ein deaktivierter Knopf loest kein Klickereignis aus. Das liegt an der Vorlage des Forums, nicht an den Daten - es betrifft also alle Seiten.\n\n(2) DER ZURUECK-KNOPF WAR AKTIV UND UEBERGAB EINE UNBRAUCHBARE URL. _detectPagination() liest mit getAttribute('href') (Z. 2183) und erhaelt die unaufgeloeste Form. Beobachtet wurde die abgesetzte Abfrage:\n\n    /_forensic/page?url=viewtopic.php%3Fid%3D120870\n    -> in_scope: false, fetch_failed: true, http_status: 0, html: keines\n    -> Hinweisstreifen 'Diese Seite liegt nicht im Umfang der Ermittlungen'\n\nJeder andere Navigationsweg benutzt die Eigenschaft a.href und schneidet Protokoll und Rechnernamen ab (Z. 2103-2119), liefert also '/forum/viewtopic.php?id=120870'. Die Seitennavigation uebergibt als einzige die rohe Form. 'Nix passiert' war also ein Hinweisstreifen, der die eigentliche Ursache verdeckt.\n\n(3) DIE SPURENSEQUENZ KENNT DIE SEITE NICHT. traceSeqIndex war -1, obwohl die Seite 40 Spuren traegt. Abgetrennt als 2f1044b9 (Sequenz fuehrt je Thema nur eine Seite) und c290939f (Rang -1 wird wie ein gueltiger Rang weitergerechnet).\n\nENTSCHEIDUNG VON ALEX am 2026-08-05: Die Knoepfe sollen die SPURENTRAGENDEN SEITEN durchblaettern, nicht die Seitenzaehlung des Forums. Damit ist die Spurensequenz ihre Datengrundlage - und 2f1044b9 ist vor diesem Vorgang zu beheben. Auf einer Sequenz, die Seiten verschweigt, laesst sich dieser Vorgang nicht redlich schliessen."
-        },
-        {
-          "timestamp": "2026-08-05T11:41:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "in_progress",
-          "comment": "Ursachen gemessen und belegt; Umsetzung wartet auf die Behebung von 2f1044b9."
         }
       ]
     },
@@ -7337,253 +7299,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Build669.json"
-        }
-      ]
-    },
-    {
-      "id": "2f1044b9-818d-49bb-9621-04fbf5208791",
-      "type": "bug",
-      "title": "Spurensequenz enthaelt von mehrseitigen Themen nur eine einzige Seite",
-      "affected_version": "0.8.669",
-      "reporter": "Claude",
-      "reported_at": "2026-08-05T11:30:00+00:00",
-      "prerequisites": "Ein Thema mit mehr als einer Seite, auf dem der Beschuldigte Spuren hinterlassen hat.",
-      "description": "GEMESSEN am 2026-08-05 in der VM auf /forum/viewtopic.php?id=120870&p=2 (Vorgang 120870, drei Seiten, 40 Spuren auf Seite 2). Aufgefallen bei der Untersuchung von c658fc41.\n\nDER BEFUND: get_trace_sequence() (db/forensic_db.py, Schleife ab Z. 1339) sucht je Erfassungsziel GENAU EINE URL:\n\n    SELECT url FROM blob_lookup WHERE url LIKE ? LIMIT 1\n\nDas Muster ist '%viewtopic.php?id=<topic_id>%'. Ein LIMIT 1 OHNE ORDER BY liefert eine beliebige der passenden Zeilen. Fuer ein Thema mit drei erfassten Seiten gelangt damit hoechstens eine davon in die Sequenz - welche, entscheidet die Speicherreihenfolge.\n\nMESSWERTE (Probe 2, Teil D):\n  - Eintraege in traceSequence insgesamt: 6347\n  - davon mit Seitenteil (?p= / &p=): 0\n  - verschiedene Themen-IDs in der Gruppe 'topic': 1864\n  - davon mit mehr als einem Eintrag: 0\n  - Rang von '/forum/viewtopic.php?id=120870&p=2': -1 (nicht enthalten)\n  - Rang von '/forum/viewtopic.php?id=120870':   1501 (enthalten)\n\nKEIN EINZIGER der 6347 Eintraege traegt einen Seitenteil. Von jedem mehrseitigen Thema kennt die Sequenz also genau eine Seite.\n\nWARUM DAS SCHWER WIEGT: Die Spurennavigation ist der Weg, auf dem Ermittelnde die Spuren eines Beschuldigten der Reihe nach abarbeiten. Seiten, die nicht in der Sequenz stehen, werden dabei nicht angelaufen - ohne Meldung, ohne Luecke in der Zaehlung, ohne dass es jemandem auffiele. Das beruehrt Grundregel 1: kein Beleg darf still uebersprungen werden. Die gemessene Seite trug 40 Spuren.\n\nNOCH NICHT GEMESSEN: wie viele Seiten im Bestand insgesamt betroffen sind. Dafuer braucht es eine Auswertung von blob_lookup gegen scrape_targets in der VM. Diese Zahl gehoert vor der Behebung ermittelt, weil sie zugleich der Nachweis der Behebung ist.",
-      "expected_behavior": "Die Sequenz fuehrt JEDE erfasste Seite, die Spuren des Beschuldigten traegt - auch die zweite, dritte und jede weitere Seite eines Themas. Die Reihenfolge innerhalb eines Themas folgt der Seitennummer aufsteigend. Wird eine Seite bewusst ausgelassen, ist das zu benennen und zu begruenden, nicht stillzuschweigen.",
-      "actual_behavior": "0 von 6347 Sequenzeintraegen tragen einen Seitenteil. Je Thema steht genau ein Eintrag in der Sequenz; alle weiteren Seiten desselben Themas sind ueber die Spurennavigation nicht erreichbar.",
-      "status": "open",
-      "priority": "high",
-      "severity": "critical",
-      "assigned_to": "Claude",
-      "related_to": [
-        "c658fc41-b368-4b06-9142-5ff519b8d9c9"
-      ],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "os": "Windows (VM)",
-        "browser": "Chromium",
-        "python_version": "3.14",
-        "database": "forensic_<uid>.db"
-      },
-      "tags": [
-        "Spuren",
-        "Navigation",
-        "Vollstaendigkeit",
-        "Grundregel1"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-05T11:30:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Vorgang aus der Messung zu c658fc41 abgetrennt. Belege: Probe 2 Teil D2/D4 vom 2026-08-05."
-        },
-        {
-          "timestamp": "2026-08-05T11:33:56.373380+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build670.json"
-        }
-      ]
-    },
-    {
-      "id": "aa0d9033-91f2-4cb5-8cd0-2ff2e59ee215",
-      "type": "bug",
-      "title": "Spurensequenz: Gruppe 'profile' bleibt leer, Profil-URLs stehen in 'other'",
-      "affected_version": "0.8.669",
-      "reporter": "Claude",
-      "reported_at": "2026-08-05T11:32:00+00:00",
-      "prerequisites": "Ein Bestand, in dem zu einem Benutzer sowohl ein pgp_probe- als auch ein profile-Erfassungsziel vorliegt.",
-      "description": "GEMESSEN am 2026-08-05 in der VM (Probe 2, Teil D3).\n\nDER BEFUND: Die Sequenz enthaelt KEINEN EINZIGEN Eintrag der Gruppe 'profile'.\n\n  Verteilung: {pm: 1421, topic: 1864, other: 3062} - Summe 6347, 'profile' fehlt.\n  Zugleich steht '/forum/profile.php?id=1488' in der Gruppe 'other'.\n\nProfilseiten sind also vorhanden, nur unter der falschen Gruppe.\n\nDIE ERKLAERUNG LIEGT IN TYPE_MAP (db/forensic_db.py, Z. 1303-1317). Drei Eintraege bilden auf dasselbe URL-Fragment 'profile.php?id=' ab:\n\n    'profile':       ('profile', 'actor_user_id', 'profile.php?id=')\n    'other_profile': ('profile', 'actor_user_id', 'profile.php?id=')\n    'pgp_probe':     ('other',   'actor_user_id', 'profile.php?id=')\n\nDie Schleife laeuft ueber scrape_targets nach st.id ASC und fuehrt ein seen_urls-Set: eine URL, die einmal vergeben ist, wird spaeter uebersprungen. Kommt das pgp_probe-Ziel eines Benutzers vor dessen profile-Ziel, faellt die Profilseite in die Gruppe 'other' und ist fuer das profile-Ziel verbraucht.\n\nBELEGT ist damit: (a) die Gruppe ist leer, (b) Profil-URLs stehen in 'other', (c) im Code konkurrieren drei url_type-Werte um dasselbe Fragment, und wer zuerst kommt, bestimmt die Gruppe. NICHT BELEGT ist, dass ausschliesslich pgp_probe die Ursache ist - dafuer waere ein Blick in scrape_targets dieses Bestandes noetig (Zaehlung je url_type). Diese Gegenprobe gehoert vor die Behebung.\n\nAUSWIRKUNG: Die Gruppenreihenfolge (profile -> pm -> topic -> other) ist die Ordnung, in der Ermittelnde die Spuren abarbeiten. Steht die Profilseite eines Benutzers ganz hinten unter 'Sonstiges', wird sie zuletzt statt zuerst betrachtet. Zudem meldet die Navigation beim Gruppenwechsel eine Gruppe, die nicht zutrifft.",
-      "expected_behavior": "Profilseiten stehen in der Gruppe 'profile'. Konkurrieren mehrere url_type-Werte um dieselbe URL, entscheidet eine benannte Regel - nicht die Reihenfolge der Kennungen in scrape_targets.",
-      "actual_behavior": "Gruppe 'profile' enthaelt 0 Eintraege; Profil-URLs erscheinen in der Gruppe 'other'.",
-      "status": "open",
-      "priority": "medium",
-      "severity": "major",
-      "assigned_to": "Claude",
-      "related_to": [
-        "2f1044b9-818d-49bb-9621-04fbf5208791"
-      ],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "os": "Windows (VM)",
-        "browser": "Chromium",
-        "python_version": "3.14",
-        "database": "forensic_<uid>.db"
-      },
-      "tags": [
-        "Spuren",
-        "Navigation",
-        "Gruppierung"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-05T11:32:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Beleg: Probe 2 Teil D3 vom 2026-08-05. Gegenprobe in scrape_targets steht aus."
-        },
-        {
-          "timestamp": "2026-08-05T11:33:56.373402+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build670.json"
-        }
-      ]
-    },
-    {
-      "id": "c290939f-1bfa-4da0-8a6b-b84e5a28db88",
-      "type": "bug",
-      "title": "Spur-Navigation springt bei unbekannter Seite an den Anfang der Sequenz",
-      "affected_version": "0.8.669",
-      "reporter": "Claude",
-      "reported_at": "2026-08-05T11:34:00+00:00",
-      "prerequisites": "Eine Seite, die Spuren traegt, aber nicht in der Spurensequenz steht - etwa die zweite Seite eines Themas.",
-      "description": "GEMESSEN am 2026-08-05 in der VM auf /forum/viewtopic.php?id=120870&p=2.\n\nDER BEFUND: _seqIndexForUrl() (toolbar/toolbar.js Z. 5352) vergleicht zeichengenau mit === und liefert -1, wenn die Seite nicht in der Sequenz steht. _nextTargetForDirection() (Z. 5368) uebernimmt diese -1 ungeprueft:\n\n    var seqIdx = _state.traceSeqIndex;\n    if (seqIdx < 0) seqIdx = _seqIndexForUrl(_currentUrl());   // bleibt -1\n    ...\n    var nextSeq = seqIdx + 1;      // = 0\n    if (nextSeq < seq.length) { return { seqIdx: nextSeq, ... } }\n\nBei -1 wird aus 'naechste Seite' der Rang 0 - also der ERSTE Eintrag der gesamten Sequenz. Wer auf der letzten Spur einer nicht gefuehrten Seite weiterblaettert, landet nicht auf der Folgeseite, sondern am Anfang der Ermittlung. In der Gegenrichtung ergibt sich -2, die Bedingung faellt, und der Knopf bleibt deaktiviert.\n\nMESSWERTE (Probe 1 A4/A5, Probe 2 D1):\n  - traceSeqIndex: -1 (auf einer Seite mit 40 Spuren)\n  - Knopf 'Spur zurueck': deaktiviert\n  - Knopf 'Spur weiter':  aktiv - er wuerde an den Anfang springen\n\nDIE ZWEITE HAELFTE DES BEFUNDES: Der Vergleich koennte die Seite finden. Gemessen wurde, dass '/forum/viewtopic.php?id=120870' (also die URL ohne Seitenteil) den Rang 1501 traegt. Ein Rueckfall auf den Themen-Eintrag ist damit moeglich - er ist aber KEIN Ersatz fuer die Behebung von 2f1044b9, sondern nur eine Notbremse. Solange die Sequenz die Seite nicht kennt, kann keine Navigation sie ansteuern.\n\nZUSAMMENHANG: Solange 2f1044b9 offen ist, tritt dieser Fall bei JEDEM mehrseitigen Thema ein. Behoben werden muessen beide - der eine Fehler erzeugt den Zustand, der andere behandelt ihn falsch.",
-      "expected_behavior": "Ist der Rang der aktuellen Seite unbekannt, wird das benannt und nicht wie Rang -1 weitergerechnet. Ein Sprung an den Anfang der Sequenz darf nur erfolgen, wenn er gemeint ist.",
-      "actual_behavior": "Bei unbekanntem Rang liefert die Vorwaertsnavigation den Eintrag 0 - einen Sprung an den Anfang der gesamten Sequenz. Die Rueckwaertsnavigation bleibt wortlos deaktiviert.",
-      "status": "open",
-      "priority": "high",
-      "severity": "major",
-      "assigned_to": "Claude",
-      "related_to": [
-        "2f1044b9-818d-49bb-9621-04fbf5208791",
-        "c658fc41-b368-4b06-9142-5ff519b8d9c9"
-      ],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "os": "Windows (VM)",
-        "browser": "Chromium",
-        "python_version": "3.14",
-        "database": "forensic_<uid>.db"
-      },
-      "tags": [
-        "Spuren",
-        "Navigation",
-        "Toolbar"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-05T11:34:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Belege: Probe 1 Teil A4/A5, Probe 2 Teil D1 vom 2026-08-05."
-        },
-        {
-          "timestamp": "2026-08-05T11:33:56.373409+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build670.json"
-        }
-      ]
-    },
-    {
-      "id": "1157e5f3-3975-4768-86c2-2ee42569d627",
-      "type": "bug",
-      "title": "Suchergebnisse weisen traceCountTotal 0 aus, obwohl Spuren vorhanden sind",
-      "affected_version": "0.8.669",
-      "reporter": "Claude",
-      "reported_at": "2026-08-05T11:36:00+00:00",
-      "prerequisites": "Eine erfasste Seite, die nachweislich Spuren des Beschuldigten traegt.",
-      "description": "GEMESSEN am 2026-08-05 in der VM (Probe 1, Teil B1).\n\nDER BEFUND: /_forensic/search lieferte fuer '/forum/viewtopic.php?id=120870&p=2' den Wert traceCountTotal: 0. Dieselbe Seite weist in der Toolbar 40 Spuren aus (Sektion 'Spur': '/ 40'). Auch die beiden anderen gemessenen Treffer standen auf 0.\n\nDIE STELLE: search_pages() (db/forensic_db.py Z. 1109-1123) verbindet fdb.scrape_targets ueber eine LIKE-Bedingung, die die Seiten-URL gegen die zusammengesetzte ID des Erfassungsziels haelt:\n\n    AND REPLACE(p.url_canonical, :base_url, '') LIKE\n        '%' || COALESCE(CAST(st.topic_id AS TEXT), ...) || '%'\n\nGezaehlt wird daraus COUNT(DISTINCT st.id). Warum das Ergebnis 0 bleibt, ist noch nicht gemessen - die Verbindungsbedingung ist der naechstliegende Verdacht, aber es koennte ebenso an der Basis-URL-Ersetzung liegen. Der Wert selbst ist belegt, die Ursache nicht.\n\nWARUM DAS ZAEHLT: Die Spurenzahl ist in der Seitenuebersicht und in der erweiterten Suche eine der Groessen, nach denen Ermittelnde entscheiden, welche Seite sie sich als naechste vornehmen - sie ist sogar als Sortierung waehlbar ('traces_desc'). Steht dort ueberall 0, ist die Sortierung wirkungslos und die Anzeige irrefuehrend. Sie sagt nicht 'unbekannt', sie sagt 'keine'.",
-      "expected_behavior": "traceCountTotal weist die Zahl der Spuren aus, die auf der Seite tatsaechlich vorliegen. Laesst sie sich nicht ermitteln, wird das als 'unbekannt' dargestellt und nicht als 0.",
-      "actual_behavior": "traceCountTotal ist 0 - gemessen an drei Treffern, darunter eine Seite mit 40 Spuren.",
-      "status": "open",
-      "priority": "medium",
-      "severity": "major",
-      "assigned_to": "Claude",
-      "related_to": [
-        "d76c412d-3322-40fa-b9c9-d2661f754350"
-      ],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "os": "Windows (VM)",
-        "browser": "Chromium",
-        "python_version": "3.14",
-        "database": "forensic_<uid>.db"
-      },
-      "tags": [
-        "Suche",
-        "Spuren",
-        "Anzeige"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-05T11:36:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Beleg: Probe 1 Teil B1 vom 2026-08-05. Ursache noch nicht gemessen."
-        },
-        {
-          "timestamp": "2026-08-05T11:33:56.373414+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build670.json"
-        }
-      ]
-    },
-    {
-      "id": "36dcdfd8-592c-483d-8c93-611c63fcff7c",
-      "type": "improvement",
-      "title": "Suchendpunkt: 'total' ist nur die Zahl der gelieferten Zeilen",
-      "affected_version": "0.8.669",
-      "reporter": "Claude",
-      "reported_at": "2026-08-05T11:38:00+00:00",
-      "prerequisites": "Eine Suche, die mehr Treffer hat als das gesetzte Limit.",
-      "description": "GEMESSEN am 2026-08-05 in der VM (Probe 1, Teil B2).\n\nDER BEFUND: /_forensic/search?q=viewtopic&limit=200 antwortete mit 200 Seiten und total: 200. In forensic_api/search.py (Z. 216) wird total als len(pages) gebildet - also aus der Zahl der GELIEFERTEN Zeilen, nicht aus der Zahl der vorhandenen Treffer. Bei limit=50 (der Weg des Kontext-Dropdowns) wurde entsprechend total: 50 gemeldet.\n\nDamit ist 'die Grenze ist erreicht' von 'es sind genau so viele' nicht zu unterscheiden. Wer 200 liest, haelt das fuer die Trefferzahl.\n\nWARUM DAS IN DIESEM VORHABEN MEHR ALS EIN SCHOENHEITSFEHLER IST: Der Bericht stuetzt sich auf Zahlen, die die Oberflaeche ausweist. Eine Trefferzahl, die in Wahrheit eine Grenze ist, kann in eine Ermittlungsakte geraten und dort nicht mehr als solche erkennbar sein. Solange sie nicht ermittelt wird, ist es ehrlicher, sie nicht auszuweisen, als sie zu raten.",
-      "expected_behavior": "Die Antwort weist die Zahl der Treffer VOR der Begrenzung aus (eigene COUNT-Abfrage) und daneben, ob die Begrenzung gegriffen hat. Alternativ wird das Feld weggelassen, statt eine Zahl zu fuehren, die etwas anderes bedeutet als ihr Name sagt.",
-      "actual_behavior": "total ist gleich der Zahl der gelieferten Zeilen: bei limit=200 gemessen 200, bei limit=50 gemessen 50.",
-      "status": "open",
-      "priority": "low",
-      "severity": "minor",
-      "assigned_to": "Claude",
-      "related_to": [
-        "d76c412d-3322-40fa-b9c9-d2661f754350"
-      ],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "os": "Windows (VM)",
-        "browser": "Chromium",
-        "python_version": "3.14",
-        "database": "forensic_<uid>.db"
-      },
-      "tags": [
-        "Suche",
-        "Anzeige",
-        "Bericht"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-05T11:38:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Beleg: Probe 1 Teil B1/B2 vom 2026-08-05."
-        },
-        {
-          "timestamp": "2026-08-05T11:33:56.373418+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build670.json"
         }
       ]
     }
