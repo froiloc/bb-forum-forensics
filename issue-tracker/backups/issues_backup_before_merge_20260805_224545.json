@@ -3244,12 +3244,12 @@
       "description": "Befund aus der Ausarbeitung der CLI-Hilfe (Baustelle H, H18, Build 614).\n\nDER BEFUND: Das Werkzeug legt zur Vermessung der Journalmodi eine VOLLKOPIE der gewaehlten evidence_<uid>.db neben dem Original an - und zwar siebenmal nacheinander, einmal je Testfall (Z. 217-228). Auf jede Kopie wird anschliessend chmod 0o666 angewandt (Z. 229), also Lese- UND Schreibrecht fuer ALLE.\n\nWAS DAS BEDEUTET: Waehrend des Laufs liegt im evidence-Verzeichnis eine vollstaendige, fuer jeden Benutzer des Systems les- und beschreibbare Kopie eines BEWEISMITTELS. Auf einem geteilten Netzlaufwerk - und genau dafuer ist dieses Werkzeug gebaut - ist das nicht auf die aufrufende Person beschraenkt.\n\nDAS AUFRAEUMEN IST VORGESEHEN und funktioniert: vor jedem Testfall (Z. 220-226) und am Ende (Z. 236-242). Nachgestellt am 2026-07-31 gegen einen Wegwerf-Bestand - nach dem Lauf lagen keine _probe2_-Dateien mehr da. ABER: Bei einem harten Abbruch (Stromausfall, Prozessabschuss, Netzabbruch) bleibt die Kopie liegen. Erschwerend kommt hinzu, dass tools/diag_sqlite_netdrive.py beim Bestandsdurchgang nur Namen mit dem Praefix '_probe_' ausschliesst (dort Z. 264), nicht '_probe2_' - eine liegengebliebene Kopie wird vom Schwesterwerkzeug also wie eine regulaere Datenbank behandelt und mitvermessen.\n\nDAS WERKZEUG IST WEITER NOETIG. Es beantwortet eine Frage, die sich nur auf dem echten Share beantworten laesst (mmap-Fehler 8714 auf UNC-Pfaden). Es geht nicht darum, es abzuschaffen, sondern darum, die Kopie so anzulegen, wie man mit Beweismitteln umgeht.\n\nNICHT GEPRUEFT: das Verhalten von chmod unter Windows/NTFS. Dort wirken die POSIX-Bits anders; ob die Kopie auf dem Share tatsaechlich fuer alle beschreibbar wird, ist damit offen und waere vor einer Bewertung der Dringlichkeit zu messen.",
       "expected_behavior": "Die Kopie entsteht mit restriktiven Rechten (nur fuer die aufrufende Person) statt 0666 - das chmod ist zu pruefen und vermutlich ersatzlos zu streichen, da shutil.copy2 die Rechte des Originals uebernimmt. Zusaetzlich: das Praefix '_probe2_' in die Ausschlussliste von diag_sqlite_netdrive.py aufnehmen, damit eine liegengebliebene Kopie nicht als regulaere Datenbank mitvermessen wird. Wuenschenswert waere zudem, die Kopie in einem eigenen Unterverzeichnis anzulegen, damit ein Rest erkennbar bleibt.",
       "actual_behavior": "Sieben Vollkopien nacheinander im evidence-Verzeichnis, je mit chmod 0o666.",
-      "status": "resolved",
+      "status": "open",
       "priority": "high",
       "severity": "major",
-      "assigned_to": "Claude",
+      "assigned_to": "",
       "related_to": [],
-      "resolved_in_version": "0.8.682",
+      "resolved_in_version": null,
       "target_version": null,
       "environment": {
         "python_version": "3.14"
@@ -3276,22 +3276,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eingang_claude_Build614.json"
-        },
-        {
-          "timestamp": "2026-07-31T22:01:19+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "BEHOBEN IN BUILD 682 - in drei Punkten, und einer davon anders, als der Vorgang vorschlug.\n\n(1) 0o600 STATT 0o666 - NICHT ersatzlos gestrichen. Der Vorgang schlug vor, das chmod ganz wegzulassen, weil shutil.copy2 die Rechte des Originals uebernehme. Nachgesehen und gemessen: copy2 uebernimmt sie tatsaechlich (Original 0444 -> Kopie 0444). GENAU DAS ist aber das Problem, nicht die Loesung: das Werkzeug misst ausdruecklich mit, ob das Original schreibgeschuetzt ist, und die Testmatrix muss auf die Kopie SCHREIBEN. Bei einem schreibgeschuetzten Original fiele die halbe Messung aus - mit einem Fehlerbild, das wie ein Befund des Netzlaufwerks aussieht. Das waere die schlechteste Art zu scheitern: falsch und plausibel zugleich. 0o600 loest beides - schreibbar, aber nur fuer die aufrufende Person.\n\n(2) DIE KOPIE LIEGT IN EINEM EIGENEN UNTERVERZEICHNIS '_probe2_<pid>', nicht mehr zwischen den echten Datenbanken. Das Aufraeumen funktionierte schon vorher und ist erneut gemessen (kein Rest nach dem Lauf) - aber bei einem harten Abbruch bleibt die Kopie liegen, und dann sah sie bisher aus wie Bestand. Ein Rest in einem eigens benannten Verzeichnis ist als Rest ERKENNBAR. Der naechste Lauf benennt gefundene Reste beim Start und loescht sie AUSDRUECKLICH NICHT: eine vollstaendige Kopie eines Beweismittels raeumt man nicht nebenbei weg, ohne dass jemand davon weiss.\n\n(3) DAS SCHWESTERWERKZEUG UEBERGEHT DIE RESTE - und sagt es. diag_sqlite_netdrive.py schloss bisher nur Dateinamen mit dem Praefix '_probe_' aus; '_probe2_...' beginnt damit nicht (Unterstrich!). Seit dem Umzug ins Unterverzeichnis haette ein Ausschluss ueber den Dateinamen ohnehin nicht mehr gegriffen, weil rglob() hineinsteigt. Ausgeschlossen wird jetzt jeder PFADTEIL, der mit '_probe' beginnt - und die uebergangenen Dateien werden benannt, statt stillschweigend zu fehlen.\n\nDIE OFFENE FRAGE AUS DEM VORGANG IST BEANTWORTET. 'NICHT GEPRUEFT: das Verhalten von chmod unter Windows/NTFS' - os.chmod setzt dort ausschliesslich das Schreibschutz-Merkmal, alle uebrigen Bits werden ignoriert (Python-Dokumentation zu os.chmod). Auf NTFS bewirkten 0666 und 0600 also DASSELBE, naemlich nur, dass die Datei beschreibbar ist; die Rechte der Kopie ergeben sich aus der Vererbung des Zielverzeichnisses. DER BEFUND WOG AUF DER PRODUKTIONS-VM damit LEICHTER als befuerchtet - auf einem POSIX-System war er real. Was auf beiden Systemen bleibt und was diese Behebung angeht, ist der liegengebliebene Rest.\n\nRegression: PK01 bis PK06. PK01 liest den SYNTAXBAUM statt den Text - die erste Fassung des Falls schlug an, weil 'chmod(0o666)' im Kommentar steht. Ein Waechter, der Kommentare mitliest, zwingt dazu, die Begruendung aus dem Code zu entfernen, um ihn gruen zu bekommen.\n\nKatalogeintrag und Warnhinweise sind nachgezogen."
-        },
-        {
-          "timestamp": "2026-07-31T22:03:19+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "Rechte eingeschraenkt, Kopie in eigenem Verzeichnis, Reste benannt und uebergangen."
         }
       ]
     },
