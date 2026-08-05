@@ -7443,14 +7443,6 @@
           "old_value": "",
           "new_value": "",
           "comment": "ZWEITE BERICHTIGUNG DERSELBEN ZAHL - gemessen am 05.08.2026 mit dem nach page_id zaehlenden Werkzeug aus Build 672.\n\n  Build 671 meldete : 73.796  (URLs gezaehlt - falsch)\n  ich schaetzte dann:  2.049  (URL-Arithmetik auf dem alten Befund - ebenfalls falsch)\n  GEMESSEN sind es  :    185  SEITEN\n\nAuch meine Schaetzung von 2.049 war eine URL-Rechnung: ich hatte nur die Pfadvariante '/forum/beginner/' zusammengelegt und uebersehen, dass eine Seite noch viele weitere Adressen traegt - im Bestand rund 23 URLs je Seite. Nur die page_id legt sie zuverlaessig zusammen.\n\nDIE 185 UEBERGANGENEN SEITEN:\n  107  Benachrichtigungsseiten (notifications.php?filter=N und ?id=N)\n   62  Folgeseiten von Themen (viewtopic.php?id=N&p=N) - AUSNAHMSLOS alle 62 sind Folgeseiten\n   16  Folgeseiten von Unterforen (viewforum.php?id=N&p=N)\nVon 6.531 erreichbaren Seiten sind das 2,8 Prozent.\n\nGEGENPROBE AM EINZELFALL: die Seiten, auf denen die Fehlersuche zu c658fc41 stattfand, stehen namentlich in der Luecke - /forum/viewtopic.php?id=120870&p=2 und &p=3 sowie /forum/viewtopic.php?id=24984&p=2; die zugehoerigen Basisseiten stehen in der Sequenz. Die Seite mit den 40 gemessenen Spuren ist also tatsaechlich eine der uebergangenen.\n\nBEWERTUNG: der Befund ist erheblich kleiner als zweimal gemeldet, aber er ist echt und trifft genau die Seiten, auf denen Spuren liegen. Grundregel 1 bleibt beruehrt - nicht wegen der Menge, sondern wegen des Inhalts. Die Sequenz enthaelt weiterhin NULL Eintraege mit Seitenteil."
-        },
-        {
-          "timestamp": "2026-08-05T14:03:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "ZURUECKGENOMMEN: die Abweichung 6346 gegen 6347 war KEIN Beleg fuer die unzugesicherte Reihenfolge von 'LIMIT 1'. Sie war ein Modellfehler meines Messwerkzeugs: ein Erfassungsziel mit ID-Spalte, deren Wert NULL ist, faellt im Produktivcode auf das blosse Fragment zurueck; mein Nachbau suchte nach '<fragment>None'. Berichtigt in Build 675 (Testfall SL07); die Zahl sollte jetzt mit dem Server uebereinstimmen.\n\nIch hatte damit eine EIGENE Abweichung mit einer FREMDEN Ursache erklaert - und die fremde Ursache klang plausibel genug, dass sie zwei Builds lang unwidersprochen im Bericht des Werkzeugs stand. Der Hinweis auf die Teilzeichenketten-Suche und die daraus folgende Obergrenze bleibt bestehen; er ist unabhaengig davon belegt.\n\nDie gemessene Luecke von 185 Seiten ist von der Berichtigung NICHT betroffen: sie beruht auf den Treffern der Ziele mit belegter Kennung."
         }
       ]
     },
@@ -7732,12 +7724,12 @@
       "reporter": "Claude",
       "reported_at": "2026-08-05T14:05:00+00:00",
       "prerequisites": "Ein Bestand mit Erfassungszielen der Typen profile, other_profile oder pgp_probe.",
-      "description": "UMGEHAENGT AM 05.08.2026: Dieser Vorgang gehoert in die ERFASSUNG (Prepper), nicht in den Webserver. Die urspruengliche Fassung vermutete einen Fehler der Spurennavigation. Gemessen wurde etwas anderes und Schwereres.\n\nDIE MESSUNG (forensic_1488.db, 05.08.2026):\n  Profilseiten in pages         :   12\n  Profilseiten in page_aliases  :   13\n  Profil-Erfassungsziele        : 1000  (other_profile 982, profile 17, pgp_probe 1)\n\nALLE ZWOELF Seiten gehoeren DEMSELBEN Benutzer - dem Beschuldigten selbst (id=1488), in verschiedenen Unterseiten: Uebersicht, Abzeichen, Bilder, Einstellungen, Sprache, PGP, Grunddaten, Ignorierliste, Persoenliches, Persoenlichkeit, Privatsphaere. Die Profilseiten der 982 anderen Benutzer, mit denen der Beschuldigte zu tun hatte, FEHLEN VOLLSTAENDIG.\n\nWARUM DAS SCHWER WIEGT: Die Profilseite ist die Seitenart, die fuer die Zuordnung eines Kontos zu einer natuerlichen Person am meisten hergibt - Registrierungsdatum, Signatur, Kontaktangaben, Selbstbeschreibung, PGP-Schluessel. Sie fehlt also genau dort, wo ermittelt wird. Und sie fehlt nicht fuer den Beschuldigten, sondern fuer seine Gegenueber - die Personen, die als naechste in den Blick geraten.\n\nDAS IST KEINE LUECKE DER NAVIGATION. Die Belege sind nicht da. Ob die Faelle deshalb neu erfasst werden muessen, ist eine Frage an die Erfassung; ob eine Nacherfassung ueberhaupt moeglich ist, eine an die Sachlage - das Forum ist beschlagnahmt.\n\nWERKZEUG DAZU (Build 675): tools/pruefe_profilerfassung.py geht alle 'forensic_*.db' eines Verzeichnisses durch, stellt je Fall Ziele und vorhandene Profilseiten gegenueber und nennt am Ende subject_id und Benutzername der betroffenen Faelle - zum Neuerfassen. Nur lesend, 'mode=ro'.\n\nERLEDIGT: die frueher hier vermerkte Abweichung ('der Server fuehrt /forum/profile.php?id=1488 in der Sequenz, mein Werkzeug findet die URL nicht') ist geklaert und war ein Fehler MEINES Werkzeugs. Das einzige 'pgp_probe'-Ziel (st.id 1091) traegt actor_user_id NULL. get_trace_sequence() verzweigt auf den WERT, nicht auf die Spalte, und sucht bei NULL das BLOSSE Fragment '%profile.php?id=%' - trifft damit die erste Profilseite und nimmt sie in die Gruppe 'other'. Mein Nachbau suchte statt dessen nach 'profile.php?id=None'. Das erklaert zugleich die Abweichung 6346 gegen 6347 vollstaendig; meine damalige Deutung ('Beleg fuer die unzugesicherte Reihenfolge von LIMIT 1') ist widerlegt und zurueckgenommen. Berichtigt in Build 675, Testfall SL07.",
-      "expected_behavior": "Zu jedem Profil-Erfassungsziel liegt die Profilseite im Bestand - oder das Fehlen ist benannt, gezaehlt und im Bericht sichtbar. Ein Erfassungsziel ohne Beleg ist die Aussage 'hier war eine Spur, und der Beleg dazu fehlt'; die gehoert in die Akte, nicht in ein 'continue'.",
-      "actual_behavior": "982 Profilseiten fremder Benutzer fehlen; vorhanden sind ausschliesslich die 12 Unterseiten des Beschuldigten selbst.",
+      "description": "GEMESSEN am 05.08.2026 in der VM gegen forensic_1488.db mit tools/diag_spurensequenz_luecken.py.\n\nDER BEFUND: 1.000 Erfassungsziele finden im Bestand KEINE passende Seite:\n  other_profile  982\n  profile         17\n  pgp_probe        1\n\nDas sind alle Ziele, die auf das URL-Fragment 'profile.php?id=' abbilden. Die Spurensequenz enthaelt entsprechend NULL Eintraege der Gruppe 'profile'.\n\nget_trace_sequence() uebergeht diese Ziele stillschweigend ('if not bl_row: continue', db/forensic_db.py). Es gibt weder eine Meldung noch eine Zaehlung - die Gruppe fehlt einfach.\n\nZWEI ERKLAERUNGEN SIND MOEGLICH, und sie fuehren zu voellig verschiedenen Massnahmen:\n  (A) DIE SEITEN FEHLEN. Profilseiten wurden nie erfasst oder nicht gespeichert. Dann ist das       kein Fehler der Navigation, sondern eine Luecke in der Erfassung - und zwar bei genau       der Seitenart, die fuer die Zuordnung eines Kontos zu einer natuerlichen Person am       meisten hergibt.\n  (B) DIE SEITEN LIEGEN UNTER EINER ANDEREN ADRESSE. Dann ist das Fragment       'profile.php?id=' im TYPE_MAP falsch, und die Ziele muessten anders gesucht werden.\n\nDAZU EINE ABWEICHUNG, die zu (B) passen wuerde: der laufende Server fuehrte am 05.08.2026 '/forum/profile.php?id=1488' in der Spurensequenz, Gruppe 'other'. Meine Nachbildung findet diese URL in pages und page_aliases nicht. Da meine URL-Menge eine OBERMENGE der Sicht blob_lookup ist (ich lese page_aliases ohne den JOIN auf pages), duerfte das nicht vorkommen. Einer der beiden Befunde ist falsch, und ich kann von hier aus nicht sagen, welcher.\n\nDIE KLAERUNG KOSTET DREI ABFRAGEN in der VM gegen forensic_1488.db:\n  SELECT COUNT(*) FROM pages WHERE url_canonical LIKE '%profile.php%';\n  SELECT COUNT(*) FROM page_aliases WHERE url_raw LIKE '%profile.php%';\n  SELECT url_type, COUNT(*) FROM scrape_targets\n   WHERE url_type IN ('profile','other_profile','pgp_probe') GROUP BY url_type;\n\nStehen die ersten beiden auf 0, gilt (A) - und dann gehoert der Vorgang in die Erfassung, nicht in den Webserver.",
+      "expected_behavior": "Entweder es gibt Profilseiten und die Navigation findet sie, oder es gibt keine und das wird BENANNT. Ein Erfassungsziel ohne Seite darf nicht stillschweigend entfallen: es ist die Aussage 'hier war eine Spur, und der Beleg dazu fehlt' - und genau die gehoert in den Bericht, nicht in ein 'continue'.",
+      "actual_behavior": "1.000 Ziele ohne Seite, Gruppe 'profile' leer, keine Meldung.",
       "status": "open",
-      "priority": "critical",
-      "severity": "critical",
+      "priority": "high",
+      "severity": "major",
       "assigned_to": "Claude",
       "related_to": [
         "aa0d9033-91f2-4cb5-8cd0-2ff2e59ee215",
@@ -7751,8 +7743,8 @@
         "database": "forensic_1488.db"
       },
       "tags": [
+        "Spuren",
         "Erfassung",
-        "Prepper",
         "Profil",
         "Grundregel1"
       ],
@@ -7779,22 +7771,6 @@
           "old_value": "",
           "new_value": "",
           "comment": "Der Lauf mit dem berichtigten Werkzeug (Build 672) bestaetigt den Befund unveraendert: 1.000 Erfassungsziele ohne jede passende Seite (other_profile 982, profile 17, pgp_probe 1), Gruppe 'profile' leer, 0 Profilseiten in der Gruppe 'other'. Die Berichtigung der Zaehlweise hat daran nichts geaendert - der Befund haengt nicht an ihr. Die drei SQL-Abfragen zur Klaerung stehen weiter aus."
-        },
-        {
-          "timestamp": "2026-08-05T14:07:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Beschreibung nach den drei SQL-Abfragen vom 05.08.2026 neu gefasst und auf die Erfassung umgehaengt. Schweregrad auf 'critical' angehoben: es fehlen nicht Navigationswege, sondern Beweismittel - und zwar bei der Seitenart mit dem hoechsten Ermittlungswert. Werkzeug tools/pruefe_profilerfassung.py liegt bei, damit der gesamte Bestand geprueft werden kann."
-        },
-        {
-          "timestamp": "2026-08-05T14:09:00+00:00",
-          "author": "Claude",
-          "action": "priority_change",
-          "old_value": "high",
-          "new_value": "critical",
-          "comment": "Fehlende Belege bei der aussagekraeftigsten Seitenart."
         }
       ]
     }
