@@ -208,13 +208,65 @@ class SearchEndpoint:
             )
             return
 
+        # ------------------------------------------------------------------
+        # BUILD 676 (Vorgang 36dcdfd8): 'total' ist jetzt die WAHRE Zahl.
+        #
+        # Bis Build 675 stand hier len(pages) - also die Zahl der gelieferten
+        # Zeilen. Bei limit=200 meldete der Endpunkt 'total: 200', und ob das
+        # die Trefferzahl war oder die erreichte Grenze, war nicht zu
+        # unterscheiden. Wer 200 liest, haelt es fuer die Trefferzahl.
+        #
+        # DREI FELDER STATT EINEM, damit jede Frage eine eigene Antwort hat:
+        #   total     - Treffer VOR der Begrenzung. -1 heisst 'nicht
+        #               ermittelbar' und ist NICHT dasselbe wie 0.
+        #   geliefert - wie viele Zeilen in dieser Antwort stehen.
+        #   begrenzt  - hat die Grenze gegriffen? Genau die Frage, die der
+        #               alte Wert offenliess.
+        #
+        # 'total' behaelt seinen Namen: die Oberflaeche liest ihn bereits, und
+        # er bedeutet ab jetzt das, was er immer behauptet hat.
+        # ------------------------------------------------------------------
+        try:
+            gesamt = self._bundle.forensic.search_pages(
+                limit=limit,
+                offset=offset,
+                sort=sort,
+                q=q,
+                scrape_context_filter=scrape_context_filter,
+                fetch_failed_only=fetch_failed_only,
+                has_annotations=has_annotations,
+                progress_filter=progress_filter,
+                progress_threshold=progress_threshold,
+                progress_direction=progress_direction,
+                viewed_from=viewed_from,
+                viewed_to=viewed_to,
+                tags_filter=tags_filter,
+                categories_filter=categories_filter,
+                nur_zaehlen=True,
+            )
+        except Exception as exc:
+            # Eine gescheiterte ZAEHLUNG darf die Ergebnisliste nicht
+            # verhindern - die Seiten stehen ja schon fest. Sie wird als
+            # 'unbekannt' ausgewiesen, nicht als 0.
+            logger.error("SearchEndpoint: Zaehlung fehlgeschlagen: %s", exc)
+            gesamt = -1
+
+        begrenzt = (gesamt > len(pages)) if gesamt >= 0 else None
+
         logger.debug(
-            "/_forensic/search: sort=%s q='%s' → %d Seiten",
+            "/_forensic/search: sort=%s q='%s' → %d von %s Seiten",
             sort, q, len(pages),
+            "unbekannt" if gesamt < 0 else gesamt,
         )
 
         body_out = json.dumps(
-            {"pages": pages, "total": len(pages), "status": "ok"},
+            {
+                "pages":     pages,
+                "total":     gesamt,
+                "geliefert": len(pages),
+                "begrenzt":  begrenzt,
+                "status":    "ok",
+            },
             ensure_ascii=False,
         ).encode("utf-8")
         handler.send_response_body(

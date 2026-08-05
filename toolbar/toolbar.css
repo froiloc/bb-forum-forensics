@@ -1253,6 +1253,52 @@ body {
   flex-wrap: wrap;
 }
 
+/* ---------------------------------------------------------------------------
+ * Warnleiste im Kontext-Dropdown (Build 676, Vorgang d76c412d)
+ *
+ * Sie sagt, dass hier nur die geladenen Seiten durchsucht werden, und nennt
+ * die wahre Trefferzahl. Farblich gedaempft warnend (Bernstein), NICHT rot:
+ * rot ist im Werkzeug fuer Fehler belegt, und hier ist nichts kaputt - es ist
+ * nur nicht alles zu sehen. Wer eine Beschraenkung wie einen Fehler anmalt,
+ * stumpft die Warnfarbe ab, die fuer echte Fehler gebraucht wird.
+ * ------------------------------------------------------------------------- */
+.forensic-ctx-warnleiste {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(245, 200, 66, 0.10);
+  border-bottom: 1px solid rgba(245, 200, 66, 0.28);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.forensic-ctx-warnleiste[hidden] { display: none; }
+
+.forensic-ctx-warntext {
+  color: #d8c07a;
+  flex: 1 1 auto;
+}
+
+.forensic-ctx-alle-btn {
+  flex: 0 0 auto;
+  background: rgba(245, 200, 66, 0.16);
+  border: 1px solid rgba(245, 200, 66, 0.45);
+  border-radius: 3px;
+  color: #f5c842;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.forensic-ctx-alle-btn:hover,
+.forensic-ctx-alle-btn:focus {
+  background: rgba(245, 200, 66, 0.28);
+  outline: none;
+}
+
 .forensic-ctx-chip {
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.1);
@@ -2417,6 +2463,14 @@ mark.forensic-alias-mark {
   font-size: 12px;
   font-weight: 600;
   color: #7a8aaa;
+}
+
+/* Build 676: Die Ergebniszeile faerbt sich, wenn die Grenze gegriffen hat -
+ * dann steht dort "200 von 1234 Ergebnissen (Grenze erreicht)". Dieselbe
+ * Bernsteinfarbe wie die Warnleiste des Dropdowns, und aus demselben Grund
+ * nicht rot: es ist kein Fehler, es ist eine Teilmenge. */
+.csm-results-count--begrenzt {
+  color: #d8c07a;
 }
 
 .csm-sort-hint {

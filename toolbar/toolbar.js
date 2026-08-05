@@ -3728,19 +3728,43 @@
     // Öffentliche API
     // =========================================================================
 
-    function open(triggerEl) {
+    /**
+     * open(triggerEl, vorbelegung)
+     *
+     * BUILD 676: 'vorbelegung' ist neu und traegt {q: "<suchbegriff>"}.
+     * Damit kann die Warnleiste des Kontext-Dropdowns den eingetippten
+     * Begriff UEBERNEHMEN und die Suche sofort ausloesen. Ohne das muesste
+     * der Ermittler denselben Begriff ein zweites Mal tippen - und wer das
+     * muss, laesst es und arbeitet mit der unvollstaendigen Liste weiter.
+     * Genau das soll die Warnleiste ja verhindern.
+     */
+    function open(triggerEl, vorbelegung) {
       _triggerEl = triggerEl || document.activeElement || null;
       if (!_modalEl) {
         _buildDOM();
       }
       // Zeigen
       _modalEl.classList.remove("hidden");
+
+      var begriff = vorbelegung && typeof vorbelegung.q === "string"
+                  ? vorbelegung.q : null;
+      if (begriff !== null) {
+        var qFeld = _modalEl.querySelector("#csm-q");
+        if (qFeld) { qFeld.value = begriff; }
+      }
+
       // Fokus
       var firstInput = _modalEl.querySelector(".csm-text-input");
       if (firstInput) { setTimeout(function () { firstInput.focus(); }, 30); }
-      _dbg("[SearchModal] Geöffnet");
+      _dbg("[SearchModal] Geöffnet", begriff !== null
+           ? "(vorbelegt: " + begriff + ")" : "");
       // Tabulator beim ersten Öffnen initialisieren
       if (!_tabulatorReady) { _ensureTabulator(); }
+
+      // Vorbelegte Suche gleich fahren. Nach _ensureTabulator(), damit die
+      // Ergebnisse ein Ziel haben - setResults() prueft _tabulatorInst
+      // ohnehin, aber die Reihenfolge soll nicht vom Zufall abhaengen.
+      if (begriff) { _doSearch(); }
     }
 
     function close() {
@@ -4129,9 +4153,48 @@
     }
 
     // Öffentliche Methode zum Befüllen (für KN-7)
-    function setResults(pages, total) {
+    /**
+     * setResults — Ergebnisliste befuellen und die Zahlen EHRLICH anschreiben.
+     *
+     * BUILD 676 (Vorgang 36dcdfd8): Bis hierher stand in der Zeile schlicht
+     * "<total> Ergebnisse", und 'total' war die Zahl der GELIEFERTEN Zeilen.
+     * Bei erreichter Grenze las man "200 Ergebnisse" - und konnte nicht
+     * wissen, ob es 200 sind oder 200 von vielen. Diese Zahl kann in eine
+     * Ermittlungsakte geraten.
+     *
+     * Der Endpunkt liefert jetzt drei Angaben, und sie werden getrennt
+     * gezeigt:
+     *   gesamt    - Treffer VOR der Begrenzung; -1 heisst 'nicht ermittelbar'
+     *   geliefert - Zeilen in dieser Antwort
+     *   begrenzt  - hat die Grenze gegriffen? null = unbekannt
+     *
+     * Die drei Faelle lauten:
+     *   "4 Ergebnisse"                             - alles da
+     *   "200 von 1234 Ergebnissen (Grenze erreicht)" - Teilmenge, benannt
+     *   "200 Ergebnisse (Gesamtzahl unbekannt)"    - Zaehlung gescheitert
+     * Der dritte Fall ist wichtig: er sagt NICHT '200 Ergebnisse', denn das
+     * waere geraten.
+     */
+    function setResults(pages, gesamt, geliefert, begrenzt) {
       var countEl = document.getElementById("csm-results-count");
-      if (countEl) countEl.textContent = (total || pages.length) + " Ergebnisse";
+      var anzahl  = (typeof geliefert === "number") ? geliefert : pages.length;
+
+      if (countEl) {
+        var text;
+        if (typeof gesamt !== "number" || gesamt < 0) {
+          text = anzahl + " Ergebnisse (Gesamtzahl unbekannt)";
+        } else if (begrenzt) {
+          text = anzahl + " von " + gesamt + " Ergebnissen (Grenze erreicht)";
+        } else {
+          text = gesamt + " Ergebnisse";
+        }
+        countEl.textContent = text;
+        // Der Hinweis gehoert auch fuer Hilfsmittel ausgesprochen, nicht nur
+        // eingefaerbt.
+        countEl.setAttribute("aria-label", text);
+        countEl.classList.toggle("csm-results-count--begrenzt", !!begrenzt);
+      }
+
       if (_tabulatorInst) {
         _tabulatorInst.setData(pages);
       }
@@ -4284,8 +4347,9 @@
             return;
           }
           var pages = Array.isArray(data.pages) ? data.pages : [];
-          _dbg("[SearchModal] Ergebnis:", pages.length, "Seiten");
-          setResults(pages, data.total || pages.length);
+          _dbg("[SearchModal] Ergebnis:", pages.length, "Seiten von",
+               data.total, "| begrenzt:", data.begrenzt);
+          setResults(pages, data.total, data.geliefert, data.begrenzt);
         })
         .catch(function (err) {
           _setSearchLoading(false);
@@ -7340,9 +7404,12 @@
       });
 
       // KN-4 (Build 192): Echtes Such-Modal öffnen
-      ForensicToolbar.events.on("navigator:modal_open", function () {
+      // Build 676: 'daten' kann {q: "<begriff>"} tragen - die Warnleiste des
+      // Dropdowns reicht den eingetippten Begriff durch. Ohne Angabe bleibt
+      // alles wie bisher.
+      ForensicToolbar.events.on("navigator:modal_open", function (daten) {
         ForensicToolbar._setState({ contextModalOpen: true });
-        SearchModalModule.open();
+        SearchModalModule.open(null, daten);
       });
       ForensicToolbar.events.on("navigator:modal_closed", function () {
         ForensicToolbar._setState({ contextModalOpen: false });
@@ -7455,6 +7522,29 @@
           "<button class=\"forensic-ctx-chip\" data-filter=\"done\">Abgeschlossen</button>" +
           "<button class=\"forensic-ctx-chip\" data-filter=\"failed\">Fehlgeschlagen</button>" +
         "</div>" +
+        // Warnleiste (Build 676, Vorgang d76c412d)
+        //
+        // WARUM SIE SEIN MUSS: Dieses Feld filtert die GELADENEN Seiten -
+        // hoechstens 50, ausgewaehlt nach Betrachtungszeit. Am 05.08.2026
+        // wurden fuer 'viewtopic' hier 3 Treffer gezeigt, waehrend der Server
+        // die Grenze von 200 erreichte. Der Ermittler sah 3 und hatte keinen
+        // Anhaltspunkt, dass 200 weitere existieren.
+        //
+        // Die Leiste benennt die Grenze und bietet den Weg darueber hinaus
+        // an - sie repariert die Beschraenkung nicht, sie macht sie
+        // SICHTBAR. Das ist hier die richtige Loesung: das Dropdown ist der
+        // schnelle Weg (acht Zeilen, kein Scrollen), die Menge gehoert in
+        // die erweiterte Suche mit Tabelle und Blaetterwerk.
+        //
+        // 'hidden' bis eine Zahl vorliegt: eine Leiste, die bei jedem
+        // Tastenanschlag erscheint und wieder verschwindet, wird zum Flackern
+        // und damit uebersehen.
+        "<div id=\"forensic-ctx-warnleiste\" class=\"forensic-ctx-warnleiste\" " +
+             "role=\"status\" aria-live=\"polite\" hidden>" +
+          "<span id=\"forensic-ctx-warntext\" class=\"forensic-ctx-warntext\"></span>" +
+          "<button id=\"forensic-ctx-alle-btn\" class=\"forensic-ctx-alle-btn\" " +
+                  "type=\"button\"></button>" +
+        "</div>" +
         // Seitenliste
         "<ul id=\"forensic-ctx-list\" class=\"forensic-ctx-list\" role=\"presentation\">" +
           "<li class=\"forensic-ctx-loading\" aria-live=\"polite\">Lade…</li>" +
@@ -7560,6 +7650,17 @@
         if (e.target.id === "forensic-ctx-modal-btn" || e.target.closest("#forensic-ctx-modal-btn")) {
           _close();
           ForensicToolbar.events.emit("navigator:modal_open");
+          return;
+        }
+        // Build 676: Knopf der Warnleiste — derselbe Weg, aber MIT dem
+        // eingetippten Begriff. Ohne Uebernahme muesste der Ermittler ihn
+        // ein zweites Mal tippen; wer das muss, laesst es und arbeitet mit
+        // der unvollstaendigen Liste weiter.
+        if (e.target.id === "forensic-ctx-alle-btn" ||
+            e.target.closest("#forensic-ctx-alle-btn")) {
+          var begriff = _search ? _search.value.trim() : "";
+          _close();
+          ForensicToolbar.events.emit("navigator:modal_open", { q: begriff });
         }
       });
 
@@ -7656,6 +7757,12 @@
 
       if (!_list) return;
 
+      // Build 676: Die Warnleiste haengt am Filterbegriff, nicht am Ergebnis -
+      // sie muss auch dann erscheinen, wenn die geladene Auswahl NICHTS
+      // hergibt. Gerade dann ist der Hinweis am wichtigsten: 'keine Seiten
+      // gefunden' waere sonst schlicht falsch.
+      _aktualisiereWarnleiste(filtered.length);
+
       if (!filtered.length) {
         _list.innerHTML = "<li class=\"forensic-ctx-empty\">Keine Seiten gefunden.</li>";
         return;
@@ -7711,6 +7818,91 @@
 
         _list.appendChild(li);
       });
+    }
+
+    // -----------------------------------------------------------------------
+    // Warnleiste (Build 676, Vorgang d76c412d)
+    // -----------------------------------------------------------------------
+    // Laufende Nummer der Zaehlanfrage. Wer schnell tippt, loest mehrere aus;
+    // ohne diese Nummer koennte eine LANGSAMERE Antwort zu einem AELTEREN
+    // Begriff die neuere ueberschreiben - die Leiste zeigte dann eine Zahl,
+    // die zum Suchfeld nicht passt. Das ist keine theoretische Sorge: die
+    // Eingabe ist mit 150 ms entprellt, eine Abfrage ueber den Bestand kann
+    // laenger dauern.
+    var _zaehlLauf = 0;
+
+    /**
+     * _aktualisiereWarnleiste(oertlicheTreffer)
+     *
+     * Fragt den Server nach der WAHREN Trefferzahl fuer den eingetippten
+     * Begriff und stellt sie der oertlich gefilterten Zahl gegenueber.
+     *
+     * Bewusst mit 'limit=1': gebraucht wird nur die Zahl, nicht die Liste.
+     * Der Endpunkt zaehlt seit Build 676 unabhaengig von der Begrenzung.
+     */
+    function _aktualisiereWarnleiste(oertlicheTreffer) {
+      var leiste = document.getElementById("forensic-ctx-warnleiste");
+      var textEl = document.getElementById("forensic-ctx-warntext");
+      var btn    = document.getElementById("forensic-ctx-alle-btn");
+      if (!leiste || !textEl || !btn) return;
+
+      var begriff = _filterText;
+      if (!begriff) {                    // ohne Begriff kein Hinweis
+        leiste.hidden = true;
+        return;
+      }
+
+      var lauf = ++_zaehlLauf;
+      ajaxGet(ForensicToolbar.config.API_SEARCH
+              + "?q=" + encodeURIComponent(begriff) + "&limit=1")
+        .then(function (data) {
+          if (lauf !== _zaehlLauf) return;          // veraltete Antwort
+          var gesamt = (data && typeof data.total === "number")
+                     ? data.total : -1;
+
+          if (gesamt < 0) {
+            // Die Zaehlung ist gescheitert. Dann wird das GESAGT und keine
+            // Zahl erfunden - und der Weg in die erweiterte Suche steht
+            // trotzdem offen.
+            textEl.textContent = "Hier werden nur die geladenen Seiten "
+                               + "durchsucht. Die Gesamtzahl ist gerade nicht "
+                               + "ermittelbar.";
+            btn.textContent = "In der erweiterten Suche öffnen";
+            btn.setAttribute("aria-label",
+              "Suche nach " + begriff + " in der erweiterten Suche öffnen");
+            leiste.hidden = false;
+            return;
+          }
+
+          if (gesamt <= oertlicheTreffer) {
+            // Nichts verborgen - dann auch keine Leiste. Ein Hinweis, der
+            // auch dann steht, wenn es nichts zu warnen gibt, wird nach
+            // zwei Tagen nicht mehr gelesen.
+            leiste.hidden = true;
+            return;
+          }
+
+          textEl.textContent = oertlicheTreffer + " von " + gesamt
+                             + " Treffern — hier werden nur die geladenen "
+                             + "Seiten durchsucht.";
+          btn.textContent = "Alle " + gesamt + " anzeigen";
+          btn.setAttribute("aria-label",
+            "Alle " + gesamt + " Treffer zu " + begriff
+            + " in der erweiterten Suche anzeigen");
+          leiste.hidden = false;
+          _dbg("[CtxDropdown] Warnleiste:", oertlicheTreffer, "von", gesamt);
+        })
+        .catch(function (err) {
+          if (lauf !== _zaehlLauf) return;
+          // Auch ein Netzfehler wird benannt statt verschwiegen: der
+          // Ermittler soll wissen, dass die 3 Treffer nicht das Ganze sind.
+          _dbg("[CtxDropdown] Zaehlung fehlgeschlagen:", err);
+          textEl.textContent = "Hier werden nur die geladenen Seiten "
+                             + "durchsucht. Die Gesamtzahl konnte nicht "
+                             + "abgefragt werden.";
+          btn.textContent = "In der erweiterten Suche öffnen";
+          leiste.hidden = false;
+        });
     }
 
     // -----------------------------------------------------------------------
