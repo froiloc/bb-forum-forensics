@@ -4099,7 +4099,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         schluessel="run_tests",
         pfad="run_tests.py",
         aufruf="python run_tests.py [--python-only|--js-only] "
-               "[--leise] [--log-dir VERZEICHNIS]",
+               "[--jobs N] [--leise] [--log-dir VERZEICHNIS]",
         titel="Regressionslauf",
         gruppe="Start und Einrichtung",
         zweck="Beide Testsuiten fahren - die Python-Seite und die "
@@ -4167,6 +4167,19 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "scheitert der Lauf mit 'No module named pytest'.",
                 "Fehlt pytest, wird das als FEHLENDE VORAUSSETZUNG gemeldet "
                 "und nicht als Testfehler. Es wurde dann NICHTS geprueft.",
+                "'--jobs N' faehrt die Python-Tests parallel (pytest-xdist); "
+                "'--jobs auto' nimmt die Zahl der Kerne. Es wird dabei KEINE "
+                "Abdeckung aufgegeben - es laufen dieselben Tests. Gemessen "
+                "am 04.08.2026: rund 16 Minuten sequenziell gegen 5 Minuten "
+                "39 Sekunden mit acht Prozessen.",
+                "FEHLT pytest-xdist, wird SEQUENZIELL gefahren und das "
+                "gemeldet - der Lauf bricht nicht ab. Auf der offline "
+                "betriebenen Produktionsumgebung laesst sich das Modul "
+                "nicht nachinstallieren; die Regression muss dort trotzdem "
+                "laufen.",
+                "Mehr Prozesse sind nicht automatisch schneller: jeder legt "
+                "eigene Wegwerf-Datenbanken an, und ab einem gewissen Punkt "
+                "ist die Platte der Engpass. Im Zweifel messen.",
             ),
         ),
     ),

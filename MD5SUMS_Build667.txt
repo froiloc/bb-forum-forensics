@@ -1,0 +1,15 @@
+b02f11598722e1cbd08d8bfce2ad1853  UEBERGABE_Build666.md
+86c9a9179b0c535cd8e82dc47ad8e4d4  UEBERGABE_Build667.md
+a203a390e90079b790192a396ec95cd7  build.json
+06336f6c1ba5f03cc5476dd1176e1011  documents/data-exchange.md
+ccadad86ecff8c1e6c7198ac2b27c79c  issue-tracker/eintraege_claude_Build666.json
+6a723c3f6f673d151a8d85e931a7a053  issue-tracker/eintraege_claude_Build667.json
+c0fb0052f0fc61d89e9863fd44f0c4b8  management/help/cli_katalog.py
+98b164a2e0a6c34a4af4bde093184002  run_tests.py
+87091351c40398260f15f0002d3296f0  tests/conftest.py
+ab1e7ebddae819549ae5c58232e3f3a8  tests/test_help_cli_epilog.py
+98669c7c968f295954c62d772803f243  tests/test_pruefe_lieferung.py
+c88ca97ac8c23a1ab91bdd7cca9db3e2  tests/test_run_tests_runner.py
+56cfe864ddb3b3a8e92da0df853e4340  tools/bundle_bauen.sh
+e172a7269dd5351bb38f451ad8eb00bc  tools/bundle_einspielen.sh
+b718c7ef26cbc562a7808a564064a906  tools/pruefe_lieferung.sh
