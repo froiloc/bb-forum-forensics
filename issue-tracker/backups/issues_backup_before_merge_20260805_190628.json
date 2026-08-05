@@ -7611,12 +7611,6 @@
       "attachments": [],
       "updates": [
         {
-          "timestamp": "2026-08-05T11:33:56.373414+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build670.json"
-        },
-        {
           "timestamp": "2026-08-05T11:36:00+00:00",
           "author": "Claude",
           "action": "comment",
@@ -7625,12 +7619,10 @@
           "comment": "Beleg: Probe 1 Teil B1 vom 2026-08-05. Ursache noch nicht gemessen."
         },
         {
-          "timestamp": "2026-08-05T11:37:00+00:00",
-          "author": "Claude",
+          "timestamp": "2026-08-05T11:33:56.373414+00:00",
+          "author": "merge-tool",
           "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "NEUER BEFUND VOM 05.08.2026, der diesen Vorgang wertvoller macht, als er aussah: DIE VERBINDUNG, DIE IMMER 0 LIEFERT, IST ZUGLEICH DIE TEUERSTE DER GANZEN ABFRAGE.\n\nsearch_pages() verbindet fdb.scrape_targets ueber ein LIKE ohne Anker mit jeder Seite. Bei 6.500 Seiten und 19.000 Erfassungszielen sind das ueber 120 Millionen Zeichenkettenvergleiche. In der VM brauchte die Zaehlung bei einem grossen Fall (Administrator, mehr als 10.000 Beitraege, 800 MB) dadurch rund EINE MINUTE.\n\nFuer die ZAEHLUNG ist die Verbindung in Build 677 entfallen - sie traegt dort nichts bei (Testfall SG08). Fuer die LISTE bleibt sie, weil traceCountTotal daraus stammt. Nur: dieser Wert ist gemessen immer 0. Der teuerste Teil der Abfrage liefert also nichts.\n\nDARAUS FOLGT EIN ZUSATZNUTZEN: wer diesen Vorgang behebt, berichtigt nicht nur eine irrefuehrende Anzeige, sondern beschleunigt die Seitenuebersicht spuerbar. Eine tragfaehige Zaehlung der Spuren gehoert vermutlich ohnehin nicht in ein LIKE ohne Anker, sondern an die Stelle, an der die Zuordnung Seite-zu-Ziel schon bekannt ist."
+          "comment": "Importiert aus eintraege_claude_Build670.json"
         }
       ]
     },
@@ -7851,54 +7843,6 @@
           "old_value": "open",
           "new_value": "wont_fix",
           "comment": "Geschlossen als BEWUSSTE Beschraenkung des Erfassungsumfangs, nicht als Fehler.\n\nDer Vorgang bleibt trotzdem stehen, und zwar mit Absicht: die Messung hat gezeigt, dass zu 982 Erfassungszielen kein Beleg existiert. Wer das kuenftig misst - und tools/pruefe_profilerfassung.py wird es jedes Mal wieder melden -, findet hier die Begruendung, statt die Untersuchung ein zweites Mal zu fuehren. Genau dafuer ist ein geschlossener Vorgang da.\n\nGEMESSENER BESTAND (Alex, 05.08.2026, alle Falldatenbanken): in KEINER Datenbank liegen Profilseiten Dritter. Es ist also kein Einzelfall und keine Stoerung, sondern die durchgaengige Bauweise der Erfassung.\n\nOFFEN BLEIBT EIN KLEINER PUNKT, der nicht zur Entscheidung gehoert: die 982 'other_profile'-Erfassungsziele stehen weiter in scrape_targets, obwohl zu ihnen nie eine Seite geholt werden soll. Solange sie dort stehen, sieht jede Auswertung 982 unerfuellte Ziele. Das ist kein Datenverlust und eilt nicht - es waere aber sauberer, den Umfang dort auszudruecken, wo er entschieden wird."
-        }
-      ]
-    },
-    {
-      "id": "5b2e91c7-0a44-4f6d-9c81-73de5a80b214",
-      "type": "improvement",
-      "title": "982 Profil-Erfassungsziele ohne Beleg bleiben in scrape_targets stehen",
-      "affected_version": "0.8.676",
-      "reporter": "Claude",
-      "reported_at": "2026-08-05T16:30:00+00:00",
-      "prerequisites": "Ein Fall mit Erfassungszielen der Typen 'other_profile', 'profile' oder 'pgp_probe'.",
-      "description": "AUFGEKOMMEN AUS VORGANG 90e7c214, der als 'wont_fix' geschlossen ist - und genau deshalb bleibt hier etwas zu tun.\n\nDER SACHVERHALT: Das Fehlen der Profilseiten Dritter ist eine BEWUSSTE Beschraenkung des Erfassungsumfangs (Entscheidung Alex, 05.08.2026): die Ermittelnden sollen sich auf das untersuchte Profil konzentrieren, die Gegenueber werden gegebenenfalls spaeter zum eigenen Fall. Die zugehoerigen Erfassungsziele stehen aber weiter in fdb.scrape_targets - im Fall 1488 sind das 982 Ziele des Typs 'other_profile', 17 des Typs 'profile' und eines vom Typ 'pgp_probe'.\n\nWAS DARAUS FOLGT: Jede Auswertung, die Erfassungsziele gegen vorhandene Seiten haelt, sieht 1.000 unerfuellte Ziele und meldet sie - so tut es tools/pruefe_profilerfassung.py, und so wird es jedes kuenftige Werkzeug tun. Der Umfang ist entschieden, aber er ist an der Stelle, an der gemessen wird, nicht ablesbar. Das erzeugt bei jeder Pruefung dieselbe Frage von neuem.\n\nKEIN DATENVERLUST, KEINE EILE. Es geht um Sauberkeit: der Umfang soll dort ausgedrueckt sein, wo er entschieden wird.\n\nMOEGLICHE WEGE, ohne Vorfestlegung:\n  (a) Die Ziele gar nicht erst anlegen, wenn sie nicht erfasst werden sollen. Sauberste       Loesung, beruehrt aber den Prepper und damit die Erzeugung bestehender Bestaende.\n  (b) Eine Spalte oder ein Vermerk am Ziel, die den Umfang festhaelt (etwa       'nicht_zu_erfassen'). Bestehende Bestaende liessen sich nachtragen; Auswertungen       koennten die Ziele dann benannt uebergehen statt sie zu melden.\n  (c) Nichts aendern und die Werkzeuge die Typen ausnehmen lassen. Billigste, aber       schlechteste Loesung: der Umfang steckte dann in jedem Werkzeug einzeln und liefe       auseinander.\n\nMEINE EINSCHAETZUNG: (b) - der Bestand traegt die Entscheidung dann selbst, und Auswertungen koennen sich darauf beziehen, statt sie nachzubilden. (a) waere besser, kostet aber eine Neuerfassung.",
-      "expected_behavior": "Der entschiedene Erfassungsumfang ist am Bestand ablesbar. Ein Werkzeug, das Ziele gegen Belege haelt, kann bewusst ausgenommene Ziele benennen statt sie als Fehlmenge zu melden.",
-      "actual_behavior": "1.000 Erfassungsziele ohne zugehoerige Seite stehen unmarkiert im Bestand; jede Auswertung meldet sie als Fehlmenge.",
-      "status": "open",
-      "priority": "low",
-      "severity": "minor",
-      "assigned_to": "",
-      "related_to": [
-        "90e7c214-5f83-4a61-8d29-3b7e04c1a5df"
-      ],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "os": "Windows (VM)",
-        "python_version": "3.14",
-        "database": "forensic_<uid>.db"
-      },
-      "tags": [
-        "Erfassung",
-        "Prepper",
-        "Sauberkeit"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-05T16:30:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Auf Alex' Wunsch mit niedriger Prioritaet aufgenommen (05.08.2026)."
-        },
-        {
-          "timestamp": "2026-08-05T17:06:28.902758+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build677.json"
         }
       ]
     }
