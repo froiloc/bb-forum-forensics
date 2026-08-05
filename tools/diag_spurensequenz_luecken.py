@@ -48,6 +48,7 @@
 # Aufruf (in der VM, aus dem Verzeichnis des Webservers):
 #     python tools/diag_spurensequenz_luecken.py --forensic-db .\data\forensic_2948078.db
 #     python tools/diag_spurensequenz_luecken.py --forensic-db ... --json befund.json
+#     python tools/diag_spurensequenz_luecken.py --forensic-db ... --nachweis
 #
 # Rueckgabewerte:
 #     0 = gelaufen, KEINE Luecke gefunden
@@ -69,7 +70,22 @@
 #   stehen in page_aliases und tragen dieselbe page_id.
 #   Gezaehlt wird jetzt nach page_id. Die Selbstprobe fuehrt seither zwei
 #   Zweitadressen mit und verlangt, dass sie NICHT als Luecke gelten.
-# Version: v0.8.672 · Build: 672 · 2026-08-05
+# AENDERUNG BUILD 677 - DAS WERKZEUG WEIST DIE BEHEBUNG NACH:
+#   Mit '--nachweis' rechnet es zusaetzlich die Fassung AB Build 677
+#   (messe_neu) und stellt beide gegenueber: wie viele Seiten die Sequenz
+#   vorher fuehrte, wie viele jetzt, und WELCHE Seiten die neue Fassung
+#   bewusst nicht mehr fuehrt, weil sie nur ueber eine fremde Kennung oder
+#   ueber ein Ziel ohne Kennung erreichbar waren.
+#
+#   messe() bleibt dabei UNVERAENDERT die Abschrift der Fassung bis Build
+#   676. Das ist Absicht: sie ist der Beleg fuer den Zustand VORHER. Ein
+#   Werkzeug, das seinen eigenen Ausgangsbefund mitwandern laesst, kann eine
+#   Behebung nicht mehr nachweisen - es zeigt dann nur noch, dass es mit
+#   sich selbst uebereinstimmt.
+#
+#   Der Rueckgabewert richtet sich weiterhin nach der Messung der ALTEN
+#   Fassung; '--nachweis' aendert ihn nicht.
+# Version: v0.8.677 · Build: 677 · 2026-08-05
 # =============================================================================
 
 from __future__ import annotations
@@ -379,6 +395,133 @@ def messe(urls: list[tuple[int, str]],
     }
 
 
+# =============================================================================
+# BUILD 677 - DER NACHWEIS DER BEHEBUNG.
+#
+# messe() oben ist die Abschrift der Fassung BIS Build 676. Sie bleibt
+# unveraendert stehen: sie ist der Beleg fuer den Zustand VORHER, und ein
+# Werkzeug, das seinen eigenen Ausgangsbefund ueberschreibt, kann eine
+# Behebung nicht mehr nachweisen.
+#
+# messe_neu() ist die Abschrift der Fassung AB Build 677. Der Nachweis ist
+# die Differenz der beiden: die Seiten, die vorher unerreichbar waren und
+# jetzt in der Sequenz stehen. Erwartet werden gegen forensic_1488.db die
+# am 05.08.2026 gemessenen 185 Seiten.
+#
+# WARUM EINE ZWEITE ABSCHRIFT UND KEIN IMPORT: db/forensic_db.py zieht den
+# halben Serverunterbau nach und braucht eine ATTACH-Verbindung auf die
+# evidence-Datenbank. Dieses Werkzeug oeffnet ausschliesslich die
+# forensic-Datei und ausschliesslich lesend (Regel PY4). Der Preis dafuer
+# ist eine Abschrift, die auseinanderlaufen kann - deshalb wacht Testfall
+# SL05 ueber die TYPE_MAP und SLN01 bis SLN03 ueber das Verhalten.
+# =============================================================================
+
+def _kennung_hinter(url_klein: str, fragment: str) -> "list[str]":
+    """
+    Liefert zu jeder Fundstelle des Fragments die VOLLSTAENDIGE Ziffernfolge
+    dahinter.
+
+    Das ist der Kern der Behebung (2): '12' und '120870' sind zwei
+    verschiedene Schluessel. Die Suche als Teilzeichenkette konnte die Seite
+    eines fremden Themas in die Spurenliste eines Beschuldigten holen.
+    """
+    treffer: list[str] = []
+    pos = url_klein.find(fragment)
+    while pos >= 0:
+        anf = pos + len(fragment)
+        ende = anf
+        while ende < len(url_klein) and url_klein[ende].isdigit():
+            ende += 1
+        if ende > anf:
+            treffer.append(url_klein[anf:ende])
+        pos = url_klein.find(fragment, pos + 1)
+    return treffer
+
+
+def messe_neu(urls: list[tuple[int, str]],
+              ziele: list) -> dict:
+    """
+    Abschrift der Spurensequenz AB Build 677.
+
+    Unterschiede zur Fassung bis 676, jeder einzeln in db/forensic_db.py
+    begruendet:
+      (1) ALLE passenden Seiten je Ziel statt einer ('LIMIT 1' entfaellt)
+      (2) die Kennung wird ganz verglichen, nicht als Teilzeichenkette
+      (3) kein Rueckfall auf das blosse Fragment bei leerer Kennung
+      (4) finden mehrere Ziele dieselbe Seite, gewinnt die bessere Gruppe
+      und: entdoppelt wird nach page_id, nicht nach Adresse.
+
+    ACHTUNG - EINE GRENZE DIESER ABSCHRIFT: Sie waehlt je Seite NICHT die
+    kanonische Adresse aus, weil dieses Werkzeug pages und page_aliases
+    zusammengeschuettet liest und die Herkunft einer Adresse hier nicht mehr
+    kennt. Fuer die Zaehlung der Seiten ist das ohne Belang - gezaehlt wird
+    nach page_id. Fuer den Vergleich EINZELNER Adressen mit dem laufenden
+    Server ist es eine bekannte Abweichung und keine Messgroesse.
+    """
+    urls_klein = [(pid, u, u.lower()) for pid, u in urls]
+
+    verz_mit_kennung: dict[tuple[str, str], list[int]] = {}
+    verz_ohne_kennung: dict[str, list[int]] = {}
+    frag_mit = sorted({f.lower() for (_g, idc, f) in TYPE_MAP.values() if idc})
+    frag_ohne = sorted({f.lower() for (_g, idc, f) in TYPE_MAP.values() if not idc})
+
+    for idx, (_pid, _u, uk) in enumerate(urls_klein):
+        for frag in frag_mit:
+            for kennung in _kennung_hinter(uk, frag):
+                verz_mit_kennung.setdefault((frag, kennung), []).append(idx)
+        for frag in frag_ohne:
+            if frag in uk:
+                verz_ohne_kennung.setdefault(frag, []).append(idx)
+
+    gruppen_rang = {"profile": 0, "pm": 1, "topic": 2, "other": 3}
+    befund: dict[int, dict] = {}
+    ohne_kennung: dict[str, int] = {}
+    ohne_treffer: dict[str, int] = {}
+
+    for row in ziele:
+        url_typ = str(row["url_type"] or "")
+        if url_typ not in TYPE_MAP:
+            continue
+        gruppe, id_spalte, fragment = TYPE_MAP[url_typ]
+        frag = fragment.lower()
+
+        if id_spalte:
+            wert = row[id_spalte]
+            if wert is None:
+                ohne_kennung[url_typ] = ohne_kennung.get(url_typ, 0) + 1
+                continue
+            positionen = verz_mit_kennung.get((frag, str(wert).strip().lower()), ())
+        else:
+            positionen = verz_ohne_kennung.get(frag, ())
+
+        if not positionen:
+            ohne_treffer[url_typ] = ohne_treffer.get(url_typ, 0) + 1
+            continue
+
+        rang = gruppen_rang.get(gruppe, 3)
+        trace_id = int(row["id"])
+        for idx in positionen:
+            pid, url, _uk = urls_klein[idx]
+            eintrag = befund.get(pid)
+            if eintrag is None:
+                befund[pid] = {"page_id": pid, "url": url, "gruppe": gruppe,
+                               "rang": rang, "trace_id": trace_id}
+                continue
+            if (rang, trace_id) < (eintrag["rang"], eintrag["trace_id"]):
+                eintrag["rang"] = rang
+                eintrag["gruppe"] = gruppe
+                eintrag["trace_id"] = trace_id
+            if len(url) < len(eintrag["url"]):
+                eintrag["url"] = url
+
+    return {
+        "sequenz": sorted(befund.values(),
+                          key=lambda e: (e["rang"], e["trace_id"], e["url"])),
+        "ziele_ohne_kennung": ohne_kennung,
+        "ziele_ohne_treffer": ohne_treffer,
+    }
+
+
 def _ziffer_danach(url_klein: str, nadel: str) -> bool:
     """
     Wahr, wenn direkt hinter dem Suchtext noch eine Ziffer steht - dann hat
@@ -569,6 +712,15 @@ def bericht(erg: dict, gesamt_urls: int, gesamt_ziele: int) -> None:
         log()
 
 
+def _typen(d: dict) -> str:
+    """
+    Zaehlung je url_type in fester Reihenfolge. Anders als gruppens() ist die
+    Menge der Schluessel hier nicht vorab bekannt - sortiert wird deshalb
+    alphabetisch, damit zwei Laeufe dieselbe Zeile ergeben.
+    """
+    return ", ".join("%s=%d" % kv for kv in sorted(d.items())) or "(keine)"
+
+
 def gruppens(d: dict) -> str:
     """Gruppenzaehlung in fester Reihenfolge - sonst wechselt sie je Lauf."""
     return ", ".join("%s: %d" % (g, d.get(g, 0))
@@ -592,6 +744,9 @@ def main() -> int:
                     help="Zusaetzlich einen maschinenlesbaren Befund schreiben")
     ap.add_argument("--ohne-selbstprobe", action="store_true",
                     help="Selbstprobe auslassen (nicht empfohlen)")
+    ap.add_argument("--nachweis", action="store_true",
+                    help="Zusaetzlich die Fassung AB Build 677 rechnen und "
+                         "beide gegenueberstellen (Nachweis der Behebung)")
     args = ap.parse_args()
 
     log("=" * 78)
@@ -647,6 +802,54 @@ def main() -> int:
 
     erg = messe(urls, ziele)
     bericht(erg, len(urls), len(ziele))
+
+    # --- Nachweis der Behebung (Build 677) ----------------------------------
+    if args.nachweis:
+        neu = messe_neu(urls, ziele)
+        seiten_alt = {e["page_id"] for e in erg["sequenz"]}
+        seiten_neu = {e["page_id"] for e in neu["sequenz"]}
+        seiten_luecke = {e["page_id"] for e in erg["luecke"]}
+
+        zurueckgewonnen = seiten_neu - seiten_alt
+        verbleibend = seiten_luecke - seiten_neu
+
+        log("NACHWEIS DER BEHEBUNG (Vorgaenge 2f1044b9 und aa0d9033)")
+        log("-" * 78)
+        log("  Seiten in der Sequenz bis Build 676 : %6d" % len(seiten_alt))
+        log("  Seiten in der Sequenz ab  Build 677 : %6d" % len(seiten_neu))
+        log("  ZURUECKGEWONNEN                     : %6d" % len(zurueckgewonnen))
+        log("  vorher gemeldete Luecke             : %6d" % len(seiten_luecke))
+        log("  davon weiterhin nicht gefuehrt      : %6d" % len(verbleibend))
+        log()
+        if verbleibend:
+            log("  DIE VERBLEIBENDEN SEITEN SIND KEIN VERSEHEN, sondern die")
+            log("  Folge von Behebung (2) und (3): sie waren allein ueber eine")
+            log("  FREMDE, laengere Kennung oder ueber den Rueckfall eines")
+            log("  Ziels OHNE Kennung erreichbar. Eine Seite, die einem Ziel")
+            log("  zugeordnet wird, das sie nicht meint, ist ein falscher")
+            log("  Beleg - und ein falscher Beleg wiegt schwerer als ein")
+            log("  fehlender. Sie stehen hier, damit die Entscheidung sichtbar")
+            log("  bleibt und nicht als Verlust durchgeht (Grundregel 1).")
+            for e in erg["luecke"]:
+                if e["page_id"] in verbleibend:
+                    log("    - %s" % e["url"])
+            log()
+        if neu["ziele_ohne_kennung"]:
+            log("  Erfassungsziele OHNE Kennung in der vorgesehenen Spalte "
+                "(nicht zugeordnet):")
+            log("    %s" % _typen(neu["ziele_ohne_kennung"]))
+        if neu["ziele_ohne_treffer"]:
+            log("  Erfassungsziele OHNE passende erfasste Seite:")
+            log("    %s" % _typen(neu["ziele_ohne_treffer"]))
+        log()
+        erg["nachweis"] = {
+            "seiten_alt": len(seiten_alt),
+            "seiten_neu": len(seiten_neu),
+            "zurueckgewonnen": len(zurueckgewonnen),
+            "verbleibend": len(verbleibend),
+            "ziele_ohne_kennung": neu["ziele_ohne_kennung"],
+            "ziele_ohne_treffer": neu["ziele_ohne_treffer"],
+        }
 
     log("ZUR EINORDNUNG")
     log("-" * 78)

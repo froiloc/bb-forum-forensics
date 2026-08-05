@@ -308,5 +308,79 @@ class DiagSpurensequenzTests(unittest.TestCase):
             "Das Werkzeug misst dann etwas anderes als das, was laeuft.")
 
 
+class DiagSpurensequenzNachweisTests(unittest.TestCase):
+    """
+    SLN01 bis SLN03 - die Abschrift der Fassung AB Build 677 (messe_neu).
+
+    Warum eigene Faelle und nicht die vorhandenen erweitert: messe() misst
+    weiterhin den Zustand BIS Build 676 und muss dafuer unveraendert bleiben.
+    Die beiden Rechnungen stehen nebeneinander, ihre Differenz ist der
+    Nachweis - und ein Nachweis, dessen Ausgangsgroesse mitwandert, ist
+    keiner.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.modul = _lade_werkzeug()
+
+    def setUp(self):
+        self.modul.LOGLINES.clear()
+
+    @staticmethod
+    def _ziel(kennung, url_typ, **spalten):
+        zeile = {"id": kennung, "url_type": url_typ, "forum_id": None,
+                 "topic_id": None, "post_id": None, "pm_topic_id": None,
+                 "actor_user_id": None}
+        zeile.update(spalten)
+        return zeile
+
+    # -- SLN01 ----------------------------------------------------------------
+    def test_sln01_alle_seiten_eines_themas(self):
+        """
+        SLN01 - Die neue Rechnung fuehrt alle drei Seiten des Themas, die
+        alte nur eine. Genau diese Differenz ist der Nachweis.
+        """
+        urls = [(1, "/forum/viewtopic.php?id=120870"),
+                (2, "/forum/viewtopic.php?id=120870&p=2"),
+                (3, "/forum/viewtopic.php?id=120870&p=3"),
+                (1, "/forum/viewtopic.php?id=120870#p4711")]
+        ziele = [self._ziel(1, "viewtopic", topic_id=120870)]
+        neu = self.modul.messe_neu(urls, ziele)
+        self.assertEqual({e["page_id"] for e in neu["sequenz"]}, {1, 2, 3})
+        alt = self.modul.messe(urls, ziele)
+        self.assertEqual(len({e["page_id"] for e in alt["sequenz"]}), 1)
+
+    # -- SLN02 ----------------------------------------------------------------
+    def test_sln02_fremde_kennung_wird_nicht_uebernommen(self):
+        """
+        SLN02 - Das Ziel zu Thema 12 nimmt nicht die Seite von Thema 120870.
+        Die alte Rechnung uebernahm sie (Teilzeichenkette) und verlor darueber
+        die eigene Seite.
+        """
+        urls = [(1, "/forum/viewtopic.php?id=120870"),
+                (2, "/forum/viewtopic.php?id=12")]
+        ziele = [self._ziel(1, "viewtopic", topic_id=12)]
+        neu = self.modul.messe_neu(urls, ziele)
+        self.assertEqual([e["page_id"] for e in neu["sequenz"]], [2])
+
+    # -- SLN03 ----------------------------------------------------------------
+    def test_sln03_leere_kennung_wird_gezaehlt_statt_geraten(self):
+        """
+        SLN03 - Ein Ziel mit leerer Kennung zieht keine fremde Seite in die
+        Sequenz und erscheint stattdessen in der Zaehlung. Die alte Rechnung
+        fiel auf das blosse Fragment zurueck (Vorgang aa0d9033).
+        """
+        urls = [(1, "/forum/profile.php?id=1488")]
+        ziele = [self._ziel(1, "pgp_probe", actor_user_id=None)]
+        neu = self.modul.messe_neu(urls, ziele)
+        self.assertEqual(neu["sequenz"], [])
+        self.assertEqual(neu["ziele_ohne_kennung"], {"pgp_probe": 1})
+        alt = self.modul.messe(urls, ziele)
+        self.assertEqual(len(alt["sequenz"]), 1,
+                         "die Abschrift der alten Fassung muss den Rueckfall "
+                         "weiterhin zeigen - sonst ist der Vorher-Zustand "
+                         "nicht mehr belegt")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -48,6 +48,7 @@
 
 from __future__ import annotations
 
+import re
 import sqlite3
 from dataclasses import dataclass
 from typing import Optional
@@ -109,6 +110,81 @@ CREATE TEMP VIEW blob_lookup AS
     FROM fdb.pages p
     JOIN fdb.page_aliases pa ON pa.page_id = p.id
 """
+
+
+# =============================================================================
+# Hilfsmittel der Spurensequenz (get_trace_sequence, Build 677).
+#
+# Sie stehen auf Modulebene und nicht in der Methode, weil sie beide für sich
+# prüfbar sind: eine Reihenfolgeregel, die man nur über den Umweg einer
+# Datenbank messen kann, wird nicht gemessen.
+# =============================================================================
+
+def _adress_guete(url: str, ist_kanonisch: bool) -> tuple:
+    """
+    Sortierschlüssel für die Auswahl EINER Adresse je erfasster Seite.
+    Kleiner ist besser.
+
+    WARUM DIESE WAHL ÜBERHAUPT NÖTIG IST: Eine Seite trägt im Bestand im
+    Mittel rund 23 Adressen — die kanonische aus pages.url_canonical und
+    dazu jede Form, unter der sie je angefragt wurde (page_aliases): mit
+    Sprungmarke ('…?id=5136#p33461'), über einen zweiten Pfad
+    ('/forum/beginner/…'). Die Sequenz führt jede Seite EINMAL und muss
+    sich deshalb für eine Adresse entscheiden.
+
+    WARUM DIE KANONISCHE ZUERST: Die Spur-Navigation vergleicht die Adresse
+    des Sequenzeintrags zeichengenau mit der Adresse der angezeigten Seite
+    (toolbar.js, _seqIndexForUrl). Wer auf einer Forenseite einem Verweis
+    folgt, landet auf der kanonischen Form — steht in der Sequenz ein Alias,
+    findet der Vergleich die Seite nicht und die Navigation hält sie für
+    unbekannt (Vorgang c290939f). Die kanonische Adresse ist damit die
+    einzige, die BEIDE Wege bedient.
+
+    Die weiteren Stufen greifen nur, wenn keine kanonische Adresse vorliegt:
+    keine Sprungmarke (ein Anker führt in die Seite hinein, er benennt sie
+    nicht), dann die kürzere, dann alphabetisch. Die letzte Stufe ist nicht
+    Zierde, sondern die Zusicherung, dass zwei Aufrufe dieselbe Adresse
+    wählen.
+    """
+    return (0 if ist_kanonisch else 1,
+            1 if "#" in url else 0,
+            len(url),
+            url)
+
+
+def _seitennummer(url: str) -> int:
+    """
+    Liest die Seitennummer aus dem Parameter 'p' einer Forumsadresse.
+    Ohne Parameter gilt 1 — die erste Seite trägt ihn im FluxBB/PunBB nicht.
+
+    Gebraucht für die Ordnung INNERHALB eines Erfassungsziels: ein Thema mit
+    drei erfassten Seiten gehört in der Sequenz in der Reihenfolge 1, 2, 3.
+    Vor Build 677 stellte sich die Frage nicht — es stand ohnehin nur eine
+    Seite je Thema in der Sequenz (Vorgang 2f1044b9).
+
+    Gelesen wird bewusst mit einem Ausdruck auf der Zeichenkette und nicht
+    mit einem URL-Zerleger: die Adressen liegen hier als Pfad mit Abfrageteil
+    vor, teils mit Sprungmarke, teils über einen zweiten Pfad. Ein Zerleger
+    müsste dafür erst wieder eine vollständige Adresse gestellt bekommen.
+
+    Nicht lesbare oder unsinnige Werte ergeben 1 und nicht etwa 0: die Seite
+    existiert, nur ihre Nummer ist unklar — sie deshalb vor die erste Seite
+    zu sortieren wäre eine Behauptung.
+    """
+    treffer = _SEITEN_PARAMETER.search(url or "")
+    if not treffer:
+        return 1
+    try:
+        nummer = int(treffer.group(1))
+    except (TypeError, ValueError):     # pragma: no cover — Regex liefert Ziffern
+        return 1
+    return nummer if nummer >= 1 else 1
+
+
+# '?p=12' oder '&p=12' — der Seitenparameter von FluxBB/PunBB.
+# Die Zeichenklasse davor verhindert Treffer auf Parameter, die auf 'p'
+# ENDEN (z.B. '…&sp=2'); ohne sie läse man eine fremde Zahl als Seitennummer.
+_SEITEN_PARAMETER = re.compile(r"[?&]p=(\d+)")
 
 
 @dataclass
@@ -1317,16 +1393,18 @@ class ForensicDb:
 
     def get_trace_sequence(self) -> "list[dict]":
         """
-        Liefert die geordnete Spurensequenz aller Seiten mit Spuren des
+        Liefert die geordnete Spurensequenz ALLER Seiten mit Spuren des
         Beschuldigten für die seitenübergreifende Spur-Navigation (OP-KN-7).
 
         Reihenfolge: Gruppe (profile → pm → topic → other),
         innerhalb Gruppe: scrape_targets.id ASC (= Autoincrement =
-        chronologische Erfassungsreihenfolge).
+        chronologische Erfassungsreihenfolge), innerhalb desselben
+        Erfassungsziels: Seitennummer aufsteigend (Seite 1, 2, 3 …).
 
         Nur Seiten die in fdb.pages existieren (gescrapte Seiten mit BLOB)
         werden geliefert — Scrape-Targets ohne zugehörige Seite werden
-        übersprungen.
+        gezählt und protokolliert, nicht stillschweigend übergangen
+        (Grundregel 1).
 
         url_type-Mapping (Beleg: reale forensic_2948078.db, 2026-04-27):
           viewtopic        → Gruppe 'topic',   JOIN auf topic_id
@@ -1343,15 +1421,95 @@ class ForensicDb:
           pgp_probe        → Gruppe 'other',   JOIN auf actor_user_id
           static           → übersprungen
 
+        =====================================================================
+        BUILD 677 — VIER BEHEBUNGEN AN DIESER STELLE.
+        Vorgänge 2f1044b9 (Sequenz führte je Thema nur EINE Seite) und
+        aa0d9033 (Gruppe 'profile' blieb leer). Gemessen am 05.08.2026 in der
+        VM gegen forensic_1488.db mit tools/diag_spurensequenz_luecken.py:
+        185 erfasste Seiten waren über die Spurennavigation NICHT erreichbar
+        (107 Benachrichtigungsseiten, 62 Themen-Folgeseiten, 16
+        Unterforen-Folgeseiten) — 2,8 Prozent von 6.531 Seiten.
+
+        (1) ALLE SEITEN JE ERFASSUNGSZIEL STATT EINER.
+            Bis Build 676 stand hier je Ziel:
+
+                SELECT url FROM blob_lookup WHERE url LIKE ? LIMIT 1
+
+            'LIMIT 1' ohne ORDER BY liefert EINE beliebige der passenden
+            Zeilen. Ein Thema mit drei erfassten Seiten steuerte damit
+            höchstens eine zur Sequenz bei; welche, entschied die
+            Speicherreihenfolge. Gemessen: von 6.347 Sequenzeinträgen trug
+            KEIN EINZIGER einen Seitenteil (?p= / &p=). Jetzt werden alle
+            Treffer übernommen und nach Seitennummer geordnet.
+
+        (2) DIE KENNUNG WIRD GANZ VERGLICHEN, NICHT ALS TEILZEICHENKETTE.
+            Das Muster '%viewtopic.php?id=12%' passt AUCH auf '…id=120870' —
+            und im Zweifel zuerst. Das konnte die Seite eines FREMDEN Themas
+            in die Spurenliste eines Beschuldigten holen und zugleich die
+            eigene Seite verdrängen (belegt in der Selbstprobe von
+            tools/diag_spurensequenz_luecken.py). Der Aufbau des Verzeichnisses
+            liest deshalb die VOLLSTÄNDIGE Ziffernfolge hinter dem Fragment
+            und vergleicht sie als Ganzes: '12' und '120870' sind zwei
+            verschiedene Schlüssel und können sich nicht mehr treffen.
+
+        (3) KEIN RÜCKFALL AUF DAS BLOSSE FRAGMENT BEI LEERER KENNUNG.
+            Bis Build 676 verzweigte der Code auf den WERT statt auf die
+            Spalte: ein Ziel MIT ID-Spalte, deren Wert aber NULL ist, suchte
+            das blosse Fragment ('%profile.php?id=%') und nahm damit die
+            ERSTBESTE fremde Profilseite in die Sequenz. Genau das lag im
+            Bestand vor — das einzige 'pgp_probe'-Ziel (st.id 1091) trägt
+            actor_user_id NULL und führte so '/forum/profile.php?id=1488'
+            unter der Gruppe 'other'. Eine Seite, die einem Ziel zugeordnet
+            wird, das sie gar nicht meint, ist ein falscher Beleg, und ein
+            falscher Beleg ist schlimmer als ein fehlender. Solche Ziele
+            werden jetzt gezählt und protokolliert. Der Rückfall auf das
+            blosse Fragment bleibt AUSSCHLIESSLICH den Typen, die ihn dem
+            Bauplan nach brauchen (id_col None: pms_overview, notifications,
+            notification_item) — dort ist die URL fix und trägt keine Kennung.
+
+        (4) EINE BENANNTE REGEL STATT DER REIHENFOLGE DER KENNUNGEN.
+            Drei url_type-Werte bilden auf dasselbe Fragment 'profile.php?id='
+            ab ('profile', 'other_profile', 'pgp_probe'), zwei davon auf
+            Gruppe 'profile', einer auf 'other'. Bis Build 676 entschied
+            allein, welches Ziel in scrape_targets die kleinere id trug —
+            wer zuerst kam, bestimmte die Gruppe. Jetzt gilt: FINDEN MEHRERE
+            ZIELE DIESELBE SEITE, GEWINNT DIE HÖHERWERTIGE GRUPPE
+            (profile → pm → topic → other), bei gleicher Gruppe das Ziel mit
+            der kleineren id. Die Regel steht in GROUP_ORDER und ist damit
+            ablesbar; die Reihenfolge der Kennungen entscheidet nichts mehr.
+
+        AUSSERDEM — ENTDOPPELUNG NACH SEITE STATT NACH ADRESSE.
+            Eine Seite trägt im Bestand im Mittel rund 23 Adressen: die
+            kanonische, Sprungmarken ('…?id=5136#p33461') und Zweitpfade
+            ('/forum/beginner/…'), alle über page_aliases mit derselben
+            page_id. Bis Build 676 wurde nach der ADRESSE entdoppelt
+            (seen_urls); mit (1) hätte dieselbe Seite dadurch bis zu 23
+            Einträge in der Sequenz bekommen. Entdoppelt wird deshalb nach
+            page_id, und je Seite wird EINE Adresse ausgewählt — siehe
+            _adress_guete().
+
+        LEISTUNG: Die alte Fassung setzte je Erfassungsziel eine eigene
+            LIKE-Abfrage mit führendem Platzhalter ab; das ist je Ziel ein
+            vollständiger Durchlauf über pages UND page_aliases (im Bestand
+            rund 1.000 Ziele gegen rund 78.000 Adressen). Jetzt werden die
+            Adressen EINMAL geladen und in ein Verzeichnis gelegt; der
+            Zugriff je Ziel ist danach ein Nachschlagen.
+
         Returns:
             Liste von dicts: url, title, group, trace_id
         Beleg: OP-KN-7, Build 074 — Korrektur der url_type-Werte.
+        Beleg: Build 677 — Vorgänge 2f1044b9 und aa0d9033.
         """
         base_url = self.get_forum_base_url() or ""
 
         # url_type → (navigationsgruppe, id_spalte_in_scrape_targets, url_fragment_template)
         # id_spalte None = fixe URL ohne ID-Parameter (pms_overview, notifications)
-        # url_fragment None = nur LIKE '%<url_type_keyword>%' Matching
+        #
+        # DIESE ZUORDNUNG WIRD ABGESCHRIEBEN: tools/diag_spurensequenz_luecken.py
+        # führt eine wortgleiche Kopie, damit es messen kann, was der
+        # Produktivcode TUT. Testfall SL05 vergleicht beide über den
+        # Syntaxbaum und schlägt an, sobald sie auseinanderlaufen. Wer hier
+        # etwas ändert, ändert es dort mit.
         TYPE_MAP = {
             "viewtopic":        ("topic",   "topic_id",      "viewtopic.php?id="),
             "viewforum":        ("other",   "forum_id",      "viewforum.php?id="),
@@ -1368,8 +1526,14 @@ class ForensicDb:
             # static → nicht gelistet, wird unten übersprungen
         }
 
+        # Die Rangfolge der Gruppen. Sie ordnet nicht nur die Ausgabe, sie ist
+        # seit Build 677 auch die benannte Regel aus (4): findet mehr als ein
+        # Erfassungsziel dieselbe Seite, gewinnt der kleinere Rang.
         GROUP_ORDER = {"profile": 0, "pm": 1, "topic": 2, "other": 3}
 
+        # ---------------------------------------------------------------------
+        # Schritt 1 — Erfassungsziele lesen.
+        # ---------------------------------------------------------------------
         try:
             rows = self._con.execute("""
                 SELECT
@@ -1388,76 +1552,216 @@ class ForensicDb:
             logger.error("get_trace_sequence() Abfrage fehlgeschlagen: %s", exc)
             return []
 
-        seen_urls: set[str] = set()
-        raw_entries = []
+        # ---------------------------------------------------------------------
+        # Schritt 2 — Adressen EINMAL laden und ein Verzeichnis aufbauen.
+        #
+        # 'canonical_url' trägt die vollständige Onion-Adresse; die Sequenz
+        # arbeitet mit dem blossen Pfad. Bereinigt wird hier mit derselben
+        # Basis-URL, die auch der blob_lookup-View per REPLACE() entfernt —
+        # sonst liesse sich nicht erkennen, WELCHE der Adressen einer Seite
+        # die kanonische ist.
+        #
+        # Die Spalte 'html' wird bewusst NICHT ausgewählt: die BLOBs sind der
+        # weitaus grösste Teil der Datei und werden hier nicht gebraucht.
+        # ---------------------------------------------------------------------
+        try:
+            url_rows = self._con.execute(
+                "SELECT page_id, url, canonical_url FROM blob_lookup"
+            ).fetchall()
+        except Exception as exc:
+            logger.error(
+                "get_trace_sequence(): blob_lookup nicht lesbar: %s", exc)
+            return []
+
+        # adressen[i] = (page_id, url, ist_kanonisch)
+        adressen: list[tuple[int, str, bool]] = []
+        # Verzeichnis der Adressen MIT Kennung: (fragment, kennung) → [index, …]
+        verz_mit_kennung: dict[tuple[str, str], list[int]] = {}
+        # Verzeichnis der Adressen OHNE Kennung: fragment → [index, …]
+        verz_ohne_kennung: dict[str, list[int]] = {}
+
+        # Die Fragmente werden aus TYPE_MAP abgeleitet und nicht noch einmal
+        # hingeschrieben: eine zweite Liste liefe binnen zweier Builds
+        # auseinander. 'profile.php?id=' kommt in TYPE_MAP dreimal vor und
+        # steht hier genau einmal.
+        frag_mit_kennung = sorted(
+            {frag.lower() for (_g, id_col, frag) in TYPE_MAP.values() if id_col})
+        frag_ohne_kennung = sorted(
+            {frag.lower() for (_g, id_col, frag) in TYPE_MAP.values() if not id_col})
+
+        for r in url_rows:
+            url = str(r["url"] or "")
+            if not url:
+                continue
+            can = str(r["canonical_url"] or "")
+            if base_url:
+                can = can.replace(base_url, "")
+            idx = len(adressen)
+            adressen.append((int(r["page_id"]), url, url == can))
+
+            url_klein = url.lower()
+            for frag in frag_mit_kennung:
+                # Alle Vorkommen des Fragments prüfen: eine Adresse kann das
+                # Fragment mehrfach tragen (z.B. als Rücksprungziel in einem
+                # Parameter). Jedes Vorkommen mit Ziffern dahinter wird
+                # verzeichnet.
+                pos = url_klein.find(frag)
+                while pos >= 0:
+                    anf = pos + len(frag)
+                    ende = anf
+                    while ende < len(url_klein) and url_klein[ende].isdigit():
+                        ende += 1
+                    if ende > anf:
+                        schluessel = (frag, url_klein[anf:ende])
+                        verz_mit_kennung.setdefault(schluessel, []).append(idx)
+                    pos = url_klein.find(frag, pos + 1)
+            for frag in frag_ohne_kennung:
+                if frag in url_klein:
+                    verz_ohne_kennung.setdefault(frag, []).append(idx)
+
+        # ---------------------------------------------------------------------
+        # Schritt 3 — Ziele auf Seiten abbilden.
+        #
+        # befund[page_id] = {rang, gruppe, trace_id, url, guete}
+        #   rang/gruppe/trace_id — die Zuordnung nach der Regel aus (4)
+        #   url/guete            — die ausgewählte Adresse der Seite
+        # Beide werden GETRENNT fortgeschrieben: welche Gruppe eine Seite
+        # trägt und unter welcher Adresse sie angelaufen wird, sind zwei
+        # verschiedene Fragen.
+        # ---------------------------------------------------------------------
+        befund: dict[int, dict] = {}
+        ziele_ohne_kennung: dict[str, int] = {}   # url_type → Anzahl
+        ziele_ohne_treffer: dict[str, int] = {}   # url_type → Anzahl
+        typen_unbekannt: dict[str, int] = {}      # url_type → Anzahl
 
         for row in rows:
             url_type = str(row["url_type"] or "")
             if url_type not in TYPE_MAP:
-                logger.debug("get_trace_sequence: unbekannter url_type '%s' — übersprungen", url_type)
+                typen_unbekannt[url_type] = typen_unbekannt.get(url_type, 0) + 1
                 continue
 
             group, id_col, url_fragment = TYPE_MAP[url_type]
+            frag = url_fragment.lower()
 
-            # ID-Wert bestimmen
-            id_val = None
             if id_col:
                 id_val = row[id_col]
+                if id_val is None:
+                    # (3) KEIN Rückfall auf das blosse Fragment.
+                    ziele_ohne_kennung[url_type] = \
+                        ziele_ohne_kennung.get(url_type, 0) + 1
+                    continue
+                kennung = str(id_val).strip().lower()
+                positionen = verz_mit_kennung.get((frag, kennung), ())
+            else:
+                positionen = verz_ohne_kennung.get(frag, ())
 
-            # URL in blob_lookup suchen
-            try:
-                if id_val is not None:
-                    pattern = f"%{url_fragment}{id_val}%"
-                    bl_row = self._con.execute(
-                        "SELECT url FROM blob_lookup WHERE url LIKE ? LIMIT 1",
-                        (pattern,),
-                    ).fetchone()
-                else:
-                    # Fixe URL — exakter LIKE auf Fragment
-                    pattern = f"%{url_fragment}%"
-                    bl_row = self._con.execute(
-                        "SELECT url FROM blob_lookup WHERE url LIKE ? LIMIT 1",
-                        (pattern,),
-                    ).fetchone()
-            except Exception as exc:
-                logger.debug("get_trace_sequence: blob_lookup für '%s' fehlgeschlagen: %s", url_type, exc)
+            if not positionen:
+                ziele_ohne_treffer[url_type] = \
+                    ziele_ohne_treffer.get(url_type, 0) + 1
                 continue
 
-            if not bl_row:
-                continue
+            rang = GROUP_ORDER.get(group, 3)
+            trace_id = int(row["trace_id"])
 
-            url_norm = str(bl_row["url"] or "")
-            if not url_norm or url_norm in seen_urls:
-                continue
-            seen_urls.add(url_norm)
+            for idx in positionen:
+                page_id, url, ist_kanonisch = adressen[idx]
+                guete = _adress_guete(url, ist_kanonisch)
+                eintrag = befund.get(page_id)
+                if eintrag is None:
+                    befund[page_id] = {
+                        "rang":     rang,
+                        "gruppe":   group,
+                        "trace_id": trace_id,
+                        "url":      url,
+                        "guete":    guete,
+                    }
+                    continue
+                # (4) Bessere Gruppe gewinnt, dann kleinere trace_id.
+                if (rang, trace_id) < (eintrag["rang"], eintrag["trace_id"]):
+                    eintrag["rang"]     = rang
+                    eintrag["gruppe"]   = group
+                    eintrag["trace_id"] = trace_id
+                # Adresswahl unabhängig von der Zuordnung.
+                if guete < eintrag["guete"]:
+                    eintrag["guete"] = guete
+                    eintrag["url"]   = url
 
-            # Titel aus fdb.pages über blob_lookup.page_id
-            try:
-                t_row = self._con.execute(
-                    "SELECT p.title FROM fdb.pages p "
-                    "INNER JOIN blob_lookup bl ON bl.page_id = p.id "
-                    "WHERE bl.url = ? LIMIT 1",
-                    (url_norm,),
-                ).fetchone()
-                title = str(t_row["title"]).strip() if t_row and t_row["title"] else None
-            except Exception:
-                title = None
+        # ---------------------------------------------------------------------
+        # Schritt 4 — Was übergangen wurde, wird BENANNT (Grundregel 1).
+        #
+        # Bis Build 676 endeten alle drei Fälle in einem 'continue' ohne Spur.
+        # Eine Sequenz, die schweigend kürzer ist als der Bestand, sieht
+        # vollständig aus - und das ist der gefährlichste Zustand.
+        # ---------------------------------------------------------------------
+        if ziele_ohne_kennung:
+            logger.warning(
+                "get_trace_sequence: %d Erfassungsziele ohne Kennung in der "
+                "vorgesehenen Spalte - nicht zugeordnet (je url_type: %s). "
+                "Vorgang aa0d9033.",
+                sum(ziele_ohne_kennung.values()),
+                ", ".join("%s=%d" % kv for kv in sorted(ziele_ohne_kennung.items())),
+            )
+        if ziele_ohne_treffer:
+            logger.warning(
+                "get_trace_sequence: %d Erfassungsziele ohne passende erfasste "
+                "Seite (je url_type: %s).",
+                sum(ziele_ohne_treffer.values()),
+                ", ".join("%s=%d" % kv for kv in sorted(ziele_ohne_treffer.items())),
+            )
+        if typen_unbekannt:
+            logger.warning(
+                "get_trace_sequence: %d Erfassungsziele mit unbekanntem "
+                "url_type - übersprungen (je url_type: %s).",
+                sum(typen_unbekannt.values()),
+                ", ".join("%s=%d" % kv for kv in sorted(typen_unbekannt.items())),
+            )
 
-            raw_entries.append({
-                "url":       url_norm,
-                "title":     title,
-                "group":     group,
-                "trace_id":  int(row["trace_id"]),
-                "_sort_key": GROUP_ORDER.get(group, 3),
-            })
+        if not befund:
+            return []
 
-        # Stabile Sortierung: Gruppe zuerst, dann trace_id ASC
-        raw_entries.sort(key=lambda e: (e["_sort_key"], e["trace_id"]))
+        # ---------------------------------------------------------------------
+        # Schritt 5 — Titel in EINER Abfrage nachladen.
+        #
+        # Bis Build 676 stand hier je Eintrag eine eigene Abfrage mit JOIN
+        # über blob_lookup. Bei rund 6.500 Seiten sind das 6.500 Abfragen für
+        # eine Angabe, die in einer einzigen Tabelle steht.
+        # ---------------------------------------------------------------------
+        titel: dict[int, "str | None"] = {}
+        try:
+            for t in self._con.execute("SELECT id, title FROM fdb.pages"):
+                wert = t["title"]
+                titel[int(t["id"])] = str(wert).strip() if wert else None
+        except Exception as exc:
+            logger.debug("get_trace_sequence: Titel nicht lesbar: %s", exc)
+
+        # ---------------------------------------------------------------------
+        # Schritt 6 — Ordnen und ausliefern.
+        #
+        # Gruppe, dann Erfassungsziel (chronologisch), dann Seitennummer
+        # aufsteigend, dann die Adresse als letzte Instanz. Die letzte Stufe
+        # ist keine Feinheit: ohne sie hinge die Reihenfolge zweier Seiten
+        # mit gleicher Nummer an der Reihenfolge der Zeilen aus SQLite, und
+        # die ist nicht zugesichert. Eine Sequenz, die sich zwischen zwei
+        # Aufrufen umsortiert, macht jede Rangangabe in einem Vermerk wertlos.
+        # ---------------------------------------------------------------------
+        eintraege = [
+            {
+                "url":      e["url"],
+                "title":    titel.get(page_id),
+                "group":    e["gruppe"],
+                "trace_id": e["trace_id"],
+                "_rang":    e["rang"],
+                "_seite":   _seitennummer(e["url"]),
+            }
+            for page_id, e in befund.items()
+        ]
+        eintraege.sort(key=lambda e: (e["_rang"], e["trace_id"],
+                                      e["_seite"], e["url"]))
 
         return [
             {"url": e["url"], "title": e["title"],
              "group": e["group"], "trace_id": e["trace_id"]}
-            for e in raw_entries
+            for e in eintraege
         ]
 
     def page_count(self) -> int:

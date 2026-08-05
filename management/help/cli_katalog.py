@@ -192,6 +192,10 @@ _GEPRUEFT_672 = ("Build 672, 2026-08-05, im Container (Python 3.11) gegen "
                  "einen gebauten Wegwerf-Bestand unter /tmp - NICHT gegen "
                  "einen echten Fall")
 
+_GEPRUEFT_677 = ("Build 677, 2026-08-05, im Container (Python 3.11) gegen "
+                 "einen gebauten Wegwerf-Bestand unter /tmp - NICHT gegen "
+                 "einen echten Fall")
+
 
 #: Build 675. Wie zuvor im Container gegen einen gebauten Wegwerf-Bestand, der
 #: die am 05.08.2026 in der VM gemessene Lage nachstellt (Profilseiten nur fuer
@@ -3701,11 +3705,14 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         schluessel="diag_spurensequenz_luecken",
         pfad="tools/diag_spurensequenz_luecken.py",
         aufruf="python tools/diag_spurensequenz_luecken.py "
-               "--forensic-db PFAD [--json DATEI] [--ohne-selbstprobe]",
+               "--forensic-db PFAD [--json DATEI] [--ohne-selbstprobe] "
+               "[--nachweis]",
         titel="Luecken der Spurensequenz auszaehlen",
         gruppe="Diagnose",
         zweck="Zaehlt aus, wie viele erfasste Seiten die Spurensequenz "
-              "uebergeht (Vorgang 2f1044b9).",
+              "uebergeht (Vorgang 2f1044b9). Mit '--nachweis' stellt es der "
+              "Fassung bis Build 676 die Fassung ab Build 677 gegenueber und "
+              "weist aus, wie viele Seiten die Behebung zurueckgewinnt.",
         art="lesend",
         datenbanken=("forensic_<uid>.db (lesend, mode=ro)",),
         betrieb="Im laufenden Betrieb gefahrlos. Die Datei wird ausschliesslich "
@@ -3743,6 +3750,17 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "je Eintrag die page_id, sodass sich Zweitadressen "
                      "derselben Seite nachtraeglich zusammenlegen lassen.",
                      _GEPRUEFT_672),
+                _bsp("python tools/diag_spurensequenz_luecken.py "
+                     "--forensic-db /tmp/probe_forensic.db --nachweis",
+                     "Wie oben, zusaetzlich der Abschnitt NACHWEIS DER "
+                     "BEHEBUNG: Seiten in der Sequenz vorher und nachher, "
+                     "die Zahl der zurueckgewonnenen Seiten und - namentlich "
+                     "- die Seiten, die die neue Fassung BEWUSST nicht mehr "
+                     "fuehrt, weil sie nur ueber eine fremde Kennung oder "
+                     "ueber ein Ziel ohne Kennung erreichbar waren. Der "
+                     "Rueckgabewert richtet sich weiterhin nach der Messung "
+                     "der alten Fassung; '--nachweis' aendert ihn nicht.",
+                     _GEPRUEFT_677),
             ),
             exit_codes=((0, "gelaufen, KEINE Luecke gefunden"),
                         (1, "gelaufen, LUECKE gefunden - das ist ein BEFUND "
@@ -3782,6 +3800,15 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "Fehlt die Tabelle 'page_aliases', wird ohne sie gemessen "
                 "und das im Protokoll benannt. Die Zahlen sind dann "
                 "unvollstaendig, nicht falsch.",
+                "'--nachweis' rechnet mit einer ZWEITEN Abschrift des "
+                "Produktivcodes (messe_neu). Sie waehlt je Seite die "
+                "kuerzeste Adresse, waehrend get_trace_sequence() ab Build "
+                "677 die KANONISCHE waehlt - dieses Werkzeug liest pages und "
+                "page_aliases zusammengeschuettet und kennt die Herkunft "
+                "einer Adresse nicht mehr. Fuer die Zaehlung nach page_id ist "
+                "das ohne Belang; EINZELNE Adressen aus diesem Abschnitt "
+                "duerfen aber nicht zeichengenau mit der Ausgabe des "
+                "laufenden Servers verglichen werden.",
             ),
         ),
     ),
