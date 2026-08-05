@@ -7435,14 +7435,6 @@
           "old_value": "critical",
           "new_value": "major",
           "comment": "Schweregrad von 'critical' auf 'major' gesenkt - nicht weil der Fehler kleiner geworden waere, sondern weil die gemessene Groesse eine andere ist als die zuerst gemeldete: rund 2.000 uebergangene Seiten statt 73.796. Der Vorgang bleibt offen und bleibt Voraussetzung fuer c658fc41."
-        },
-        {
-          "timestamp": "2026-08-05T14:02:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "ZWEITE BERICHTIGUNG DERSELBEN ZAHL - gemessen am 05.08.2026 mit dem nach page_id zaehlenden Werkzeug aus Build 672.\n\n  Build 671 meldete : 73.796  (URLs gezaehlt - falsch)\n  ich schaetzte dann:  2.049  (URL-Arithmetik auf dem alten Befund - ebenfalls falsch)\n  GEMESSEN sind es  :    185  SEITEN\n\nAuch meine Schaetzung von 2.049 war eine URL-Rechnung: ich hatte nur die Pfadvariante '/forum/beginner/' zusammengelegt und uebersehen, dass eine Seite noch viele weitere Adressen traegt - im Bestand rund 23 URLs je Seite. Nur die page_id legt sie zuverlaessig zusammen.\n\nDIE 185 UEBERGANGENEN SEITEN:\n  107  Benachrichtigungsseiten (notifications.php?filter=N und ?id=N)\n   62  Folgeseiten von Themen (viewtopic.php?id=N&p=N) - AUSNAHMSLOS alle 62 sind Folgeseiten\n   16  Folgeseiten von Unterforen (viewforum.php?id=N&p=N)\nVon 6.531 erreichbaren Seiten sind das 2,8 Prozent.\n\nGEGENPROBE AM EINZELFALL: die Seiten, auf denen die Fehlersuche zu c658fc41 stattfand, stehen namentlich in der Luecke - /forum/viewtopic.php?id=120870&p=2 und &p=3 sowie /forum/viewtopic.php?id=24984&p=2; die zugehoerigen Basisseiten stehen in der Sequenz. Die Seite mit den 40 gemessenen Spuren ist also tatsaechlich eine der uebergangenen.\n\nBEWERTUNG: der Befund ist erheblich kleiner als zweimal gemeldet, aber er ist echt und trifft genau die Seiten, auf denen Spuren liegen. Grundregel 1 bleibt beruehrt - nicht wegen der Menge, sondern wegen des Inhalts. Die Sequenz enthaelt weiterhin NULL Eintraege mit Seitenteil."
         }
       ]
     },
@@ -7662,15 +7654,15 @@
       "description": "GEMESSEN am 2026-08-05 auf einer Wegwerfkopie des Bestandes.\n\nDER BEFUND: Eine Eintragsdatei trug zu zwei vorhandenen Vorgaengen (2f1044b9, aa0d9033) je einen Update-Eintrag nach und aenderte sonst nichts. merge-new-tickets.sh meldete 'Fertig: 1 Datei(en) eingemischt', LOESCHTE die Quelldatei - und im Bestand standen danach unveraendert zwei statt drei Update-Zeilen je Vorgang. Der Nachtrag war weg, die Quelle auch.\n\nDIE URSACHE: detect_conflicts() (merge.py, Z. 431/432) vergleicht ausschliesslich die Felder\n\n    title, description, status, priority, severity, assigned_to,\n    target_version, affected_version\n\n'updates' steht bewusst nicht darunter - sonst waere jede Historienerweiterung ein 'Konflikt'. Fuer einen bereits vorhandenen Vorgang kennt merge.py aber nur zwei Wege: 'neu' (faellt weg, die Kennung ist bekannt) und 'Konflikt' (nur bei Abweichung in einem der acht Felder). Eine Fassung, die NUR Updates nachtraegt, nimmt keinen der beiden Wege und faellt zwischen ihnen hindurch.\n\nWARUM DAS SCHWER WIEGT: Es ist genau die Verlustart, gegen die Build 668 gebaut wurde - nur in der anderen Richtung. IT03 bewacht, dass beim Ersetzen nichts VERLORENGEHT. Dass das Nachgetragene ANKOMMT, bewachte niemand. IT01 bis IT05 waren alle gruen, waehrend der Nachtrag ins Leere lief: sie pruefen die Datei, nicht ihre Wirkung.\n\nDAZU DIE LOESCHUNG. merge-new-tickets.sh loescht eine Quelldatei, wenn merge.py Erfolg meldet. Hier meldete merge.py Erfolg, ohne etwas geschrieben zu haben. Der Nachtrag ist damit nicht nur nicht angekommen, er ist auch nicht mehr da.\n\nZWISCHENSICHERUNG (Build 671): Der neue Waechter IT06 in tests/test_issue_tracker_eintraege.py schlaegt auf der Erstellerseite an, BEVOR geliefert wird. Er ist ausdruecklich KEINE Behebung - er verhindert nur, dass eine Lieferung lautlos ins Leere geht.",
       "expected_behavior": "Eine gelieferte Fassung, die neue Update-Eintraege traegt, kommt im Bestand an - oder das Einmischen bricht ab und sagt, warum. Eine Quelldatei wird nur geloescht, wenn ihr Inhalt nachweislich im Bestand steht. Denkbare Behebung: 'updates' als eigene Pruefung neben den Vergleichsfeldern; unterscheiden sich die Zeitstempel, wird der Vorgang ueber ResolutionStrategy.MERGE_UPDATES zusammengefuehrt - die Strategie gibt es in merge.py bereits (Z. 628 ff.), sie wird auf diesem Weg nur nie erreicht.",
       "actual_behavior": "Erfolgsmeldung, Quelldatei geloescht, Bestand unveraendert. Zwei Update-Zeilen still verloren.",
-      "status": "resolved",
+      "status": "open",
       "priority": "high",
       "severity": "critical",
-      "assigned_to": "Claude",
+      "assigned_to": "",
       "related_to": [
         "2f1044b9-818d-49bb-9621-04fbf5208791",
         "aa0d9033-91f2-4cb5-8cd0-2ff2e59ee215"
       ],
-      "resolved_in_version": "0.8.673",
+      "resolved_in_version": null,
       "target_version": null,
       "environment": {
         "os": "Linux (Container)",
@@ -7685,12 +7677,6 @@
       "attachments": [],
       "updates": [
         {
-          "timestamp": "2026-08-05T12:07:11.318474+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build671.json"
-        },
-        {
           "timestamp": "2026-08-05T13:05:00+00:00",
           "author": "Claude",
           "action": "comment",
@@ -7699,20 +7685,10 @@
           "comment": "Aufgefallen beim Ausliefern von Build 671 - die eigene Lieferung kam nicht an. Waechter IT06 als Zwischensicherung eingebaut."
         },
         {
-          "timestamp": "2026-08-05T13:06:00+00:00",
-          "author": "Claude",
+          "timestamp": "2026-08-05T12:07:11.318474+00:00",
+          "author": "merge-tool",
           "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "BEHOBEN IN BUILD 673 - beide Bausteine, wie am 05.08.2026 beauftragt.\n\n(a) DER DRITTE ZWEIG IN merge.py. detect_conflicts() erkennt jetzt 'Kennung bekannt, kein Vergleichsfeld abweichend, aber neue Update-Zeitstempel' und meldet den Konflikttyp UPDATE_TIMELINE - den gab es in der Aufzaehlung bereits, benutzt wurde er nie. auto_resolve_conflict() loest ihn IMMER ueber MERGE_UPDATES, unabhaengig von der gewaehlten Strategie: bei diesem Typ ist per Konstruktion kein Feld abweichend, es gibt nichts zu entscheiden, nur etwas anzuhaengen. 'target' waere wieder Verlust mit Erfolgsmeldung, 'source' wuerde den ganzen Vorgang ersetzen und alles verlieren, was die Lieferung nicht mitbringt.\n\n(b) GELOESCHT WIRD ERST NACH DER GEGENPROBE - der wichtigere Teil. Neu: issue-tracker/pruefe_einmischung.py. Es sieht im BESTAND nach, ob jede Kennung, jede Update-Zeile und jedes der acht Vergleichsfelder der Quelldatei dort steht. merge-new-tickets.sh ruft es nach jedem Einmischen und loescht erst danach. Faellt die Probe, beendet 'set -e' den Lauf, der EXIT-Trap erklaert die Lage, die Datei bleibt liegen.\n\nWARUM (b) MEHR WERT IST ALS (a): (a) schliesst diese Luecke. (b) sorgt dafuer, dass die naechste keine Daten mehr kostet. Eine Erfolgsmeldung ist eine Behauptung; der Bestand ist der Beleg. Dasselbe Verhaeltnis wie zwischen bundle_bauen.sh und pruefe_lieferung.sh.\n\nREGRESSION: tests/test_merge_nachtraege.py, MN00 bis MN06. MN00 stellt den VERLUSTFALL zuerst nach - er rechnet den alten Vergleich noch einmal nach und zeigt, dass dieser den Nachtrag fuer unauffaellig haelt; ein Fall, der nur den behobenen Zustand prueft, belegt nicht, dass je etwas kaputt war. MN03 faehrt den Fall Ende zu Ende, MN04 belegt, dass ein echter Feldkonflikt sich unveraendert verhaelt, MN06 wacht ueber die Abschrift der Feldliste.\n\nERPROBT auf einer Wegwerfkopie des echten Bestandes: reine Nachtragsdatei eingemischt, 1 Vorgang aktualisiert, Gegenprobe bestanden, Datei entfernt, Nachtrag im Bestand vorhanden. readme.md des Trackers ergaenzt."
-        },
-        {
-          "timestamp": "2026-08-05T13:07:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "Beide Bausteine gebaut und mit Regressionsfaellen belegt."
+          "comment": "Importiert aus eintraege_claude_Build671.json"
         }
       ]
     },
@@ -7730,7 +7706,7 @@
       "status": "open",
       "priority": "high",
       "severity": "major",
-      "assigned_to": "Claude",
+      "assigned_to": "",
       "related_to": [
         "aa0d9033-91f2-4cb5-8cd0-2ff2e59ee215",
         "2f1044b9-818d-49bb-9621-04fbf5208791"
@@ -7751,12 +7727,6 @@
       "attachments": [],
       "updates": [
         {
-          "timestamp": "2026-08-05T13:24:57.476725+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build672.json"
-        },
-        {
           "timestamp": "2026-08-05T14:05:00+00:00",
           "author": "Claude",
           "action": "comment",
@@ -7765,12 +7735,10 @@
           "comment": "Aus der Messung zu 2f1044b9 abgetrennt. Loest die widerlegte Vermutung in aa0d9033 ab."
         },
         {
-          "timestamp": "2026-08-05T14:06:00+00:00",
-          "author": "Claude",
+          "timestamp": "2026-08-05T12:59:50.857981+00:00",
+          "author": "merge-tool",
           "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Der Lauf mit dem berichtigten Werkzeug (Build 672) bestaetigt den Befund unveraendert: 1.000 Erfassungsziele ohne jede passende Seite (other_profile 982, profile 17, pgp_probe 1), Gruppe 'profile' leer, 0 Profilseiten in der Gruppe 'other'. Die Berichtigung der Zaehlweise hat daran nichts geaendert - der Befund haengt nicht an ihr. Die drei SQL-Abfragen zur Klaerung stehen weiter aus."
+          "comment": "Importiert aus eintraege_claude_Build672.json"
         }
       ]
     }
