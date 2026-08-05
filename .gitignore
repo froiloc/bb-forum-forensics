@@ -87,3 +87,4 @@ debug/test_2_91_console.js
 !issue-tracker/static/**
 
 *.bundle
+MD5SUMS_Build*.txt
