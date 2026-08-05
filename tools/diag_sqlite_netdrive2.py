@@ -91,6 +91,45 @@ def neben(db: Path) -> str:
 # Testfaelle auf der Kopie der echten DB
 # -----------------------------------------------------------------------------
 
+def _raeume_auf(probe_verz: Path, kopie: Path) -> None:
+    """
+    Raeumt Kopie, Nebendateien und Probeverzeichnis weg - und SAGT, was
+    liegenbleibt (Build 682, Vorgang 33b859f9).
+
+    An EINER Stelle, weil das Aufraeumen ab jetzt an mehreren Ausgaengen
+    gebraucht wird: nach dem regulaeren Lauf und beim Abbruch, wenn die Kopie
+    nicht anlegbar war. Zwei Fassungen waeren binnen weniger Builds
+    auseinandergelaufen, und dann bliebe an einem der Ausgaenge eine
+    vollstaendige Kopie eines Beweismittels liegen.
+
+    WAS ES NICHT TUT: Reste FRUEHERER Laeufe entfernen. Die werden beim Start
+    benannt und bleiben liegen - eine vollstaendige Kopie eines Beweismittels
+    loescht man nicht nebenbei, ohne dass jemand davon weiss.
+    """
+    for anhang in ("", "-wal", "-shm", "-journal"):
+        q = kopie.with_name(kopie.name + anhang)
+        if q.exists():
+            try:
+                q.unlink()
+            except OSError as exc:
+                log(f"   HINWEIS: Rest nicht loeschbar: {q} ({exc!r})")
+    if probe_verz.is_dir():
+        try:
+            probe_verz.rmdir()
+        except OSError as exc:
+            # rmdir scheitert, wenn noch etwas drinliegt. Genau dann muss es
+            # gesagt werden - ein stilles Weitergehen liesse eine Kopie
+            # zurueck, von der niemand weiss.
+            uebrig = sorted(q.name for q in probe_verz.iterdir()) \
+                if probe_verz.is_dir() else []
+            log(f"   HINWEIS: Probeverzeichnis bleibt liegen: {probe_verz}")
+            log(f"            Grund: {exc!r}")
+            if uebrig:
+                log(f"            Enthaelt noch: {', '.join(uebrig)}")
+            log("            BITTE PRUEFEN - es kann eine vollstaendige Kopie "
+                "eines Beweismittels sein.")
+
+
 def testfall(kopie: Path, name: str, pragmas: list[str], schreiben: bool) -> None:
     """
     Fuehrt einen Testfall auf der Kopie aus.
@@ -201,9 +240,53 @@ def main() -> int:
     log(f"   Schreibgeschuetzt: {'ja' if not os.access(str(original), os.W_OK) else 'nein'}")
     log()
 
-    kopie = original.with_name(f"_probe2_{os.getpid()}.db")
+    # -------------------------------------------------------------------------
+    # BUILD 682 (Vorgang 33b859f9): DIE KOPIE LIEGT IN EINEM EIGENEN
+    # UNTERVERZEICHNIS, nicht mehr neben dem Original.
+    #
+    # WARUM: Die Kopie ist eine vollstaendige Ausfertigung eines BEWEISMITTELS.
+    # Das Aufraeumen funktioniert und ist gemessen - aber bei einem harten
+    # Abbruch (Stromausfall, Prozessabschuss, Netzabbruch) bleibt sie liegen,
+    # und dann lag sie bisher zwischen den echten Datenbanken. Ein Rest in
+    # einem eigens benannten Verzeichnis ist als Rest ERKENNBAR; einer neben
+    # dem Original sieht aus wie Bestand.
+    #
+    # WAS DAS NICHT AENDERT: das Verzeichnis liegt auf DEMSELBEN Datentraeger
+    # wie das Original - und darauf kommt es bei dieser Messung an, denn
+    # gemessen wird das Verhalten des Netzlaufwerks. Ein Unterverzeichnis
+    # wechselt weder Datentraeger noch Freigabe.
+    # -------------------------------------------------------------------------
+    probe_verz = original.parent / f"_probe2_{os.getpid()}"
+    kopie = probe_verz / "probe.db"
+
+    # Reste frueherer, hart abgebrochener Laeufe BENENNEN. Sie werden NICHT
+    # von selbst geloescht: eine vollstaendige Kopie eines Beweismittels
+    # loescht man nicht nebenbei, ohne dass jemand davon weiss.
+    reste = sorted(q for q in original.parent.glob("_probe2_*")
+                   if q != probe_verz)
+    if reste:
+        log("   ACHTUNG - Reste frueherer Laeufe gefunden:")
+        for q in reste:
+            log(f"      {q}")
+        log("   Diese Reste sind vollstaendige Kopien eines Beweismittels.")
+        log("   Sie werden NICHT selbsttaetig geloescht - bitte pruefen und")
+        log("   von Hand entfernen.")
+        log()
+
+    try:
+        probe_verz.mkdir(exist_ok=True)
+        # Zugriff nur fuer die aufrufende Person. Zur Wirkung unter Windows
+        # siehe die Anmerkung bei der Kopie weiter unten.
+        try:
+            probe_verz.chmod(0o700)
+        except OSError:
+            pass
+    except OSError as exc:
+        log(f"[FEHLER] Probeverzeichnis nicht anlegbar: {exc!r}")
+        return 1
+
     log(f"B) TESTMATRIX auf einer KOPIE dieser DB im selben Verzeichnis")
-    log(f"   {kopie.name}  (wird am Ende geloescht)")
+    log(f"   {probe_verz.name}/{kopie.name}  (wird am Ende geloescht)")
     log()
 
     # Kandidaten. Reihenfolge der PRAGMAs ist bedeutsam:
@@ -237,20 +320,44 @@ def main() -> int:
                     pass
         try:
             shutil.copy2(str(original), str(kopie))
-            kopie.chmod(0o666)
+            # -----------------------------------------------------------------
+            # BUILD 682 (Vorgang 33b859f9): 0o600 STATT 0o666.
+            #
+            # HIER STAND chmod(0o666) - Lese- UND Schreibrecht fuer ALLE.
+            # Auf einem geteilten Netzlaufwerk, und genau dafuer ist dieses
+            # Werkzeug gebaut, lag damit waehrend des Laufs eine fuer jeden
+            # Benutzer les- und beschreibbare Vollkopie eines Beweismittels im
+            # Verzeichnis.
+            #
+            # DER VORGANG SCHLUG VOR, das chmod ERSATZLOS zu streichen -
+            # shutil.copy2 uebernehme ja die Rechte des Originals. Nachgesehen:
+            # das traegt nicht. Das Werkzeug misst ausdruecklich mit, ob das
+            # Original schreibgeschuetzt ist (Zeile 'Schreibgeschuetzt: ...'),
+            # und die Testmatrix muss auf die Kopie SCHREIBEN. Uebernaehme man
+            # die Rechte eines schreibgeschuetzten Originals, faellt die halbe
+            # Messung aus - und zwar mit einem Fehlerbild, das wie ein Befund
+            # des Netzlaufwerks aussieht. 0o600 loest beides: schreibbar, aber
+            # nur fuer die aufrufende Person.
+            #
+            # ZUR WIRKUNG UNTER WINDOWS, die im Vorgang als ungeprueft
+            # vermerkt war: os.chmod setzt dort ausschliesslich das
+            # Schreibschutz-Merkmal; alle uebrigen Bits werden ignoriert
+            # (Python-Dokumentation zu os.chmod). Auf NTFS bewirkten 0o666 und
+            # 0o600 also DASSELBE - naemlich nur, dass die Datei beschreibbar
+            # ist. Die Rechte der Kopie ergeben sich dort aus der Vererbung des
+            # Zielverzeichnisses. Der urspruengliche Befund wiegt auf der
+            # Produktions-VM damit LEICHTER als befuerchtet; auf einem
+            # POSIX-System war er real. Beides gehoert gesagt.
+            # -----------------------------------------------------------------
+            kopie.chmod(0o600)
         except OSError as exc:
             log(f"      [FEHL] Kopie nicht anlegbar: {exc!r} — Abbruch.")
+            _raeume_auf(probe_verz, kopie)
             return 1
         testfall(kopie, name, pragmas, schreiben)
         log()
 
-    for s in ("", "-wal", "-shm", "-journal"):
-        p = kopie.with_name(kopie.name + s)
-        if p.exists():
-            try:
-                p.unlink()
-            except OSError as exc:
-                log(f"   HINWEIS: Rest nicht loeschbar: {p.name} ({exc!r})")
+    _raeume_auf(probe_verz, kopie)
 
     # --- C) default.db: nur LESEND (4,8 GB werden nicht kopiert) --------------
     default_db = data / "default.db"
