@@ -1,0 +1,261 @@
+{
+  "issues": [
+    {
+      "id": "90e7c214-5f83-4a61-8d29-3b7e04c1a5df",
+      "type": "bug",
+      "title": "1000 Profil-Erfassungsziele finden keine einzige Seite im Bestand",
+      "affected_version": "0.8.671",
+      "reporter": "Claude",
+      "reported_at": "2026-08-05T14:05:00+00:00",
+      "prerequisites": "Ein Bestand mit Erfassungszielen der Typen profile, other_profile oder pgp_probe.",
+      "description": "GEMESSEN am 05.08.2026 in der VM gegen forensic_1488.db mit tools/diag_spurensequenz_luecken.py.\n\nDER BEFUND: 1.000 Erfassungsziele finden im Bestand KEINE passende Seite:\n  other_profile  982\n  profile         17\n  pgp_probe        1\n\nDas sind alle Ziele, die auf das URL-Fragment 'profile.php?id=' abbilden. Die Spurensequenz enthaelt entsprechend NULL Eintraege der Gruppe 'profile'.\n\nget_trace_sequence() uebergeht diese Ziele stillschweigend ('if not bl_row: continue', db/forensic_db.py). Es gibt weder eine Meldung noch eine Zaehlung - die Gruppe fehlt einfach.\n\nZWEI ERKLAERUNGEN SIND MOEGLICH, und sie fuehren zu voellig verschiedenen Massnahmen:\n  (A) DIE SEITEN FEHLEN. Profilseiten wurden nie erfasst oder nicht gespeichert. Dann ist das       kein Fehler der Navigation, sondern eine Luecke in der Erfassung - und zwar bei genau       der Seitenart, die fuer die Zuordnung eines Kontos zu einer natuerlichen Person am       meisten hergibt.\n  (B) DIE SEITEN LIEGEN UNTER EINER ANDEREN ADRESSE. Dann ist das Fragment       'profile.php?id=' im TYPE_MAP falsch, und die Ziele muessten anders gesucht werden.\n\nDAZU EINE ABWEICHUNG, die zu (B) passen wuerde: der laufende Server fuehrte am 05.08.2026 '/forum/profile.php?id=1488' in der Spurensequenz, Gruppe 'other'. Meine Nachbildung findet diese URL in pages und page_aliases nicht. Da meine URL-Menge eine OBERMENGE der Sicht blob_lookup ist (ich lese page_aliases ohne den JOIN auf pages), duerfte das nicht vorkommen. Einer der beiden Befunde ist falsch, und ich kann von hier aus nicht sagen, welcher.\n\nDIE KLAERUNG KOSTET DREI ABFRAGEN in der VM gegen forensic_1488.db:\n  SELECT COUNT(*) FROM pages WHERE url_canonical LIKE '%profile.php%';\n  SELECT COUNT(*) FROM page_aliases WHERE url_raw LIKE '%profile.php%';\n  SELECT url_type, COUNT(*) FROM scrape_targets\n   WHERE url_type IN ('profile','other_profile','pgp_probe') GROUP BY url_type;\n\nStehen die ersten beiden auf 0, gilt (A) - und dann gehoert der Vorgang in die Erfassung, nicht in den Webserver.",
+      "expected_behavior": "Entweder es gibt Profilseiten und die Navigation findet sie, oder es gibt keine und das wird BENANNT. Ein Erfassungsziel ohne Seite darf nicht stillschweigend entfallen: es ist die Aussage 'hier war eine Spur, und der Beleg dazu fehlt' - und genau die gehoert in den Bericht, nicht in ein 'continue'.",
+      "actual_behavior": "1.000 Ziele ohne Seite, Gruppe 'profile' leer, keine Meldung.",
+      "status": "open",
+      "priority": "high",
+      "severity": "major",
+      "assigned_to": "",
+      "related_to": [
+        "aa0d9033-91f2-4cb5-8cd0-2ff2e59ee215",
+        "2f1044b9-818d-49bb-9621-04fbf5208791"
+      ],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "os": "Windows (VM)",
+        "python_version": "3.14",
+        "database": "forensic_1488.db"
+      },
+      "tags": [
+        "Spuren",
+        "Erfassung",
+        "Profil",
+        "Grundregel1"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-05T14:05:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Aus der Messung zu 2f1044b9 abgetrennt. Loest die widerlegte Vermutung in aa0d9033 ab."
+        }
+      ]
+    },
+    {
+      "id": "2f1044b9-818d-49bb-9621-04fbf5208791",
+      "type": "bug",
+      "title": "Spurensequenz enthaelt von mehrseitigen Themen nur eine einzige Seite",
+      "affected_version": "0.8.669",
+      "reporter": "Claude",
+      "reported_at": "2026-08-05T11:30:00+00:00",
+      "prerequisites": "Ein Thema mit mehr als einer Seite, auf dem der Beschuldigte Spuren hinterlassen hat.",
+      "description": "GEMESSEN am 2026-08-05 in der VM auf /forum/viewtopic.php?id=120870&p=2 (Vorgang 120870, drei Seiten, 40 Spuren auf Seite 2). Aufgefallen bei der Untersuchung von c658fc41.\n\nDER BEFUND: get_trace_sequence() (db/forensic_db.py, Schleife ab Z. 1339) sucht je Erfassungsziel GENAU EINE URL:\n\n    SELECT url FROM blob_lookup WHERE url LIKE ? LIMIT 1\n\nDas Muster ist '%viewtopic.php?id=<topic_id>%'. Ein LIMIT 1 OHNE ORDER BY liefert eine beliebige der passenden Zeilen. Fuer ein Thema mit drei erfassten Seiten gelangt damit hoechstens eine davon in die Sequenz - welche, entscheidet die Speicherreihenfolge.\n\nMESSWERTE (Probe 2, Teil D):\n  - Eintraege in traceSequence insgesamt: 6347\n  - davon mit Seitenteil (?p= / &p=): 0\n  - verschiedene Themen-IDs in der Gruppe 'topic': 1864\n  - davon mit mehr als einem Eintrag: 0\n  - Rang von '/forum/viewtopic.php?id=120870&p=2': -1 (nicht enthalten)\n  - Rang von '/forum/viewtopic.php?id=120870':   1501 (enthalten)\n\nKEIN EINZIGER der 6347 Eintraege traegt einen Seitenteil. Von jedem mehrseitigen Thema kennt die Sequenz also genau eine Seite.\n\nWARUM DAS SCHWER WIEGT: Die Spurennavigation ist der Weg, auf dem Ermittelnde die Spuren eines Beschuldigten der Reihe nach abarbeiten. Seiten, die nicht in der Sequenz stehen, werden dabei nicht angelaufen - ohne Meldung, ohne Luecke in der Zaehlung, ohne dass es jemandem auffiele. Das beruehrt Grundregel 1: kein Beleg darf still uebersprungen werden. Die gemessene Seite trug 40 Spuren.\n\nGEMESSEN am 05.08.2026: 2.049 Seiten (siehe Update vom selben Tag). Urspruenglich stand hier: wie viele Seiten im Bestand insgesamt betroffen sind, ist noch nicht gemessen. Dafuer braucht es eine Auswertung von blob_lookup gegen scrape_targets in der VM. Diese Zahl gehoert vor der Behebung ermittelt, weil sie zugleich der Nachweis der Behebung ist.",
+      "expected_behavior": "Die Sequenz fuehrt JEDE erfasste Seite, die Spuren des Beschuldigten traegt - auch die zweite, dritte und jede weitere Seite eines Themas. Die Reihenfolge innerhalb eines Themas folgt der Seitennummer aufsteigend. Wird eine Seite bewusst ausgelassen, ist das zu benennen und zu begruenden, nicht stillzuschweigen.",
+      "actual_behavior": "0 von 6347 Sequenzeintraegen tragen einen Seitenteil. Je Thema steht genau ein Eintrag in der Sequenz; alle weiteren Seiten desselben Themas sind ueber die Spurennavigation nicht erreichbar.",
+      "status": "in_progress",
+      "priority": "high",
+      "severity": "major",
+      "assigned_to": "Claude",
+      "related_to": [
+        "c658fc41-b368-4b06-9142-5ff519b8d9c9"
+      ],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "os": "Windows (VM)",
+        "browser": "Chromium",
+        "python_version": "3.14",
+        "database": "forensic_<uid>.db"
+      },
+      "tags": [
+        "Spuren",
+        "Navigation",
+        "Vollstaendigkeit",
+        "Grundregel1"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-05T11:30:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Vorgang aus der Messung zu c658fc41 abgetrennt. Belege: Probe 2 Teil D2/D4 vom 2026-08-05."
+        },
+        {
+          "timestamp": "2026-08-05T11:33:56.373380+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build670.json"
+        },
+        {
+          "timestamp": "2026-08-05T13:10:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "MESSWERKZEUG GELIEFERT (Build 671): tools/diag_spurensequenz_luecken.py.\n\nEs beantwortet die Frage, die aus dem Browser nicht zu beantworten war: WIE VIELE erfasste Seiten die Sequenz uebergeht. Erst diese Zahl macht aus dem Einzelfall einen Befund - und sie ist zugleich der Nachweis der Behebung, denn danach muss sie 0 sein.\n\nWAS ES ANFASST: ausschliesslich forensic_<uid>.db, und die nur ueber 'mode=ro'. Die evidence_<uid>.db wird gar nicht geoeffnet - 'blob_lookup' ist eine TEMP-Sicht allein ueber fdb.pages und fdb.page_aliases. Testfall SL04 misst nach dem Lauf die Pruefsumme der Datei und das Ausbleiben von '-wal'/'-journal': die Zusicherung wird gemessen, nicht behauptet.\n\nWAS ES AUSSER DER ZAHL LIEFERT: (a) wie viele der uebergangenen Seiten einen Seitenteil tragen, (b) die Verteilung nach Gruppe - damit misst es aa0d9033 gleich mit und zaehlt, wie viele Profilseiten in der Gruppe 'other' stehen, (c) Erfassungsziele ohne jede passende Seite, die der Produktivcode heute stillschweigend uebergeht, (d) mehrdeutige Muster.\n\nDIE SELBSTPROBE HAT BEIM BAUEN MEINE EIGENE ERWARTUNG WIDERLEGT, und daraus wurde ein zweiter Befund: das Muster '%viewtopic.php?id=12%' passt AUCH auf '...id=120870' - und zwar zuerst. Der Produktivcode nimmt die erste Zeile, findet sie in seen_urls schon vergeben und ueberspringt das Ziel ganz. Ein Thema kann also ein Erfassungsziel und eine erfasste Seite haben und trotzdem KEINEN Eintrag in der Sequenz - weil ein fremdes Thema mit laengerer Kennung sie verdraengt hat. Das ist ein zweiter Weg, auf dem Belege verschwinden, unabhaengig von der Seitenzaehlung. Das Werkzeug weist solche Muster gesondert aus.\n\nNAECHSTER SCHRITT: in der VM gegen forensic_<uid>.db fahren, Ausgabe zurueck. Die Behebung soll auf der gemessenen Zahl aufsetzen, nicht auf einer geschaetzten."
+        },
+        {
+          "timestamp": "2026-08-05T13:11:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "in_progress",
+          "comment": "Messwerkzeug steht; die Behebung wartet auf die Zahl aus der VM."
+        },
+        {
+          "timestamp": "2026-08-05T14:00:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "GEMESSEN AM 05.08.2026 IN DER VM gegen forensic_1488.db (Python 3.14).\n\nZUERST DIE BERICHTIGUNG EINER EIGENEN ZAHL. Das Werkzeug aus Build 671 meldete 73.796 uebergangene Seiten. Diese Zahl ist FALSCH, und der Fehler war meiner: es zaehlte URLs statt Seiten. Eine Seite traegt im Bestand mehrere Adressen. Aufgeteilt ergibt sich:\n\n  73.796 gemeldete URLs\n  -  6.346  zweiter Pfad derselben Seite ('/forum/beginner/...')\n  - 65.216  Sprungmarken in dieselbe Seite ('...?id=5136#p33461')\n  ----------\n  =  2.049  tatsaechlich uebergangene SEITEN\n\nDavon 1.942 Folgeseiten mit Seitenteil (&p=N), deren Basisseite in der Sequenz steht - nachgerechnet: bei ALLEN 1.942. Dazu 107 Benachrichtigungsseiten ('notifications.php?filter=N' und '?id=N'). Die 65.216 Sprungmarken sind KEIN Verlust: die Seite ist erreichbar, nur der Anker fuehrt nicht direkt zum Beitrag.\n\nDER BEFUND BESTEHT ALSO, ABER IN ANDERER GROESSE. Rund 2.000 erfasste Seiten laeuft die Spurennavigation nie an - nicht 73.796. Bei 6.346 Sequenzeintraegen ist das etwa ein Drittel zusaetzlicher Seiten, die heute unerreichbar sind. Grundregel 1 ist damit unveraendert beruehrt, meine erste Darstellung war es aber auch: eine Zahl, die um das Dreissigfache zu hoch ist, beschaedigt genau das Vertrauen, das eine Messung herstellen soll.\n\nBEHOBEN IN BUILD 672: gezaehlt wird nach page_id. Testfall SL06 haelt es fest, die Selbstprobe fuehrt jetzt zwei Zweitadressen mit und verlangt, dass sie nicht mitzaehlen.\n\nWEITERE MESSWERTE AUS DEMSELBEN LAUF:\n  - 149.619 URLs, 19.025 Erfassungsziele, 6.346 Sequenzeintraege\n  - 1.000 Erfassungsziele finden GAR KEINE Seite (other_profile 982, profile 17, pgp_probe 1) - als eigener Vorgang abgetrennt\n  - 182 Erfassungsziele haben mehrdeutige Muster; das schaerfste trifft 224 fremde Seiten ('sid=2' passt auf 'sid=202313')\n  - meine Nachbildung zaehlte 6.346 Sequenzeintraege, der laufende Server 6.347. Die Abweichung von genau einem Eintrag ist der Beleg, dass 'LIMIT 1 ohne ORDER BY' wirklich keine Reihenfolge zusichert - sie war bis dahin nur Theorie."
+        },
+        {
+          "timestamp": "2026-08-05T14:01:00+00:00",
+          "author": "Claude",
+          "action": "priority_change",
+          "old_value": "critical",
+          "new_value": "major",
+          "comment": "Schweregrad von 'critical' auf 'major' gesenkt - nicht weil der Fehler kleiner geworden waere, sondern weil die gemessene Groesse eine andere ist als die zuerst gemeldete: rund 2.000 uebergangene Seiten statt 73.796. Der Vorgang bleibt offen und bleibt Voraussetzung fuer c658fc41."
+        }
+      ]
+    },
+    {
+      "id": "aa0d9033-91f2-4cb5-8cd0-2ff2e59ee215",
+      "type": "bug",
+      "title": "Spurensequenz: Gruppe 'profile' bleibt leer, Profil-URLs stehen in 'other'",
+      "affected_version": "0.8.669",
+      "reporter": "Claude",
+      "reported_at": "2026-08-05T11:32:00+00:00",
+      "prerequisites": "Ein Bestand, in dem zu einem Benutzer sowohl ein pgp_probe- als auch ein profile-Erfassungsziel vorliegt.",
+      "description": "GEMESSEN am 2026-08-05 in der VM (Probe 2, Teil D3).\n\nDER BEFUND: Die Sequenz enthaelt KEINEN EINZIGEN Eintrag der Gruppe 'profile'.\n\n  Verteilung: {pm: 1421, topic: 1864, other: 3062} - Summe 6347, 'profile' fehlt.\n  Zugleich steht '/forum/profile.php?id=1488' in der Gruppe 'other'.\n\nProfilseiten sind also vorhanden, nur unter der falschen Gruppe.\n\nDIE ERKLAERUNG LIEGT IN TYPE_MAP (db/forensic_db.py, Z. 1303-1317). Drei Eintraege bilden auf dasselbe URL-Fragment 'profile.php?id=' ab:\n\n    'profile':       ('profile', 'actor_user_id', 'profile.php?id=')\n    'other_profile': ('profile', 'actor_user_id', 'profile.php?id=')\n    'pgp_probe':     ('other',   'actor_user_id', 'profile.php?id=')\n\nDie Schleife laeuft ueber scrape_targets nach st.id ASC und fuehrt ein seen_urls-Set: eine URL, die einmal vergeben ist, wird spaeter uebersprungen. Kommt das pgp_probe-Ziel eines Benutzers vor dessen profile-Ziel, faellt die Profilseite in die Gruppe 'other' und ist fuer das profile-Ziel verbraucht.\n\nBELEGT ist damit: (a) die Gruppe ist leer, (b) Profil-URLs stehen in 'other', (c) im Code konkurrieren drei url_type-Werte um dasselbe Fragment, und wer zuerst kommt, bestimmt die Gruppe. NICHT BELEGT ist, dass ausschliesslich pgp_probe die Ursache ist - dafuer waere ein Blick in scrape_targets dieses Bestandes noetig (Zaehlung je url_type). Diese Gegenprobe gehoert vor die Behebung.\n\nAUSWIRKUNG: Die Gruppenreihenfolge (profile -> pm -> topic -> other) ist die Ordnung, in der Ermittelnde die Spuren abarbeiten. Steht die Profilseite eines Benutzers ganz hinten unter 'Sonstiges', wird sie zuletzt statt zuerst betrachtet. Zudem meldet die Navigation beim Gruppenwechsel eine Gruppe, die nicht zutrifft.\n\nBERICHTIGUNG NACH DER MESSUNG VOM 05.08.2026: Meine Vermutung war FALSCH. Gemessen wurde 'Profilseiten, die in der Gruppe other stehen: 0' - pgp_probe verdraengt also gar nichts. Die wirkliche Ursache ist einfacher und schwerer zugleich: von den 1.000 Erfassungszielen der Typen 'other_profile' (982), 'profile' (17) und 'pgp_probe' (1) findet KEIN EINZIGES eine passende Seite. Im gesamten Bestand kommt in pages und page_aliases keine URL der Form 'profile.php?id=<n>' vor, die zu einem dieser Ziele passt. Die Gruppe ist nicht falsch einsortiert - sie ist leer, weil es nichts einzusortieren gibt.\n\nOFFEN BLEIBT DABEI EINE ABWEICHUNG, die ich nicht aufloesen kann: der laufende Server fuehrte am selben Tag '/forum/profile.php?id=1488' in der Sequenz (Gruppe 'other'), meine Nachbildung findet diese URL nirgends. Beides kann nicht zugleich stimmen. Vorgang 90e7c214 traegt die Klaerung.",
+      "expected_behavior": "Profilseiten stehen in der Gruppe 'profile'. Konkurrieren mehrere url_type-Werte um dieselbe URL, entscheidet eine benannte Regel - nicht die Reihenfolge der Kennungen in scrape_targets.",
+      "actual_behavior": "Gruppe 'profile' enthaelt 0 Eintraege; Profil-URLs erscheinen in der Gruppe 'other'.",
+      "status": "open",
+      "priority": "medium",
+      "severity": "major",
+      "assigned_to": "Claude",
+      "related_to": [
+        "2f1044b9-818d-49bb-9621-04fbf5208791"
+      ],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "os": "Windows (VM)",
+        "browser": "Chromium",
+        "python_version": "3.14",
+        "database": "forensic_<uid>.db"
+      },
+      "tags": [
+        "Spuren",
+        "Navigation",
+        "Gruppierung"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-05T11:32:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Beleg: Probe 2 Teil D3 vom 2026-08-05. Gegenprobe in scrape_targets steht aus."
+        },
+        {
+          "timestamp": "2026-08-05T11:33:56.373402+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build670.json"
+        },
+        {
+          "timestamp": "2026-08-05T14:02:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Die Gegenprobe ist gefahren und hat meine Vermutung widerlegt: 0 Profilseiten in der Gruppe 'other'. Ursache ist nicht die Verdraengung durch pgp_probe, sondern dass 1.000 Ziele der Profil-Typen ueberhaupt keine Seite finden. Beschreibung berichtigt."
+        }
+      ]
+    },
+    {
+      "id": "d76c412d-3322-40fa-b9c9-d2661f754350",
+      "type": "improvement",
+      "title": "Suche im Kontextbereich Toolbar",
+      "affected_version": "0.8.575",
+      "reporter": "Alex",
+      "reported_at": "2026-07-30T09:34:33.911021+00:00",
+      "prerequisites": "Ein Forennutzer hat mehrere Spuren",
+      "description": "Das Kontextsuchfenster bietet keine sinnvolle Unterstützung beim Arbeiten. Die Suche liefert zu wenige Ergebnisse. Während ich in der erweiterten Suche and das Maximum von 200 Ergebnissen komme, erhalte ich beim selben Suchbegriff in der Kontextsuche nur einen Treffer.",
+      "expected_behavior": "Die Suche muss hier mehr Ergebnisse liefern. Wenigstens 20.",
+      "actual_behavior": "Bei der Suche nach dem Begriff `viewtopic`, der Forenbeiträge anzeigen sollte, in denen der untersuchte Forennutzer Spuren hinterlassen hat, wird nur ein Treffer angezeigt.",
+      "status": "in_progress",
+      "priority": "high",
+      "severity": "critical",
+      "assigned_to": "Claude",
+      "related_to": [
+        "1157e5f3-3975-4768-86c2-2ee42569d627",
+        "36dcdfd8-592c-483d-8c93-611c63fcff7c"
+      ],
+      "resolved_in_version": null,
+      "target_version": "0.8.673",
+      "environment": {
+        "python_version": "3.14",
+        "database": "forensic_<uid>.db"
+      },
+      "tags": [
+        "Suche",
+        "Kontext",
+        "Toolbar"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-07-30T09:34:33.911048+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
+        },
+        {
+          "timestamp": "2026-08-05T11:42:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "URSACHE GEMESSEN am 2026-08-05 in der VM. Sie ist eindeutig und braucht keine weitere Messung.\n\nDER SUCHBEGRIFF ERREICHT DEN SERVER NIE. ContextNavigatorModule.getPages() (toolbar.js Z. 7303-7304) holt EINMALIG\n\n    /_forensic/search?limit=50&sort=last_viewed_desc\n\nalso OHNE q. Die Sucheingabe im Dropdown filtert dieses Ergebnis nur noch im Browser (Z. 7645-7648). Die erweiterte Suche dagegen sendet q= und limit=200 (Z. 4256, 4271 ff.) und trifft damit den Volldatenbestand.\n\nMESSWERTE fuer denselben Begriff 'viewtopic':\n  - Dropdown-Abfrage: 50 Seiten geliefert, davon 3 nach dem oertlichen Filter\n  - Serverabfrage q=viewtopic&limit=200: 200 Seiten (Grenze erreicht)\n  - Fehlbetrag: mindestens 197\n\nZWEITE VERENGUNG: Von den 50 gelieferten Seiten waren nur 19 ueberhaupt schon einmal betrachtet. sort=last_viewed_desc waehlt also ein Fenster nach Betrachtungszeit aus - eine Ordnung, die mit dem Suchbegriff nichts zu tun hat. Wonach gesucht wird, entscheidet damit nicht der Ermittler, sondern der Zufall der zuletzt geoeffneten Seiten.\n\nDER ENDPUNKT KANN, WAS GEBRAUCHT WIRD. forensic_api/search.py nimmt q entgegen und reicht es an search_pages() weiter (db/forensic_db.py Z. 1133-1135). Er wird nur nicht gefragt. Zu klaeren bleibt, ob q serverseitig auch auf den Titel wirken soll - derzeit filtert er ausschliesslich auf die URL, waehrend der oertliche Filter im Dropdown URL UND Titel durchsucht. Ein Wechsel auf die Serversuche wuerde die Titelsuche also stillschweigend verlieren, wenn das nicht mitbedacht wird.\n\nZWEI NEBENBEFUNDE aus derselben Messung sind als 1157e5f3 (traceCountTotal ist 0) und 36dcdfd8 (total ist nur die Zahl der gelieferten Zeilen) abgetrennt."
+        },
+        {
+          "timestamp": "2026-08-05T11:43:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "in_progress",
+          "comment": "Ursache belegt. Umsetzung offen; eine Entscheidung zur Titelsuche steht aus."
+        },
+        {
+          "timestamp": "2026-08-05T14:07:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "ENTSCHEIDUNG VON ALEX am 05.08.2026: die Serversuche bindet an die URL, NICHT an den Titel. Begruendung: die URL ist eineindeutig, eine Themenueberschrift kann mehrfach vorkommen. Mehr Treffer sind kein Problem; notfalls wird im Browser begrenzt.\n\nUMSETZUNG DAMIT: das Dropdown sendet q an /_forensic/search, statt clientseitig zu filtern. Am Serverfilter selbst ist nichts zu aendern - er filtert bereits auf url_canonical.\n\nEINE FOLGE MUSS BENANNT WERDEN: der heutige oertliche Filter durchsucht URL UND Titel. Nach der Umstellung findet die Kontextsuche einen Themenbetreff wie 'Annual badge' nicht mehr. Vorschlag, der beides erhaelt und der Entscheidung nicht widerspricht: Serverabfrage nach URL, und auf das Ergebnis zusaetzlich den vorhandenen oertlichen Filter anwenden. Dann bindet die Suche an die URL und die Titelsuche geht nicht verloren. Rueckfrage dazu laeuft."
+        },
+        {
+          "timestamp": "2026-08-05T14:08:00+00:00",
+          "author": "Claude",
+          "action": "version_update",
+          "old_value": "",
+          "new_value": "0.8.673",
+          "comment": "Umsetzung fuer den naechsten Build vorgemerkt. Die Zielversion ist zugleich noetig, damit dieser Nachtrag beim Einmischen ueberhaupt ankommt - ein Vorgang, der sich nur in den Updates unterscheidet, wird von merge.py stillschweigend uebergangen (Vorgang 7d3c1a95)."
+        }
+      ]
+    }
+  ]
+}
