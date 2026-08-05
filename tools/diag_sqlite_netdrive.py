@@ -272,7 +272,39 @@ def main() -> int:
     if not data.is_dir():
         log("   Datenverzeichnis nicht gefunden — Teil A uebersprungen.")
     else:
-        dbs = sorted(p for p in data.rglob("*.db") if not p.name.startswith("_probe_"))
+        # BUILD 682 (Vorgang 33b859f9): AUSGESCHLOSSEN WIRD JEDER PFADTEIL,
+        # DER MIT '_probe' BEGINNT - nicht nur der Dateiname mit '_probe_'.
+        #
+        # Zwei Luecken waren hier:
+        #   (1) Das Schwesterwerkzeug diag_sqlite_netdrive2.py legt seine
+        #       Kopie unter '_probe2_<pid>' an. '_probe2_...' beginnt NICHT
+        #       mit '_probe_' (Unterstrich!), fiel also durch den Ausschluss
+        #       und wurde wie eine regulaere Datenbank mitvermessen.
+        #   (2) Seit Build 682 liegt diese Kopie in einem UNTERVERZEICHNIS.
+        #       rglob() steigt hinein - ein Ausschluss allein ueber den
+        #       Dateinamen greift dort gar nicht mehr.
+        #
+        # Deshalb wird jetzt der ganze Pfad angesehen. Eine liegengebliebene
+        # Kopie ist eine Ausfertigung eines Beweismittels; sie in einer
+        # Bestandsaufnahme als Bestand zu fuehren, waere die schlechteste
+        # aller Verwechslungen.
+        def _ist_probe(pfad) -> bool:
+            return any(teil.startswith("_probe") for teil in pfad.parts)
+
+        dbs = sorted(p for p in data.rglob("*.db") if not _ist_probe(p))
+        uebergangen = sorted(p for p in data.rglob("*.db") if _ist_probe(p))
+        if uebergangen:
+            # BENANNT, nicht verschwiegen (Grundregel 1): wer sie uebergeht,
+            # muss sagen, dass es sie gibt - sonst haelt der naechste Leser
+            # die Bestandsaufnahme fuer vollstaendig.
+            log(f"   UEBERGANGEN, weil Probe-Reste ({len(uebergangen)}):")
+            for q in uebergangen:
+                log(f"      {q}")
+            log("   Diese Dateien koennen vollstaendige Kopien eines "
+                "Beweismittels sein.")
+            log("   Sie stammen aus einem hart abgebrochenen Lauf von "
+                "diag_sqlite_netdrive2.py.")
+            log()
         if not dbs:
             log("   Keine *.db gefunden.")
         for db in dbs:

@@ -4086,21 +4086,34 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                             "Kopie liess sich nicht anlegen")),
             warnungen=(
                 "ES LEGT SIEBEN VOLLKOPIEN DER GEWAEHLTEN "
-                "BEWEISMITTEL-DATENBANK AN - eine je Testfall, nacheinander, "
-                "im selben Verzeichnis - und setzt auf jede Kopie Lese- UND "
-                "SCHREIBRECHT FUER ALLE. Auf einem geteilten Laufwerk ist das "
-                "nicht auf die aufrufende Person beschraenkt. Vorgang: siehe "
-                "Issue-Tracker.",
+                "BEWEISMITTEL-DATENBANK AN - eine je Testfall, nacheinander. "
+                "Seit Build 682 liegen sie in einem eigenen Unterverzeichnis "
+                "'_probe2_<pid>' neben der Datei und tragen Rechte NUR FUER "
+                "DIE AUFRUFENDE PERSON (0600 statt 0666). Bis Build 681 lagen "
+                "sie zwischen den echten Datenbanken und waren fuer JEDEN "
+                "Benutzer les- und beschreibbar (Vorgang 33b859f9).",
+                "ZUR WIRKUNG UNTER WINDOWS, weil sie oft falsch erwartet "
+                "wird: os.chmod setzt dort ausschliesslich das "
+                "Schreibschutz-Merkmal, alle uebrigen Bits werden ignoriert. "
+                "Auf NTFS bewirkten 0666 und 0600 also DASSELBE; die Rechte "
+                "der Kopie ergeben sich aus der Vererbung des "
+                "Zielverzeichnisses. Der behobene Befund wog auf der "
+                "Produktions-VM damit leichter als auf einem POSIX-System - "
+                "was bleibt, ist der Rest bei hartem Abbruch.",
                 "Platzbedarf und I/O-Last betragen das SIEBENFACHE der "
                 "gewaehlten Datei (immer nur eine Kopie gleichzeitig, aber "
                 "siebenmal nacheinander). Der Kopiervorgang blockiert ohne "
                 "Fortschrittsanzeige.",
-                "Bei einem harten Abbruch bleibt eine Kopie mit dem Praefix "
-                "'_probe2_' liegen - und das Schwesterwerkzeug "
-                "diag_sqlite_netdrive schliesst beim Bestandsdurchgang nur "
-                "'_probe_' aus, nicht '_probe2_'. Es wuerde die "
-                "liegengebliebene Kopie also wie eine regulaere Datenbank "
-                "mitvermessen.",
+                "BEI EINEM HARTEN ABBRUCH BLEIBT DIE KOPIE LIEGEN - daran "
+                "aendert Build 682 nichts, wohl aber daran, was man damit "
+                "tut: sie liegt in '_probe2_<pid>' und ist damit als Rest "
+                "ERKENNBAR, der naechste Lauf BENENNT sie beim Start, und das "
+                "Schwesterwerkzeug diag_sqlite_netdrive uebergeht sie jetzt "
+                "(Ausschluss ueber jeden Pfadteil, der mit '_probe' beginnt) "
+                "und sagt, dass es sie uebergeht. Geloescht wird ein Rest "
+                "NICHT selbsttaetig: eine vollstaendige Kopie eines "
+                "Beweismittels raeumt man nicht nebenbei weg, ohne dass "
+                "jemand davon weiss.",
                 "AUF EINEM LOKALEN DATEISYSTEM SIND ALLE SIEBEN KANDIDATEN "
                 "TRIVIALERWEISE GRUEN. Die Frage, fuer die das Werkzeug "
                 "gebaut wurde, laesst sich nur auf dem echten Share "
