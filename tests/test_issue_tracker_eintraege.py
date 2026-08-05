@@ -23,6 +23,12 @@
 #
 # IT01 - jede Eintragsdatei ist gueltiges JSON mit der erwarteten Struktur.
 # IT02 - jeder Vorgang traegt die Pflichtfelder des Schemas.
+# IT02b - und HAELT DEREN GRENZEN EIN (Laenge, Aufzaehlung, Muster, Minimum).
+#         BUILD 669, aus eigenem Schaden: IT02 prueft nur, OB ein Feld da ist.
+#         Der Titel des Vorgangs f39ad572 war 85 Zeichen lang, das Schema
+#         erlaubt 80 - IT02 war gruen, und merge.py wies die Datei auf der
+#         Einspielseite ab. Ein Waechter, der nur die Anwesenheit prueft,
+#         gibt eine Sicherheit vor, die er nicht hat.
 # IT03 - WAECHTER: liegt ein Vorgang bereits in data/issues.json, enthaelt die
 #        gelieferte Fassung ALLE dort vorhandenen Update-Zeitstempel.
 # IT04 - keine doppelten Kennungen innerhalb einer Datei.
@@ -72,6 +78,62 @@ class EintraegeTests(unittest.TestCase):
                     fehlend = [k for k in pflicht if k not in e]
                     self.assertEqual([], fehlend,
                                      "Fehlende Pflichtfelder: %s" % fehlend)
+
+    # IT02b ------------------------------------------------------------------
+    def test_it02b_grenzen_des_schemas_werden_eingehalten(self):
+        """
+        Prueft die EINSCHRAENKUNGEN des Schemas, nicht nur die Anwesenheit
+        der Felder: maxLength, minLength, enum, pattern, minimum, maximum.
+
+        Bewusst von Hand statt ueber eine Bibliothek: 'jsonschema' ist keine
+        Abhaengigkeit dieses Projekts, und die Produktionsumgebung ist
+        offline. Ein Waechter, der nur dort laeuft, wo man Pakete
+        nachinstallieren kann, hilft genau dann nicht, wenn man ihn braucht.
+        """
+        import re
+        schema = _lade(TRACKER / "issue-tracker.schema.json")
+        felder = schema["properties"]["issues"]["items"]["properties"]
+        verstoesse = []
+        for pfad in _eintragsdateien():
+            for e in _lade(pfad)["issues"]:
+                kennung = "%s (%s)" % (e.get("id", "?")[:8], pfad.name)
+                for name, regel in felder.items():
+                    if name not in e or e[name] is None:
+                        continue
+                    wert = e[name]
+                    if "maxLength" in regel and isinstance(wert, str) \
+                            and len(wert) > regel["maxLength"]:
+                        verstoesse.append(
+                            "%s: %s ist %d Zeichen lang, erlaubt sind %d"
+                            % (kennung, name, len(wert), regel["maxLength"]))
+                    if "minLength" in regel and isinstance(wert, str) \
+                            and len(wert) < regel["minLength"]:
+                        verstoesse.append(
+                            "%s: %s ist zu kurz (%d < %d)"
+                            % (kennung, name, len(wert), regel["minLength"]))
+                    if "enum" in regel and wert not in regel["enum"]:
+                        verstoesse.append(
+                            "%s: %s='%s' steht nicht in der Aufzaehlung %s"
+                            % (kennung, name, wert, regel["enum"]))
+                    if "pattern" in regel and isinstance(wert, str) \
+                            and not re.match(regel["pattern"], wert):
+                        verstoesse.append(
+                            "%s: %s='%s' passt nicht auf %s"
+                            % (kennung, name, wert, regel["pattern"]))
+                    if "minimum" in regel and isinstance(wert, (int, float)) \
+                            and wert < regel["minimum"]:
+                        verstoesse.append(
+                            "%s: %s=%s unterschreitet %s"
+                            % (kennung, name, wert, regel["minimum"]))
+                    if "maximum" in regel and isinstance(wert, (int, float)) \
+                            and wert > regel["maximum"]:
+                        verstoesse.append(
+                            "%s: %s=%s ueberschreitet %s"
+                            % (kennung, name, wert, regel["maximum"]))
+        self.assertEqual(
+            [], verstoesse,
+            "Die Einspielseite wuerde diese Vorgaenge abweisen:\n  "
+            + "\n  ".join(verstoesse))
 
     # IT03 -------------------------------------------------------------------
     def test_it03_keine_historie_geht_beim_einmischen_verloren(self):
