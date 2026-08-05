@@ -1,0 +1,159 @@
+{
+  "issues": [
+    {
+      "id": "7d3c1a95-6e28-4f70-9b13-40c8ae52d6f1",
+      "type": "bug",
+      "title": "merge.py uebergeht Lieferungen, die nur Updates nachtragen",
+      "affected_version": "0.8.669",
+      "reporter": "Claude",
+      "reported_at": "2026-08-05T13:05:00+00:00",
+      "prerequisites": "Eine Eintragsdatei, die zu einem VORHANDENEN Vorgang nur einen Update-Eintrag nachtraegt und sonst nichts aendert.",
+      "description": "GEMESSEN am 2026-08-05 auf einer Wegwerfkopie des Bestandes.\n\nDER BEFUND: Eine Eintragsdatei trug zu zwei vorhandenen Vorgaengen (2f1044b9, aa0d9033) je einen Update-Eintrag nach und aenderte sonst nichts. merge-new-tickets.sh meldete 'Fertig: 1 Datei(en) eingemischt', LOESCHTE die Quelldatei - und im Bestand standen danach unveraendert zwei statt drei Update-Zeilen je Vorgang. Der Nachtrag war weg, die Quelle auch.\n\nDIE URSACHE: detect_conflicts() (merge.py, Z. 431/432) vergleicht ausschliesslich die Felder\n\n    title, description, status, priority, severity, assigned_to,\n    target_version, affected_version\n\n'updates' steht bewusst nicht darunter - sonst waere jede Historienerweiterung ein 'Konflikt'. Fuer einen bereits vorhandenen Vorgang kennt merge.py aber nur zwei Wege: 'neu' (faellt weg, die Kennung ist bekannt) und 'Konflikt' (nur bei Abweichung in einem der acht Felder). Eine Fassung, die NUR Updates nachtraegt, nimmt keinen der beiden Wege und faellt zwischen ihnen hindurch.\n\nWARUM DAS SCHWER WIEGT: Es ist genau die Verlustart, gegen die Build 668 gebaut wurde - nur in der anderen Richtung. IT03 bewacht, dass beim Ersetzen nichts VERLORENGEHT. Dass das Nachgetragene ANKOMMT, bewachte niemand. IT01 bis IT05 waren alle gruen, waehrend der Nachtrag ins Leere lief: sie pruefen die Datei, nicht ihre Wirkung.\n\nDAZU DIE LOESCHUNG. merge-new-tickets.sh loescht eine Quelldatei, wenn merge.py Erfolg meldet. Hier meldete merge.py Erfolg, ohne etwas geschrieben zu haben. Der Nachtrag ist damit nicht nur nicht angekommen, er ist auch nicht mehr da.\n\nZWISCHENSICHERUNG (Build 671): Der neue Waechter IT06 in tests/test_issue_tracker_eintraege.py schlaegt auf der Erstellerseite an, BEVOR geliefert wird. Er ist ausdruecklich KEINE Behebung - er verhindert nur, dass eine Lieferung lautlos ins Leere geht.",
+      "expected_behavior": "Eine gelieferte Fassung, die neue Update-Eintraege traegt, kommt im Bestand an - oder das Einmischen bricht ab und sagt, warum. Eine Quelldatei wird nur geloescht, wenn ihr Inhalt nachweislich im Bestand steht. Denkbare Behebung: 'updates' als eigene Pruefung neben den Vergleichsfeldern; unterscheiden sich die Zeitstempel, wird der Vorgang ueber ResolutionStrategy.MERGE_UPDATES zusammengefuehrt - die Strategie gibt es in merge.py bereits (Z. 628 ff.), sie wird auf diesem Weg nur nie erreicht.",
+      "actual_behavior": "Erfolgsmeldung, Quelldatei geloescht, Bestand unveraendert. Zwei Update-Zeilen still verloren.",
+      "status": "resolved",
+      "priority": "high",
+      "severity": "critical",
+      "assigned_to": "Claude",
+      "related_to": [
+        "2f1044b9-818d-49bb-9621-04fbf5208791",
+        "aa0d9033-91f2-4cb5-8cd0-2ff2e59ee215"
+      ],
+      "resolved_in_version": "0.8.673",
+      "target_version": null,
+      "environment": {
+        "os": "Linux (Container)",
+        "python_version": "3.11",
+        "database": "-"
+      },
+      "tags": [
+        "Issue-Tracker",
+        "Datenverlust",
+        "Grundregel1"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-05T12:07:11.318474+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build671.json"
+        },
+        {
+          "timestamp": "2026-08-05T13:05:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Aufgefallen beim Ausliefern von Build 671 - die eigene Lieferung kam nicht an. Waechter IT06 als Zwischensicherung eingebaut."
+        },
+        {
+          "timestamp": "2026-08-05T13:06:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "BEHOBEN IN BUILD 673 - beide Bausteine, wie am 05.08.2026 beauftragt.\n\n(a) DER DRITTE ZWEIG IN merge.py. detect_conflicts() erkennt jetzt 'Kennung bekannt, kein Vergleichsfeld abweichend, aber neue Update-Zeitstempel' und meldet den Konflikttyp UPDATE_TIMELINE - den gab es in der Aufzaehlung bereits, benutzt wurde er nie. auto_resolve_conflict() loest ihn IMMER ueber MERGE_UPDATES, unabhaengig von der gewaehlten Strategie: bei diesem Typ ist per Konstruktion kein Feld abweichend, es gibt nichts zu entscheiden, nur etwas anzuhaengen. 'target' waere wieder Verlust mit Erfolgsmeldung, 'source' wuerde den ganzen Vorgang ersetzen und alles verlieren, was die Lieferung nicht mitbringt.\n\n(b) GELOESCHT WIRD ERST NACH DER GEGENPROBE - der wichtigere Teil. Neu: issue-tracker/pruefe_einmischung.py. Es sieht im BESTAND nach, ob jede Kennung, jede Update-Zeile und jedes der acht Vergleichsfelder der Quelldatei dort steht. merge-new-tickets.sh ruft es nach jedem Einmischen und loescht erst danach. Faellt die Probe, beendet 'set -e' den Lauf, der EXIT-Trap erklaert die Lage, die Datei bleibt liegen.\n\nWARUM (b) MEHR WERT IST ALS (a): (a) schliesst diese Luecke. (b) sorgt dafuer, dass die naechste keine Daten mehr kostet. Eine Erfolgsmeldung ist eine Behauptung; der Bestand ist der Beleg. Dasselbe Verhaeltnis wie zwischen bundle_bauen.sh und pruefe_lieferung.sh.\n\nREGRESSION: tests/test_merge_nachtraege.py, MN00 bis MN06. MN00 stellt den VERLUSTFALL zuerst nach - er rechnet den alten Vergleich noch einmal nach und zeigt, dass dieser den Nachtrag fuer unauffaellig haelt; ein Fall, der nur den behobenen Zustand prueft, belegt nicht, dass je etwas kaputt war. MN03 faehrt den Fall Ende zu Ende, MN04 belegt, dass ein echter Feldkonflikt sich unveraendert verhaelt, MN06 wacht ueber die Abschrift der Feldliste.\n\nERPROBT auf einer Wegwerfkopie des echten Bestandes: reine Nachtragsdatei eingemischt, 1 Vorgang aktualisiert, Gegenprobe bestanden, Datei entfernt, Nachtrag im Bestand vorhanden. readme.md des Trackers ergaenzt."
+        },
+        {
+          "timestamp": "2026-08-05T13:07:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "resolved",
+          "comment": "Beide Bausteine gebaut und mit Regressionsfaellen belegt."
+        }
+      ]
+    },
+    {
+      "id": "2f1044b9-818d-49bb-9621-04fbf5208791",
+      "type": "bug",
+      "title": "Spurensequenz enthaelt von mehrseitigen Themen nur eine einzige Seite",
+      "affected_version": "0.8.669",
+      "reporter": "Claude",
+      "reported_at": "2026-08-05T11:30:00+00:00",
+      "prerequisites": "Ein Thema mit mehr als einer Seite, auf dem der Beschuldigte Spuren hinterlassen hat.",
+      "description": "GEMESSEN am 2026-08-05 in der VM auf /forum/viewtopic.php?id=120870&p=2 (Vorgang 120870, drei Seiten, 40 Spuren auf Seite 2). Aufgefallen bei der Untersuchung von c658fc41.\n\nDER BEFUND: get_trace_sequence() (db/forensic_db.py, Schleife ab Z. 1339) sucht je Erfassungsziel GENAU EINE URL:\n\n    SELECT url FROM blob_lookup WHERE url LIKE ? LIMIT 1\n\nDas Muster ist '%viewtopic.php?id=<topic_id>%'. Ein LIMIT 1 OHNE ORDER BY liefert eine beliebige der passenden Zeilen. Fuer ein Thema mit drei erfassten Seiten gelangt damit hoechstens eine davon in die Sequenz - welche, entscheidet die Speicherreihenfolge.\n\nMESSWERTE (Probe 2, Teil D):\n  - Eintraege in traceSequence insgesamt: 6347\n  - davon mit Seitenteil (?p= / &p=): 0\n  - verschiedene Themen-IDs in der Gruppe 'topic': 1864\n  - davon mit mehr als einem Eintrag: 0\n  - Rang von '/forum/viewtopic.php?id=120870&p=2': -1 (nicht enthalten)\n  - Rang von '/forum/viewtopic.php?id=120870':   1501 (enthalten)\n\nKEIN EINZIGER der 6347 Eintraege traegt einen Seitenteil. Von jedem mehrseitigen Thema kennt die Sequenz also genau eine Seite.\n\nWARUM DAS SCHWER WIEGT: Die Spurennavigation ist der Weg, auf dem Ermittelnde die Spuren eines Beschuldigten der Reihe nach abarbeiten. Seiten, die nicht in der Sequenz stehen, werden dabei nicht angelaufen - ohne Meldung, ohne Luecke in der Zaehlung, ohne dass es jemandem auffiele. Das beruehrt Grundregel 1: kein Beleg darf still uebersprungen werden. Die gemessene Seite trug 40 Spuren.\n\nGEMESSEN am 05.08.2026: 2.049 Seiten (siehe Update vom selben Tag). Urspruenglich stand hier: wie viele Seiten im Bestand insgesamt betroffen sind, ist noch nicht gemessen. Dafuer braucht es eine Auswertung von blob_lookup gegen scrape_targets in der VM. Diese Zahl gehoert vor der Behebung ermittelt, weil sie zugleich der Nachweis der Behebung ist.",
+      "expected_behavior": "Die Sequenz fuehrt JEDE erfasste Seite, die Spuren des Beschuldigten traegt - auch die zweite, dritte und jede weitere Seite eines Themas. Die Reihenfolge innerhalb eines Themas folgt der Seitennummer aufsteigend. Wird eine Seite bewusst ausgelassen, ist das zu benennen und zu begruenden, nicht stillzuschweigen.",
+      "actual_behavior": "0 von 6347 Sequenzeintraegen tragen einen Seitenteil. Je Thema steht genau ein Eintrag in der Sequenz; alle weiteren Seiten desselben Themas sind ueber die Spurennavigation nicht erreichbar.",
+      "status": "in_progress",
+      "priority": "high",
+      "severity": "major",
+      "assigned_to": "Claude",
+      "related_to": [
+        "c658fc41-b368-4b06-9142-5ff519b8d9c9"
+      ],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "os": "Windows (VM)",
+        "browser": "Chromium",
+        "python_version": "3.14",
+        "database": "forensic_<uid>.db"
+      },
+      "tags": [
+        "Spuren",
+        "Navigation",
+        "Vollstaendigkeit",
+        "Grundregel1"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-05T11:30:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Vorgang aus der Messung zu c658fc41 abgetrennt. Belege: Probe 2 Teil D2/D4 vom 2026-08-05."
+        },
+        {
+          "timestamp": "2026-08-05T11:33:56.373380+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build670.json"
+        },
+        {
+          "timestamp": "2026-08-05T13:10:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "MESSWERKZEUG GELIEFERT (Build 671): tools/diag_spurensequenz_luecken.py.\n\nEs beantwortet die Frage, die aus dem Browser nicht zu beantworten war: WIE VIELE erfasste Seiten die Sequenz uebergeht. Erst diese Zahl macht aus dem Einzelfall einen Befund - und sie ist zugleich der Nachweis der Behebung, denn danach muss sie 0 sein.\n\nWAS ES ANFASST: ausschliesslich forensic_<uid>.db, und die nur ueber 'mode=ro'. Die evidence_<uid>.db wird gar nicht geoeffnet - 'blob_lookup' ist eine TEMP-Sicht allein ueber fdb.pages und fdb.page_aliases. Testfall SL04 misst nach dem Lauf die Pruefsumme der Datei und das Ausbleiben von '-wal'/'-journal': die Zusicherung wird gemessen, nicht behauptet.\n\nWAS ES AUSSER DER ZAHL LIEFERT: (a) wie viele der uebergangenen Seiten einen Seitenteil tragen, (b) die Verteilung nach Gruppe - damit misst es aa0d9033 gleich mit und zaehlt, wie viele Profilseiten in der Gruppe 'other' stehen, (c) Erfassungsziele ohne jede passende Seite, die der Produktivcode heute stillschweigend uebergeht, (d) mehrdeutige Muster.\n\nDIE SELBSTPROBE HAT BEIM BAUEN MEINE EIGENE ERWARTUNG WIDERLEGT, und daraus wurde ein zweiter Befund: das Muster '%viewtopic.php?id=12%' passt AUCH auf '...id=120870' - und zwar zuerst. Der Produktivcode nimmt die erste Zeile, findet sie in seen_urls schon vergeben und ueberspringt das Ziel ganz. Ein Thema kann also ein Erfassungsziel und eine erfasste Seite haben und trotzdem KEINEN Eintrag in der Sequenz - weil ein fremdes Thema mit laengerer Kennung sie verdraengt hat. Das ist ein zweiter Weg, auf dem Belege verschwinden, unabhaengig von der Seitenzaehlung. Das Werkzeug weist solche Muster gesondert aus.\n\nNAECHSTER SCHRITT: in der VM gegen forensic_<uid>.db fahren, Ausgabe zurueck. Die Behebung soll auf der gemessenen Zahl aufsetzen, nicht auf einer geschaetzten."
+        },
+        {
+          "timestamp": "2026-08-05T13:11:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "in_progress",
+          "comment": "Messwerkzeug steht; die Behebung wartet auf die Zahl aus der VM."
+        },
+        {
+          "timestamp": "2026-08-05T14:00:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "GEMESSEN AM 05.08.2026 IN DER VM gegen forensic_1488.db (Python 3.14).\n\nZUERST DIE BERICHTIGUNG EINER EIGENEN ZAHL. Das Werkzeug aus Build 671 meldete 73.796 uebergangene Seiten. Diese Zahl ist FALSCH, und der Fehler war meiner: es zaehlte URLs statt Seiten. Eine Seite traegt im Bestand mehrere Adressen. Aufgeteilt ergibt sich:\n\n  73.796 gemeldete URLs\n  -  6.346  zweiter Pfad derselben Seite ('/forum/beginner/...')\n  - 65.216  Sprungmarken in dieselbe Seite ('...?id=5136#p33461')\n  ----------\n  =  2.049  tatsaechlich uebergangene SEITEN\n\nDavon 1.942 Folgeseiten mit Seitenteil (&p=N), deren Basisseite in der Sequenz steht - nachgerechnet: bei ALLEN 1.942. Dazu 107 Benachrichtigungsseiten ('notifications.php?filter=N' und '?id=N'). Die 65.216 Sprungmarken sind KEIN Verlust: die Seite ist erreichbar, nur der Anker fuehrt nicht direkt zum Beitrag.\n\nDER BEFUND BESTEHT ALSO, ABER IN ANDERER GROESSE. Rund 2.000 erfasste Seiten laeuft die Spurennavigation nie an - nicht 73.796. Bei 6.346 Sequenzeintraegen ist das etwa ein Drittel zusaetzlicher Seiten, die heute unerreichbar sind. Grundregel 1 ist damit unveraendert beruehrt, meine erste Darstellung war es aber auch: eine Zahl, die um das Dreissigfache zu hoch ist, beschaedigt genau das Vertrauen, das eine Messung herstellen soll.\n\nBEHOBEN IN BUILD 672: gezaehlt wird nach page_id. Testfall SL06 haelt es fest, die Selbstprobe fuehrt jetzt zwei Zweitadressen mit und verlangt, dass sie nicht mitzaehlen.\n\nWEITERE MESSWERTE AUS DEMSELBEN LAUF:\n  - 149.619 URLs, 19.025 Erfassungsziele, 6.346 Sequenzeintraege\n  - 1.000 Erfassungsziele finden GAR KEINE Seite (other_profile 982, profile 17, pgp_probe 1) - als eigener Vorgang abgetrennt\n  - 182 Erfassungsziele haben mehrdeutige Muster; das schaerfste trifft 224 fremde Seiten ('sid=2' passt auf 'sid=202313')\n  - meine Nachbildung zaehlte 6.346 Sequenzeintraege, der laufende Server 6.347. Die Abweichung von genau einem Eintrag ist der Beleg, dass 'LIMIT 1 ohne ORDER BY' wirklich keine Reihenfolge zusichert - sie war bis dahin nur Theorie."
+        },
+        {
+          "timestamp": "2026-08-05T14:01:00+00:00",
+          "author": "Claude",
+          "action": "priority_change",
+          "old_value": "critical",
+          "new_value": "major",
+          "comment": "Schweregrad von 'critical' auf 'major' gesenkt - nicht weil der Fehler kleiner geworden waere, sondern weil die gemessene Groesse eine andere ist als die zuerst gemeldete: rund 2.000 uebergangene Seiten statt 73.796. Der Vorgang bleibt offen und bleibt Voraussetzung fuer c658fc41."
+        },
+        {
+          "timestamp": "2026-08-05T14:02:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "ZWEITE BERICHTIGUNG DERSELBEN ZAHL - gemessen am 05.08.2026 mit dem nach page_id zaehlenden Werkzeug aus Build 672.\n\n  Build 671 meldete : 73.796  (URLs gezaehlt - falsch)\n  ich schaetzte dann:  2.049  (URL-Arithmetik auf dem alten Befund - ebenfalls falsch)\n  GEMESSEN sind es  :    185  SEITEN\n\nAuch meine Schaetzung von 2.049 war eine URL-Rechnung: ich hatte nur die Pfadvariante '/forum/beginner/' zusammengelegt und uebersehen, dass eine Seite noch viele weitere Adressen traegt - im Bestand rund 23 URLs je Seite. Nur die page_id legt sie zuverlaessig zusammen.\n\nDIE 185 UEBERGANGENEN SEITEN:\n  107  Benachrichtigungsseiten (notifications.php?filter=N und ?id=N)\n   62  Folgeseiten von Themen (viewtopic.php?id=N&p=N) - AUSNAHMSLOS alle 62 sind Folgeseiten\n   16  Folgeseiten von Unterforen (viewforum.php?id=N&p=N)\nVon 6.531 erreichbaren Seiten sind das 2,8 Prozent.\n\nGEGENPROBE AM EINZELFALL: die Seiten, auf denen die Fehlersuche zu c658fc41 stattfand, stehen namentlich in der Luecke - /forum/viewtopic.php?id=120870&p=2 und &p=3 sowie /forum/viewtopic.php?id=24984&p=2; die zugehoerigen Basisseiten stehen in der Sequenz. Die Seite mit den 40 gemessenen Spuren ist also tatsaechlich eine der uebergangenen.\n\nBEWERTUNG: der Befund ist erheblich kleiner als zweimal gemeldet, aber er ist echt und trifft genau die Seiten, auf denen Spuren liegen. Grundregel 1 bleibt beruehrt - nicht wegen der Menge, sondern wegen des Inhalts. Die Sequenz enthaelt weiterhin NULL Eintraege mit Seitenteil."
+        }
+      ]
+    }
+  ]
+}

@@ -33,7 +33,27 @@
 #        gelieferte Fassung ALLE dort vorhandenen Update-Zeitstempel.
 # IT04 - keine doppelten Kennungen innerhalb einer Datei.
 # IT05 - Zeitstempel der Updates sind aufsteigend sortiert.
-# IT06 - DIE ANDERE RICHTUNG VON IT03, BUILD 671, wieder aus eigenem Schaden:
+# IT06 - BUILD 671 als Notbremse gebaut, BUILD 674 umgewidmet. Er fragte:
+#        'kommt ein reiner Historien-Nachtrag ueberhaupt an?' - und musste
+#        anschlagen, solange merge.py ihn zwischen 'neu' und 'Konflikt'
+#        hindurchfallen liess. Seit der Behebung in Build 673 wuerde genau
+#        diese Frage den Fall verbieten, der wieder funktioniert; am
+#        05.08.2026 hat sie prompt die Lieferung blockiert, die die Behebung
+#        mitbrachte. IT06 prueft jetzt statt dessen, dass der dritte Zweig
+#        noch im Quelltext steht. Naeheres am Fall selbst.
+#
+# EINE LEHRE FUER DIE ERSTELLERSEITE, teuer bezahlt am 05.08.2026:
+#        EINE EINTRAGSDATEI WIRD GEGEN DEN COMMITTETEN BESTAND GEBAUT, NIE
+#        GEGEN EINEN SIMULIERTEN. Ich hatte die Datei zu Build 673 gegen einen
+#        nachgestellten Bestand gebaut, in dem die noch offene Datei zu 672
+#        bereits eingemischt war. Das Einmischwerkzeug schreibt beim Anlegen
+#        eines neuen Vorgangs aber eine eigene Update-Zeile mit der Uhrzeit
+#        DES LAUFS - und die kann keine Simulation treffen. IT03 meldete
+#        daraufhin auf der Gegenseite zu Recht einen drohenden Verlust.
+#        Folgerung: ein Vorgang, der erst durch eine noch nicht eingemischte
+#        Datei entsteht, wird in derselben Lieferung NICHT mehr angefasst.
+#
+# ALTE FASSUNG VON IT06 - DIE ANDERE RICHTUNG VON IT03, BUILD 671:
 #        IT03 bewacht, dass nichts VERLORENGEHT. Niemand bewachte, dass das
 #        Nachgetragene ANKOMMT.
 #        Am 05.08.2026 wurde eine Datei geliefert, die zu zwei vorhandenen
@@ -162,6 +182,228 @@ class EintraegeTests(unittest.TestCase):
             [], verstoesse,
             "Die Einspielseite wuerde diese Vorgaenge abweisen:\n  "
             + "\n  ".join(verstoesse))
+
+    # IT07 -------------------------------------------------------------------
+    def test_it07_historie_aus_noch_offenen_dateien_geht_nicht_verloren(self):
+        """
+        DIE LUECKE VON IT03, BUILD 673 - beim Bauen dieser Lieferung selbst
+        aufgefallen.
+
+        IT03 vergleicht die gelieferte Fassung mit dem BESTAND. Liegen aber
+        mehrere Eintragsdateien nebeneinander und beruehren denselben Vorgang,
+        wirken sie NACHEINANDER: die erste schreibt in den Bestand, die zweite
+        ersetzt danach denselben Vorgang. Eine zweite Datei, die auf dem Stand
+        VOR der ersten gebaut wurde, ist gegen den heutigen Bestand tadellos -
+        und loescht beim Einmischen genau das, was die erste kurz zuvor
+        eingetragen hat.
+
+        Genau das waere am 05.08.2026 passiert: die Datei zu Build 673 wurde
+        zuerst auf dem Bestand OHNE die noch nicht eingemischte Datei zu Build
+        672 gebaut. IT01 bis IT06 waren gruen. Die zwei Update-Zeilen aus 672
+        waeren beim Einmischen von 673 wieder verschwunden.
+
+        Dieser Fall vergleicht deshalb jede Datei auch gegen die ANDEREN noch
+        offenen Eintragsdateien.
+        """
+        dateien = _eintragsdateien()
+        if len(dateien) < 2:
+            self.skipTest("weniger als zwei offene Eintragsdateien")
+
+        # Kennung -> {Zeitstempel} je Datei
+        je_datei = {}
+        for pfad in dateien:
+            je_datei[pfad] = {
+                e["id"]: {u.get("timestamp") for u in (e.get("updates") or [])}
+                for e in _lade(pfad)["issues"]
+            }
+
+        verluste = []
+        for pfad, vorgaenge in je_datei.items():
+            for anderer, andere_vorgaenge in je_datei.items():
+                if anderer == pfad or anderer.name >= pfad.name:
+                    # Nur FRUEHERE Dateien betrachten: sie wirken zuerst.
+                    # Die Reihenfolge ist die des Einmischskripts (sortiert).
+                    continue
+                for kennung, stempel in vorgaenge.items():
+                    frueher = andere_vorgaenge.get(kennung)
+                    if not frueher:
+                        continue
+                    fehlend = frueher - stempel
+                    for t in sorted(fehlend):
+                        verluste.append(
+                            "%s: %s traegt die Zeile %s nicht mit, die %s "
+                            "kurz zuvor eintraegt"
+                            % (kennung[:8], pfad.name, t, anderer.name))
+
+        self.assertEqual(
+            [], verluste,
+            "Die spaetere Datei wuerde die Eintraege der frueheren wieder "
+            "entfernen - lautlos:\n  " + "\n  ".join(verluste)
+            + "\n\nAbhilfe: die spaetere Fassung auf dem Stand NACH dem "
+              "Einmischen der frueheren bauen.")
+
+    # IT03 -------------------------------------------------------------------
+    def test_it03_keine_historie_geht_beim_einmischen_verloren(self):
+        """
+        DER EIGENTLICHE WAECHTER.
+
+        '--auto-resolve source' ersetzt den vorhandenen Vorgang vollstaendig.
+        Was in der gelieferten Fassung nicht steht, ist danach weg - ohne
+        Meldung. Dieser Fall prueft deshalb VOR dem Einmischen, dass jede
+        gelieferte Fassung die schon vorhandene Historie mitbringt.
+        """
+        if not BESTAND.is_file():
+            self.skipTest("data/issues.json nicht vorhanden")
+        bestand = {i["id"]: i for i in _lade(BESTAND)["issues"]}
+        verluste = []
+        for pfad in _eintragsdateien():
+            for e in _lade(pfad)["issues"]:
+                alt = bestand.get(e["id"])
+                if not alt:
+                    continue                      # neuer Vorgang, nichts zu verlieren
+                geliefert = {u.get("timestamp")
+                             for u in (e.get("updates") or [])}
+                for u in (alt.get("updates") or []):
+                    if u.get("timestamp") not in geliefert:
+                        verluste.append(
+                            "%s (%s): Update %s von %s ginge verloren"
+                            % (e["id"][:8], pfad.name, u.get("timestamp"),
+                               u.get("author")))
+        self.assertEqual(
+            [], verluste,
+            "Beim Einmischen mit --auto-resolve source wuerde Historie "
+            "verschwinden, und zwar lautlos:\n  " + "\n  ".join(verluste))
+
+    # IT04 -------------------------------------------------------------------
+    def test_it04_keine_doppelten_kennungen(self):
+        for pfad in _eintragsdateien():
+            with self.subTest(datei=pfad.name):
+                ids = [e["id"] for e in _lade(pfad)["issues"]]
+                doppelt = [i for i in set(ids) if ids.count(i) > 1]
+                self.assertEqual([], doppelt)
+
+    # IT05 -------------------------------------------------------------------
+    def test_it05_updates_sind_chronologisch(self):
+        for pfad in _eintragsdateien():
+            for e in _lade(pfad)["issues"]:
+                stempel = [u.get("timestamp", "")
+                           for u in (e.get("updates") or [])]
+                with self.subTest(datei=pfad.name, id=e["id"][:8]):
+                    # Eine Historie, die nicht in der Reihenfolge steht, in der
+                    # sie entstanden ist, laedt zu Fehlschluessen ein.
+                    self.assertEqual(sorted(stempel), stempel)
+
+    # IT06 -------------------------------------------------------------------
+    def test_it06_der_dritte_zweig_in_merge_py_ist_noch_da(self):
+        """
+        IT06 HAT SEINE AUFGABE GEWECHSELT - Build 674.
+
+        BIS BUILD 673 fragte dieser Fall: 'kommt ein reiner Historien-Nachtrag
+        ueberhaupt an?' Er musste anschlagen, weil merge.py fuer einen
+        vorhandenen Vorgang nur zwei Wege kannte und ein Nachtrag zwischen
+        ihnen hindurchfiel. Er war eine NOTBREMSE fuer einen unbehobenen
+        Fehler, und er verlangte etwas Unschoenes: dass man ein Feld aendert,
+        das man gar nicht aendern will, nur damit die Lieferung ankommt.
+
+        SEIT BUILD 673 IST DER FEHLER BEHOBEN - der dritte Zweig
+        (ConflictType.UPDATE_TIMELINE) nimmt den Nachtrag auf, und
+        auto_resolve_conflict() fuehrt ihn ueber MERGE_UPDATES zusammen. Die
+        alte Fassung von IT06 wuerde jetzt genau den Fall verbieten, der
+        wieder funktioniert. Am 05.08.2026 hat sie bei Alex prompt die
+        Lieferung 673 blockiert - und zwar die Lieferung, die die Behebung
+        mitbrachte.
+
+        WEGGELASSEN WIRD ER TROTZDEM NICHT. Ein Waechter, den man ersatzlos
+        streicht, weil sein Fall behoben ist, laesst genau diese Behebung
+        unbewacht. IT06 prueft deshalb ab jetzt die ANDERE Seite derselben
+        Sache: dass der dritte Zweig noch im Quelltext steht. Wird er
+        entfernt, faellt IT06 wieder - und der alte Verlustfall kommt nicht
+        unbemerkt zurueck.
+
+        Das VERHALTEN des Zweiges pruefen MN01 bis MN03 in
+        tests/test_merge_nachtraege.py; dieser Fall prueft nur seine
+        Anwesenheit, damit die Erstellerseite ihn auch dann bemerkt, wenn die
+        Regression zum Tracker einmal nicht mitlaeuft.
+        """
+        quelle = (TRACKER / "merge.py").read_text(encoding="utf-8")
+        self.assertIn(
+            "ConflictType.UPDATE_TIMELINE", quelle,
+            "Der dritte Zweig fehlt in merge.py. Damit faellt ein reiner "
+            "Historien-Nachtrag wieder zwischen 'neu' und 'Konflikt' "
+            "hindurch: nichts wird geschrieben, das Werkzeug meldet Erfolg, "
+            "und merge-new-tickets.sh loescht die Quelldatei. Siehe Vorgang "
+            "7d3c1a95.")
+        self.assertIn(
+            "ResolutionStrategy.MERGE_UPDATES", quelle,
+            "Die Aufloesung des dritten Zweiges fehlt. Erkannt wuerde der "
+            "Nachtrag dann zwar, aber nach der gewaehlten Strategie geloest - "
+            "bei '--auto-resolve target' waere das erneut ein Verlust mit "
+            "Erfolgsmeldung.")
+        self.assertIn(
+            "pruefe_einmischung.py",
+            (TRACKER / "merge-new-tickets.sh").read_text(encoding="utf-8"),
+            "Die Gegenprobe vor dem Loeschen fehlt im Einmischskript. Ohne "
+            "sie kostet die naechste Luecke in merge.py wieder Daten statt "
+            "nur einen Abbruch.")
+
+    # IT07 -------------------------------------------------------------------
+    def test_it07_historie_aus_noch_offenen_dateien_geht_nicht_verloren(self):
+        """
+        DIE LUECKE VON IT03, BUILD 673 - beim Bauen dieser Lieferung selbst
+        aufgefallen.
+
+        IT03 vergleicht die gelieferte Fassung mit dem BESTAND. Liegen aber
+        mehrere Eintragsdateien nebeneinander und beruehren denselben Vorgang,
+        wirken sie NACHEINANDER: die erste schreibt in den Bestand, die zweite
+        ersetzt danach denselben Vorgang. Eine zweite Datei, die auf dem Stand
+        VOR der ersten gebaut wurde, ist gegen den heutigen Bestand tadellos -
+        und loescht beim Einmischen genau das, was die erste kurz zuvor
+        eingetragen hat.
+
+        Genau das waere am 05.08.2026 passiert: die Datei zu Build 673 wurde
+        zuerst auf dem Bestand OHNE die noch nicht eingemischte Datei zu Build
+        672 gebaut. IT01 bis IT06 waren gruen. Die zwei Update-Zeilen aus 672
+        waeren beim Einmischen von 673 wieder verschwunden.
+
+        Dieser Fall vergleicht deshalb jede Datei auch gegen die ANDEREN noch
+        offenen Eintragsdateien.
+        """
+        dateien = _eintragsdateien()
+        if len(dateien) < 2:
+            self.skipTest("weniger als zwei offene Eintragsdateien")
+
+        # Kennung -> {Zeitstempel} je Datei
+        je_datei = {}
+        for pfad in dateien:
+            je_datei[pfad] = {
+                e["id"]: {u.get("timestamp") for u in (e.get("updates") or [])}
+                for e in _lade(pfad)["issues"]
+            }
+
+        verluste = []
+        for pfad, vorgaenge in je_datei.items():
+            for anderer, andere_vorgaenge in je_datei.items():
+                if anderer == pfad or anderer.name >= pfad.name:
+                    # Nur FRUEHERE Dateien betrachten: sie wirken zuerst.
+                    # Die Reihenfolge ist die des Einmischskripts (sortiert).
+                    continue
+                for kennung, stempel in vorgaenge.items():
+                    frueher = andere_vorgaenge.get(kennung)
+                    if not frueher:
+                        continue
+                    fehlend = frueher - stempel
+                    for t in sorted(fehlend):
+                        verluste.append(
+                            "%s: %s traegt die Zeile %s nicht mit, die %s "
+                            "kurz zuvor eintraegt"
+                            % (kennung[:8], pfad.name, t, anderer.name))
+
+        self.assertEqual(
+            [], verluste,
+            "Die spaetere Datei wuerde die Eintraege der frueheren wieder "
+            "entfernen - lautlos:\n  " + "\n  ".join(verluste)
+            + "\n\nAbhilfe: die spaetere Fassung auf dem Stand NACH dem "
+              "Einmischen der frueheren bauen.")
 
     # IT07 -------------------------------------------------------------------
     def test_it07_historie_aus_noch_offenen_dateien_geht_nicht_verloren(self):
