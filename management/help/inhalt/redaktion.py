@@ -580,6 +580,12 @@ MODULES = Sichthilfe(
                 "enthält — mit Art, Name, Vorgabe, Beschreibung, Prüfmuster "
                 "und der Zahl der Vorkommen. Die Tabelle läuft beim Tippen "
                 "mit.",
+                "Gelesen wird der BAUSTEININHALT selbst, nicht der "
+                "Klartextspiegel darunter. Das heißt vor allem: Ein "
+                "Platzhalter in einer TABELLENZELLE steht mit in der "
+                "Tabelle, und steht derselbe Name in mehreren Zellen, sind "
+                "das gemeinsam mehrere Vorkommen — eine Änderung trifft sie "
+                "alle.",
                 "VIER SPALTEN LASSEN SICH ÄNDERN: Art, Vorgabe, "
                 "Beschreibung und Prüfmuster. Was dort eingetragen wird, "
                 "wirkt beim VERLASSEN des Feldes auf den Bausteininhalt "
