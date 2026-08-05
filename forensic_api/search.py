@@ -167,6 +167,35 @@ class SearchEndpoint:
         if sort not in _VALID_SORT:
             sort = "last_viewed_desc"
 
+        # ------------------------------------------------------------------
+        # BUILD 678 (Vorgang 1157e5f3): 'traces_desc' kann nicht mehr
+        # bedient werden - und das wird GESAGT statt verschwiegen.
+        #
+        # Die Spurenzahl entsteht seit Build 678 je Seite ueber
+        # get_trace_elements_for_page() und nicht mehr in der SQL-Abfrage.
+        # Danach laesst sich in SQL nicht sortieren, und in Python zu
+        # sortieren waere falsch, solange die Begrenzung vorher greift.
+        #
+        # Bisher war die Sortierung ohnehin wirkungslos: trace_count war
+        # IMMER 0, sortiert wurde also nach einer Konstanten. Der Unterschied
+        # ist, dass die Wirkungslosigkeit jetzt ANGESCHRIEBEN steht. Wer
+        # 'traces_desc' bestellt, bekommt 'last_viewed_desc' und liest das
+        # auch - eine stille Ersetzung waere die Sorte Auslassung, die
+        # Grundregel 1 verbietet.
+        # ------------------------------------------------------------------
+        sortierung_ersetzt = None
+        if sort == "traces_desc":
+            sortierung_ersetzt = {
+                "bestellt":  "traces_desc",
+                "geliefert": "last_viewed_desc",
+                "grund": ("Die Spurenzahl wird je Seite ermittelt und steht "
+                          "erst nach der Auswahl fest; danach laesst sich "
+                          "nicht mehr sortieren. Bis Build 677 war diese "
+                          "Sortierung wirkungslos, weil die Spurenzahl immer "
+                          "0 war."),
+            }
+            sort = "last_viewed_desc"
+
         # Paginierung
         try:
             limit = max(1, min(200, int(_first("limit", "50"))))
@@ -265,6 +294,7 @@ class SearchEndpoint:
                 "total":     gesamt,
                 "geliefert": len(pages),
                 "begrenzt":  begrenzt,
+                "sortierung_ersetzt": sortierung_ersetzt,
                 "status":    "ok",
             },
             ensure_ascii=False,

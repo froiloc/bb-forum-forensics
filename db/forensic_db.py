@@ -1044,9 +1044,14 @@ class ForensicDb:
           - annotationsTotal + tagList: LEFT JOIN auf evidence_db.annotations
             (selbe Verbindung, keine ATTACH nötig).
           - lastViewedAt / firstViewedAt: MAX/MIN aus evidence_db.page_visits.
-          - traceCountTotal: Anzahl Einträge in fdb.scrape_targets mit
-            url_type NOT IN ('static') für diese Seiten-URL (Näherung —
-            exakte Trace-Aufschlüsselung folgt in KN-7).
+          - traceCountTotal: Anzahl der Spuren AUF DIESER SEITE, ermittelt
+            über get_trace_elements_for_page() — dieselbe Vorschrift, aus der
+            Minimap und Spurennavigation ihre Marken beziehen (Build 678,
+            Vorgang 1157e5f3). Gerechnet wird nur für die gelieferten Zeilen.
+            -1 bedeutet 'nicht ermittelbar' und ist von 0 zu unterscheiden.
+            BIS BUILD 677 stand hier eine Näherung über eine Verbindung zu
+            fdb.scrape_targets, die auf Gruppennamen statt auf url_type-Werte
+            prüfte und deshalb IMMER 0 lieferte.
           - progressPercent: 100 wenn annotationsTotal > 0 AND lastViewedAt
             IS NOT NULL, sonst 50 wenn nur lastViewedAt gesetzt, sonst 0.
             (Platzhalter — echte Fortschrittsberechnung via page_progress-
@@ -1109,29 +1114,47 @@ class ForensicDb:
                 COUNT(DISTINCT a.id)        AS ann_count,
                 GROUP_CONCAT(DISTINCT a.tags_json) AS tags_concat,
                 MAX(pv.ts) * 1000           AS last_viewed_ms,
-                MIN(pv.ts) * 1000           AS first_viewed_ms,
-                COUNT(DISTINCT st.id)       AS trace_count
+                MIN(pv.ts) * 1000           AS first_viewed_ms
             FROM fdb.pages p
             LEFT JOIN annotations a
                 ON a.page_url = REPLACE(p.url_canonical, :base_url, '')
             LEFT JOIN page_visits pv
                 ON pv.page_url = REPLACE(p.url_canonical, :base_url, '')
-            LEFT JOIN fdb.scrape_targets st
-                ON (
-                    (st.url_type = 'topic'    AND st.topic_id IS NOT NULL)
-                 OR (st.url_type = 'pm'       AND st.pm_topic_id IS NOT NULL)
-                 OR (st.url_type = 'profile'  AND st.actor_user_id IS NOT NULL)
-                 OR (st.url_type = 'forum')
-                )
-                AND REPLACE(p.url_canonical, :base_url, '') LIKE
-                    '%' || COALESCE(
-                        CAST(st.topic_id AS TEXT),
-                        CAST(st.pm_topic_id AS TEXT),
-                        CAST(st.actor_user_id AS TEXT),
-                        CAST(st.forum_id AS TEXT),
-                        ''
-                    ) || '%'
         """
+        # ---------------------------------------------------------------------
+        # BUILD 678 (Vorgang 1157e5f3): DIE SPURENZAEHLUNG IST AUS DIESER
+        # ABFRAGE ENTFERNT - sie war falsch UND teuer.
+        #
+        # HIER STAND EINE VERBINDUNG ZU fdb.scrape_targets mit dieser
+        # Bedingung:
+        #     (st.url_type = 'topic'   AND st.topic_id     IS NOT NULL)
+        #  OR (st.url_type = 'pm'      AND st.pm_topic_id  IS NOT NULL)
+        #  OR (st.url_type = 'profile' AND st.actor_user_id IS NOT NULL)
+        #  OR (st.url_type = 'forum')
+        #
+        # DER FEHLER: 'topic', 'pm' und 'forum' sind GRUPPENNAMEN der
+        # Spurennavigation, KEINE Werte von scrape_targets.url_type. Dort
+        # stehen 'viewtopic', 'viewforum', 'pmsnew_topic', 'pmsnew_post',
+        # 'pms_partner', 'profile', 'other_profile', 'wholikes' und so fort -
+        # nachzulesen in der TYPE_MAP von get_trace_sequence(), die am realen
+        # Bestand belegt ist. Von den vier Zweigen konnte also nur einer je
+        # zutreffen: 'profile'. Fuer jede Themen-, Forums- und PN-Seite kam
+        # zwangslaeufig 0 heraus - genau der gemeldete Befund.
+        #
+        # DAZU KAM DER PREIS: die Bedingung verglich per LIKE OHNE ANKER jede
+        # Seite mit jedem Erfassungsziel. Bei 6.500 Seiten und 19.000 Zielen
+        # sind das ueber 120 Millionen Zeichenkettenvergleiche - fuer eine
+        # Zahl, die immer 0 war.
+        #
+        # WARUM NICHT EINFACH DIE url_type-WERTE BERICHTIGEN: weil dann eine
+        # ZWEITE Vorschrift entstuende, was eine Spur auf einer Seite ist.
+        # Die erste steht in get_trace_elements_for_page() und wird vom
+        # Werkzeug bereits benutzt - sie liefert die Marken, die Minimap und
+        # Spurennavigation anzeigen. Zwei Vorschriften waeren binnen weniger
+        # Builds auseinandergelaufen, und dann haette die Uebersicht eine
+        # andere Zahl gezeigt als die Seite selbst. Gezaehlt wird deshalb ab
+        # jetzt mit derselben Funktion - siehe weiter unten.
+        # ---------------------------------------------------------------------
         # ---------------------------------------------------------------------
         # BUILD 677: Filterbedingungen werden GESAMMELT, nicht angehaengt.
         #
@@ -1211,8 +1234,25 @@ class ForensicDb:
             "url_asc":          "url_canonical ASC",
             "url_desc":         "url_canonical DESC",
             "annotations_desc": "ann_count DESC",
-            "traces_desc":      "trace_count DESC",
         }
+        # BUILD 678: 'traces_desc' steht NICHT mehr in dieser Zuordnung.
+        #
+        # Die Spurenzahl entsteht seit dieser Fassung nicht mehr in SQL,
+        # sondern je Seite ueber get_trace_elements_for_page(). Danach in SQL
+        # zu sortieren ist damit unmoeglich - und in Python zu sortieren waere
+        # FALSCH, solange LIMIT vorher greift: sortiert wuerde dann nur die
+        # ohnehin schon ausgewaehlte Seite.
+        #
+        # DAS IST KEIN VERLUST, den jemand bemerken wird: die Sortierung war
+        # bisher wirkungslos, weil trace_count IMMER 0 war. Sie sortierte also
+        # nach einer Konstanten. Wichtiger ist, was NICHT passiert: der
+        # Endpunkt faellt fuer diesen Wert auf 'last_viewed_desc' zurueck und
+        # SAGT DAS in der Antwort (Feld 'sortierung_ersetzt'), statt still
+        # etwas anderes zu liefern als bestellt.
+        #
+        # Eine tragfaehige Sortierung nach Spuren braucht die Zahl fuer ALLE
+        # Treffer, nicht nur fuer die gelieferten. Das ist ein eigener
+        # Arbeitsschritt und gehoert nicht in diese Behebung.
         # ---------------------------------------------------------------------
         # BUILD 676 (Vorgang 36dcdfd8): die WAHRE Trefferzahl.
         #
@@ -1360,7 +1400,27 @@ class ForensicDb:
             if progress_filter == "closed" and progress < 100:
                 continue
 
-            trace_count = int(row["trace_count"] or 0)
+            # BUILD 678 (Vorgang 1157e5f3): DIESELBE Vorschrift wie die Seite
+            # selbst. get_trace_elements_for_page() liefert die Marken, die
+            # Minimap und Spurennavigation anzeigen; ihre Anzahl ist die
+            # Spurenzahl der Seite. Damit kann die Uebersicht gar nicht mehr
+            # etwas anderes behaupten als die Seite.
+            #
+            # GERECHNET WIRD NUR FUER DIE GELIEFERTEN ZEILEN - hoechstens so
+            # viele, wie 'limit' zulaesst. Die alte Fassung rechnete fuer
+            # ALLE Seiten und kam trotzdem auf 0.
+            try:
+                trace_count = len(
+                    self.get_trace_elements_for_page(int(row["page_id"])))
+            except Exception as exc:
+                # Eine Seite, deren Spuren sich nicht ermitteln lassen, darf
+                # die Uebersicht nicht sprengen. Sie wird mit -1 als
+                # 'unbekannt' ausgewiesen - NICHT mit 0, denn das hiesse
+                # 'keine Spuren' und waere eine Behauptung.
+                logger.warning(
+                    "search_pages: Spurenzahl fuer page_id=%s nicht "
+                    "ermittelbar: %s", row["page_id"], exc)
+                trace_count = -1
 
             results.append({
                 "url":             url_norm,
