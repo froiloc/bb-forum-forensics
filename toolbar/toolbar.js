@@ -5429,18 +5429,60 @@
     //      → intra-page Sprung
     //   2. Sonst: nächste Seite in traceSequence
     // -------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // _rang — der Rang der aktuellen Seite in der Spurensequenz, oder -1.
+    //
+    // BUILD 685 (Vorgang c290939f): EINE Stelle, an der der Rang bestimmt
+    // wird. Bis Build 682 stand dieselbe Zeile dreimal im Modul
+    // (_nextTargetForDirection, _update, _navigate) - und zwei der drei
+    // Stellen zogen aus einem unbekannten Rang VERSCHIEDENE Schluesse. Genau
+    // daraus entstand der gemeldete Fehler.
+    // -------------------------------------------------------------------------
+    function _rang() {
+      var seqIdx = _state.traceSeqIndex;
+      if (seqIdx >= 0) return seqIdx;
+      return _seqIndexForUrl(_currentUrl());
+    }
+
     function _nextTargetForDirection(dir) {
       var traces  = _state.traceElements || [];
       var seq     = _getSeq();
-      var seqIdx  = _state.traceSeqIndex;
-      if (seqIdx < 0) seqIdx = _seqIndexForUrl(_currentUrl());
+      var seqIdx  = _rang();
 
-      // Intra-page Sprung?
+      // -----------------------------------------------------------------------
+      // BUILD 685 (Vorgang c290939f): EIN UNBEKANNTER RANG WIRD NICHT
+      // WEITERGERECHNET.
+      //
+      // Hier stand bis Build 682 nichts - der Rang -1 lief einfach in die
+      // Arithmetik weiter. Vorwaerts ergab '-1 + 1 = 0': ein Sprung an den
+      // ANFANG der gesamten Sequenz, praesentiert als 'naechste Spur'.
+      // Rueckwaerts ergab -2, die Bedingung fiel, und der Knopf blieb wortlos
+      // stehen.
+      //
+      // -1 IST KEIN RANG, SONDERN EINE AUSKUNFT: 'diese Seite steht nicht in
+      // der Spurenliste'. Mit einer Auskunft rechnet man nicht.
+      //
+      // WARUM DER FALSCHE SPRUNG BISHER NICHT AUFTRAT: _update() gab den
+      // Knopf gar nicht erst frei, weil es die Bedingung STRENGER stellte
+      // ('seqIdx >= 0'). Zwei Stellen beantworteten dieselbe Frage
+      // verschieden, und nur die zufaellige Reihenfolge - erst die strengere
+      // Freigabe, dann die grosszuegige Rechnung - verhinderte den Sprung.
+      // Eine Umstellung, die den Knopf aus einem anderen Grund freigibt,
+      // haette ihn ausgeloest. Die Beschriftung zeigte den Widerspruch
+      // uebrigens an: sie stand auf '▶▶' (Seitenwechsel) an einem Knopf, der
+      // nicht gedrueckt werden konnte.
+      //
+      // Innerhalb der Seite bleibt alles wie bisher - dafuer braucht es den
+      // Rang nicht.
+      // -----------------------------------------------------------------------
+      var rangBekannt = seqIdx >= 0;
+
       if (dir === "next") {
         var nextIntra = _currentIdx + 1;
         if (nextIntra < traces.length) {
           return { seqIdx: seqIdx, intraIdx: nextIntra, crossPage: false };
         }
+        if (!rangBekannt) return null;      // kein Vorher/Nachher bestimmbar
         // Nächste Seite in Sequenz
         var nextSeq = seqIdx + 1;
         if (nextSeq < seq.length) {
@@ -5452,6 +5494,7 @@
         if (prevIntra >= 0) {
           return { seqIdx: seqIdx, intraIdx: prevIntra, crossPage: false };
         }
+        if (!rangBekannt) return null;      // kein Vorher/Nachher bestimmbar
         // Vorherige Seite in Sequenz
         var prevSeq = seqIdx - 1;
         if (prevSeq >= 0) {
@@ -5475,6 +5518,28 @@
       // Beschriftung: ◄◄/▶▶ signalisiert Seitenwechsel
       prevBtn.textContent = (prevTarget && prevTarget.crossPage) ? "◄◄" : "◄";
       nextBtn.textContent = (nextTarget && nextTarget.crossPage) ? "▶▶" : "▶";
+
+      // BUILD 685 (Vorgang c290939f): Steht die Seite nicht in der
+      // Spurenliste, laesst sich kein Vorher und kein Nachher bestimmen. Das
+      // wird GESAGT - an beiden Knoepfen und an der Gesamtzahl. Ein Knopf,
+      // der ohne Begruendung nicht reagiert, wird fuer kaputt gehalten; im
+      // schlimmeren Fall haelt der Ermittler die Spurenliste fuer zu Ende.
+      var seqVorhanden = _getSeq().length > 0;
+      if (seqVorhanden && _rang() < 0) {
+        var hinweis = "Diese Seite steht nicht in der Spurenliste - "
+                    + "ein Vorher oder Nachher laesst sich hier nicht "
+                    + "bestimmen. Ueber die Seitenuebersicht (Alt+K) zu "
+                    + "einer Seite mit Spuren wechseln.";
+        prevBtn.setAttribute("title", hinweis);
+        prevBtn.setAttribute("aria-label", "Vorherige Spur - " + hinweis);
+        nextBtn.setAttribute("title", hinweis);
+        nextBtn.setAttribute("aria-label", "Naechste Spur - " + hinweis);
+        var totalEl2 = document.getElementById("forensic-trace-total");
+        if (totalEl2) totalEl2.setAttribute("title", hinweis);
+        return;
+      }
+      var totalEl3 = document.getElementById("forensic-trace-total");
+      if (totalEl3) totalEl3.removeAttribute("title");
 
       // ARIA-Labels mitpflegen
       if (prevTarget && prevTarget.crossPage) {
@@ -5504,8 +5569,7 @@
       var traces  = _state.traceElements;
       var total   = traces.length;
       var seq     = _getSeq();
-      var seqIdx  = _state.traceSeqIndex;
-      if (seqIdx < 0) seqIdx = _seqIndexForUrl(_currentUrl());
+      var seqIdx  = _rang();      // Build 685: EINE Stelle fuer den Rang
 
       var inputEl = document.getElementById("forensic-trace-input");
       var totalEl = document.getElementById("forensic-trace-total");
@@ -5578,8 +5642,7 @@
       if (!dest) return;
 
       // Gruppe ankündigen wenn Gruppenwechsel
-      var curSeqIdx = _state.traceSeqIndex >= 0
-        ? _state.traceSeqIndex : _seqIndexForUrl(_currentUrl());
+      var curSeqIdx = _rang();      // Build 685: EINE Stelle fuer den Rang
       var curGroup  = curSeqIdx >= 0 ? seq[curSeqIdx].group : null;
       if (curGroup && dest.group !== curGroup) {
         var groupLabels = {
@@ -5666,10 +5729,15 @@
       }
 
       // seqIndex auf aktuelle Seite setzen (Sequenz bereits geladen)
+      //
+      // BUILD 685 (Vorgang c290939f): Der Rang wird IMMER geschrieben, auch
+      // wenn er -1 lautet. Bis Build 682 stand hier 'if (idx >= 0)' - ein
+      // unbekannter Rang liess also den Rang der VORHERIGEN Seite stehen.
+      // Dann rechnete die Navigation ein Vorher und Nachher relativ zu einer
+      // Seite aus, auf der man gar nicht mehr ist. Ein veralteter Wert ist
+      // schlimmer als gar keiner: er sieht gueltig aus.
       var idx = _seqIndexForUrl(_currentUrl());
-      if (idx >= 0) {
-        ForensicToolbar._setState({ traceSeqIndex: idx });
-      }
+      ForensicToolbar._setState({ traceSeqIndex: idx });
 
       _update();
     }
