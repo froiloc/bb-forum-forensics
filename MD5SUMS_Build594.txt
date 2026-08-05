@@ -1,2 +1,0 @@
-a198ea28ea4e1d47ce59cfe8f7124215  build.json
-4f93767851f38c4bbf5fd39589d09be9  tests/unit/test_cockpit_tabellen_ux.test.js

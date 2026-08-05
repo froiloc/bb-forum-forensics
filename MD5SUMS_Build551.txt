@@ -1,8 +1,0 @@
-4c4203d9d51789fcdd04a059fb6d698e  build.json
-b05e5357558c4783a33ef68634f25f55  management/server/static/cockpit_tablekit.js
-44e7dbe265eadce33c8d58ce8872c811  management/server/static/cockpit_support.js
-1da93c603ce79850091c73f05439011b  management/server/static/cockpit_reports.js
-4bea3ae5db5f4ea6480a4b1c17f2ff96  management/server/static/cockpit_calendar.js
-dd053291bdc4e374ea9ba69dbe838a09  tests/unit/test_cockpit_tabellen_ux.test.js
-637b6b433caa859cf18b3624ce0c62fc  tests/unit/test_cockpit_reports.test.js
-0cdfa74d1900017170f5f3085639e4f1  tests/unit/test_cockpit_calendar.test.js

@@ -1,8 +1,0 @@
-6e81b94e326584883234176b459fd9ac  build.json
-cc006cbc2f2b3527bb27621d87c23976  management/help/inhalt/administration.py
-55ddaa9e12be38a26ec6386bf76afa32  management/server/static/cockpit_handover.js
-f5eae465e5799da97dd6b999e22951d8  management/server/static/cockpit_promotion.js
-2d4f11ef2de41fe526425974eeec9c8b  management/server/static/cockpit_releases.js
-e0c8cc3e4416577d521d7f767be12183  management/server/static/cockpit_retention.js
-6c3b0d8e5d333d63d117dd56e3aa3f2f  tests/hilfe_fehlliste_stand.json
-458d39ef2880e1ddf41ebf96f97ae626  tests/test_help_schluessel_paritaet.py

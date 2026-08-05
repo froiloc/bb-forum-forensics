@@ -1,4 +1,0 @@
-db68156878c58e0b5b7f42eabe40c7f7  build.json
-c0831cd76e02716a28900822caeb37c8  documents/rules-coding.md
-1a99e92cbb2373d0b28627bed9cef010  issue-tracker/eingang_claude_Build627.json
-f3ff65a74c2611436cf9e54353708936  tests/test_issue_eingang_schema.py

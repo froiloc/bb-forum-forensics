@@ -1,4 +1,0 @@
-e18c1fd9b856391899b4ad01c2feb78a  build.json
-3abd49fc9b1274fcedbbe15f0dbabf07  management/server/management_app.py
-537d0a41ae2361967150edd21e2f3f89  management/Bauplan_Build558_Kapazitaetspflege_v0_1.md
-e2d0d1f9ff200af3d93cea2baa60f5d7  tests/test_management_capacity_api.py

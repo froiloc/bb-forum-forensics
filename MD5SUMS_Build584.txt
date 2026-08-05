@@ -1,5 +1,0 @@
-3aecab09b8fea0a7d99053033274503b  build.json
-ced8d55f931e25f007a78838ff2e61e7  db/templates_db.py
-c3bcbd6402fadc53b76342216fd25c6d  management/templates_db_status.py
-e628974d1e1ca0745f2c13c464966084  tests/test_templates_quelle_zustand.py
-c9eed1ed8349fb43a526dba9040368af  issue-tracker/eintraege_claude_Build584.json

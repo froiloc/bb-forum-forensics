@@ -1,5 +1,0 @@
-7ba9a5f20c7c2ca0880b8e0cc707fe68  build.json
-27787a64880bbf06c9ea622ce9905e48  db/templates_db.py
-55c2ba653a888c020f15884ea5011543  forensic_api/templates_ep.py
-a0ea8ce38971ed2a4b146808721b0d1e  tests/test_templates_quelle_zustand.py
-a542520243e9d1bf9eb22c5c2cd1ee7a  issue-tracker/eintraege_claude_Build579.json

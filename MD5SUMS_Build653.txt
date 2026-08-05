@@ -1,7 +1,0 @@
-d8546b21c6b806ffb177dbc2fe213c0f  build.json
-e30e225515c1b8acf38d5f56a1506644  management/server/static/cockpit_modules.js
-56ef91470cb83d6dd266f427c94e8588  management/server/static/cockpit.css
-135bbe9b02ebb0a2c2571237b9090df8  management/help/inhalt/redaktion.py
-a9998a65653c5749dc4dd77b616b5115  management/help/anker_katalog.py
-a8844b1c447d2c8403c5c40ed63d01ee  tests/unit/test_cockpit_modules.test.js
-19bfddd1d8d0a885b5c310b1dabbe93a  issue-tracker/eintraege_claude_Build653.json

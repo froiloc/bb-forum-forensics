@@ -1,4 +1,0 @@
-6133f9d8f5eedee7da5ce822956a59b9  build.json
-2af7f2f7059c6fcd609f5b03c65c8929  management/server/management_app.py
-8439fbb3d97db53ba5aa350aeebc506a  management/Bauplan_Build562_EntfernteZeilen_v0_1.md
-7f90812bffda1f20f5d2048345f6611e  tests/test_management_capacity_api.py

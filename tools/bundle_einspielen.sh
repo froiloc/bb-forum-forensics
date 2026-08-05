@@ -133,9 +133,9 @@ build_no="${2:-}"
 if [ -n "${3:-}" ]; then
     testbefehl="$3"
 elif command -v python >/dev/null 2>&1; then
-    testbefehl="python run_tests.py"
+    testbefehl="python -m pytest tests/ -q -n 8 && python run_tests.py --js-only"
 else
-    testbefehl="python3 run_tests.py"
+    testbefehl="python3 -m pytest tests/ -q -n 8 && python run_tests.py --js-only"
 fi
 
 if [ -z "$package" ] || [ -z "$build_no" ]; then

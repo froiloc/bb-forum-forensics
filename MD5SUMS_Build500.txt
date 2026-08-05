@@ -1,9 +1,0 @@
-832850380323de3863faf50fdab9f403  aiw_webserver/build.json
-8af33a18726d9d558eab63dcb00e4b5e  aiw_webserver/management/cases/case_launcher.py
-2949d4427c2e97b5d7ee4402f89431f1  aiw_webserver/management/claude_Bauplan_Build500_FallstartAusPortal_v0_1.md
-7532ebe719d8ac3b3c9e56e0178feef2  aiw_webserver/management/server/management_app.py
-7cd56fecc1522567191325ff249be3b9  aiw_webserver/management/server/static/cockpit.css
-6707f7aee3226c9e096556c7f49fd5fa  aiw_webserver/management/server/static/cockpit.js
-e0f10e6ac0cb925ef48c4bb531a219fe  aiw_webserver/management/server/static/cockpit_mycases.js
-4987f2dfb563ec32b913a0c68f94ba2e  aiw_webserver/tests/test_case_launch.py
-c7d76ca3e35e96c5b03bfbb7b211d94c  aiw_webserver/tests/unit/test_cockpit_mycases.test.js

@@ -1,5 +1,0 @@
-5896fc98962d7e7722e1cf5b1db3f753  build.json
-17ef0b4a29cbab063416230f561685a1  management/help/cli_katalog.py
-d1e141f0b0c8ec25d4afd137a0767c70  tests/test_help_cli_katalog.py
-99971697e8d0ea20eecba1a13bafe725  tests/test_help_cli_text.py
-481e63834f648b014e7cb996c0e9dedd  tests/hilfe_fehlliste_stand.json

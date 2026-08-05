@@ -1,6 +1,0 @@
-bb94c061a49006a73fc9540fd94b76cd  build.json
-39a6b29a0ae1ccf1537dcc391fa8239e  issue-tracker/eingang_claude_Build625.json
-c97bd3736ce666e43d70ba7243926403  management/backup/backup_admin.py
-f95158799f9345cc78a5a36fb225c03b  management/backup/backup_executor.py
-9ee5f20540468dbe00a0fedb193b60fd  management/help/cli_katalog.py
-9928653fdfe95ec34e4db980be71b39d  tests/test_backup_executor.py

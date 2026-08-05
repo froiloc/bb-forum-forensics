@@ -1,8 +1,0 @@
-7ebe9d8cdfa3e255de8a5cfbf51c0044  build.json
-3d782d0f1ce55c9e67084393e78d88cf  documents/data-exchange.md
-10772227b78f2fa4e2978f343824948b  documents/rules-index.md
-c616dd6dd4a3bc9167c62910c31774fc  documents/rules-projekt.md
-6e0dac2399623741933b9f2edf9113f4  issue-tracker/eintraege_claude_Build661.json
-33c30324d0f9307eef88950dcb7d30b0  issue-tracker/eintraege_claude_Build662.json
-784dc481a0f548e75cf67e92f9f44386  tools/bundle_bauen.sh
-4b4139e48b8867183e58dc4840ddba6d  tools/bundle_einspielen.sh

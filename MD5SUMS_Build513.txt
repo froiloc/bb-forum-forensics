@@ -1,7 +1,0 @@
-# MD5-Pruefsummen Build 513 (aiw_webserver, v0.8.513) — erzeugt 2026-07-24
-# Basis: Build 512 (f9d6418). Bitte VOR dem Einspielen gegen die VM abgleichen.
-#
-e2bf663601eb8f1ba502e87d68302f18  build.json
-b87520d2e5a66eeed339db11ad5d0887  management/server/management_app.py
-6943ece4100b1ac2a9b8828a5d3b2425  management/export/view_export_catalog.py
-0f7872448b51da95f64866f852b150c6  tests/test_management_workload_overload.py

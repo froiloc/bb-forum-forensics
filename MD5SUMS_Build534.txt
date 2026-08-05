@@ -1,9 +1,0 @@
-25f3e2083ae1c52fe2ee62a5da644cd9  build.json
-2ff5a182395faa9a3e7da7dad2ef2986  toolbar/tatzeit_panel.js
-bbdb8c2ba13b8284bba7fcf26b4a2b49  toolbar/toolbar.js
-054eb43953147618cd26ea0b5401e204  toolbar/toolbar.css
-f1e20ed2d7ea01141d6193b7a5f5678d  forensic_api/static.py
-61dd9b7442c9f8f4297499d827be56b5  forensic_api/__init__.py
-d4289708b93b8cd2ebec194aaa5806bd  server/shell_handler.py
-6ecf0fe6da0caf1e63a21c0efa4bba9c  tests/unit/test_tatzeit_panel.test.js
-ebe7ad9438bdd343c6d529edbba29636  tests/test_tatzeit_panel_routing.py

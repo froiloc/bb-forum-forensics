@@ -1,7 +1,0 @@
-e7c730364703bef3ab5a5211ca37904b  build.json
-d2dda6f36ffcecbde93c1286b67a763a  management/server/static/cockpit_capacity_pflege.js
-6f30e9aed877d4f00139f20aaefa9622  management/server/static/cockpit.js
-25d584167e84d7c77e6e0f25ddb4f120  management/server/static/cockpit.css
-997cc6d2303ad9578334bec31ba44563  management/Bauplan_Build563_EntfernteZeilenSicht_v0_1.md
-ef5cde7662914358f4704c805db0776e  tests/unit/test_cockpit_capacity_pflege.test.js
-c8ddc241b629ca81b94c792a6d59ae20  issue-tracker/eintraege_claude_Build563.json

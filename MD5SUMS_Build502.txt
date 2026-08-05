@@ -1,9 +1,0 @@
-9cf8f5fd98e43d6e8b53b87e0ebf655f  aiw_webserver/build.json
-315217ccfa2b3f1e0362081f0b4162ea  aiw_webserver/management/server/management_app.py
-e66dc6cccf6ad62c3ec5355e7c147417  aiw_webserver/management/server/static/cockpit_adsync.js
-1531f4738354be6e7d395e243d6bd61a  aiw_webserver/management/server/static/cockpit.js
-47ab2035992923d0e87ccdf01303f8d4  aiw_webserver/management/server/static/cockpit.css
-7b4cbf08890c51c9188b30f0394a150a  aiw_webserver/management/server/static/cockpit.html
-8d03df931804a537bf1b7d7d675623cc  aiw_webserver/tests/test_management_adsync_endpoint.py
-fad2423c0d867129595f143b8783e9b4  aiw_webserver/tests/unit/test_cockpit_adsync.test.js
-68c41a07428373d2faa361b9c905c49d  aiw_webserver/tests/unit/test_cockpit_nav.test.js

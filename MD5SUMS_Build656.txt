@@ -1,9 +1,0 @@
-6ed11d1b4aeebbce8f7d8de13dc0f85f  build.json
-ecd43268d2501f290a4db048933878a2  management/server/static/cockpit.html
-b27ad7724841fa73cacd7754b37638f3  management/server/static/cockpit.css
-98230080ee86782e1cb45c51a0ff6213  management/server/static/cockpit_modules.js
-8c1f929b3d611c0b45997bca1855ed94  management/server/static/cockpit_baustein_eingabe.js
-9286250ffbbaf5f93a51293ec6563cf1  management/help/inhalt/redaktion.py
-3195666524244e0e1a85595385730273  tests/unit/test_cockpit_modules.test.js
-9f0f2ea2c90797bced5cf5de06a17bbc  tests/unit/test_cockpit_baustein_eingabe.test.js
-294eff740fea1e11da60e4e3e148ce83  issue-tracker/eintraege_claude_Build656.json

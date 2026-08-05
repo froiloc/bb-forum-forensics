@@ -1,9 +1,0 @@
-fd4515c1a2786c4a246a080713380568  build.json
-3c8905fcdaf19a0cdc32746f62d8e821  management/backup/backup_admin.py
-c3a867566df640c6d4b408bdbb0cbe46  management/backup/backup_executor.py
-6ada9e85dd95b6b5e72851e85fd74a34  management/backup/backup_pruefer.py
-baa97236414bddd45228c5348439b00c  management/help/cli_katalog.py
-19d5d7115c775b123de1bbd8aa92e3c7  tests/hilfe_fehlliste_stand.json
-e2779d6095b320e8d53d70fe89caccfb  tests/test_backup_executor.py
-0844db19f08e9186e324b728dbce74e8  tests/test_backup_pruefer.py
-4362b8ebc528507e731a7f85eb2ea9fe  tests/test_help_cli_epilog.py

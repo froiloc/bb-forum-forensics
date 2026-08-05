@@ -1,4 +1,0 @@
-ec276c214c97b45c6b46ee7bcba8e913  build.json
-2dc834293ab335caccc8e8ffb0fc6892  management/server/management_app.py
-a4a66f3ce82329d38c333ecc290fe1b2  tests/test_management_viewprefs.py
-425babfe5d0d7854cb754191ed7a8776  issue-tracker/eintraege_claude_Build571.json

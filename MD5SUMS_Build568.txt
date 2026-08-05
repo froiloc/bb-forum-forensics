@@ -1,9 +1,0 @@
-cf208bff774444f58d5bbba381957117  build.json
-5e81f275956ba201aa93eb1016ae2bf9  management/server/static/cockpit.js
-742c73b48409b26d613b27849f17eb80  management/server/static/cockpit_viewprefs.js
-dabeacbedcff80fef6ea9f5e3d5ce3a8  management/server/static/cockpit.css
-fc784c75097cedbbd737940333cf9717  management/Bauplan_Build568_GruppenOrdnung_v0_1.md
-dcde9963d938b5872de3affe483ebba7  tests/unit/test_cockpit_gruppen.test.js
-12c3552e5b8cb35b55545931fc37c0b3  tests/unit/test_cockpit_nav.test.js
-516594c972d83990893db664772c2103  tests/unit/test_cockpit_viewprefs.test.js
-06a0f6296e69ba1d312cb9fe614fa0ee  issue-tracker/eintraege_claude_Build568.json

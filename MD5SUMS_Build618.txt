@@ -1,4 +1,0 @@
-c9d91c8ae38cfeed721df73567d798ff  build.json
-ad25c664a79ad37618b073ab1bb64d5b  management/help/cli_katalog.py
-8035ae6298b20c217fff5281520caa29  tests/hilfe_fehlliste_stand.json
-eb812577fbb14281d36bd185ad14cd39  issue-tracker/eingang_claude_Build618.json

@@ -1,6 +1,0 @@
-63f73f435eab31f7367b1ebc948312fe  aiw_webserver/build.json
-583d43ac6f56e986ebdf55db24d15143  aiw_webserver/management/server/management_app.py
-6a5f206b75875aa63c8e9ac50755b2ca  aiw_webserver/management/crossref/crossfindings_repo.py
-6eefdcfaf194298caf65dbfed14fa5b2  aiw_webserver/management/claude_Bauplan_Build474_CrossfindingsOverview_v0_1.md
-95176bf2c4cd8844f81c11fef0e9ba2c  aiw_webserver/tests/test_crossfindings_repo.py
-5a18669980083e993736385bfdae572e  aiw_webserver/tests/test_crossfindings_api.py

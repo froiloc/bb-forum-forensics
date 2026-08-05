@@ -1,5 +1,0 @@
-a85dcf4a9359a7f7c30e3b98f751e8e1  build.json
-82d829add62191964125b73a84a1d085  management/db_katalog.py
-980f09385240a70b06408b1d5198c36a  management/db_startbefund.py
-0e4f1b95648bfb0af5325bceaa6561e9  tests/test_db_katalog.py
-860eeee03a4559e9df3e332c4c8ab92d  issue-tracker/eintraege_claude_Build658.json

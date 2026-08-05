@@ -1,8 +1,0 @@
-0e69c8c948f320d4b522e5ebe440e3a6  aiw_webserver/build.json
-18249f8293ad3b1ed24525f196c82b02  aiw_webserver/management/server/static/cockpit_crossref.js
-8ea76660fb90407bd854eee5bd47bdbe  aiw_webserver/management/server/static/cockpit.js
-b698a5beb5c20da3017a4947a0126c98  aiw_webserver/management/server/static/cockpit.html
-84d6da5a419123fe46095c8567c99b6f  aiw_webserver/management/server/static/cockpit.css
-5a716a04bec1a2eacce0facf0c36b33c  aiw_webserver/management/claude_Bauplan_Build471_CrossrefCockpit_v0_1.md
-82ac7332a73a4d44be8fcf4a787ba6fd  aiw_webserver/tests/unit/test_cockpit_crossref.test.js
-c729f6240fdb9984aba280a137218b4a  aiw_webserver/tests/unit/test_cockpit_nav.test.js

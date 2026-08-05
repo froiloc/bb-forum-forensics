@@ -1,5 +1,0 @@
-0b646c9b6dea6d9d6f7e4740f3c77451  build.json
-4fb6d91a02845cee1b0883cc7b6272c9  management/backup/backup_executor.py
-fb1dab7ca0851ff0513677b5f0eb68a2  management/backup/backup_admin.py
-32160776fe1272d94a869bf5e6bec0e2  tests/test_backup_executor.py
-05c1e86d32ccc1c7212bdc14dc497516  management/help/cli_katalog.py

@@ -1,8 +1,0 @@
-e1fe4c5855e03b4d21c7bfde52d165fd  build.json
-d5abd6e3fbdde9ffa3bb3d50c09da0f9  management/capacity/worktime_repo.py
-d7c0e398ee5638f9432aa1c6f59b4711  management/capacity/capacity_errors.py
-a139b7d349de69b96e28abc1cd858147  management/capacity/capacity_admin.py
-d3ae099f61bd9f4059bd9fe02459a327  management/audit/event_types.py
-b557f52606ea6777bc1c5a291d65165d  management/server/management_app.py
-36913d19974e688f68914899965d3cd4  management/Bauplan_Build560_ArbeitszeitErsetzen_v0_1.md
-130463c5e8d0dc4c9b855ec34b83f81d  tests/test_management_capacity_api.py

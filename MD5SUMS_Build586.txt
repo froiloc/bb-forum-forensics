@@ -1,4 +1,0 @@
-7c133b4d6b7fecbd4a377396908595bc  build.json
-aa8c621c221f75615a47a4903a63da04  tools/migrate-dbs.py
-b1d9d716771936293f5326810bcdd244  tests/test_migrate_dbs_tool.py
-d02b46b5f9b3492b41951b0e8b7766c0  issue-tracker/eintraege_claude_Build586.json

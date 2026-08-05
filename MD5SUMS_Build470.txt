@@ -1,4 +1,0 @@
-151948c1fb22b6592f7df66c51b58fce  aiw_webserver/build.json
-3a2379a73756a076e8a202036843a329  aiw_webserver/management/server/management_app.py
-d902a706e71fa7a4c56a2d437ecf95e6  aiw_webserver/management/claude_Bauplan_Build470_CrossrefEndpoints_v0_1.md
-599dcd013ebd77d48a7d21c2350ac5d6  aiw_webserver/tests/test_crossref_api.py

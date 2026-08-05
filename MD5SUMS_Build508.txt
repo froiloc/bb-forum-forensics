@@ -1,9 +1,0 @@
-# MD5-Pruefsummen Build 508 (aiw_webserver, v0.8.508) — erzeugt 2026-07-24
-# Basis: Build 507 (c76a46a). Bitte VOR dem Einspielen gegen die VM abgleichen.
-# HINWEIS: cockpit.html wurde in diesem Build NICHT geaendert (kein neues Skript).
-#
-fcda5842fd11ca98d6c67816a483eec1  build.json
-9cd81ef12b4067019b6e2e9afb482e2d  management/server/static/cockpit_crossfindings.js
-1607e6658f239614f31b2be9eda04fad  management/server/static/cockpit.js
-04ab1fbd03f81b57ff1df404e48f0533  management/server/static/cockpit.css
-bb67ae1a239b1bfe25b6599d5bd157eb  tests/unit/test_cockpit_crossfindings.test.js

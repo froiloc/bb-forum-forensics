@@ -1,5 +1,0 @@
-a5d9f655415684afc5d6de91caf1c774  build.json
-e5b3bc8395513acc126dbdbef384fb58  management/templates_admin/module_repo.py
-307445da05a5f9330c2a25d666adb929  management/server/management_app.py
-ca45eb0b9ce016b3b33b52c26421a976  management/Bauplan_Build564_565_ModuleKeyNachtrag_v0_1.md
-68a6c8ee32f2965cfe5e56419f086ad7  tests/test_templates_module_admin.py
