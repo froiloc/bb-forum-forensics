@@ -31,7 +31,6 @@ Wer eine Regel ändert, ändert sie hier — und zwar in demselben Build, in dem
 
 ## Offene Punkte
 
-- Der Wartungsvorbehalt für schreibende Kommandozeilen-Werkzeuge ist noch nicht entschieden (Issue `da6c16d0-ef1e-4052-8eb1-526c647de613`). `rules-cli.md` beschreibt den vorgeschlagenen Aufbau und kennzeichnet ihn als Vorschlag.
 - Die Regeln zur Berichtsredaktion (Vorlagen, Bausteine, Platzhalter) sind hier noch nicht erfasst.
 
 ## Nachtrag Build 649
@@ -67,3 +66,13 @@ nicht mehr gearbeitet (eigene Zweige `alex/<thema>`, Abschnitt 4.5), und der
 Bundle-Weg gilt ausschließlich zwischen Bauumgebung und
 Linux-Entwicklungsbestand — in der Windows-VM ist kein Git verfügbar, dorthin
 geht stets ein vollständiger Rollout (Abschnitt 0).
+
+## Nachtrag Build 686 — eine Berichtigung an dieser Datei selbst
+
+Unter „Offene Punkte" stand bis zu diesem Build: *„Der Wartungsvorbehalt für schreibende Kommandozeilen-Werkzeuge ist noch nicht entschieden (Issue `da6c16d0`). `rules-cli.md` beschreibt den vorgeschlagenen Aufbau und kennzeichnet ihn als Vorschlag."*
+
+**Beide Halbsätze trafen seit Build 612 nicht mehr zu.** `rules-cli.md` §7 sagt seither ausdrücklich „Stand Build 612: dieser Abschnitt gilt", die Stufeneinteilung war von mc am 2026-07-31 bestätigt, und alle Stufe-A-Werkzeuge setzten den Vorbehalt bereits durch.
+
+**Warum das hier steht und nicht stillschweigend berichtigt wurde:** Dies ist die Seite, auf die jemand sieht, um zu erfahren, was noch offen ist. Eine falsche Aussage an dieser Stelle hält einen Vorgang offen, der es nicht mehr ist — der Vorgang `da6c16d0` hat aus genau diesem Grund vier Tage auf eine Entscheidung gewartet, die längst gefallen war. Die Pflegepflicht weiter oben ist damit an ihrer eigenen Seite verletzt worden; der Fall gehört benannt und nicht ausgebessert.
+
+Der Vorgang ist mit Build 686 abgeschlossen: Die Einstufung deckt jetzt **alle 35** schreibenden Werkzeuge statt sieben, und `tests/test_wartungsstufen_vollstaendig.py` erzwingt, dass jedes künftige schreibende Werkzeug eingestuft wird.

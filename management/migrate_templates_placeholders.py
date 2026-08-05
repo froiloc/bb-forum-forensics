@@ -43,7 +43,21 @@
 #
 # Beleg: Bauplan management/Bauplan_Platzhalter_DB_v0_1.md §3 (mc-Freigabe
 # 2026-07-21, inkl. Entscheidungen §2.1-2.6).
-# Version: v0.8.489 · Build: 489 · 2026-07-21
+# WARTUNGSVORBEHALT STUFE A (Build 686, Vorgang da6c16d0): Der Lauf entfernt
+#   mit 'DROP TABLE placeholder_queries' eine Bestandstabelle und faehrt zwei
+#   Rebuilds in EINER Transaktion; die Nachpruefungen laufen erst NACH dem
+#   COMMIT. main() prueft deshalb VOR dem Backup, ob die templates.db ruhig
+#   ist, und faehrt ohne aktives Wartungsfenster nur nach Eingabe eines
+#   vollstaendigen Wortes fort. Einstufung:
+#   Nachpruefung_Wartungsvorbehalt_Vollstaendigkeit_v1_0.md, Zuschnitt von
+#   Alex am 2026-08-05.
+#
+# Exit-Codes: 0 = ok (auch als No-op) · 2 = templates.db nicht gefunden
+#             3 = Wartungsvorbehalt, es wurde NICHTS geschrieben (auch kein
+#                 Backup - eine .pre489.bak ohne zugehoerigen Lauf waere
+#                 spaeter nicht von einer mit zu unterscheiden).
+#
+# Version: v0.8.686 · Build: 686 · 2026-08-05
 # =============================================================================
 
 import argparse
@@ -54,6 +68,8 @@ import sqlite3
 import sys
 import time
 from typing import Any, Dict, Optional
+# NEU Build 686 (Vorgang da6c16d0): Stufe A - DROP TABLE braucht Ruhe.
+from maintenance.wartungsvorbehalt import datenwurzel, wartungsvorbehalt
 from management.help import cli_epilog  # noqa: E402
 # Build 643: die Vorrangregel Argument > config.yaml > Vorgabewert
 # steht seit diesem Build an EINER Stelle (Ticket 15429c75).
@@ -320,6 +336,38 @@ def main(argv=None) -> int:
         return 2
 
     changed_by = args.changed_by or getpass.getuser()
+
+    # --- WARTUNGSVORBEHALT (Stufe A, Build 686) --------------------------
+    # DER TRAGENDE GRUND, und es sind drei: apply_migration() entfernt mit
+    # 'DROP TABLE placeholder_queries' (Z. 235) eine BESTANDSTABELLE, faehrt
+    # zwei vollstaendige Rebuilds in EINER Transaktion (Z. 211-249) und
+    # setzt dabei 'PRAGMA journal_mode=delete' (Z. 183) - eine dauerhafte
+    # Dateikopf-Eigenschaft.
+    #
+    # DASS DIESES WERKZEUG DAS SORGFAELTIGSTE DER SECHS IST, aendert daran
+    # nichts: Backup, Rollback, Zeilenzahlabgleich und die Verweigerung bei
+    # mehrdeutigem Zustand sind alle vorhanden. Was fehlte, ist genau das
+    # eine, was migrate.py hat - die Frage, ob die Datei ueberhaupt RUHIG
+    # ist, bevor der Umbau beginnt. Ein Rollback hilft nicht gegen einen
+    # zweiten Schreiber, er hilft gegen einen Fehler im eigenen Lauf.
+    #
+    # UND DIE NACHPRUEFUNGEN LAUFEN ERST NACH DEM COMMIT (Z. 254-273):
+    # schlagen sie fehl, ist der Umbau bereits dauerhaft, und es gibt
+    # ausser der '.pre489.bak' keinen Weg zurueck.
+    #
+    # ER STEHT VOR DEM BACKUP, nicht danach: Wird der Lauf ohnehin
+    # verweigert, soll auch keine Sicherungskopie entstehen. Eine
+    # '.pre489.bak' ohne zugehoerigen Lauf ist spaeter nicht von einer mit
+    # zu unterscheiden.
+    befund = wartungsvorbehalt(
+        datenwurzel(db_path), [db_path],
+        werkzeug="migrate_templates_placeholders",
+        was_geschieht=("baut placeholder_queries in %s zu 'placeholders' um "
+                       "(DROP TABLE + zwei Rebuilds in EINER Transaktion)"
+                       % db_path))
+    print(befund.text)
+    if not befund.erlaubt:
+        return befund.rueckgabewert
 
     # Backup nur, wenn wirklich migriert wird (kein Backup-Muell bei No-ops).
     probe = sqlite3.connect(db_path)

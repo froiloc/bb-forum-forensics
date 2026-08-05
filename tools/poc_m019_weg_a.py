@@ -23,7 +23,22 @@
 # Konsolenprotokoll zu den Phase-2-Artefakten nehmen. Erwartung: "WEG A GANGBAR".
 #
 # Aufruf VM (Produktionskopie, OHNE --seed!):  python tools\poc_m019_weg_a.py kopie.db
-# Version: v0.7.469 · Build: 469 · 2026-07-20
+#
+# WARTUNGSSTUFE B - SPERRLISTE STATT WARTUNGSVORBEHALT
+#   (Build 686, Vorgang da6c16d0):
+#   Die Zusage "niemals auf der Produktions-DB selbst" stand seit Build 469
+#   im Kopf und wurde von nichts durchgesetzt. Seit Build 686 bricht das
+#   Werkzeug ab (Rueckgabewert 3), wenn der uebergebene Pfad auf die in
+#   config.yaml eingetragene coordinator.db zeigt. Einstufung: Stufe B mit
+#   Sperrliste - ein Wartungsfenster fuer eine Wegwerfkopie waere Reibung
+#   ohne Schutzgewinn (Entscheidung Alex, 2026-08-05,
+#   Nachpruefung_Wartungsvorbehalt_Vollstaendigkeit_v1_0.md).
+#
+# Exit-Codes: 0 = Weg A gangbar · 1 = Befund · 2 = Aufruffehler
+#             3 = Sperrliste: das Ziel ist die produktive coordinator.db;
+#                 es wurde NICHTS geschrieben.
+#
+# Version: v0.8.686 · Build: 686 · 2026-08-05
 # =============================================================================
 import os
 import sqlite3
@@ -37,6 +52,31 @@ if _WURZEL not in sys.path:
     sys.path.insert(0, _WURZEL)
 
 from management.help import cli_epilog  # noqa: E402
+
+
+def _produktivpfad():
+    """
+    Der aufgeloeste Pfad der produktiven coordinator.db - oder "".
+
+    OHNE JEDE HAERTE: Ist die config.yaml nicht lesbar oder kennt sie den
+    Eintrag nicht, liefert dieser Helfer "" und die Sperrliste greift nicht.
+    Das ist Absicht und die richtige Richtung: Dieses Werkzeug wird auf
+    Wegwerfkopien gefahren, oft ausserhalb der Anlage. Wer es dort mit einer
+    unlesbaren Konfiguration abwiese, machte den Nachweislauf unmoeglich,
+    ohne irgendetwas zu schuetzen.
+
+    DIE GRENZE DIESES SCHUTZES GEHOERT AUSGESPROCHEN: Er kennt genau EINE
+    Datei - die in der config.yaml eingetragene. Eine Kopie der produktiven
+    Datenbank unter anderem Namen erkennt er nicht, und er soll es auch
+    nicht: genau darauf ist dieses Werkzeug ja gerichtet.
+    """
+    try:
+        from core.config_loader import ConfigLoader
+        pfad = ConfigLoader(config_path="./config.yaml").get(
+            "paths.coordinator_db")
+    except Exception:
+        return ""
+    return os.path.realpath(pfad) if pfad else ""
 
 TABLES = ("cases", "case_events", "external_matters", "investigation_results",
           "case_release", "scrape_jobs", "support_sessions",
@@ -97,9 +137,16 @@ def main():
     # Aufrufteil sind die drei Zeilen hier, und daran wird nichts geaendert.
     # Es bekommt trotzdem die Beispiele und Rueckgabewerte aus dem Katalog,
     # weil es das gefaehrlichste Werkzeug im Bestand ist: es benennt Spalten
-    # in einer coordinator.db um und hat KEINE eingebaute Pruefung, dass die
-    # uebergebene Datei wirklich eine Kopie ist (siehe Katalog-Hinweis). Wer
-    # hier '--help' tippt, soll nicht in die Ausfuehrung laufen.
+    # in einer coordinator.db um. Wer hier '--help' tippt, soll nicht in die
+    # Ausfuehrung laufen.
+    #
+    # BERICHTIGT IN BUILD 686: Hier stand bis hierher, das Werkzeug habe
+    # "KEINE eingebaute Pruefung, dass die uebergebene Datei wirklich eine
+    # Kopie ist". Das traf zu und trifft nicht mehr zu - seit Build 686
+    # weist die Sperrliste unten die produktive coordinator.db ab. Was
+    # weiterhin gilt und deshalb stehen bleibt: eine Kopie der produktiven
+    # Datenbank UNTER ANDEREM NAMEN erkennt auch die Sperrliste nicht, und
+    # sie soll es nicht - genau darauf ist dieses Werkzeug gerichtet.
     if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
         log("Aufruf: python tools/poc_m019_weg_a.py <kopie.db> [--seed]")
         log("")
@@ -110,6 +157,44 @@ def main():
         return 2
     path = sys.argv[1]
     do_seed = "--seed" in sys.argv
+
+    # --- SPERRLISTE GEGEN DIE PRODUKTIVE DATENBANK (Build 686) -----------
+    # DER ANLASS (Vorgang da6c16d0, Vollstaendigkeitspruefung): Der Kopf
+    # dieser Datei sagt seit Build 469 zu, sie arbeite "NUR auf der
+    # uebergebenen Datei - niemals auf der Produktions-DB selbst". Der
+    # Kommentar in dieser Funktion sagte zugleich, dass nichts das
+    # durchsetzt: "hat KEINE eingebaute Pruefung, dass die uebergebene Datei
+    # wirklich eine Kopie ist". Eine Zusage, die nichts durchsetzt, ist im
+    # Bestand dieses Projekts schon dreimal aufgefallen (e9522fe2, 906ede75,
+    # 2785556a). Hier ist der Einsatz besonders hoch: neun ALTER TABLE
+    # RENAME COLUMN auf einer coordinator.db, in EINER Transaktion, ohne
+    # Rueckspielweg.
+    #
+    # WARUM EINE SPERRLISTE UND KEIN WARTUNGSVORBEHALT (Entscheidung Alex,
+    # 2026-08-05): Dieses Werkzeug SOLL auf einer Wegwerfkopie laufen. Fuer
+    # eine Wegwerfkopie ein Wartungsfenster zu verlangen waere Reibung ohne
+    # Schutzgewinn - und es schuetzte gerade nicht vor dem wirklichen
+    # Fehlgriff, naemlich das Werkzeug auf die echte Datei zu richten.
+    # Dieselbe Mechanik benutzt lkae_admin fuer denselben Zweck.
+    #
+    # DER ABGLEICH LAEUFT UEBER DEN AUFGELOESTEN PFAD (realpath), damit
+    # weder ein relativer Pfad noch ein symbolischer Verweis daran
+    # vorbeifuehrt.
+    verboten = _produktivpfad()
+    if verboten and os.path.realpath(path) == verboten:
+        log("")
+        log("ABBRUCH: Das ist die PRODUKTIVE coordinator.db aus config.yaml:")
+        log("    %s" % verboten)
+        log("")
+        log("Dieses Werkzeug benennt neun Spalten um und hat keinen Rueckweg.")
+        log("Es gehoert auf eine WEGWERFKOPIE. So entsteht sie:")
+        log("    python -m management.backup.backup_admin plan")
+        log("  oder von Hand, mit einer konsistenten Kopie:")
+        log("    sqlite3 \"%s\" \"VACUUM INTO 'kopie.db'\"" % verboten)
+        log("")
+        log("Danach: python tools/poc_m019_weg_a.py kopie.db")
+        return 3
+
     con = sqlite3.connect(path)
     con.isolation_level = None
 

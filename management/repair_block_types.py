@@ -36,7 +36,20 @@
 #   python -m management.repair_block_types --evidence-dir ./data/evidence/
 #
 # Beleg: Bugbefund Projektgespraech 2026-07-12, Bauplan Build 392
-# Version: v0.7.392 · Build: 392 · 2026-07-12
+# WARTUNGSVORBEHALT STUFE A (Build 686, Vorgang da6c16d0): '--apply'
+#   schreibt in evidence_<uid>.db - Ermittler-Ergebnisdaten. Die vorhandene
+#   Vorbedingung '--ja-backup-vorhanden' FRAGT den Bediener; sie MISST nicht,
+#   ob jemand gerade mit dieser Falldatenbank arbeitet. main() probt deshalb
+#   vor dem Schreiben jede betroffene Datei auf Ruhe. Der Trockenlauf bleibt
+#   frei. Einstufung:
+#   Nachpruefung_Wartungsvorbehalt_Vollstaendigkeit_v1_0.md, Zuschnitt von
+#   Alex am 2026-08-05.
+#
+# Exit-Codes: 0 = nichts zu tun oder repariert · 1 = Fehler · 2 = Pfad fehlt
+#             3 = kein bestaetigtes Backup ODER Wartungsvorbehalt; in beiden
+#                 Faellen wurde NICHTS geschrieben.
+#
+# Version: v0.8.686 · Build: 686 · 2026-08-05
 # =============================================================================
 
 from __future__ import annotations
@@ -48,6 +61,9 @@ import os
 import sqlite3
 import sys
 import time
+# NEU Build 686 (Vorgang da6c16d0): Stufe A - '--apply' schreibt auf
+# Ermittlerdaten und muss dafuer Ruhe nachweisen, nicht nur zusagen.
+from maintenance.wartungsvorbehalt import datenwurzel, wartungsvorbehalt
 from management.help import cli_epilog  # noqa: E402
 # Build 646: Vorrangregel an EINER Stelle (Ticket 15429c75).
 from core import werkzeug_konfig  # noqa: E402
@@ -250,6 +266,42 @@ def main(argv: list[str] | None = None) -> int:
     if not dbs:
         print("Keine evidence_*.db in %s gefunden." % ev_dir)
         return 0
+
+    # --- WARTUNGSVORBEHALT (Stufe A, Build 686) --------------------------
+    # DER TRAGENDE GRUND: '--apply' schreibt in evidence_<uid>.db - eine
+    # ERMITTLER-ERGEBNISDATENBANK. Das ist die einzige Gattung, in der
+    # Arbeit steht, die niemand nachbauen kann.
+    #
+    # WARUM '--ja-backup-vorhanden' DAFUER NICHT GENUEGT, obwohl es die
+    # strengste Vorbedingung im ganzen Bestand ist: Es FRAGT den Bediener
+    # und bekommt eine Zusage. Es MISST nicht, ob gerade jemand mit dieser
+    # Falldatenbank arbeitet. Genau diese Unterscheidung ist der Kern des
+    # Wartungsvorbehalts - "die Bestaetigung allein ist nicht der Beweis,
+    # der Exklusiv-Lock-Erwerb ist es". Ein Backup schuetzt vor dem eigenen
+    # Fehler; es schuetzt nicht davor, einer Ermittlerin die Datenbank unter
+    # den Haenden umzuschreiben.
+    #
+    # NUR BEI '--apply'. Der Trockenlauf liest und ist die Vorgabe; ihn
+    # hinter ein Wartungsfenster zu stellen hiesse, das Nachsehen so teuer
+    # zu machen wie das Handeln - dann sieht niemand mehr nach.
+    #
+    # GEPRUEFT WERDEN DIE KONKRET BETROFFENEN DATEIEN und nicht das Fenster
+    # als solches: 'maintenance.py enter --ziel all' erfasst die
+    # Fall-Datenbanken NICHT (Befund 1 des Vermerks K1-K8) - ein gesetztes
+    # Fenster waere hier also kein Nachweis.
+    if args.apply:
+        befund = wartungsvorbehalt(
+            datenwurzel(ev_dir), dbs,
+            werkzeug="repair_block_types",
+            was_geschieht=("setzt in %d evidence-Datenbank(en) den "
+                           "block_type defekter Bloecke zurueck (UPDATE auf "
+                           "Ermittlerdaten)" % len(dbs)))
+        print(befund.text)
+        if not befund.erlaubt:
+            # DERSELBE RUECKGABEWERT 3 wie bei der fehlenden
+            # Backup-Bestaetigung oben, und das ist richtig: beide sagen
+            # dasselbe - es wurde NICHTS geschrieben.
+            return befund.rueckgabewert
 
     print("Modus: %s" % ("SCHREIBEN (--apply)" if args.apply else "TROCKENLAUF"))
     print("Untersuche %d Datenbank(en) in %s\n" % (len(dbs), ev_dir))

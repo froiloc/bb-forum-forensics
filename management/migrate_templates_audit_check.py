@@ -22,7 +22,18 @@
 #
 # Journal: journal_mode=delete (Build 408/409 — kein WAL, netzlaufwerksicher).
 #
-# Version: v0.7.421 · Build: 421 · 2026-07-14
+# WARTUNGSVORBEHALT STUFE A (Build 686, Vorgang da6c16d0): Der Rebuild
+#   (DROP + RENAME, Z. 92-98) legt KEIN Backup an - ein Abbruch hinterlaesst
+#   nichts zum Zurueckspielen. main() prueft deshalb vor dem Lauf, ob die
+#   templates.db ruhig ist, und faehrt ohne aktives Wartungsfenster nur nach
+#   Eingabe eines vollstaendigen Wortes fort. Einstufung:
+#   Nachpruefung_Wartungsvorbehalt_Vollstaendigkeit_v1_0.md, Zuschnitt von
+#   Alex am 2026-08-05.
+#
+# Exit-Codes: 0 = ok (auch als No-op) · 2 = templates.db nicht gefunden
+#             3 = Wartungsvorbehalt, es wurde NICHTS geschrieben.
+#
+# Version: v0.8.686 · Build: 686 · 2026-08-05
 # =============================================================================
 
 import argparse
@@ -30,6 +41,8 @@ import os
 import sqlite3
 import sys
 from typing import Any, Dict, Optional
+# NEU Build 686 (Vorgang da6c16d0): Stufe A - der Rebuild braucht Ruhe.
+from maintenance.wartungsvorbehalt import datenwurzel, wartungsvorbehalt
 from management.help import cli_epilog  # noqa: E402
 # Build 643: die Vorrangregel Argument > config.yaml > Vorgabewert
 # steht seit diesem Build an EINER Stelle (Ticket 15429c75).
@@ -145,6 +158,36 @@ def main(argv=None) -> int:
         print("[migrate-audit] templates.db nicht gefunden: %s" % db_path,
               file=sys.stderr)
         return 2
+
+    # --- WARTUNGSVORBEHALT (Stufe A, Build 686) --------------------------
+    # DER TRAGENDE GRUND: apply_migration() baut templates_audit_log VOLL
+    # UM - CREATE, INSERT...SELECT, DROP TABLE, RENAME (Z. 92-98) - und legt
+    # dabei KEIN Backup an. Ein Abbruch hinterlaesst nichts, was sich
+    # zurueckspielen liesse. Das ist woertlich derselbe Tatbestand, aus dem
+    # management/migrate.py Stufe A ist; nur die Datei ist eine andere.
+    # Zusaetzlich wird mit 'PRAGMA journal_mode=delete' (Z. 88) eine
+    # dauerhafte Dateikopf-Eigenschaft gesetzt.
+    #
+    # WARUM DER EINBAU ERST JETZT KOMMT, obwohl der Vorbehalt seit Build 612
+    # steht: Dieses Werkzeug war in der Analyse K1-K8 nicht dabei. Ueber
+    # 'migrate-dbs --apply' laeuft es bereits hinter dem Vorbehalt
+    # (migrate-dbs.py Z. 155-162, 273-299, 531) - offen war allein der
+    # DIREKTAUFRUF, und genau den fordert der Kopf dieser Datei
+    # ausdruecklich ("standalone auszufuehren", Z. 16-18). Eine Sicherung,
+    # die nur auf einem von zwei Wegen greift, ist keine.
+    #
+    # KEINE DOPPELTE ABFRAGE beim Weg ueber migrate-dbs: dort ruft nicht
+    # dieses main(), sondern apply_migration() unmittelbar - der Vorbehalt
+    # steht hier im Aufrufteil und nicht in der Migration selbst.
+    befund = wartungsvorbehalt(
+        datenwurzel(db_path), [db_path],
+        werkzeug="migrate_templates_audit_check",
+        was_geschieht=("baut templates_audit_log in %s vollstaendig um "
+                       "(DROP + RENAME) und legt dabei KEIN Backup an"
+                       % db_path))
+    print(befund.text)
+    if not befund.erlaubt:
+        return befund.rueckgabewert
 
     con = sqlite3.connect(db_path)
     try:

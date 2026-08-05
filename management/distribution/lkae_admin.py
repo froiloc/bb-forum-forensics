@@ -16,6 +16,13 @@
 #   wenn das Ziel eine PROD-Ablage ueberlappt (NICHT PROD). Ohne --freigabe kein
 #   Bau (default-deny). EXIT: 0 = ok · 1 = Fehler · 2 = verify: Abweichung.
 #
+# WARTUNGSSTUFE B (Einstufung Build 686, Vorgang da6c16d0): Es schreibt
+#   allein in ein frisches --target-Verzeichnis und fasst weder die
+#   Beweismittel- noch die produktiven Datenbanken an. Deshalb KEIN
+#   Wartungsvorbehalt. DIE EINSCHRAENKUNG: Der Schutz gegen ein produktives
+#   Ziel ist ausdruecklich 'best effort' und faellt bei unlesbarer
+#   config.yaml auf zwei Standardpfade zurueck.
+#
 # Version: v0.7.466 · Build: 466 · 2026-07-20
 # =============================================================================
 

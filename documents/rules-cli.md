@@ -53,7 +53,9 @@ Grundregel 9 sinngemäß auf die Dokumentation angewandt: **Kein Beispielaufruf 
 
 ## 7. Wartungsvorbehalt
 
-> **Stand Build 612: dieser Abschnitt gilt.** Die Stufeneinteilung ist von mc am 2026-07-31 bestätigt (`Vermerk_Wartungsvorbehalt_Analyse_K1_K8_v1_0.md`), das Bauteil `maintenance/wartungsvorbehalt.py` ist gebaut, und alle fünf Werkzeuge der Stufe A setzen es ein. *Durchsetzung:* `tests/test_wartungsvorbehalt_einbau.py` — EB01–EB05 am Quelltext, EB06–EB10 am Verhalten.
+> **Stand Build 686: dieser Abschnitt gilt — und er gilt für ALLE schreibenden Werkzeuge.** Die Stufeneinteilung der ersten sieben ist von mc am 2026-07-31 bestätigt (`Vermerk_Wartungsvorbehalt_Analyse_K1_K8_v1_0.md`), die der übrigen 28 von Alex am 2026-08-05 (`Nachpruefung_Wartungsvorbehalt_Vollstaendigkeit_v1_0.md`). Das Bauteil `maintenance/wartungsvorbehalt.py` ist gebaut, die Einstufung steht in `maintenance/wartungsstufen.py`, und alle neun Werkzeuge der Stufe A setzen sie ein.
+>
+> *Durchsetzung, zwei Wächter:* `tests/test_wartungsvorbehalt_einbau.py` fragt „ruft jedes Stufe-A-Werkzeug den Vorbehalt?“ (EB01–EB05 am Quelltext, EB06–EB14 am Verhalten). `tests/test_wartungsstufen_vollstaendig.py` fragt „ist überhaupt jedes schreibende Werkzeug eingestuft?“ (WS01–WS09). **Die zweite Frage stellte bis Build 680 niemand** — die Einstufung deckte 7 von 35 Werkzeugen, und das war nicht zu sehen.
 
 **Der Anlass:** Bei sieben Werkzeugen ließ sich aus dem Bestand nicht beantworten, ob sie neben dem laufenden Betrieb gefahrlos sind. Zwei andere sagen es ausdrücklich — `convert_journal_mode` („braucht exklusiven Zugriff"), `backup_admin` („für den laufenden Betrieb gebaut"). Dazwischen liegt eine Lücke, die geraten werden müsste, wenn man sie nicht klärt.
 
@@ -63,7 +65,9 @@ Grundregel 9 sinngemäß auf die Dokumentation angewandt: **Kein Beispielaufruf 
 - **Stufe B — betriebsverträglich.** Das Werkzeug schreibt, aber so, dass ein laufender Dienst nicht gestört wird (kurze Transaktionen, keine exklusiven Sperren, kein Dateiaustausch).
 - **Stufe C — rein lesend.** Kein Vorbehalt.
 
-**Die sechs Werkzeuge der Stufe A** (fünf bestätigt 2026-07-31 und eingebaut in Build 612, das sechste nachgetragen in Build 615): `management/migrate.py`, `tools/migrate-dbs.py --apply`, `migration_fleet_admin companion --confirm`, `management/consolidate_default_db.py`, `tools/forensic_index_upgrade.py --ausfuehren`, `tools/convert_journal_mode.py --apply`. **Stufe B:** `management/search/index_cli.py` — es schreibt ausschließlich in `search_index.db`, die kein anderer Dienst offen hält.
+**Die neun Werkzeuge der Stufe A** — fünf bestätigt 2026-07-31 und eingebaut in Build 612, das sechste nachgetragen in Build 615, drei weitere in Build 686 aus der Vollständigkeitsprüfung: `management/migrate.py`, `tools/migrate-dbs.py --apply`, `migration_fleet_admin companion --confirm`, `management/consolidate_default_db.py`, `tools/forensic_index_upgrade.py --ausfuehren`, `tools/convert_journal_mode.py --apply`, `management/migrate_templates_placeholders.py`, `management/migrate_templates_audit_check.py`, `management/repair_block_types.py --apply`.
+
+**Die vollständige Einstufung steht in `maintenance/wartungsstufen.py`** — dort, und nicht mehr in einer Testdatei: sie wird von zwei Wächtern gebraucht, und Betriebswissen gehört nicht in einen Test. Neun Werkzeuge tragen Stufe A, neun Stufe B (mit benennbarer Einschränkung, die im Dateikopf steht), siebzehn Stufe C.
 
 > **Warum das sechste erst nachträglich kam — und was daraus folgt.** Die Analyse K1–K8 untersuchte die sieben Werkzeuge, bei denen sich die Frage *nicht* aus dem Bestand beantworten ließ. `convert_journal_mode` war nicht darunter, weil sein Dateikopf die Antwort zu geben schien: „braucht exklusiven Zugriff". **Eine Zusage im Kommentar ist aber keine technische Sperre.** Genau dieser Befundtyp liegt schon einmal im Eingang (Issue `906ede75`: zwei Auswertungswerkzeuge öffnen die `coordinator.db` schreibfähig, obwohl ihr Kopf das Gegenteil zusichert).
 >
@@ -71,9 +75,9 @@ Grundregel 9 sinngemäß auf die Dokumentation angewandt: **Kein Beispielaufruf 
 
 **Der Vorbehalt greift nur am scharfen Lauf.** Trockenübung, Vorschau und Plan bleiben frei. Das ist keine Bequemlichkeit, sondern Teil der Sicherung: eine Vorschau, die erst nach einer Rückfrage kommt, wird übersprungen — und dann sieht niemand mehr, was passieren würde. *Durchsetzung:* EB08 und EB09.
 
-**Und er greift nur, wo er hingehört.** Ein Vorbehalt an einer Stelle ohne Anlass erzeugt Rückfragen ohne Anlass, und wer oft ohne Anlass gefragt wird, tippt das Wort irgendwann, ohne zu lesen. Deshalb prüft EB04, dass `index_cli` (Stufe B) das Bauteil **nicht** aufruft.
+**Und er greift nur, wo er hingehört.** Ein Vorbehalt an einer Stelle ohne Anlass erzeugt Rückfragen ohne Anlass, und wer oft ohne Anlass gefragt wird, tippt das Wort irgendwann, ohne zu lesen. Deshalb prüft EB04, dass die Werkzeuge der Stufen B und C das Bauteil **nicht** aufrufen — seit Build 686 alle 26 statt nur `index_cli`, und geprüft wird der **Aufruf** und nicht das Wort: Bis Build 680 verbot der Test einem Stufe-B-Werkzeug auch, seine Einstufung im Dateikopf zu nennen. Er stand damit der Regel im Weg, die er sichern soll.
 
-**Jedes Werkzeug nennt die betroffenen Dateien konkret**, nicht pauschal — `migrate-dbs` etwa nur die Datenbanken, die dieser Lauf wirklich anfasst, nicht alle offenen. Die Datenwurzel findet `datenwurzel()` für alle fünf einheitlich, statt sie fünfmal zu raten.
+**Jedes Werkzeug nennt die betroffenen Dateien konkret**, nicht pauschal — `migrate-dbs` etwa nur die Datenbanken, die dieser Lauf wirklich anfasst, nicht alle offenen. Die Datenwurzel findet `datenwurzel()` für alle einheitlich, statt sie neunmal zu raten.
 
 ### Die Durchsetzung bei Stufe A
 

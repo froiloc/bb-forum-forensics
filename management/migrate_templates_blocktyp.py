@@ -68,6 +68,13 @@
 #   python management/migrate_templates_blocktyp.py --templates-db /pfad/templates.db
 #   python management/migrate_templates_blocktyp.py --config ./config.yaml
 #
+# WARTUNGSSTUFE B (Einstufung Build 686, Vorgang da6c16d0): Der Lauf ist
+#   rein additiv (ADD COLUMN) und fasst nachweislich keine Bestandszeile an;
+#   er legt zuvor eine Sicherungskopie an. Deshalb KEIN Wartungsvorbehalt.
+#   DIE EINSCHRAENKUNG: Das 'ALTER TABLE' braucht eine Schreibsperre; haelt
+#   der Dienst die templates.db, scheitert der Lauf - ohne Schaden, aber er
+#   scheitert.
+#
 # Version: v0.8.655 · Build: 655 · 2026-08-02
 # Beleg: Ticket 5d81a0c7; Entscheidung mc 2026-08-02 (CHECK ja);
 #        Bauplan_Bausteinmodule_Builds652ff_v0_1.md §6.

@@ -1854,7 +1854,15 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "nacheinander gesichert, jede fuer sich stimmig, der Satz "
                 "als Ganzes nicht. Fuer eine wiederherstellbare Sicherung "
                 "sollte kein Schreiber offen sein. Einzelheiten und "
-                "Vorgaenge: siehe Warnungen.",
+                "Vorgaenge: siehe Warnungen.\n\n"
+                "STUFE B (Einstufung Build 686): kein Wartungsvorbehalt, "
+                "und das mit Absicht - die Ungleichzeitigkeit des Satzes ist "
+                "gekennzeichnet statt verboten (Entscheidung mc 2026-07-31).\n\n"
+                "'restore' (Build 680) LEGT NUR EINE DATEI NEBEN DAS "
+                "ORIGINAL und ueberschreibt keine Datenbank; der Tausch bleibt "
+                "Handarbeit nach der ausgegebenen Anleitung. Gegenueber der "
+                "coordinator.db ist es rein lesend - im Ernstfall kann sie "
+                "selbst das Ersetzungsziel sein.",
         beleg=True,
         befehle=(
             _b("plan", "lesend",
@@ -2722,7 +2730,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "(neu anlegen, kopieren, alte loeschen, umbenennen) und "
                 "setzen Journalmodus und Kontrollpunkt. Genau diese Datei "
                 "haelt der Auswertungsdienst im Regelbetrieb SCHREIBEND "
-                "offen. Ein Backup legt das Werkzeug NICHT an."
+                "offen. Ein Backup legt das Werkzeug NICHT an. "
                 "SEIT BUILD 612 SETZT DAS WERKZEUG DAS SELBST DURCH: es prueft vor "
                 "dem scharfen Lauf, ob die betroffenen Dateien ruhig sind, bricht "
                 "bei einer belegten Datei ohne Rueckfrage ab und faehrt ohne "
@@ -2786,7 +2794,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "umgebaut. Eine Sicherungskopie legt das Werkzeug vorher an "
                 "(ausser mit --no-backup) - sie wird aber NICHT automatisch "
                 "zurueckgespielt. Ohne --apply ist der Lauf reine Anzeige "
-                "und jederzeit unbedenklich."
+                "und jederzeit unbedenklich. "
                 "SEIT BUILD 612 SETZT DAS WERKZEUG DAS SELBST DURCH: es prueft vor "
                 "dem scharfen Lauf, ob die betroffenen Dateien ruhig sind, bricht "
                 "bei einer belegten Datei ohne Rueckfrage ab und faehrt ohne "
@@ -2861,7 +2869,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "ist der Fall, in dem ein laufender Auswertungsdienst "
                 "Schaden nimmt. Vor dem scharfen Lauf sind vier Tore zu "
                 "passieren; eine Sicherung ist Pflicht. Ohne --confirm wird "
-                "nur vorgeprueft und geplant."
+                "nur vorgeprueft und geplant. "
                 "SEIT BUILD 612 SETZT DAS WERKZEUG DAS SELBST DURCH: es prueft vor "
                 "dem scharfen Lauf, ob die betroffenen Dateien ruhig sind, bricht "
                 "bei einer belegten Datei ohne Rueckfrage ab und faehrt ohne "
@@ -3112,7 +3120,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "Auf einem bereits migrierten Bestand: 'CHECK bereits erweitert (template) - No-op.' Rueckgabewert 0.",
                      _GEPRUEFT_620),
             ),
-            exit_codes=((0, "erweitert ODER bereits erweitert"), (1, "die Tabelle templates_audit_log fehlt - dann ist es vermutlich die falsche Datei"), (2, "templates.db nicht gefunden"),),
+            exit_codes=((0, "erweitert ODER bereits erweitert"), (1, "die Tabelle templates_audit_log fehlt - dann ist es vermutlich die falsche Datei"), (2, "templates.db nicht gefunden"), (3, "Wartungsvorbehalt - der Lauf wurde nicht ausgefuehrt; es wurde NICHTS geschrieben"),),
             warnungen=(
                 "ES LEGT KEINE SICHERUNG AN. Eine Kopie der templates.db ist VOR dem Lauf von Hand zu erstellen. Bei diesem Skript wiegt das schwerer als bei den uebrigen: es BAUT DIE TABELLE NEU auf (anlegen, umkopieren, alte loeschen, umbenennen), weil eine CHECK-Bedingung in SQLite nicht nachtraeglich zu aendern ist.",
                 "Fremdschluessel werden fuer den Umbau abgeschaltet und nicht nachgezogen. Verweise auf die Protokolltabelle waeren davon betroffen.",
@@ -3151,7 +3159,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "Auf einem bereits migrierten Bestand: 'bereits migriert - No-op.' Rueckgabewert 0, und es wird keine Sicherung angelegt - die entsteht nur, wenn wirklich etwas zu tun ist.",
                      _GEPRUEFT_620),
             ),
-            exit_codes=((0, "migriert ODER bereits migriert"), (1, "weder die alte noch die neue Tabelle vorhanden; ODER BEIDE vorhanden - dann ist der Zustand von Hand zu pruefen; ODER die Protokolltabelle fehlt"), (2, "templates.db nicht gefunden"),),
+            exit_codes=((0, "migriert ODER bereits migriert"), (1, "weder die alte noch die neue Tabelle vorhanden; ODER BEIDE vorhanden - dann ist der Zustand von Hand zu pruefen; ODER die Protokolltabelle fehlt"), (2, "templates.db nicht gefunden"), (3, "Wartungsvorbehalt - der Lauf wurde nicht ausgefuehrt; es wurde NICHTS geschrieben"),),
             warnungen=(
                 "DAS EINZIGE DER FUENF SKRIPTE, DAS ETWAS LOESCHT: die alte Tabelle wird nach dem Umkopieren entfernt. Deshalb legt es als einziges VON SELBST eine Sicherung an ('.pre489.bak'), sofern nicht '--no-backup' gesetzt ist.",
                 "SIND BEIDE TABELLEN VORHANDEN, bricht es ab und verlangt eine Pruefung von Hand. Das ist der Zustand nach einem Abbruch mitten im Lauf - und die richtige Antwort darauf ist nicht, es noch einmal zu versuchen.",
@@ -3279,7 +3287,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "TROCKENLAUF - er ist die Vorgabe. Auf einem leeren Verzeichnis: 'Keine evidence_*.db in ... gefunden.' Rueckgabewert 0.",
                      _GEPRUEFT_620),
             ),
-            exit_codes=((0, "Lauf beendet - AUCH wenn defekte Bloecke gefunden wurden"), (2, "das Verzeichnis wurde nicht gefunden"), (3, "'--apply' wurde ohne die Bestaetigung '--ja-backup-vorhanden' angegeben - es wurde NICHTS geaendert"),),
+            exit_codes=((0, "Lauf beendet - AUCH wenn defekte Bloecke gefunden wurden"), (2, "das Verzeichnis wurde nicht gefunden"), (3, "'--apply' wurde ohne die Bestaetigung '--ja-backup-vorhanden' angegeben, ODER der Wartungsvorbehalt hat den Lauf abgewiesen (Stufe A seit Build 686) - in beiden Faellen wurde NICHTS geaendert"),),
             warnungen=(
                 "DIE FUNDE AENDERN DEN RUECKGABEWERT NICHT. 'eindeutig defekt' und 'unklar' stehen nur im Text. Wer das Werkzeug in eine Ueberwachung haengt, muss die Ausgabe auswerten.",
                 "ES FASST ERMITTLERDATEN AN. Deshalb verlangt '--apply' zusaetzlich die ausdrueckliche Bestaetigung, dass eine gepruefte Sicherung vorliegt - eine Sicherung legt es NICHT selbst an.",
@@ -3307,7 +3315,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "Zuruckrollen holt sie nicht wieder. (2) Der ganze Lauf "
                 "haengt an EINER Transaktion ueber alle Quellen. Die "
                 "default.db haelt der Auswertungsdienst lesend offen. Ein "
-                "Backup legt das Werkzeug nicht an."
+                "Backup legt das Werkzeug nicht an. "
                 "SEIT BUILD 612 SETZT DAS WERKZEUG DAS SELBST DURCH: es prueft vor "
                 "dem scharfen Lauf, ob die betroffenen Dateien ruhig sind, bricht "
                 "bei einer belegten Datei ohne Rueckfrage ab und faehrt ohne "
@@ -3444,7 +3452,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "Wartezeit und legt kein Backup an - scheitert der Zugriff, "
                 "bekommt die Datei den Zustand 'fehler' und der Lauf macht "
                 "mit der naechsten weiter. Ohne --ausfuehren ist der Lauf "
-                "reine Anzeige."
+                "reine Anzeige. "
                 "SEIT BUILD 612 SETZT DAS WERKZEUG DAS SELBST DURCH: es prueft vor "
                 "dem scharfen Lauf, ob die betroffenen Dateien ruhig sind, bricht "
                 "bei einer belegten Datei ohne Rueckfrage ab und faehrt ohne "
@@ -3579,7 +3587,12 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
               "Fallschluessels durchlaeuft.",
         art="schreibend",
         datenbanken=("ausschliesslich die als Argument uebergebene Datei",),
-        betrieb="Ausserhalb des Betriebs, auf einer Kopie.",
+        betrieb="Ausserhalb des Betriebs, auf einer Kopie. WARTUNGSSTUFE B "
+                "mit SPERRLISTE (Build 686): Zeigt der uebergebene Pfad auf "
+                "die in config.yaml eingetragene coordinator.db, bricht das "
+                "Werkzeug mit 3 ab und oeffnet die Datei nicht einmal. Ein "
+                "Wartungsfenster verlangt es NICHT - fuer eine Wegwerfkopie "
+                "waere das Reibung ohne Schutzgewinn.",
         hinweis="ES GIBT KEINE EINGEBAUTE PRUEFUNG, dass die uebergebene "
                 "Datei wirklich eine Kopie ist - der Schutz ist "
                 "organisatorisch. '--seed' fuellt Testzeilen ein und gehoert "
@@ -3587,7 +3600,17 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         # Build 640 (Welle 6): geprueft am ganzen Quelltext -
         # kein ConfigLoader, kein '--config'.
         # Ein Machbarkeitsnachweis gegen einen uebergebenen Wegwerf-Bestand.
-        konfiguration=KONFIG_KEINE,
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "NUR fuer die Sperrliste (Build 686): der Eintrag sagt, "
+               "welche Datei dieses Werkzeug NIEMALS anfassen darf. Es "
+               "liest ihn nicht, um irgendetwas zu oeffnen. Fehlt die "
+               "config.yaml oder ist sie unlesbar, greift die Sperre "
+               "nicht - das ist Absicht: das Werkzeug laeuft oft "
+               "ausserhalb der Anlage auf einer Wegwerfkopie.",
+               "(kein Vorgabewert - ohne Eintrag keine Sperre)",
+               "tools/poc_m019_weg_a.py, _produktivpfad()"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python tools/poc_m019_weg_a.py /tmp/kopie.db",

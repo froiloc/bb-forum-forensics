@@ -40,6 +40,15 @@
 #   Der eigene Code 2 ist Absicht: 'gelaufen, aber nicht vollstaendig' darf im
 #   Betriebsskript nicht wie 'gelaufen' aussehen (Grundregel 1).
 #
+# WARTUNGSSTUFE B - betriebsvertraeglich mit benennbarer Einschraenkung
+#   (Analyse Build 609, Kopfeintrag nachgetragen in Build 686). Der Lauf
+#   schreibt ausschliesslich in search_index.db, die kein anderer Dienst
+#   offen haelt; die evidence-Datenbanken werden nur mit 'mode=ro' gelesen.
+#   ER RUFT DEN WARTUNGSVORBEHALT DESHALB NICHT und soll es nicht.
+#   DIE EINSCHRAENKUNG: Eine gerade beschriebene evidence-Datei kann er
+#   nicht lesen - dann bleibt dieser Fall unvollstaendig und der Lauf endet
+#   mit 2. Das ist kein Sicherheits-, sondern ein Vollstaendigkeitsproblem.
+#
 # Version: v0.8.560 · Build: 560 · 2026-07-26
 # =============================================================================
 

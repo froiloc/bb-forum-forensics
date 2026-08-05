@@ -29,6 +29,13 @@
 #     (--dry-run zeigt nur an, was getan WUERDE)
 #
 # Beleg: Bauplan Build 388 §4, Projektgespraech 2026-07-12
+# WARTUNGSSTUFE B (Einstufung Build 686, Vorgang da6c16d0): Der Lauf legt
+#   eine NEUE Tabelle an und fuegt Zeilen ein - er fasst nichts Bestehendes
+#   an, droppt nichts und aendert keine Bestandszeile. Deshalb KEIN
+#   Wartungsvorbehalt. DIE EINSCHRAENKUNG: Das 'CREATE TABLE' braucht eine
+#   Schreibsperre; haelt der Dienst die templates.db, scheitert der Lauf -
+#   ohne Schaden, aber er scheitert. Der '--dry-run' bleibt jederzeit frei.
+#
 # Version: v0.7.388 · Build: 388 · 2026-07-12
 # =============================================================================
 
