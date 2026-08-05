@@ -1023,7 +1023,8 @@ class ForensicDb:
         viewed_to: "int | None" = None,
         tags_filter: "list[str] | None" = None,
         categories_filter: "list[str] | None" = None,
-    ) -> "list[dict]":
+        nur_zaehlen: bool = False,
+    ) -> "list[dict] | int":
         """
         Liefert eine gefilterte, sortierte Liste von PageSummaryRecords für
         den Kontext-Navigator (/_forensic/search, Bauplan KN §4 + §7.3).
@@ -1052,6 +1053,15 @@ class ForensicDb:
             Hilfstabelle folgt in Baustelle 5, OP-KN-1.)
           - filter: q, scrape_context, fetch_failed, has_annotations,
             progress, viewed_from/to — serverseitig via SQL.
+          - q durchsucht URL UND TITEL (Build 676, Vorgang d76c412d).
+
+        nur_zaehlen (Build 676, Vorgang 36dcdfd8):
+            True liefert statt der Liste die ANZAHL der Treffer VOR der
+            Begrenzung durch limit/offset — als int. Rückgabe -1 bedeutet
+            'nicht ermittelbar' und ist ausdrücklich von 0 zu unterscheiden:
+            0 heißt 'keine Treffer', -1 heißt 'die Zählung ist gescheitert'.
+            Ein Aufrufer, der beides gleich behandelt, meldet eine leere
+            Ergebnismenge, wo er 'unbekannt' melden müsste.
           - tags_filter und categories_filter — werden gegen annotations-
             Tabelle geprüft (subquery).
           - sort: last_viewed_desc (default), last_viewed_asc,
@@ -1129,9 +1139,24 @@ class ForensicDb:
             "offset":   offset,
         }
 
-        # Freitextfilter (URL, Bauplan KN §5.4)
+        # Freitextfilter — URL UND TITEL (Build 676, Vorgang d76c412d)
+        #
+        # BIS BUILD 675 wurde ausschliesslich die URL durchsucht. Das fiel
+        # nicht auf, solange das Kontext-Dropdown gar nicht fragte und
+        # stattdessen im Browser filterte - und der oertliche Filter sieht
+        # URL UND Titel an (toolbar.js, _renderList). Sobald die Suche an den
+        # Server geht, waere die Titelsuche also STILL verschwunden: wer
+        # 'Annual badge' eingibt, faende nichts mehr, obwohl es die Seite
+        # gibt.
+        #
+        # ZUR ENTSCHEIDUNG (Alex, 05.08.2026): gebunden und identifiziert wird
+        # ueber die URL, weil sie eineindeutig ist - ein Themenbetreff kann
+        # mehrfach vorkommen. Beim SUCHEN ist genau das aber kein Schaden,
+        # sondern der Zweck: wer einen Betreff eingibt, will alle Seiten
+        # sehen, die so heissen.
         if q:
-            sql += " AND REPLACE(p.url_canonical, :base_url, '') LIKE :q_like"
+            sql += (" AND (REPLACE(p.url_canonical, :base_url, '') LIKE :q_like"
+                    "      OR p.title LIKE :q_like)")
             params["q_like"] = f"%{q}%"
 
         # scrape_context-Filter
@@ -1175,6 +1200,33 @@ class ForensicDb:
             "annotations_desc": "ann_count DESC",
             "traces_desc":      "trace_count DESC",
         }
+        # ---------------------------------------------------------------------
+        # BUILD 676 (Vorgang 36dcdfd8): die WAHRE Trefferzahl.
+        #
+        # Bis hierher hat der Endpunkt 'total' aus len(pages) gebildet - also
+        # aus der Zahl der GELIEFERTEN Zeilen. Bei limit=200 stand dort 200,
+        # und ob das die Trefferzahl war oder die erreichte Grenze, liess sich
+        # nicht unterscheiden. In einem Werkzeug, dessen Zahlen in eine
+        # Ermittlungsakte geraten, ist das keine Kleinigkeit: eine Grenze, die
+        # sich als Trefferzahl ausgibt, ist eine falsche Angabe.
+        #
+        # Gezaehlt wird GENAU DIESELBE Abfrage, nur ohne ORDER BY, LIMIT und
+        # OFFSET - deshalb steht die Zaehlung hier und nicht in einer eigenen
+        # Funktion mit eigener Filterlogik. Zwei Abfragen mit zwei Wahrheiten
+        # waeren binnen zweier Builds auseinandergelaufen.
+        #
+        # Die Umhuellung ist noetig, weil die Abfrage GROUP BY (und ggf.
+        # HAVING) traegt: COUNT(*) darueber zaehlt Gruppen, nicht Zeilen.
+        # ---------------------------------------------------------------------
+        if nur_zaehlen:
+            zaehl_sql = "SELECT COUNT(*) FROM (" + sql + ")"
+            try:
+                row = self._con.execute(zaehl_sql, params).fetchone()
+            except Exception as exc:
+                logger.error("search_pages(nur_zaehlen) fehlgeschlagen: %s", exc)
+                return -1        # -1 = unbekannt, NICHT 0. Siehe Aufrufer.
+            return int(row[0]) if row else 0
+
         order_clause = sort_map.get(sort, sort_map["last_viewed_desc"])
         sql += f" ORDER BY {order_clause} LIMIT :limit OFFSET :offset"
 
