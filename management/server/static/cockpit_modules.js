@@ -568,7 +568,23 @@
             _state.vorschau.zeige({ body: text });
         }
         if (_state.platzhalter) {
-            _state.platzhalter.zeige(text);
+            // BUILD 683 (Vorgang 5a7d4e21): DIE TABELLE LIEST DIE QUELLE.
+            // Bis Build 682 bekam sie den Klartextspiegel - also die
+            // ABGELEITETE Fassung -, schrieb aber seit Build 681 nach
+            // block_data. Beide sahen bisher dieselben Platzhalter, doch
+            // zugesichert war das nicht: klartextAus() faellt fuer eine
+            // unbekannte Blockart auf d.text zurueck, mapBlockTexts geht
+            // auch in .items[] und .content[][].
+            //
+            // Der Spiegel wird MITGEGEBEN, nicht ersetzt: fehlt
+            // collectBlockTexts, liest die Tabelle ihn weiter - und sagt
+            // dann, dass sie es tut.
+            var stand = _state.blockStand || { type: 'paragraph', data: {} };
+            if (typeof _state.platzhalter.zeigeBlock === 'function') {
+                _state.platzhalter.zeigeBlock(stand.data, text);
+            } else {
+                _state.platzhalter.zeige(text);
+            }
         }
     }
 

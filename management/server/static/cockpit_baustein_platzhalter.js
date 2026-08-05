@@ -54,6 +54,28 @@
  *        Rueckgaengig-Verlauf des Editors. Der Preis steht in der Hilfe
  *        (Kapitel modules#platzhaltertabelle) und wird nicht versteckt.
  *
+ * =========================================================================
+ * BUILD 683 (Vorgang 5a7d4e21): GELESEN WIRD JETZT DIE QUELLE
+ * =========================================================================
+ *   Bis Build 682 las diese Tabelle den KLARTEXTSPIEGEL (cockpit_modules.js
+ *   gab f.body.value herein), geschrieben wurde seit Build 681 aber nach
+ *   block_data. Zwei Quellen fuer dieselbe Aussage - und die gelesene war
+ *   die ABGELEITETE.
+ *
+ *   Dass beide bisher dieselben Platzhalter sahen, war kein Zufall, aber
+ *   auch keine Zusicherung: klartextAus() faellt fuer eine UNBEKANNTE
+ *   Blockart auf d.text bzw. d.caption zurueck, waehrend mapBlockTexts auch
+ *   .items[] und .content[][] anfasst. Eine kuenftige Blockart, die ihren
+ *   Text anderswo fuehrt, waere in der Tabelle unsichtbar und trotzdem
+ *   beschreibbar gewesen. Dazu kam: der Spiegel entfernt Auszeichnungen, die
+ *   Quelle nicht - ein von Editor.js zerschnittener Platzhalter erschien im
+ *   Spiegel heil und war in der Quelle nicht auffindbar.
+ *
+ *   JETZT LIEST DIE TABELLE AUS DERSELBEN QUELLE, IN DIE SIE SCHREIBT:
+ *   zeigeBlock() -> zerlegeBlock() -> PlaceholderChips.collectBlockTexts.
+ *   Der Spiegel bleibt als Rueckfall - und wird, wenn er greift, in der
+ *   Meldung BENANNT.
+ *
  * WARUM EINE EIGENE DATEI: Projektregel 10 (so modular wie moeglich, jede
  *   Klasse in eine eigene Datei) und das Vorbild cockpit_baustein_vorschau.js.
  *   cockpit_modules.js traegt bereits Maske, Tabelle und Vorschau; ein
@@ -123,11 +145,15 @@
  *   musterAus(feld, regelKatalog)  -- 5. Feld -> {form, muster, quelle, fehler}
  *   verdaechtige(text)             -- Token, die keine Platzhalter sind
  *   zerlege(text, chips)           -- Eintraege je (Typ, Name), verdichtet
+ *   zerlegeBlock(daten, chips)     -- dasselbe ueber ALLE Textstellen eines
+ *                                     Blocks (Build 683)
  *   pruefe(eintrag, kat, regeln)   -- {stufe, befunde:[{art, text}]}
  *   teste(eintrag, kat, regeln, eingabe) -- {chip, katalog}
  *   -- DOM:
- *   erzeuge(hostEl, opts)          -- {zeige(text, kat, regeln), kataloge(),
- *                                      aus()}
+ *   erzeuge(hostEl, opts)          -- {zeige(text, kat, regeln),
+ *                                      zeigeBlock(daten, spiegel, kat,
+ *                                                 regeln),
+ *                                      kataloge(), aus()}
  *     opts.schreibe({alt,neu})     -- Build 681: der Rueckruf zum Editor.
  *                                     Fehlt er, bleibt die Tabelle Anzeige.
  *                                     Gibt {ok, meldung} oder ein Versprechen
@@ -137,8 +163,11 @@
  *                                     damit die Pruefung ohne Dialog laeuft.
  *     opts.schr                    -- ph_schreiben (injizierbar)
  *
- * Version: v0.8.681 · Build: 681 · 2026-08-05
- * Beleg: Ticket 4b032177 (Stufe 1), Vorgang 7c1f2a94 (Stufe 2);
+ * Version: v0.8.683 · Build: 683 · 2026-08-05
+ * Beleg: Ticket 4b032177 (Stufe 1), Vorgang 7c1f2a94 (Stufe 2),
+ *        Vorgang 5a7d4e21 (Lesequelle);
+ *        userinfo/placeholder_chips.js:401 (mapBlockTexts), :440
+ *        (collectBlockTexts);
  *        userinfo/placeholder_chips.js:73 (_CHIP_RE);
  *        userinfo/validation_rules.js:33-38 (beide Formen des 5. Feldes);
  *        management/server/static/cockpit_templates.js:315 (testRule);
@@ -304,21 +333,39 @@
         return raus;
     }
 
-    // zerlege: den Bausteintext in Tabelleneintraege.
+    // _entchipt: Chip-HTML in die Token-Form zuruecknehmen (Build 683).
     // ------------------------------------------------------------------
-    // Verdichtet auf (Typ, Name): derselbe Platzhalter kann mehrfach im Text
-    // stehen. 'vorkommen' zaehlt sie, 'varianten' sammelt die VERSCHIEDENEN
-    // Auspraegungen - daraus entsteht V6.
+    // Ein Platzhalter kann in block_data in ZWEI Formen stehen: als Token
+    // '{{m:x}}' oder als gerenderter Chip '<span class="ph-chip"
+    // data-chip-raw="{{m:x}}">' (hydrateBlockData). Wuerde die zweite Form
+    // ungeprueft an parse() gehen, traefe der Ausdruck auf den INHALT des
+    // Attributs data-chip-raw - der Platzhalter erschiene doppelt.
     //
-    // chips ist window.PlaceholderChips (injizierbar fuer die Pruefung).
-    function zerlege(text, chips) {
-        var pc = chips || (typeof window !== 'undefined'
-            ? window.PlaceholderChips : null);
-        if (!pc || typeof pc.parse !== 'function') { return null; }
+    // DIESELBE Normalisierung nimmt das Zurueckschreiben vor
+    // (cockpit_baustein_ph_schreiben.js) und klartextAus() ohnehin. Sie ist
+    // hier NUR eine Lesehilfe: es wird nichts zurueckgegeben, was gespeichert
+    // wuerde.
+    function _entchipt(text, pc) {
+        var t = _s(text);
+        if (t.indexOf('ph-chip') < 0
+                || !pc || typeof pc.dehydrateChips !== 'function') {
+            return t;
+        }
+        try { return _s(pc.dehydrateChips(t)); }
+        catch (e) { log('dehydrate', e); return t; }
+    }
 
-        var segmente = pc.parse(_s(text)) || [];
-        var reihenfolge = [];
-        var nach = {};
+    // _sammle: EINEN Text in einen laufenden Bestand einarbeiten.
+    // ------------------------------------------------------------------
+    // Herausgeloest aus zerlege() (Build 683, Vorgang 5a7d4e21), damit
+    // mehrere Textstellen eines Blocks in EINEN Bestand laufen koennen -
+    // ein Platzhalter in einer Tabellenzelle und derselbe im Absatz darueber
+    // sind ZUSAMMEN drei Vorkommen und nicht zweimal eines.
+    function _sammle(text, pc, bestand) {
+        var t = _entchipt(text, pc);
+        var segmente = pc.parse(t) || [];
+        var reihenfolge = bestand.eintraege;
+        var nach = bestand.nach;
         var rohtoken = [];
 
         segmente.forEach(function (seg) {
@@ -347,8 +394,72 @@
             if (e.varianten.indexOf(v) < 0) { e.varianten.push(v); }
         });
 
-        return { eintraege: reihenfolge, rohtoken: rohtoken,
-                 verdaechtige: verdaechtige(text, rohtoken) };
+        // Der Verdacht wird JE TEXTSTELLE ermittelt: 'gueltig' ist die Menge
+        // der Rohtoken DIESER Stelle. Ueber alle Stellen hinweg zu pruefen,
+        // hiesse ein vertipptes Token in Zelle A durchzuwinken, weil in
+        // Zelle B zufaellig dieselbe Zeichenfolge richtig geschrieben steht.
+        bestand.rohtoken = bestand.rohtoken.concat(rohtoken);
+        bestand.verdaechtige = bestand.verdaechtige.concat(
+            verdaechtige(t, rohtoken));
+        return bestand;
+    }
+
+    function _bestand() {
+        return { eintraege: [], nach: {}, rohtoken: [], verdaechtige: [] };
+    }
+
+    function _fertig(bestand) {
+        return { eintraege: bestand.eintraege, rohtoken: bestand.rohtoken,
+                 verdaechtige: bestand.verdaechtige };
+    }
+
+    // zerlege: EINEN Text in Tabelleneintraege.
+    // ------------------------------------------------------------------
+    // Verdichtet auf (Typ, Name): derselbe Platzhalter kann mehrfach im Text
+    // stehen. 'vorkommen' zaehlt sie, 'varianten' sammelt die VERSCHIEDENEN
+    // Auspraegungen - daraus entsteht V6.
+    //
+    // chips ist window.PlaceholderChips (injizierbar fuer die Pruefung).
+    function zerlege(text, chips) {
+        var pc = chips || (typeof window !== 'undefined'
+            ? window.PlaceholderChips : null);
+        if (!pc || typeof pc.parse !== 'function') { return null; }
+        return _fertig(_sammle(text, pc, _bestand()));
+    }
+
+    // zerlegeBlock: ALLE Textstellen eines Blocks (Build 683, Vorgang
+    // 5a7d4e21).
+    // ------------------------------------------------------------------
+    // DER GRUND, WARUM ES DAS GIBT: Bis Build 682 las die Tabelle den
+    // KLARTEXTSPIEGEL (cockpit_modules.js gab f.body.value herein),
+    // geschrieben wurde seit Build 681 aber nach block_data. Zwei Quellen
+    // fuer dieselbe Aussage - und der Spiegel ist die ABGELEITETE.
+    //
+    // Dass beide bisher dieselben Platzhalter sahen, war kein Zufall, aber
+    // auch keine Zusicherung: klartextAus() (cockpit_baustein_eingabe.js)
+    // faellt fuer eine UNBEKANNTE Blockart auf d.text bzw. d.caption
+    // zurueck, waehrend mapBlockTexts auch .items[] und .content[][] anfasst.
+    // Eine kuenftige Blockart, die ihren Text anderswo fuehrt, waere in der
+    // Tabelle unsichtbar und trotzdem beschreibbar gewesen.
+    //
+    // JETZT LIEST DIE TABELLE AUS DERSELBEN QUELLE, IN DIE SIE SCHREIBT:
+    // collectBlockTexts ist mapBlockTexts im Lesebetrieb - dieselbe
+    // Vorschrift, gegen die auf dem Server core/placeholder_syntax.py::
+    // iter_texts() prueft.
+    //
+    // Rueckgabe wie zerlege(). Fehlt collectBlockTexts, wird null geliefert;
+    // der Aufrufer faellt dann auf den Spiegel zurueck und SAGT das.
+    function zerlegeBlock(daten, chips) {
+        var pc = chips || (typeof window !== 'undefined'
+            ? window.PlaceholderChips : null);
+        if (!pc || typeof pc.parse !== 'function'
+                || typeof pc.collectBlockTexts !== 'function') { return null; }
+        var texte = pc.collectBlockTexts(daten || {}) || [];
+        var b = _bestand();
+        texte.forEach(function (t) {
+            if (typeof t === 'string') { _sammle(t, pc, b); }
+        });
+        return _fertig(b);
     }
 
     // pruefe: die Befunde zu EINEM Eintrag.
@@ -553,6 +664,10 @@
         opts = opts || {};
         var doc = (hostEl && hostEl.ownerDocument) || document;
         var zustand = { text: null, kat: null, regeln: null,
+                        // Build 683 (Vorgang 5a7d4e21): block_data ist die
+                        // QUELLE. 'text' bleibt als Rueckfall daneben
+                        // stehen - der Klartextspiegel.
+                        block: null,
                         eingaben: {},     // Testeingaben ueberleben Neuaufbau
                         // Build 681: welches Feld hatte die Einfuegemarke,
                         // als zurueckgeschrieben wurde. Nach dem Neuzeichnen
@@ -887,7 +1002,20 @@
                     true);
                 return;
             }
-            var z = zerlege(zustand.text, pc);
+            // BUILD 683 (Vorgang 5a7d4e21): DIE QUELLE IST block_data,
+            // solange sie da ist. Der Klartextspiegel ist der Rueckfall -
+            // und er wird als solcher BENANNT, nicht stillschweigend
+            // benutzt: er ist die abgeleitete Fassung, und wer die Tabelle
+            // gegen ihn liest, prueft nicht ganz dasselbe, was er aendert.
+            var z = null;
+            var ausSpiegel = false;
+            if (zustand.block !== null) {
+                z = zerlegeBlock(zustand.block, pc);
+            }
+            if (!z) {
+                z = zerlege(zustand.text, pc);
+                ausSpiegel = (zustand.block !== null);
+            }
             if (!z) { return; }
 
             // Die verdaechtigen Token ZUERST: sie sind der Befund, den heute
@@ -1046,6 +1174,15 @@
                 satz += '. Der Platzhalter-Katalog ist NICHT geladen — '
                     + 'gegen ihn wird nicht geprüft.';
             }
+            // Build 683: eine Tabelle, die aus dem Spiegel liest und in die
+            // Quelle schreibt, prueft nicht ganz das, was sie aendert. Wenn
+            // das eintritt, steht es da.
+            if (ausSpiegel) {
+                satz += '. GELESEN WIRD DER KLARTEXTSPIEGEL, nicht der '
+                    + 'Bausteininhalt selbst (PlaceholderChips.'
+                    + 'collectBlockTexts fehlt) — in einer Tabellenzelle '
+                    + 'kann deshalb ein Platzhalter fehlen.';
+            }
             // Build 681: die Tabelle sagt selbst, ob sie schreiben kann.
             // Ein Redakteur soll nicht durch Ausprobieren herausfinden, ob
             // seine Eingabe ankommt.
@@ -1062,8 +1199,30 @@
 
         return {
             // zeige: neuer Text und/oder neue Kataloge.
+            //
+            // BUILD 683: Dieser Weg liest den KLARTEXTSPIEGEL. Er bleibt
+            // erhalten - fuer Aufrufer ohne Blockdaten und fuer die
+            // Pruefung -, ist aber nicht mehr der Weg der Sicht: die ruft
+            // zeigeBlock().
             zeige: function (text, kat, regeln) {
                 zustand.text = _s(text);
+                zustand.block = null;
+                if (kat !== undefined) { zustand.kat = kat; }
+                if (regeln !== undefined) { zustand.regeln = regeln; }
+                _zeichne();
+            },
+            // zeigeBlock: die QUELLE (block_data) mit dem Spiegel als
+            // Rueckfall (Build 683, Vorgang 5a7d4e21).
+            //
+            // Beide werden uebergeben, damit der Rueckfall wirklich einer
+            // ist: fehlt collectBlockTexts, wird der Spiegel gelesen UND
+            // gesagt, dass er gelesen wird. Eine Tabelle, die in diesem Fall
+            // leer bliebe, saehe aus wie 'keine Platzhalter vorhanden' - und
+            // das waere eine Falschaussage (Grundregel 1).
+            zeigeBlock: function (daten, spiegel, kat, regeln) {
+                zustand.block = (daten && typeof daten === 'object')
+                    ? daten : {};
+                zustand.text = _s(spiegel);
                 if (kat !== undefined) { zustand.kat = kat; }
                 if (regeln !== undefined) { zustand.regeln = regeln; }
                 _zeichne();
@@ -1073,7 +1232,9 @@
             kataloge: function (kat, regeln) {
                 if (kat !== undefined) { zustand.kat = kat; }
                 if (regeln !== undefined) { zustand.regeln = regeln; }
-                if (zustand.text !== null) { _zeichne(); }
+                if (zustand.text !== null || zustand.block !== null) {
+                    _zeichne();
+                }
             },
             aus: function () {
                 _leeren(rumpf);
@@ -1091,6 +1252,7 @@
         musterAus: musterAus,
         verdaechtige: verdaechtige,
         zerlege: zerlege,
+        zerlegeBlock: zerlegeBlock,
         pruefe: pruefe,
         teste: teste,
         erzeuge: erzeuge

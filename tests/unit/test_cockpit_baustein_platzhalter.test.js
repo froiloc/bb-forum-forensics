@@ -30,6 +30,12 @@
  *        Grund steht an der Zelle - und der Rueckruf wird NICHT gerufen.
  * PT14 — F2: Mehrfachvorkommen. Die dauerhafte Anzeige steht da, die
  *        Rueckfrage kommt, und ein Nein aendert nichts.
+ *
+ * Build 683 (Vorgang 5a7d4e21), die Lesequelle:
+ * PT15 — zerlegeBlock: alle Textstellen eines Blocks in EINEN Bestand, der
+ *        Verdacht aber je Textstelle.
+ * PT16 — zeigeBlock im DOM, mit der GEGENPROBE gegen den Klartextspiegel und
+ *        dem benannten Rueckfall.
  */
 
 import { describe, it, expect } from "vitest";
@@ -653,5 +659,146 @@ describe("PT14 F2 — Mehrfachvorkommen", () => {
     feld.dispatchEvent(new win.Event("change"));
     expect(gefragt).toHaveLength(0);
     expect(rufe).toHaveLength(1);
+  });
+});
+
+// ===========================================================================
+// BUILD 683 (Vorgang 5a7d4e21): GELESEN WIRD DIE QUELLE, NICHT DER SPIEGEL
+// ===========================================================================
+
+const _eing = readFileSync(
+  "management/server/static/cockpit_baustein_eingabe.js", "utf-8");
+
+/** Fenster MIT dem Eingabe-Bauteil - fuer die Gegenprobe am Spiegel. */
+function _ctxE() {
+  const win = _ctx();
+  win.eval(_eing);
+  return win;
+}
+
+describe("PT15 zerlegeBlock — alle Textstellen eines Blocks", () => {
+  it("zaehlt ueber Absatz, Liste und Tabellenzelle hinweg ZUSAMMEN", () => {
+    const win = _ctx();
+    const api = _api(win);
+
+    // Tabelle: derselbe Platzhalter in zwei Zellen ist EIN Eintrag mit ZWEI
+    // Vorkommen - nicht zwei Eintraege. Beim Zurueckschreiben aendert eine
+    // Zeile beide, und genau das muss die Zahl sagen.
+    const z = api.zerlegeBlock(
+      { content: [["{{m:x|v}}", "frei"], ["{{m:x|v}}", "{{o:y}}"]] },
+      win.PlaceholderChips);
+    expect(z.eintraege.map((e) => e.typ + ":" + e.name))
+      .toEqual(["m:x", "o:y"]);
+    expect(z.eintraege[0].vorkommen).toBe(2);
+    expect(z.eintraege[0].rohtoken).toEqual(["{{m:x|v}}", "{{m:x|v}}"]);
+
+    // Liste, flach und verschachtelt.
+    const l = api.zerlegeBlock(
+      { items: ["{{m:x}}", { content: "{{m:x}}", items: ["{{o:tief}}"] }] },
+      win.PlaceholderChips);
+    expect(l.eintraege[0].vorkommen).toBe(2);
+  });
+
+  it("erkennt V6 ueber Zellen hinweg — verschiedene Angaben, ein Name", () => {
+    const win = _ctx();
+    const z = _api(win).zerlegeBlock(
+      { content: [["{{m:x|eins}}"], ["{{m:x|zwei}}"]] },
+      win.PlaceholderChips);
+    expect(z.eintraege).toHaveLength(1);
+    expect(z.eintraege[0].varianten).toHaveLength(2);
+    // Und der Befund faellt: beim Ausfuellen gewinnt eine Fassung.
+    const erg = _api(win).pruefe(z.eintraege[0], {}, {});
+    expect(erg.befunde.some((b) => b.kennung === "V6")).toBe(true);
+  });
+
+  it("prueft den Verdacht JE TEXTSTELLE, nicht ueber alle hinweg", () => {
+    // DER FALL, DER DIE REGEL BEGRUENDET: in einer Zelle steht der
+    // Platzhalter richtig, in der anderen vertippt. Wuerde der Verdacht
+    // gegen die Rohtoken ALLER Stellen geprueft, bliebe der Tippfehler
+    // unentdeckt - er stuende dann woertlich im Vermerk.
+    const win = _ctx();
+    const z = _api(win).zerlegeBlock(
+      { content: [["{{m:name}}"], ["{{m:na me}}"]] }, win.PlaceholderChips);
+    expect(z.verdaechtige.map((v) => v.roh)).toEqual(["{{m:na me}}"]);
+  });
+
+  it("nimmt gerenderte Chips zurueck, statt sie doppelt zu zaehlen", () => {
+    const win = _ctx();
+    const html = win.PlaceholderChips.hydrateChips("Text {{m:x|v}} Ende");
+    expect(html).toContain("data-chip-raw");
+    const z = _api(win).zerlegeBlock({ text: html }, win.PlaceholderChips);
+    expect(z.eintraege).toHaveLength(1);
+    expect(z.eintraege[0].vorkommen).toBe(1);
+    expect(z.verdaechtige).toEqual([]);
+  });
+
+  it("liefert null ohne collectBlockTexts — der Aufrufer faellt zurueck", () => {
+    const win = _ctx();
+    const ohne = Object.assign({}, win.PlaceholderChips);
+    delete ohne.collectBlockTexts;
+    expect(_api(win).zerlegeBlock({ text: "{{m:x}}" }, ohne)).toBe(null);
+  });
+});
+
+describe("PT16 zeigeBlock — die Sicht liest die Quelle", () => {
+  it("GEGENPROBE: findet, was der Klartextspiegel verliert", () => {
+    // Der Beleg fuer den ganzen Vorgang. 'checklist' ist eine Blockart, die
+    // klartextAus() NICHT kennt; sie faellt dort auf d.text/d.caption
+    // zurueck und liefert eine leere Zeichenkette. collectBlockTexts geht
+    // dagegen in .items[]. Eine kuenftige Blockart mit Text in items waere
+    // also in der Tabelle unsichtbar UND trotzdem beschreibbar gewesen.
+    const win = _ctxE();
+    const daten = { items: ["{{m:versteckt|v}}"] };
+
+    const spiegel = win.AIWBausteinEingabe.klartextAus("checklist", daten);
+    expect(spiegel).toBe("");          // Vorbedingung: der Spiegel verliert ihn
+
+    const host = win.document.getElementById("host");
+    const t = _api(win).erzeuge(host, { tpl: win.AIWCockpitTemplates,
+                                        chips: win.PlaceholderChips });
+    t.zeigeBlock(daten, spiegel, {}, {});
+
+    const zeilen = host.querySelectorAll(".aiw-mod-ph-tabelle tbody tr");
+    expect(Array.prototype.map.call(zeilen,
+      (r) => r.getAttribute("data-name"))).toEqual(["m:versteckt"]);
+
+    // Und die Gegenrichtung, damit die Gegenprobe eine ist: ueber den
+    // Spiegel gelesen bleibt die Tabelle leer.
+    const win2 = _ctxE();
+    const host2 = win2.document.getElementById("host");
+    _api(win2).erzeuge(host2, { tpl: win2.AIWCockpitTemplates,
+                                chips: win2.PlaceholderChips })
+              .zeige(spiegel, {}, {});
+    expect(host2.querySelector(".aiw-mod-ph-tabelle")).toBe(null);
+  });
+
+  it("faellt auf den Spiegel zurueck und SAGT es", () => {
+    const win = _ctx();
+    // collectBlockTexts entfernen - der Rueckfall muss greifen UND sich
+    // melden. Ein stiller Rueckfall waere die Falschaussage, gegen die
+    // dieser Vorgang gebaut ist.
+    delete win.PlaceholderChips.collectBlockTexts;
+    const host = win.document.getElementById("host");
+    _api(win).erzeuge(host, { tpl: win.AIWCockpitTemplates,
+                              chips: win.PlaceholderChips })
+             .zeigeBlock({ text: "{{m:x}}" }, "{{m:x}} {{o:y}}", {}, {});
+
+    // Gelesen wurde der Spiegel: er fuehrt ZWEI Platzhalter, die Quelle nur
+    // einen.
+    expect(host.querySelectorAll(".aiw-mod-ph-tabelle tbody tr").length)
+      .toBe(2);
+    const meldung = host.querySelector(".aiw-mod-ph-meldung").textContent;
+    expect(meldung).toContain("KLARTEXTSPIEGEL");
+    expect(meldung).toContain("Tabellenzelle");
+  });
+
+  it("meldet den Spiegel NICHT, wenn die Quelle gelesen wurde", () => {
+    const win = _ctx();
+    const host = win.document.getElementById("host");
+    _api(win).erzeuge(host, { tpl: win.AIWCockpitTemplates,
+                              chips: win.PlaceholderChips })
+             .zeigeBlock({ text: "{{m:x}}" }, "{{m:x}}", {}, {});
+    expect(host.querySelector(".aiw-mod-ph-meldung").textContent)
+      .not.toContain("KLARTEXTSPIEGEL");
   });
 });

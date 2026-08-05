@@ -1,0 +1,58 @@
+{
+  "issues": [
+    {
+      "id": "5a7d4e21-9c38-4f16-b0d2-8e5417c39fa6",
+      "type": "bug",
+      "title": "Platzhalter-Tabelle liest den Klartextspiegel, geschrieben wird nach block_data",
+      "affected_version": "0.8.681",
+      "target_version": "0.8.683",
+      "reporter": "Claude",
+      "reported_at": "2026-08-05T19:12:00+00:00",
+      "status": "resolved",
+      "priority": "medium",
+      "severity": "minor",
+      "assigned_to": "Claude",
+      "related_to": [
+        "7c1f2a94-5d3e-4b8a-9e01-2f6c8b4d7a53"
+      ],
+      "resolved_in_version": "0.8.683",
+      "environment": {
+        "python_version": "3.14",
+        "database": "templates.db"
+      },
+      "tags": [
+        "Bausteinmodule",
+        "Management",
+        "Platzhalter",
+        "Editor"
+      ],
+      "attachments": [],
+      "prerequisites": "Ein Baustein, dessen Inhalt kein einfacher Absatz ist - eine Tabelle, eine Liste, ein Zitat.",
+      "description": "AUFGEFALLEN BEIM BAU VON BUILD 681, nicht als Fehlverhalten gemessen - deshalb 'minor' und nicht hoeher.\n\nDIE ZWEI WEGE GEHEN AUSEINANDER:\n  GELESEN wird der Klartextspiegel. cockpit_modules.js:566 gibt f.body.value an platzhalter.zeige(). Der Spiegel entsteht aus klartextAus() (cockpit_baustein_eingabe.js:290): HTML faellt weg, Tabellenzeilen werden mit Tabulatoren, Zeilen mit Zeilenumbruechen aneinandergehaengt.\n  GESCHRIEBEN wird seit Build 681 nach block_data, ueber PlaceholderChips.mapBlockTexts.\n\nDASS BEIDE HEUTE DIESELBEN PLATZHALTER SEHEN, IST KEIN ZUFALL, ABER AUCH KEINE ZUSICHERUNG: klartextAus() fasst dieselben Textstellen an wie mapBlockTexts, solange die Blockart bekannt ist. Fuer eine UNBEKANNTE Blockart faellt klartextAus() auf d.text bzw. d.caption zurueck - mapBlockTexts geht dagegen auch in .items[] und .content[][]. Eine kuenftige Blockart, die ihren Text anderswo fuehrt, wuerde also in der Tabelle FEHLEN und trotzdem schreibbar sein.\n\nZWEITER, KLEINERER PUNKT: klartextAus() entfernt Auszeichnungen mit s.replace(/<[^>]*>/g, ''). Ein Platzhalter, den Editor.js durch eine Auszeichnung zerschnitten hat (etwa '{{m:<b>x</b>}}'), erscheint im Spiegel erst nach dem Entfernen als gueltiges Token - im Block steht er weiterhin zerschnitten. Die Tabelle wuerde ihn dann fuehren, das Zurueckschreiben ihn aber nicht finden. Der Fall meldet sich heute im Klartext ('ist im Bausteininhalt nicht mehr zu finden'), er ist also nicht still - aber die Meldung nennt eine falsche Ursache.",
+      "expected_behavior": "Die Tabelle liest aus DERSELBEN Quelle, in die sie schreibt: aus block_data ueber collectBlockTexts(). Dann kann Gelesenes und Geschriebenes nicht auseinanderlaufen.",
+      "actual_behavior": "Gelesen wird der abgeleitete Klartextspiegel, geschrieben wird in die Quelle. Heute deckungsgleich, aber nicht zugesichert.",
+      "updates": [
+        {
+          "timestamp": "2026-08-05T19:12:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Angelegt beim Bau von Build 681, damit der Befund nicht im Sitzungsprotokoll verschwindet. BEWUSST NICHT IN 681 MITBEHOBEN: die Umstellung der Lesequelle beruehrt zerlege() und damit alle sechs Befunde V1-V6 samt PT01-PT14. Das gehoert in einen eigenen Durchgang mit eigener Gegenprobe und nicht als Beiwerk in einen Build, der etwas anderes tut."
+        },
+        {
+          "timestamp": "2026-08-05T20:32:43.995911+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build681.json"
+        },
+        {
+          "timestamp": "2026-08-05T21:10:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "resolved",
+          "comment": "Build 683. Die Tabelle liest jetzt aus DERSELBEN Quelle, in die sie schreibt. NEU: zerlegeBlock(daten, chips) in cockpit_baustein_platzhalter.js, gestuetzt auf PlaceholderChips.collectBlockTexts - dieselbe Vorschrift, gegen die auf dem Server core/placeholder_syntax.py::iter_texts() prueft, und dieselbe, in die das Zurueckschreiben aus Build 681 geht. Die Sicht ruft zeigeBlock(daten, spiegel); zeige() bleibt fuer Aufrufer ohne Blockdaten erhalten. DER RUECKFALL IST EINER UND BLEIBT SICHTBAR: fehlt collectBlockTexts, wird der Spiegel gelesen UND in der Meldung benannt ('GELESEN WIRD DER KLARTEXTSPIEGEL ... in einer Tabellenzelle kann deshalb ein Platzhalter fehlen'). Ein stiller Rueckfall waere genau die Falschaussage, gegen die dieser Vorgang gebaut ist (Grundregel 1). HERAUSGELOEST, NICHT UMGESCHRIEBEN: die Verdichtung je (Typ, Name) sitzt jetzt in _sammle(), damit mehrere Textstellen in EINEN Bestand laufen. zerlege() ist der Sonderfall 'eine Textstelle' davon. Die sechs Befunde V1-V6 sind unveraendert - PT01-PT14 laufen ohne Anpassung durch, und das ist der Beleg dafuer. ZWEI EIGENSCHAFTEN, DIE ERST DURCH DIE UMSTELLUNG STIMMEN: (1) Derselbe Name in mehreren TABELLENZELLEN ergibt gemeinsam mehrere Vorkommen. Fuer die Rueckfrage aus Build 681 (F2) ist das die richtige Zahl - vorher zaehlte der Spiegel sie zwar auch, aber ueber eine mit Tabulatoren zusammengefuegte Zeile, also nicht aus derselben Vorschrift. (2) Gerenderte Chips (data-chip-raw) werden vor dem Lesen zurueckgenommen. Ohne das haette parse() den INHALT des Attributs getroffen und den Platzhalter doppelt gezaehlt - PT15 haelt das fest. DER VERDACHT WIRD JE TEXTSTELLE GEPRUEFT und nicht ueber alle hinweg. Sonst bliebe ein vertipptes Token in Zelle A unentdeckt, weil in Zelle B zufaellig dieselbe Zeichenfolge richtig geschrieben steht - und ein unentdecktes V1 steht woertlich im Vermerk. DIE GEGENPROBE (PT16) IST DER BELEG DES GANZEN VORGANGS: ein Block der Art 'checklist' mit Text in .items[]. klartextAus() kennt die Art nicht und liefert eine LEERE Zeichenkette - ueber den Spiegel gelesen bleibt die Tabelle also leer, ueber die Quelle gelesen fuehrt sie den Platzhalter. Beide Richtungen stehen im Test, damit die Gegenprobe eine ist. HILFE nachgezogen: das Kapitel 'Die Platzhalter-Tabelle' sagt jetzt, dass der Bausteininhalt gelesen wird und was das fuer Tabellenzellen bedeutet. NICHT BEHOBEN und auch nicht Gegenstand dieses Vorgangs: der im Vorgangstext genannte zweite Punkt - ein von Editor.js zerschnittener Platzhalter ('{{m:<b>x</b>}}') - loest sich damit von selbst, weil die Quelle die Auszeichnung mitfuehrt: die Tabelle fuehrt ihn nun gar nicht erst als gueltig, sondern schlaegt ihn als V1 an. Das ist die richtige Auskunft und ersetzt die vorher falsche Ursachenangabe."
+        }
+      ]
+    }
+  ]
+}
