@@ -182,6 +182,17 @@ _GEPRUEFT_671 = ("Build 671, 2026-08-05, im Container (Python 3.11) gegen "
                  "einen echten Fall")
 
 
+#: Build 672. Wie 671, aber gegen die BERICHTIGTE Fassung: sie zaehlt nach
+#: page_id statt nach URL. Der erste Lauf gegen einen echten Bestand
+#: (forensic_1488.db, 05.08.2026) hatte gezeigt, dass die URL-Zaehlung die
+#: Luecke um mehr als das Dreissigfache aufblaeht - Sprungmarken und zweite
+#: Pfade sind dieselbe Seite. Die Zahlen aus jenem Lauf sind hier bewusst
+#: NICHT aufgefuehrt: sie stammen von der falschen Fassung.
+_GEPRUEFT_672 = ("Build 672, 2026-08-05, im Container (Python 3.11) gegen "
+                 "einen gebauten Wegwerf-Bestand unter /tmp - NICHT gegen "
+                 "einen echten Fall")
+
+
 def _bsp(aufruf: str, wirkung: str, geprueft: str = _GEPRUEFT) -> CliBeispiel:
     """Kurzform fuer einen GEFAHRENEN Beispielaufruf."""
     return CliBeispiel(aufruf=aufruf, wirkung=wirkung, geprueft=geprueft)
@@ -3639,18 +3650,19 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "Selbstprobe bestanden, danach die Messung. Im Versuch "
                      "gegen einen gebauten Bestand mit 10 Seiten und 7 "
                      "Erfassungszielen: 5 Eintraege in der Sequenz, 10 "
-                     "erreichbare URLs, 5 uebergangene Seiten - alle fuenf "
+                     "erreichbare SEITEN, 5 uebergangene Seiten - alle fuenf "
                      "mit Seitenteil. Zusaetzlich ausgewiesen: Gruppe "
-                     "'profile' leer, eine Profilseite in der Gruppe "
-                     "'other', ein Erfassungsziel ohne jede passende Seite. "
-                     "Rueckgabewert 1.",
-                     _GEPRUEFT_671),
+                     "'profile' leer und ein Erfassungsziel ohne jede "
+                     "passende Seite. Rueckgabewert 1.",
+                     _GEPRUEFT_672),
                 _bsp("python tools/diag_spurensequenz_luecken.py "
                      "--forensic-db /tmp/probe_forensic.db --json befund.json",
                      "Wie oben, zusaetzlich wird der vollstaendige Befund "
                      "als JSON abgelegt - noetig, weil die Konsole nur die "
-                     "ersten 15 uebergangenen Seiten nennt.",
-                     _GEPRUEFT_671),
+                     "ersten 15 uebergangenen Seiten nennt. Der Befund traegt "
+                     "je Eintrag die page_id, sodass sich Zweitadressen "
+                     "derselben Seite nachtraeglich zusammenlegen lassen.",
+                     _GEPRUEFT_672),
             ),
             exit_codes=((0, "gelaufen, KEINE Luecke gefunden"),
                         (1, "gelaufen, LUECKE gefunden - das ist ein BEFUND "
@@ -3660,11 +3672,25 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                         (3, "die Selbstprobe ist gefallen - die Messung ist "
                             "blind, es wird KEIN Ergebnis ausgewiesen")),
             warnungen=(
+                "DIE ZAHL IST EINE OBERGRENZE, KEIN ENDSTAND. Die "
+                "Trefferpruefung ist eine Teilzeichenkette - 'sid=2' passt "
+                "auch auf 'sid=202313'. Solche Fremdtreffer stehen im Bericht "
+                "unter MEHRDEUTIGE MUSTER und koennen die Zahl der "
+                "erreichbaren Seiten nach oben verfaelschen. In Build 671 "
+                "stand hier noch, die Zahl stehe fest; der erste Lauf gegen "
+                "einen echten Bestand hat das widerlegt.",
                 "'LIMIT 1 ohne ORDER BY' hat keine zugesicherte Reihenfolge. "
                 "WELCHE einzelne Seite je Erfassungsziel in der Sequenz "
-                "landet, kann daher von diesem Nachbau abweichen. WIE VIELE "
-                "Seiten uebergangen werden, kann es nicht - diese Zahl steht "
-                "fest, und sie ist die gesuchte.",
+                "landet, kann daher von diesem Nachbau abweichen. Gemessen am "
+                "05.08.2026: 6346 Sequenzeintraege hier gegen 6347 im "
+                "laufenden Server - eine Abweichung von genau einem Eintrag.",
+                "GEZAEHLT WIRD NACH SEITEN (page_id), NICHT NACH URLs. Eine "
+                "Seite traegt oft mehrere Adressen: eine Sprungmarke "
+                "('...#p4711') und einen zweiten Pfad ('/forum/beginner/...'), "
+                "beide in page_aliases. Build 671 zaehlte URLs und meldete "
+                "dadurch 73.796 statt rund 2.000 uebergangener Seiten. Wer "
+                "eine alte Ausgabe vor sich hat, erkennt sie an der Zeile "
+                "'Verschiedene erreichbare URLs'.",
                 "Die TYPE_MAP im Werkzeug ist eine Abschrift aus "
                 "db/forensic_db.py. Wird sie dort geaendert, misst das "
                 "Werkzeug etwas anderes als das, was laeuft. Der Testfall "

@@ -59,7 +59,17 @@
 #          Verzeichnis; mit '--json' zusaetzlich maschinenlesbar.
 #
 # Abhaengigkeiten: nur Stdlib.
-# Version: v0.8.671 · Build: 671 · 2026-08-05
+#
+# AENDERUNG BUILD 672 - BERICHTIGUNG EINER FALSCHEN ZAHL:
+#   Die Fassung aus Build 671 zaehlte URLs statt Seiten. Gegen den echten
+#   Bestand (forensic_1488.db, 05.08.2026) meldete sie 73.796 uebergangene
+#   "Seiten". Nach Seiten gezaehlt sind es rund 2.000. Die Differenz waren
+#   Zweitadressen DERSELBEN Seite: Sprungmarken ('...id=5136#p33461', 65.216
+#   Stueck) und ein zweiter Pfad ('/forum/beginner/...', 6.346 Stueck). Beide
+#   stehen in page_aliases und tragen dieselbe page_id.
+#   Gezaehlt wird jetzt nach page_id. Die Selbstprobe fuehrt seither zwei
+#   Zweitadressen mit und verlangt, dass sie NICHT als Luecke gelten.
+# Version: v0.8.672 · Build: 672 · 2026-08-05
 # =============================================================================
 
 from __future__ import annotations
@@ -271,18 +281,19 @@ def messe(urls: list[tuple[int, str]],
         #     die Zeilenfolge der Tabelle ist die naheliegendste Annahme und
         #     wird hier benutzt. Das ist eine ANNAHME und keine Zusicherung -
         #     sie steht auch im Bericht.
-        erste = treffer[0][1]
+        erste_pid, erste = treffer[0]
         if erste not in gesehen:
             gesehen.add(erste)
             sequenz.append({
                 "trace_id": int(row["id"]), "url": erste,
+                "page_id": erste_pid,
                 "gruppe": gruppe, "url_type": url_typ,
             })
 
         # (b) alle Treffer
         for pid, u in treffer:
             vollstaendig.append({
-                "trace_id": int(row["id"]), "url": u,
+                "trace_id": int(row["id"]), "url": u, "page_id": pid,
                 "gruppe": gruppe, "url_type": url_typ,
             })
 
@@ -299,16 +310,43 @@ def messe(urls: list[tuple[int, str]],
                     "anzahl": len(fremd), "beispiele": fremd[:3],
                 })
 
-    in_sequenz = {e["url"] for e in sequenz}
-    luecke = {}
+    # -------------------------------------------------------------------------
+    # DIE LUECKE WIRD NACH SEITE GEZAEHLT, NICHT NACH URL.
+    #
+    # BUILD 672, nach dem ersten Lauf gegen einen echten Bestand - und gegen
+    # meine eigene erste Fassung. Sie zaehlte URLs, und das hat die Zahl um mehr
+    # als das Dreissigfache aufgeblaeht: gemeldet wurden 73.796 uebergangene
+    # "Seiten", tatsaechlich waren es rund 2.000. Der Rest waren Zweitadressen
+    # DERSELBEN Seite:
+    #
+    #   /forum/viewtopic.php?id=5136#p33461   - Sprungmarke in dieselbe Seite
+    #   /forum/beginner/pmsnew.php?...        - zweiter Pfad zu derselben Seite
+    #
+    # Beide stehen in page_aliases und tragen dieselbe page_id. Eine Zahl, die
+    # eine Sprungmarke als uebergangenen Beleg zaehlt, ist nicht bloss ungenau -
+    # sie laesst einen Befund dreissigmal groesser aussehen, als er ist, und
+    # beschaedigt damit genau das Vertrauen, das eine Messung herstellen soll.
+    #
+    # page_id ist der Schluessel der SEITE. Nach ihm zu zaehlen legt Pfad- und
+    # Ankervarianten von selbst zusammen.
+    # -------------------------------------------------------------------------
+    seiten_in_sequenz = {e["page_id"] for e in sequenz}
+    luecke: dict[int, dict] = {}
     for e in vollstaendig:
-        if e["url"] not in in_sequenz and e["url"] not in luecke:
-            luecke[e["url"]] = e
+        if e["page_id"] not in seiten_in_sequenz and e["page_id"] not in luecke:
+            luecke[e["page_id"]] = e
 
     return {
         "sequenz": sequenz,
-        "vollstaendig_distinct": len({e["url"] for e in vollstaendig}),
+        "vollstaendig_seiten": len({e["page_id"] for e in vollstaendig}),
+        "vollstaendig_urls": len({e["url"] for e in vollstaendig}),
         "luecke": list(luecke.values()),
+        # Die Zaehlung, die Build 671 ausgewiesen hat: URLs, die nicht selbst
+        # als Sequenz-URL vorkommen. Sie bleibt im Bericht stehen, damit die
+        # Berichtigung nachvollziehbar ist und niemand die alte Zahl fuer
+        # verschwunden haelt (Grundregel 1 gilt auch fuer eigene Fehler).
+        "luecke_urls": len({e["url"] for e in vollstaendig
+                            if e["url"] not in gesehen}),
         "ohne_treffer": ohne_treffer,
         "mehrdeutig": mehrdeutig,
     }
@@ -379,12 +417,18 @@ def selbstprobe() -> tuple[bool, str]:
         zeile.update(spalten)
         return zeile
 
+    # Die beiden letzten Zeilen tragen die page_id 1 - sie sind ZWEITADRESSEN
+    # der ersten Seite (Sprungmarke bzw. zweiter Pfad), wie sie in
+    # page_aliases stehen. Sie duerfen NICHT als uebergangene Seite zaehlen.
+    # Build 672: genau das hat die erste Fassung getan.
     urls = [
         (1, "/forum/viewtopic.php?id=120870"),
         (2, "/forum/viewtopic.php?id=120870&p=2"),
         (3, "/forum/viewtopic.php?id=120870&p=3"),
         (4, "/forum/viewtopic.php?id=12"),
         (5, "/forum/viewtopic.php?id=120"),
+        (1, "/forum/viewtopic.php?id=120870#p4711"),
+        (1, "/forum/beginner/viewtopic.php?id=120870"),
     ]
     ziele = [
         ziel(1, "viewtopic", topic_id=120870),
@@ -407,9 +451,14 @@ def selbstprobe() -> tuple[bool, str]:
         return False, ("Ziel 12 steuert wider Erwarten einen Sequenzeintrag "
                        "bei - die Verdraengung durch die laengere Kennung "
                        "wird nicht mehr nachgestellt")
+    if any(e["page_id"] == 1 for e in erg["luecke"]):
+        return False, ("eine Zweitadresse der ersten Seite (Sprungmarke oder "
+                       "zweiter Pfad) wird als uebergangene Seite gezaehlt - "
+                       "genau der Fehler aus Build 671")
     return True, ("4 bekannte Luecken gefunden, Mehrdeutigkeit erkannt "
-                  "(%d Ziel(e)), und das verdraengte Ziel steuert wie "
-                  "erwartet nichts bei" % len(erg["mehrdeutig"]))
+                  "(%d Ziel(e)), das verdraengte Ziel steuert wie erwartet "
+                  "nichts bei, und die beiden Zweitadressen zaehlen nicht mit"
+                  % len(erg["mehrdeutig"]))
 
 
 # =============================================================================
@@ -423,11 +472,19 @@ def bericht(erg: dict, gesamt_urls: int, gesamt_ziele: int) -> None:
 
     log("ERGEBNIS")
     log("-" * 78)
+    log("  ES WIRD NACH SEITEN GEZAEHLT (page_id), NICHT NACH URLs. Eine Seite")
+    log("  traegt oft mehrere Adressen - eine Sprungmarke ('...#p4711') und")
+    log("  einen zweiten Pfad ('/forum/beginner/...') - und ist trotzdem EINE")
+    log("  Seite. Build 671 zaehlte URLs und meldete dadurch die dreissigfache")
+    log("  Menge. Die URL-Zahlen stehen weiter unten zum Vergleich.")
+    log()
     log("  URLs im Bestand (pages + Aliasse) : %d" % gesamt_urls)
     log("  Erfassungsziele (ohne 'static')   : %d" % gesamt_ziele)
     log("  Eintraege in der Sequenz (heute)  : %d" % len(sequenz))
-    log("  Verschiedene erreichbare URLs     : %d" % erg["vollstaendig_distinct"])
+    log("  Erreichbare SEITEN               : %d" % erg["vollstaendig_seiten"])
     log("  DAVON NICHT IN DER SEQUENZ        : %d   <== die Luecke" % len(luecke))
+    log("     zum Vergleich, nach URLs gezaehlt: %d von %d"
+        % (erg["luecke_urls"], erg["vollstaendig_urls"]))
     log()
 
     if luecke:
@@ -569,8 +626,20 @@ def main() -> int:
     log("  'LIMIT 1 ohne ORDER BY' hat keine zugesicherte Reihenfolge. Dieses")
     log("  Werkzeug nimmt die Zeilenfolge der Tabelle an - dieselbe Annahme,")
     log("  die SQLite in der Praxis meist erfuellt. Welche EINZELNE Seite je")
-    log("  Ziel in der Sequenz landet, kann davon abweichen; WIE VIELE Seiten")
-    log("  uebergangen werden, kann es nicht - diese Zahl steht fest.")
+    log("  Ziel in der Sequenz landet, kann davon abweichen.")
+    log()
+    log("  BUILD 671 STAND HIER: 'wie viele Seiten uebergangen werden, steht")
+    log("  fest'. Das war zu fest behauptet, und der erste echte Lauf hat es")
+    log("  widerlegt. Zwei Groessen wackeln:")
+    log("    - Die Trefferpruefung ist eine Teilzeichenkette. Das Muster")
+    log("      'sid=2' passt auch auf 'sid=202313'. Solche Fremdtreffer")
+    log("      stehen oben unter MEHRDEUTIGE MUSTER und koennen die Zahl der")
+    log("      erreichbaren Seiten nach OBEN verfaelschen.")
+    log("    - Am 05.08.2026 wich die Zahl der Sequenzeintraege um genau 1 vom")
+    log("      laufenden Server ab (6346 hier, 6347 dort). Die Abweichung ist")
+    log("      klein, aber sie ist da - und sie ist der Beleg dafuer, dass die")
+    log("      Reihenfolge wirklich nicht zugesichert ist.")
+    log("  Die Zahl ist damit eine belastbare OBERGRENZE, kein Endstand.")
     log()
 
     if args.json:

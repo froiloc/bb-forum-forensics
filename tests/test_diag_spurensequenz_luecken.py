@@ -178,6 +178,60 @@ class DiagSpurensequenzTests(unittest.TestCase):
                     "Nebendatei '%s' entstanden - es gab eine Schreibabsicht"
                     % anhang)
 
+    # -- SL06 -----------------------------------------------------------------
+    def test_sl06_zweitadressen_zaehlen_nicht_als_luecke(self):
+        """
+        BUILD 672, aus eigenem Schaden.
+
+        Die Fassung aus Build 671 zaehlte URLs. Gegen den echten Bestand
+        meldete sie 73.796 uebergangene Seiten; nach Seiten gezaehlt sind es
+        rund 2.000. Der Rest waren Zweitadressen DERSELBEN Seite - 65.216
+        Sprungmarken ('...id=5136#p33461') und 6.346 Adressen unter einem
+        zweiten Pfad ('/forum/beginner/...'). Beide stehen in page_aliases und
+        tragen dieselbe page_id.
+
+        Eine Messung, die einen Anker als uebergangenen Beleg zaehlt, laesst
+        einen Befund dreissigmal groesser aussehen, als er ist. Dieser Fall
+        haelt die Berichtigung fest.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "forensic_probe.db"
+            _baue_bestand(
+                db,
+                seiten=["/forum/viewtopic.php?id=500",
+                        "/forum/viewtopic.php?id=500&p=2"],
+                ziele=[("viewtopic", 500, None)],
+            )
+            # Zweitadressen der ERSTEN Seite nachtragen: Sprungmarke und
+            # zweiter Pfad. Beide zeigen auf page_id 1.
+            con = sqlite3.connect(db)
+            con.executemany(
+                "INSERT INTO page_aliases (page_id, url_raw) VALUES (?,?)",
+                [(1, "http://alice.onion/forum/viewtopic.php?id=500#p9001"),
+                 (1, "http://alice.onion/forum/beginner/viewtopic.php?id=500")])
+            con.commit()
+            con.close()
+
+            lese = self.modul.oeffne_lesend(db)
+            basis = self.modul.basis_url(lese)
+            erg = self.modul.messe(self.modul.lade_urls(lese, basis),
+                                   self.modul.lade_ziele(lese))
+            lese.close()
+
+        luecke_seiten = {e["page_id"] for e in erg["luecke"]}
+        self.assertNotIn(
+            1, luecke_seiten,
+            "Die Zweitadressen der ersten Seite werden als uebergangene Seite "
+            "gezaehlt - das ist der Fehler aus Build 671.")
+        self.assertEqual(
+            1, len(erg["luecke"]),
+            "Erwartet wird genau EINE uebergangene Seite (die Folgeseite "
+            "&p=2); gefunden: %s"
+            % sorted(e["url"] for e in erg["luecke"]))
+        # Zum Vergleich: nach URLs gezaehlt waeren es drei. Genau diese
+        # Differenz ist der berichtigte Fehler.
+        self.assertEqual(3, erg["luecke_urls"])
+
     # -- SL05 -----------------------------------------------------------------
     def test_sl05_type_map_ist_wortgleiche_abschrift(self):
         """
