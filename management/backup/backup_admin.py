@@ -31,6 +31,14 @@
 #   Sicherungen 1 statt immer 0 (Vorgang e9522fe2).
 # Build 680: 'restore' kommt hinzu (Vorgang 2785556a). Damit ist der
 #   Rueckweg zum ersten Mal gefahren und nicht mehr bloss angenommen.
+# WARTUNGSSTUFE B - betriebsvertraeglich mit benennbarer Einschraenkung
+#   (Nachpruefung Build 616, Einstufung nachgetragen in Build 686).
+#   'plan', 'list' und 'pruefen' sind rein lesend. 'run' veraendert die
+#   Quellen nicht, konkurriert unter dem Rollback-Journal aber mit den
+#   Schreibern - und der Sicherungssatz ist NICHT punktgleich (Entscheidung
+#   mc 2026-07-31: Kennzeichnung statt Wartungsfenster). 'restore' legt nur
+#   eine Datei NEBEN das Original. Kein Wartungsvorbehalt, mit Absicht.
+#
 # Version: v0.8.680 · Build: 680 · 2026-08-05
 # =============================================================================
 

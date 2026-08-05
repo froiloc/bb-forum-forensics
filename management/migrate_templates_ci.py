@@ -28,6 +28,13 @@
 #   python management/migrate_templates_ci.py --templates-db /pfad/templates.db
 #   python management/migrate_templates_ci.py --config ./config.yaml
 #
+# WARTUNGSSTUFE B (Einstufung Build 686, Vorgang da6c16d0): Der Lauf ist
+#   rein additiv (ADD COLUMN ... DEFAULT 0) und legt zuvor eine
+#   Sicherungskopie an; bestehende Zeilen erhalten den Vorgabewert, kein
+#   Beleg aendert sich. Deshalb KEIN Wartungsvorbehalt. DIE EINSCHRAENKUNG:
+#   Das 'ALTER TABLE' braucht eine Schreibsperre; haelt der Dienst die
+#   templates.db, scheitert der Lauf - ohne Schaden, aber er scheitert.
+#
 # Version: v0.8.497 · Build: 497 · 2026-07-22
 # Beleg: mc-Wunsch Case-Insensitivity 2026-07-22; Bauplan Platzhalter_DB §2.3.
 # =============================================================================

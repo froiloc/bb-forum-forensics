@@ -33,7 +33,11 @@
 # das am 2026-07-31 angestossen ("das benoetigt den Wartungsmodus, sonst kann
 # die Aenderung nicht zurueckgeschrieben werden").
 #
-# Version: v0.8.615 - Build: 615 - 2026-07-31
+# BUILD 686: Die Stufenlisten sind nach maintenance/wartungsstufen.py
+# umgezogen (Begruendung unten), EB04 prueft den AUFRUF statt des WORTES,
+# und die Abgrenzung deckt jetzt alle 26 Nicht-A-Werkzeuge statt einem.
+#
+# Version: v0.8.686 - Build: 686 - 2026-08-05
 # =============================================================================
 
 import importlib.util
@@ -54,47 +58,42 @@ from maintenance.wartungsvorbehalt import (               # noqa: E402
 
 
 # -----------------------------------------------------------------------------
-# DIE LISTE DER STUFE-A-WERKZEUGE.
+# DIE LISTE DER STUFE-A-WERKZEUGE - SEIT BUILD 686 NICHT MEHR HIER.
 #
-# Sie steht hier und nirgends sonst, damit sie EINE Fassung hat. Grundlage ist
-# 'Vermerk_Wartungsvorbehalt_Analyse_K1_K8_v1_0.md', Einstufung von mc
-# bestaetigt am 2026-07-31: fuenfmal A, einmal B (index_cli - betriebs-
-# vertraeglich, schreibt nur in ein Hilfsmittel). Build 615 hat einen sechsten
-# Eintrag ergaenzt, der in jener Analyse nicht untersucht worden war.
+# Sie stand bis Build 680 an dieser Stelle, mit der Begruendung: "Sie steht
+# hier und nirgends sonst, damit sie EINE Fassung hat." DIESE BEGRUENDUNG
+# BLEIBT RICHTIG - die eine Fassung ist nur umgezogen, nach
+# maintenance/wartungsstufen.py.
 #
-# WER HIER DAZUKOMMT, kommt nicht in eine Fehlliste: er wird eingebaut. Eine
+# DER GRUND FUER DEN UMZUG: Ab Build 686 wird die Liste von zweierlei
+# gebraucht - von diesem Einbautest UND vom Vollstaendigkeitswaechter
+# (tests/test_wartungsstufen_vollstaendig.py), der prueft, ob ueberhaupt
+# jedes schreibende Werkzeug eingestuft ist. Eine Liste, die in einer
+# Testdatei wohnt, ist fuer den zweiten Abnehmer nur erreichbar, indem ein
+# Test einen anderen Test importiert. Betriebswissen gehoert nicht in eine
+# Testdatei.
+#
+# WS05 haelt fest, dass hier wirklich DIESELBE Abbildung benutzt wird und
+# nicht wieder eine zweite entsteht.
+#
+# WER DAZUKOMMT, kommt nicht in eine Fehlliste: er wird eingebaut. Eine
 # Fehlliste waere hier das falsche Mittel - sie ist gut fuer Inhalte, die noch
 # entstehen muessen, und schlecht fuer eine Sicherung, die entweder greift
 # oder nicht.
 # -----------------------------------------------------------------------------
 
-STUFE_A = {
-    "management/migrate.py": "coordinator.db, Tabellenumbau ohne Backup",
-    "tools/migrate-dbs.py": "templates.db, evidence_<uid>.db, assets_<uid>.db",
-    "management/migration_fleet/migration_fleet_admin.py":
-        "companion --confirm; der Rueckweg kopiert ueber das Original",
-    "management/consolidate_default_db.py":
-        "--overwrite loescht die Ziel-Datei vor der Transaktion",
-    "tools/forensic_index_upgrade.py":
-        "--ausfuehren schreibt in die versiegelte forensic_<uid>.db",
-    # BUILD 615 - NACHTRAG, angestossen von mc am 2026-07-31.
-    # Es war in der Analyse K1-K8 nicht dabei, weil sein Dateikopf die Frage
-    # schon zu beantworten schien ("braucht exklusiven Zugriff"). Eine Zusage
-    # im Kommentar ist aber keine Sperre - dasselbe Muster wie bei den zwei
-    # Auswertungswerkzeugen, die die coordinator.db schreibfaehig oeffnen,
-    # obwohl ihr Kopf das Gegenteil zusichert (Issue 906ede75).
-    "tools/convert_journal_mode.py":
-        "--apply aendert den Dateikopf (Journalstempel), nimmt "
-        "locking_mode=EXCLUSIVE und hebt dafuer den Schreibschutz auf",
-}
+from maintenance.wartungsstufen import (                   # noqa: E402
+    WERKZEUGE_A as STUFE_A, WERKZEUGE_B, WERKZEUGE_C,
+)
 
-#: Werkzeuge, die der Vermerk ausdruecklich NICHT als Stufe A einstuft. Sie
-#: stehen hier, damit die Abgrenzung geprueft ist und nicht nur behauptet.
-NICHT_STUFE_A = {
-    "management/search/index_cli.py":
-        "Stufe B - schreibt ausschliesslich in search_index.db, die kein "
-        "anderer Dienst offen haelt",
-}
+#: Die Abgrenzung: Werkzeuge, die ausdruecklich NICHT Stufe A sind.
+#:
+#: BIS BUILD 680 stand hier EIN Eintrag (index_cli). Seit Build 686 sind es
+#: alle 26 - Stufe B und Stufe C zusammen. Das ist kein Zuwachs an Arbeit,
+#: sondern das Ergebnis der Vollstaendigkeitspruefung: die 26 gab es vorher
+#: auch schon, sie waren nur nicht beurteilt.
+NICHT_STUFE_A = dict(WERKZEUGE_B)
+NICHT_STUFE_A.update(WERKZEUGE_C)
 
 
 def _quelle(relpfad: str) -> str:
@@ -205,21 +204,55 @@ def test_eb04_abgrenzung_ist_geprueft_und_nicht_behauptet(relpfad):
     Sicherung genau dort wirkungslos, wo sie gebraucht wird.
     """
     quelle = _quelle(relpfad)
-    assert "wartungsvorbehalt" not in quelle, (
-        "%s ist als %s eingestuft und darf den Vorbehalt nicht aufrufen."
-        % (relpfad, NICHT_STUFE_A[relpfad]))
+    # BUILD 686 - GEPRUEFT WIRD DER AUFRUF, NICHT DAS WORT.
+    #
+    # Bis Build 680 stand hier 'assert "wartungsvorbehalt" not in quelle'
+    # ueber den GANZEN Quelltext. Das prueft etwas anderes als das, was
+    # gemeint ist: Es verbietet einem Stufe-B-Werkzeug auch, seine
+    # Einstufung im DATEIKOPF zu nennen - und genau das ist bei Stufe B
+    # gefordert. Der Wächter stand damit der Regel im Weg, die er sichern
+    # soll. Aufgefallen bei der Vollstaendigkeitspruefung, als index_cli
+    # seinen Kopfeintrag bekommen sollte.
+    verboten = ("from maintenance.wartungsvorbehalt import",
+                "import maintenance.wartungsvorbehalt")
+    treffer = [z for z in verboten if z in quelle]
+    assert treffer == [], (
+        "%s ist als '%s' eingestuft und darf den Vorbehalt nicht aufrufen "
+        "(gefunden: %s)." % (relpfad, NICHT_STUFE_A[relpfad][:70], treffer))
+
+
+#: Die Werkzeuge, die die Analyse K1-K8 (Build 609) und ihr Nachtrag
+#: (Build 615) benannt haben. Sie stehen hier NAMENTLICH und nicht als Zahl:
+#: Bis Build 680 pruefte EB05 'len(STUFE_A) == 6'. Eine Zahl sagt nicht, WER
+#: fehlt - und sie geht bei jedem berechtigten Zuwachs kaputt, ohne dass
+#: jemand sieht, ob der Zuwachs richtig war. Ein Name laesst sich pruefen.
+_AUS_DER_ANALYSE = (
+    "management/migrate.py",
+    "tools/migrate-dbs.py",
+    "management/migration_fleet/migration_fleet_admin.py",
+    "management/consolidate_default_db.py",
+    "tools/forensic_index_upgrade.py",
+    "tools/convert_journal_mode.py",           # Nachtrag Build 615
+)
 
 
 def test_eb05_die_liste_deckt_sich_mit_dem_vermerk():
     """
-    EB05 - Sechs Stufe-A-Werkzeuge, und alle sechs gibt es wirklich.
+    EB05 - Die Werkzeuge aus dem Vermerk sind alle noch da, und jeder
+    Eintrag zeigt auf eine wirkliche Datei.
 
     Ein Eintrag, der auf keine Datei zeigt, waere eine Sicherung, die niemand
     vermisst - der Test ueber ihn liefe gruen, weil er nichts findet.
+
+    DIE LISTE DARF WACHSEN, und sie ist in Build 686 gewachsen (drei
+    Nachtraege aus der Vollstaendigkeitspruefung). Was sie NICHT darf, ist
+    schrumpfen: wer ein Werkzeug aus der Analyse herausnimmt, muss das
+    ausdruecklich tun und diesen Test dabei anfassen.
     """
-    assert len(STUFE_A) == 6, (
-        "Fuenf Werkzeuge aus dem Vermerk zu Build 609, dazu "
-        "convert_journal_mode als Nachtrag aus Build 615.")
+    fehlend = [p for p in _AUS_DER_ANALYSE if p not in STUFE_A]
+    assert fehlend == [], (
+        "Aus der Analyse K1-K8 verschwunden: %s. Ein Werkzeug faellt nicht "
+        "beilaeufig aus der Stufe A heraus." % fehlend)
     for relpfad in list(STUFE_A) + list(NICHT_STUFE_A):
         assert (_WURZEL / relpfad).is_file(), \
             "%s ist eingetragen, existiert aber nicht." % relpfad
@@ -382,3 +415,129 @@ def test_eb11_convert_journal_mode_bricht_bei_belegter_datei_ab(anlage,
     assert werkzeug.header_stempel(db) == stempel_vorher, \
         "Der Journalstempel wurde veraendert, obwohl der Vorbehalt griff."
 
+
+
+# -----------------------------------------------------------------------------
+# EB12-EB14 - die drei Nachtraege aus Build 686, am VERHALTEN
+#
+# Fuer alle drei gilt dasselbe wie fuer EB06-EB11: eine betroffene Datei wird
+# EXKLUSIV GESPERRT gehalten, und das Werkzeug muss 3 zurueckgeben, ohne
+# etwas anzufassen. Bei den beiden Templates-Werkzeugen ist das besonders
+# wichtig, weil ihr scharfer Lauf eine Tabelle DROPPT: waere der Vorbehalt
+# hinter dem Umbau gelandet, sähe die Quelltextpruefung (EB01) trotzdem
+# gruen aus.
+# -----------------------------------------------------------------------------
+
+def _templates_db(pfad: Path) -> Path:
+    """Eine templates.db mit genau den Tabellen, die die beiden anfassen."""
+    pfad.parent.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(str(pfad))
+    con.executescript("""
+        CREATE TABLE templates_audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            action TEXT NOT NULL, target_id TEXT NOT NULL,
+            target_type TEXT NOT NULL CHECK (target_type IN ('module','query')),
+            changed_by TEXT NOT NULL, changed_at INTEGER NOT NULL,
+            old_value TEXT, new_value TEXT);
+        CREATE TABLE placeholder_queries (
+            id TEXT PRIMARY KEY, title TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '', sql_query TEXT,
+            tags TEXT, return_type TEXT NOT NULL DEFAULT 'scalar',
+            is_active INTEGER NOT NULL DEFAULT 1, created_by TEXT NOT NULL,
+            created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+    """)
+    con.commit()
+    con.close()
+    return pfad
+
+
+def test_eb12_audit_check_bricht_bei_belegter_templates_db_ab(anlage, capsys):
+    """
+    EB12 - migrate_templates_audit_check gibt 3 zurueck, und die Tabelle
+    steht danach unveraendert da.
+
+    DIE GEGENPROBE IST DER PUNKT: Ein Rebuild, der bis zum 'DROP TABLE'
+    gekommen waere, liesse sich am fehlenden Namen ablesen. Hier muss beides
+    noch da sein.
+    """
+    db = _templates_db(anlage / "templates.db")
+    from management import migrate_templates_audit_check as tool
+
+    with _Halter(db):
+        rc = tool.main(["--templates-db", str(db)])
+
+    assert rc == RUECKGABE_VORBEHALT
+    assert "WARTUNGSVORBEHALT" in capsys.readouterr().out
+    with sqlite3.connect(str(db)) as con:
+        ddl = con.execute(
+            "SELECT sql FROM sqlite_master WHERE name='templates_audit_log'"
+        ).fetchone()[0]
+        rest = [r[0] for r in con.execute(
+            "SELECT name FROM sqlite_master WHERE name LIKE '%__new'")]
+    assert "'template'" not in ddl, "Der Rebuild ist trotzdem gelaufen."
+    assert rest == [], "Eine Zwischentabelle blieb liegen: %s" % rest
+
+
+def test_eb13_placeholders_bricht_ab_und_legt_kein_backup(anlage, capsys):
+    """
+    EB13 - migrate_templates_placeholders gibt 3 zurueck - UND legt keine
+    Sicherungskopie an.
+
+    DAS BACKUP IST HIER DIE EIGENTLICHE PRUEFUNG: Der Vorbehalt steht mit
+    Absicht VOR der Kopie. Eine '.pre489.bak' ohne zugehoerigen Lauf waere
+    spaeter nicht von einer mit zu unterscheiden - und wer sie findet,
+    schliesst daraus, der Umbau habe stattgefunden.
+    """
+    db = _templates_db(anlage / "templates.db")
+    from management import migrate_templates_placeholders as tool
+
+    with _Halter(db):
+        rc = tool.main(["--templates-db", str(db)])
+
+    assert rc == RUECKGABE_VORBEHALT
+    assert "WARTUNGSVORBEHALT" in capsys.readouterr().out
+    assert not (anlage / "templates.db.pre489.bak").exists(), \
+        "Der Vorbehalt steht hinter der Sicherungskopie statt davor."
+    with sqlite3.connect(str(db)) as con:
+        # 'sqlite_sequence' bleibt aussen vor: SQLite legt sie wegen des
+        # AUTOINCREMENT im Testaufbau selbst an, sie sagt ueber den Umbau
+        # nichts.
+        namen = sorted(r[0] for r in con.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' "
+            "AND name NOT LIKE 'sqlite_%'"))
+    assert namen == ["placeholder_queries", "templates_audit_log"], \
+        "Der Umbau ist trotzdem angelaufen: %s" % namen
+
+
+def test_eb14_repair_block_types_bricht_bei_belegter_evidence_ab(
+        anlage, capsys):
+    """
+    EB14 - repair_block_types --apply gibt 3 zurueck, wenn eine
+    evidence-Datenbank belegt ist.
+
+    UND DER TROCKENLAUF BLEIBT FREI: derselbe Aufruf ohne '--apply' laeuft
+    auch bei belegter Datei durch. Das ist Absicht - wer das Nachsehen so
+    teuer macht wie das Handeln, erreicht, dass niemand mehr nachsieht.
+    """
+    ev = anlage / "evidence"
+    ev.mkdir(parents=True, exist_ok=True)
+    db = ev / "evidence_18.db"
+    con = sqlite3.connect(str(db))
+    con.execute("CREATE TABLE report_blocks (block_id TEXT, report_id TEXT, "
+                "block_type TEXT, block_data TEXT, updated_at INTEGER)")
+    con.commit()
+    con.close()
+
+    from management import repair_block_types as tool
+
+    with _Halter(db):
+        rc = tool.main(["--evidence-dir", str(ev), "--apply",
+                        "--ja-backup-vorhanden"])
+    assert rc == RUECKGABE_VORBEHALT
+    assert "WARTUNGSVORBEHALT" in capsys.readouterr().out
+
+    with _Halter(db):
+        rc_trocken = tool.main(["--evidence-dir", str(ev)])
+    assert rc_trocken == 0, (
+        "Der Trockenlauf muss auch bei belegter Datei durchlaufen - er "
+        "liest nur.")

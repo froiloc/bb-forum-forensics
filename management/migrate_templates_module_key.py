@@ -16,6 +16,13 @@
 #     python -m management.migrate_templates_module_key --templates-db PATH
 #     python -m management.migrate_templates_module_key --config ./config.yaml
 #
+# WARTUNGSSTUFE B (Einstufung Build 686, Vorgang da6c16d0): Der Lauf ist
+#   rein additiv (ADD COLUMN, Index IF NOT EXISTS, ein Seed) und droppt
+#   nichts. Deshalb KEIN Wartungsvorbehalt. ZWEI EINSCHRAENKUNGEN: Das
+#   'ALTER TABLE' braucht eine Schreibsperre - haelt der Dienst die
+#   templates.db, scheitert der Lauf. Und dieses Werkzeug legt als einziges
+#   der sechs KEIN Backup im Code an; die Sicherung steht nur als Satz oben.
+#
 # Beleg: Bauplan Build 340/341 §5.1 (stabile Kennung auf Entwickler-Wunsch);
 #        templates.db liegt ausserhalb des coordinator-Migrationsframeworks.
 # =============================================================================

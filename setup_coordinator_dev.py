@@ -49,6 +49,14 @@
 #
 # Beleg: Bauplan_Baustelle2_Webserver_v0_4.md § 9.1
 # Beleg: Projektgespräch 2026-04-18
+# WARTUNGSSTUFE B (Einstufung Build 686, Vorgang da6c16d0): Es legt nur
+#   Tabellen an, die es noch nicht gibt (IF NOT EXISTS), und droppt nichts.
+#   Deshalb KEIN Wartungsvorbehalt. DIE EINSCHRAENKUNG, und sie wiegt: Es
+#   schreibt die coordinator.db mit eigenem SQL AN DER AUDITIERTEN ROUTE
+#   VORBEI (kein CoordinatorWriter, kein Auditbeleg) und hat keine Sperre
+#   dagegen, auf eine PRODUKTIVE Datei gerichtet zu werden. Es gehoert
+#   ausschliesslich in die Entwicklung - siehe den DEPRECATION-Block oben.
+#
 # Version: v0.7.469 · Build: 469 · 2026-07-20
 # Build 469: Schluesselumstellung user_id -> subject_id (M019) — Skript baut
 #            bewusst den Vor-M019-Stand; Nach-Checks jetzt migrationsrobust.
