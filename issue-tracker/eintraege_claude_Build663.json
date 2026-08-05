@@ -70,6 +70,14 @@
       "attachments": [],
       "updates": [
         {
+          "timestamp": "2026-08-03T12:01:38.372129+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
+        },
+        {
           "timestamp": "2026-08-04T12:00:00+00:00",
           "author": "Claude",
           "action": "status_change",
@@ -109,6 +117,14 @@
       ],
       "attachments": [],
       "updates": [
+        {
+          "timestamp": "2026-08-03T11:55:53.195062+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
+        },
         {
           "timestamp": "2026-08-04T12:00:00+00:00",
           "author": "Claude",

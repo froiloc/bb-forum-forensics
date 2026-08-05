@@ -1,0 +1,43 @@
+{
+  "issues": [
+    {
+      "id": "f39ad572-6b41-4e28-8c07-5d1962b8ae43",
+      "type": "bug",
+      "title": "merge-new-tickets.sh kann nicht funktionieren - Eintraege sammeln sich seit Build 661",
+      "affected_version": "0.8.667",
+      "reporter": "Claude",
+      "reported_at": "2026-08-05T09:30:00+00:00",
+      "prerequisites": "Mehr als eine eintraege_claude_Build*.json im Verzeichnis issue-tracker/.",
+      "description": "BEHOBEN IN BUILD 668.\n\nBEFUND: 'python merge.py eintraege_claude_Build*.json --auto-resolve source && rm ...' - merge.py nimmt GENAU EINE Quelldatei, das Muster expandierte zu sieben, argparse brach mit 'unrecognized arguments' ab. Es scheiterte SICHER (das '&&' verhinderte das Loeschen), aber es lief nie. Folge: die Eintragsdateien lagen seit Build 661 da, und der Tracker fuehrte erledigte Arbeit als offen.\n\nBEHEBUNG: Schleife statt Muster-Expansion, Abbruch beim ersten Fehler, Loeschen nur bei Erfolg genau dieser Datei, Zaehlung und Abschlussmeldung, '--trocken'-Lauf.\n\nMITGEFANGEN - UND DER WICHTIGERE TEIL: '--auto-resolve source' haette bei den beiden Konfliktvorgaengen den Eintrag 'Issue erstellt' (Alex) verschwinden lassen, lautlos. '--auto-resolve merge' haette dafuer den Status 'open' behalten. Keine der beiden Strategien ist fuer sich richtig. Statt die Strategie zu wechseln, wurde die QUELLE vollstaendig gemacht: die gelieferte Fassung traegt die vorhandene Historie mit. IT03 bewacht das kuenftig auf der Erstellerseite.\n\nECHTER LAUF auf einer Wegwerfkopie: 6 Dateien eingemischt, 167 Vorgaenge, keine verlorene Historie.\n\nTESTS: IT01-IT05.",
+      "expected_behavior": "Gelieferte Eintraege landen in data/issues.json, ohne Historie zu verlieren.",
+      "actual_behavior": "Das Skript brach ab; die Dateien sammelten sich seit Build 661 an.",
+      "status": "resolved",
+      "priority": "high",
+      "severity": "major",
+      "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": "0.8.668",
+      "target_version": "0.8.668",
+      "environment": {
+        "os": "Linux",
+        "python_version": "3.14",
+        "database": "-"
+      },
+      "tags": [
+        "Issue-Tracker",
+        "Werkzeuge"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-05T09:35:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "resolved",
+          "comment": "Skript repariert, Konfliktquelle vervollstaendigt, Waechter IT03."
+        }
+      ]
+    }
+  ]
+}
