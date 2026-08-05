@@ -232,6 +232,46 @@ class DiagSpurensequenzTests(unittest.TestCase):
         # Differenz ist der berichtigte Fehler.
         self.assertEqual(3, erg["luecke_urls"])
 
+    # -- SL07 -----------------------------------------------------------------
+    def test_sl07_null_id_faellt_auf_das_blosse_fragment_zurueck(self):
+        """
+        BUILD 675, aus eigenem Schaden - und zwar aus einem, der eine falsche
+        Schlussfolgerung nach sich gezogen hat.
+
+        get_trace_sequence() verzweigt auf den WERT der ID-Spalte, nicht auf
+        ihr Vorhandensein: ist der Wert NULL, wird das BLOSSE Fragment
+        gesucht ('%profile.php?id=%'), nicht '<fragment>None'. Genau dieser
+        Fall liegt im Bestand vor - das einzige 'pgp_probe'-Ziel traegt
+        actor_user_id NULL und holt damit eine Profilseite in die Sequenz.
+
+        Mein Nachbau suchte statt dessen nach 'profile.php?id=None' und fand
+        nichts. Ergebnis: ein Sequenzeintrag zu wenig (6346 statt 6347) - und
+        ich hatte diese Abweichung der unzugesicherten Reihenfolge von
+        'LIMIT 1' zugeschrieben. Eine eigene Abweichung mit einer fremden
+        Ursache erklaert; genau das darf nicht passieren.
+        """
+        zeile = {"id": 1091, "url_type": "pgp_probe", "forum_id": None,
+                 "topic_id": None, "post_id": None, "pm_topic_id": None,
+                 "actor_user_id": None}
+        gruppe, url_typ, suchtext = self.modul.muster_fuer(zeile)
+        self.assertEqual("other", gruppe)
+        self.assertEqual(
+            "profile.php?id=", suchtext,
+            "Bei NULL muss das blosse Fragment gesucht werden - so macht es "
+            "der Produktivcode.")
+        self.assertNotIn("None", suchtext,
+                         "'None' im Suchtext ist der berichtigte Fehler.")
+
+        # Gegenprobe: mit dem blossen Fragment wird eine Profilseite gefunden.
+        urls = [(2518, "/forum/profile.php?id=1488"),
+                (2519, "/forum/profile.php?id=1488&menu=badge")]
+        erg = self.modul.messe(urls, [zeile])
+        self.assertEqual(
+            1, len(erg["sequenz"]),
+            "Das Ziel mit NULL-Kennung muss einen Sequenzeintrag beisteuern.")
+        self.assertEqual("other", erg["sequenz"][0]["gruppe"])
+        self.assertEqual([], erg["ohne_treffer"])
+
     # -- SL05 -----------------------------------------------------------------
     def test_sl05_type_map_ist_wortgleiche_abschrift(self):
         """

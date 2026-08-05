@@ -193,6 +193,14 @@ _GEPRUEFT_672 = ("Build 672, 2026-08-05, im Container (Python 3.11) gegen "
                  "einen echten Fall")
 
 
+#: Build 675. Wie zuvor im Container gegen einen gebauten Wegwerf-Bestand, der
+#: die am 05.08.2026 in der VM gemessene Lage nachstellt (Profilseiten nur fuer
+#: den Beschuldigten selbst, Ziele fuer viele weitere Benutzer).
+_GEPRUEFT_675 = ("Build 675, 2026-08-05, im Container (Python 3.11) gegen "
+                 "einen gebauten Wegwerf-Bestand unter /tmp - NICHT gegen "
+                 "einen echten Fall")
+
+
 def _bsp(aufruf: str, wirkung: str, geprueft: str = _GEPRUEFT) -> CliBeispiel:
     """Kurzform fuer einen GEFAHRENEN Beispielaufruf."""
     return CliBeispiel(aufruf=aufruf, wirkung=wirkung, geprueft=geprueft)
@@ -3614,6 +3622,78 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "Das Werkzeug prueft die AUFBEWAHRUNG. Es sagt nichts "
                 "darueber, ob die Sicherungen des Bestandes brauchbar sind - "
                 "dafuer ist 'backup_admin pruefen' da.",
+            ),
+        ),
+    ),
+    CliEintrag(
+        schluessel="pruefe_profilerfassung",
+        pfad="tools/pruefe_profilerfassung.py",
+        aufruf="python tools/pruefe_profilerfassung.py "
+               "(--verzeichnis VERZ | --forensic-db DATEI) [--fehlende N] "
+               "[--csv DATEI]",
+        titel="Fehlende Profilseiten je Fall auszaehlen",
+        gruppe="Diagnose",
+        zweck="Prueft fallweise, ob zu den erfassten Benutzern auch die "
+              "Profilseiten im Bestand liegen, und nennt die Faelle, die neu "
+              "erfasst werden muessen (Vorgang 90e7c214).",
+        art="lesend",
+        datenbanken=("forensic_<uid>.db (lesend, mode=ro)",),
+        betrieb="Im laufenden Betrieb gefahrlos. Ausschliesslich lesend ueber "
+                "'mode=ro'; kein PRAGMA, keine TEMP-Sicht, keine Kopie. Die "
+                "evidence_<uid>.db wird nicht geoeffnet.",
+        ausgabe="pruefe_profilerfassung.log im aktuellen Verzeichnis; mit "
+                "'--csv' zusaetzlich eine Liste der betroffenen Faelle "
+                "(subject_id, Benutzername, Fehlmenge).",
+        hinweis="WAS DAS WERKZEUG NICHT SAGT: ob eine Nacherfassung noch "
+                "moeglich ist. Das Forum ist beschlagnahmt und nicht "
+                "erreichbar; die Auskunft lautet allein, WO etwas fehlt. Der "
+                "Anlass: am 05.08.2026 standen in forensic_1488.db 1.000 "
+                "Profil-Erfassungsziele 12 Profilseiten gegenueber - und alle "
+                "zwoelf gehoerten dem Beschuldigten selbst. Die Profilseite "
+                "ist die Seitenart, die fuer die Zuordnung eines Kontos zu "
+                "einer natuerlichen Person am meisten hergibt.",
+        konfiguration=KONFIG_KEINE,
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/pruefe_profilerfassung.py "
+                     "--verzeichnis ./data/forensic",
+                     "Geht alle 'forensic_*.db' des Verzeichnisses durch und "
+                     "stellt je Fall Ziele, vorhandene und fehlende "
+                     "Profilseiten gegenueber. Im Versuch gegen einen "
+                     "gebauten Bestand: 41 Ziele, 1 vorhanden, 40 fehlend, "
+                     "Befund BETROFFEN, am Ende subject_id und Benutzername "
+                     "zum Uebernehmen. Rueckgabewert 1.",
+                     _GEPRUEFT_675),
+                _bsp("python tools/pruefe_profilerfassung.py "
+                     "--forensic-db ./data/forensic/forensic_1488.db "
+                     "--fehlende 20 --csv betroffen.csv",
+                     "Nur ein Fall, dazu die ersten 20 fehlenden "
+                     "Benutzerkennungen und eine CSV-Liste der betroffenen "
+                     "Faelle mit Semikolon als Trenner.",
+                     _GEPRUEFT_675),
+            ),
+            exit_codes=((0, "kein Fall betroffen"),
+                        (1, "mindestens ein Fall betroffen - das ist ein "
+                            "BEFUND und kein Fehler"),
+                        (2, "Aufruf- oder Zugriffsfehler: Verzeichnis oder "
+                            "Datei fehlt, oder es liegt keine "
+                            "'forensic_*.db' darin")),
+            warnungen=(
+                "DIE KENNUNG STEHT NICHT IMMER DIREKT HINTER "
+                "'profile.php?'. Im Bestand kommen beide Formen vor: "
+                "'profile.php?id=1488' und "
+                "'profile.php?section=essentials&edit&id=1488'. Das Werkzeug "
+                "sucht deshalb 'id=' irgendwo in der Abfragezeichenkette. Wer "
+                "eine eigene Auswertung schreibt und nur die erste Form "
+                "sucht, meldet eine Fehlmenge, die es nicht gibt (Testfall "
+                "PP03).",
+                "Ein Erfassungsziel ohne Benutzerkennung (actor_user_id NULL) "
+                "wird NICHT mitgezaehlt - ihm laesst sich keine Profilseite "
+                "zuordnen. Im Bestand gab es am 05.08.2026 genau eines "
+                "davon, ein 'pgp_probe'-Ziel.",
+                "Fehlt die Tabelle 'page_aliases', wird ohne sie gezaehlt und "
+                "das im Protokoll benannt. Die Fehlmenge faellt dann "
+                "moeglicherweise zu gross aus.",
             ),
         ),
     ),

@@ -224,13 +224,40 @@ def muster_fuer(row: sqlite3.Row) -> tuple[str, str, str] | None:
     if url_typ not in TYPE_MAP:
         return None
     gruppe, id_spalte, fragment = TYPE_MAP[url_typ]
-    if id_spalte is None:
-        return gruppe, url_typ, fragment
-    wert = row[id_spalte]
+
+    # -------------------------------------------------------------------------
+    # BUILD 675 - BERICHTIGUNG EINES MODELLFEHLERS.
+    #
+    # Bis Build 674 stand hier: 'ist die Spalte belegt? sonst suche
+    # <fragment>None' - was nie passt. Das war eine EIGENE Erfindung und nicht
+    # das, was der Produktivcode tut. get_trace_sequence() (db/forensic_db.py,
+    # Z. 1350-1369) verzweigt naemlich auf den WERT, nicht auf die Spalte:
+    #
+    #     id_val = None
+    #     if id_col:
+    #         id_val = row[id_col]
+    #     if id_val is not None:
+    #         pattern = f"%{url_fragment}{id_val}%"
+    #     else:
+    #         pattern = f"%{url_fragment}%"          # <-- der Rueckfall
+    #
+    # Ein Ziel MIT ID-Spalte, deren Wert aber NULL ist, faellt also in den
+    # Rueckfall und sucht das BLOSSE Fragment. Genau das lag im Bestand vor:
+    # das einzige 'pgp_probe'-Ziel (st.id 1091) traegt actor_user_id NULL,
+    # sucht damit '%profile.php?id=%' und nimmt die erste Profilseite in die
+    # Sequenz - unter der Gruppe 'other'.
+    #
+    # WAS DIESER FEHLER ANGERICHTET HAT: Er ist die Erklaerung fuer die
+    # Abweichung 6346 gegen 6347, die ich am 05.08.2026 der fehlenden
+    # Reihenfolgezusicherung von 'LIMIT 1' zugeschrieben hatte. Diese Deutung
+    # ist damit WIDERLEGT - der eine fehlende Eintrag war mein Modellfehler,
+    # nicht SQLite. Der Hinweis auf die unzugesicherte Reihenfolge bleibt
+    # sachlich richtig, aber er hatte hier nichts zu suchen: ich habe eine
+    # eigene Abweichung mit einer fremden Ursache erklaert.
+    # -------------------------------------------------------------------------
+    wert = row[id_spalte] if id_spalte else None
     if wert is None:
-        # Der Produktivcode bildet dann '%<fragment>None%' - was nie passt.
-        # Wir zaehlen das als Ziel ohne Treffer, statt es zu verschweigen.
-        return gruppe, url_typ, fragment + "None"
+        return gruppe, url_typ, fragment
     return gruppe, url_typ, fragment + str(wert)
 
 
@@ -629,17 +656,23 @@ def main() -> int:
     log("  Ziel in der Sequenz landet, kann davon abweichen.")
     log()
     log("  BUILD 671 STAND HIER: 'wie viele Seiten uebergangen werden, steht")
-    log("  fest'. Das war zu fest behauptet, und der erste echte Lauf hat es")
-    log("  widerlegt. Zwei Groessen wackeln:")
+    log("  fest'. Das war zu fest behauptet. Eine Groesse wackelt wirklich:")
     log("    - Die Trefferpruefung ist eine Teilzeichenkette. Das Muster")
     log("      'sid=2' passt auch auf 'sid=202313'. Solche Fremdtreffer")
     log("      stehen oben unter MEHRDEUTIGE MUSTER und koennen die Zahl der")
     log("      erreichbaren Seiten nach OBEN verfaelschen.")
-    log("    - Am 05.08.2026 wich die Zahl der Sequenzeintraege um genau 1 vom")
-    log("      laufenden Server ab (6346 hier, 6347 dort). Die Abweichung ist")
-    log("      klein, aber sie ist da - und sie ist der Beleg dafuer, dass die")
-    log("      Reihenfolge wirklich nicht zugesichert ist.")
     log("  Die Zahl ist damit eine belastbare OBERGRENZE, kein Endstand.")
+    log()
+    log("  ZURUECKGENOMMEN (Build 675): hier stand, die Abweichung von genau")
+    log("  einem Eintrag gegenueber dem laufenden Server (6346 gegen 6347) sei")
+    log("  der Beleg fuer die unzugesicherte Reihenfolge von 'LIMIT 1'. Das war")
+    log("  falsch. Der fehlende Eintrag war ein Modellfehler dieses Werkzeugs:")
+    log("  ein Erfassungsziel mit ID-Spalte, deren Wert NULL ist, faellt im")
+    log("  Produktivcode auf das BLOSSE Fragment zurueck - hier wurde statt")
+    log("  dessen nach '<fragment>None' gesucht. Berichtigt; die Zahl sollte")
+    log("  jetzt mit dem Server uebereinstimmen. Der Hinweis auf die")
+    log("  Reihenfolge bleibt sachlich richtig, war hier aber die falsche")
+    log("  Erklaerung fuer eine eigene Abweichung.")
     log()
 
     if args.json:

@@ -1,0 +1,176 @@
+{
+  "issues": [
+    {
+      "id": "90e7c214-5f83-4a61-8d29-3b7e04c1a5df",
+      "type": "bug",
+      "title": "1000 Profil-Erfassungsziele finden keine einzige Seite im Bestand",
+      "affected_version": "0.8.671",
+      "reporter": "Claude",
+      "reported_at": "2026-08-05T14:05:00+00:00",
+      "prerequisites": "Ein Bestand mit Erfassungszielen der Typen profile, other_profile oder pgp_probe.",
+      "description": "UMGEHAENGT AM 05.08.2026: Dieser Vorgang gehoert in die ERFASSUNG (Prepper), nicht in den Webserver. Die urspruengliche Fassung vermutete einen Fehler der Spurennavigation. Gemessen wurde etwas anderes und Schwereres.\n\nDIE MESSUNG (forensic_1488.db, 05.08.2026):\n  Profilseiten in pages         :   12\n  Profilseiten in page_aliases  :   13\n  Profil-Erfassungsziele        : 1000  (other_profile 982, profile 17, pgp_probe 1)\n\nALLE ZWOELF Seiten gehoeren DEMSELBEN Benutzer - dem Beschuldigten selbst (id=1488), in verschiedenen Unterseiten: Uebersicht, Abzeichen, Bilder, Einstellungen, Sprache, PGP, Grunddaten, Ignorierliste, Persoenliches, Persoenlichkeit, Privatsphaere. Die Profilseiten der 982 anderen Benutzer, mit denen der Beschuldigte zu tun hatte, FEHLEN VOLLSTAENDIG.\n\nWARUM DAS SCHWER WIEGT: Die Profilseite ist die Seitenart, die fuer die Zuordnung eines Kontos zu einer natuerlichen Person am meisten hergibt - Registrierungsdatum, Signatur, Kontaktangaben, Selbstbeschreibung, PGP-Schluessel. Sie fehlt also genau dort, wo ermittelt wird. Und sie fehlt nicht fuer den Beschuldigten, sondern fuer seine Gegenueber - die Personen, die als naechste in den Blick geraten.\n\nDAS IST KEINE LUECKE DER NAVIGATION. Die Belege sind nicht da. Ob die Faelle deshalb neu erfasst werden muessen, ist eine Frage an die Erfassung; ob eine Nacherfassung ueberhaupt moeglich ist, eine an die Sachlage - das Forum ist beschlagnahmt.\n\nWERKZEUG DAZU (Build 675): tools/pruefe_profilerfassung.py geht alle 'forensic_*.db' eines Verzeichnisses durch, stellt je Fall Ziele und vorhandene Profilseiten gegenueber und nennt am Ende subject_id und Benutzername der betroffenen Faelle - zum Neuerfassen. Nur lesend, 'mode=ro'.\n\nERLEDIGT: die frueher hier vermerkte Abweichung ('der Server fuehrt /forum/profile.php?id=1488 in der Sequenz, mein Werkzeug findet die URL nicht') ist geklaert und war ein Fehler MEINES Werkzeugs. Das einzige 'pgp_probe'-Ziel (st.id 1091) traegt actor_user_id NULL. get_trace_sequence() verzweigt auf den WERT, nicht auf die Spalte, und sucht bei NULL das BLOSSE Fragment '%profile.php?id=%' - trifft damit die erste Profilseite und nimmt sie in die Gruppe 'other'. Mein Nachbau suchte statt dessen nach 'profile.php?id=None'. Das erklaert zugleich die Abweichung 6346 gegen 6347 vollstaendig; meine damalige Deutung ('Beleg fuer die unzugesicherte Reihenfolge von LIMIT 1') ist widerlegt und zurueckgenommen. Berichtigt in Build 675, Testfall SL07.",
+      "expected_behavior": "Zu jedem Profil-Erfassungsziel liegt die Profilseite im Bestand - oder das Fehlen ist benannt, gezaehlt und im Bericht sichtbar. Ein Erfassungsziel ohne Beleg ist die Aussage 'hier war eine Spur, und der Beleg dazu fehlt'; die gehoert in die Akte, nicht in ein 'continue'.",
+      "actual_behavior": "982 Profilseiten fremder Benutzer fehlen; vorhanden sind ausschliesslich die 12 Unterseiten des Beschuldigten selbst.",
+      "status": "open",
+      "priority": "critical",
+      "severity": "critical",
+      "assigned_to": "Claude",
+      "related_to": [
+        "aa0d9033-91f2-4cb5-8cd0-2ff2e59ee215",
+        "2f1044b9-818d-49bb-9621-04fbf5208791"
+      ],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "os": "Windows (VM)",
+        "python_version": "3.14",
+        "database": "forensic_1488.db"
+      },
+      "tags": [
+        "Erfassung",
+        "Prepper",
+        "Profil",
+        "Grundregel1"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-05T13:24:57.476725+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build672.json"
+        },
+        {
+          "timestamp": "2026-08-05T14:05:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Aus der Messung zu 2f1044b9 abgetrennt. Loest die widerlegte Vermutung in aa0d9033 ab."
+        },
+        {
+          "timestamp": "2026-08-05T14:06:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Der Lauf mit dem berichtigten Werkzeug (Build 672) bestaetigt den Befund unveraendert: 1.000 Erfassungsziele ohne jede passende Seite (other_profile 982, profile 17, pgp_probe 1), Gruppe 'profile' leer, 0 Profilseiten in der Gruppe 'other'. Die Berichtigung der Zaehlweise hat daran nichts geaendert - der Befund haengt nicht an ihr. Die drei SQL-Abfragen zur Klaerung stehen weiter aus."
+        },
+        {
+          "timestamp": "2026-08-05T14:07:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Beschreibung nach den drei SQL-Abfragen vom 05.08.2026 neu gefasst und auf die Erfassung umgehaengt. Schweregrad auf 'critical' angehoben: es fehlen nicht Navigationswege, sondern Beweismittel - und zwar bei der Seitenart mit dem hoechsten Ermittlungswert. Werkzeug tools/pruefe_profilerfassung.py liegt bei, damit der gesamte Bestand geprueft werden kann."
+        },
+        {
+          "timestamp": "2026-08-05T14:09:00+00:00",
+          "author": "Claude",
+          "action": "priority_change",
+          "old_value": "high",
+          "new_value": "critical",
+          "comment": "Fehlende Belege bei der aussagekraeftigsten Seitenart."
+        }
+      ]
+    },
+    {
+      "id": "2f1044b9-818d-49bb-9621-04fbf5208791",
+      "type": "bug",
+      "title": "Spurensequenz enthaelt von mehrseitigen Themen nur eine einzige Seite",
+      "affected_version": "0.8.669",
+      "reporter": "Claude",
+      "reported_at": "2026-08-05T11:30:00+00:00",
+      "prerequisites": "Ein Thema mit mehr als einer Seite, auf dem der Beschuldigte Spuren hinterlassen hat.",
+      "description": "GEMESSEN am 2026-08-05 in der VM auf /forum/viewtopic.php?id=120870&p=2 (Vorgang 120870, drei Seiten, 40 Spuren auf Seite 2). Aufgefallen bei der Untersuchung von c658fc41.\n\nDER BEFUND: get_trace_sequence() (db/forensic_db.py, Schleife ab Z. 1339) sucht je Erfassungsziel GENAU EINE URL:\n\n    SELECT url FROM blob_lookup WHERE url LIKE ? LIMIT 1\n\nDas Muster ist '%viewtopic.php?id=<topic_id>%'. Ein LIMIT 1 OHNE ORDER BY liefert eine beliebige der passenden Zeilen. Fuer ein Thema mit drei erfassten Seiten gelangt damit hoechstens eine davon in die Sequenz - welche, entscheidet die Speicherreihenfolge.\n\nMESSWERTE (Probe 2, Teil D):\n  - Eintraege in traceSequence insgesamt: 6347\n  - davon mit Seitenteil (?p= / &p=): 0\n  - verschiedene Themen-IDs in der Gruppe 'topic': 1864\n  - davon mit mehr als einem Eintrag: 0\n  - Rang von '/forum/viewtopic.php?id=120870&p=2': -1 (nicht enthalten)\n  - Rang von '/forum/viewtopic.php?id=120870':   1501 (enthalten)\n\nKEIN EINZIGER der 6347 Eintraege traegt einen Seitenteil. Von jedem mehrseitigen Thema kennt die Sequenz also genau eine Seite.\n\nWARUM DAS SCHWER WIEGT: Die Spurennavigation ist der Weg, auf dem Ermittelnde die Spuren eines Beschuldigten der Reihe nach abarbeiten. Seiten, die nicht in der Sequenz stehen, werden dabei nicht angelaufen - ohne Meldung, ohne Luecke in der Zaehlung, ohne dass es jemandem auffiele. Das beruehrt Grundregel 1: kein Beleg darf still uebersprungen werden. Die gemessene Seite trug 40 Spuren.\n\nGEMESSEN am 05.08.2026: 2.049 Seiten (siehe Update vom selben Tag). Urspruenglich stand hier: wie viele Seiten im Bestand insgesamt betroffen sind, ist noch nicht gemessen. Dafuer braucht es eine Auswertung von blob_lookup gegen scrape_targets in der VM. Diese Zahl gehoert vor der Behebung ermittelt, weil sie zugleich der Nachweis der Behebung ist.",
+      "expected_behavior": "Die Sequenz fuehrt JEDE erfasste Seite, die Spuren des Beschuldigten traegt - auch die zweite, dritte und jede weitere Seite eines Themas. Die Reihenfolge innerhalb eines Themas folgt der Seitennummer aufsteigend. Wird eine Seite bewusst ausgelassen, ist das zu benennen und zu begruenden, nicht stillzuschweigen.",
+      "actual_behavior": "0 von 6347 Sequenzeintraegen tragen einen Seitenteil. Je Thema steht genau ein Eintrag in der Sequenz; alle weiteren Seiten desselben Themas sind ueber die Spurennavigation nicht erreichbar.",
+      "status": "in_progress",
+      "priority": "high",
+      "severity": "major",
+      "assigned_to": "Claude",
+      "related_to": [
+        "c658fc41-b368-4b06-9142-5ff519b8d9c9"
+      ],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "os": "Windows (VM)",
+        "browser": "Chromium",
+        "python_version": "3.14",
+        "database": "forensic_<uid>.db"
+      },
+      "tags": [
+        "Spuren",
+        "Navigation",
+        "Vollstaendigkeit",
+        "Grundregel1"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-05T11:30:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Vorgang aus der Messung zu c658fc41 abgetrennt. Belege: Probe 2 Teil D2/D4 vom 2026-08-05."
+        },
+        {
+          "timestamp": "2026-08-05T11:33:56.373380+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build670.json"
+        },
+        {
+          "timestamp": "2026-08-05T13:10:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "MESSWERKZEUG GELIEFERT (Build 671): tools/diag_spurensequenz_luecken.py.\n\nEs beantwortet die Frage, die aus dem Browser nicht zu beantworten war: WIE VIELE erfasste Seiten die Sequenz uebergeht. Erst diese Zahl macht aus dem Einzelfall einen Befund - und sie ist zugleich der Nachweis der Behebung, denn danach muss sie 0 sein.\n\nWAS ES ANFASST: ausschliesslich forensic_<uid>.db, und die nur ueber 'mode=ro'. Die evidence_<uid>.db wird gar nicht geoeffnet - 'blob_lookup' ist eine TEMP-Sicht allein ueber fdb.pages und fdb.page_aliases. Testfall SL04 misst nach dem Lauf die Pruefsumme der Datei und das Ausbleiben von '-wal'/'-journal': die Zusicherung wird gemessen, nicht behauptet.\n\nWAS ES AUSSER DER ZAHL LIEFERT: (a) wie viele der uebergangenen Seiten einen Seitenteil tragen, (b) die Verteilung nach Gruppe - damit misst es aa0d9033 gleich mit und zaehlt, wie viele Profilseiten in der Gruppe 'other' stehen, (c) Erfassungsziele ohne jede passende Seite, die der Produktivcode heute stillschweigend uebergeht, (d) mehrdeutige Muster.\n\nDIE SELBSTPROBE HAT BEIM BAUEN MEINE EIGENE ERWARTUNG WIDERLEGT, und daraus wurde ein zweiter Befund: das Muster '%viewtopic.php?id=12%' passt AUCH auf '...id=120870' - und zwar zuerst. Der Produktivcode nimmt die erste Zeile, findet sie in seen_urls schon vergeben und ueberspringt das Ziel ganz. Ein Thema kann also ein Erfassungsziel und eine erfasste Seite haben und trotzdem KEINEN Eintrag in der Sequenz - weil ein fremdes Thema mit laengerer Kennung sie verdraengt hat. Das ist ein zweiter Weg, auf dem Belege verschwinden, unabhaengig von der Seitenzaehlung. Das Werkzeug weist solche Muster gesondert aus.\n\nNAECHSTER SCHRITT: in der VM gegen forensic_<uid>.db fahren, Ausgabe zurueck. Die Behebung soll auf der gemessenen Zahl aufsetzen, nicht auf einer geschaetzten."
+        },
+        {
+          "timestamp": "2026-08-05T13:11:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "in_progress",
+          "comment": "Messwerkzeug steht; die Behebung wartet auf die Zahl aus der VM."
+        },
+        {
+          "timestamp": "2026-08-05T14:00:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "GEMESSEN AM 05.08.2026 IN DER VM gegen forensic_1488.db (Python 3.14).\n\nZUERST DIE BERICHTIGUNG EINER EIGENEN ZAHL. Das Werkzeug aus Build 671 meldete 73.796 uebergangene Seiten. Diese Zahl ist FALSCH, und der Fehler war meiner: es zaehlte URLs statt Seiten. Eine Seite traegt im Bestand mehrere Adressen. Aufgeteilt ergibt sich:\n\n  73.796 gemeldete URLs\n  -  6.346  zweiter Pfad derselben Seite ('/forum/beginner/...')\n  - 65.216  Sprungmarken in dieselbe Seite ('...?id=5136#p33461')\n  ----------\n  =  2.049  tatsaechlich uebergangene SEITEN\n\nDavon 1.942 Folgeseiten mit Seitenteil (&p=N), deren Basisseite in der Sequenz steht - nachgerechnet: bei ALLEN 1.942. Dazu 107 Benachrichtigungsseiten ('notifications.php?filter=N' und '?id=N'). Die 65.216 Sprungmarken sind KEIN Verlust: die Seite ist erreichbar, nur der Anker fuehrt nicht direkt zum Beitrag.\n\nDER BEFUND BESTEHT ALSO, ABER IN ANDERER GROESSE. Rund 2.000 erfasste Seiten laeuft die Spurennavigation nie an - nicht 73.796. Bei 6.346 Sequenzeintraegen ist das etwa ein Drittel zusaetzlicher Seiten, die heute unerreichbar sind. Grundregel 1 ist damit unveraendert beruehrt, meine erste Darstellung war es aber auch: eine Zahl, die um das Dreissigfache zu hoch ist, beschaedigt genau das Vertrauen, das eine Messung herstellen soll.\n\nBEHOBEN IN BUILD 672: gezaehlt wird nach page_id. Testfall SL06 haelt es fest, die Selbstprobe fuehrt jetzt zwei Zweitadressen mit und verlangt, dass sie nicht mitzaehlen.\n\nWEITERE MESSWERTE AUS DEMSELBEN LAUF:\n  - 149.619 URLs, 19.025 Erfassungsziele, 6.346 Sequenzeintraege\n  - 1.000 Erfassungsziele finden GAR KEINE Seite (other_profile 982, profile 17, pgp_probe 1) - als eigener Vorgang abgetrennt\n  - 182 Erfassungsziele haben mehrdeutige Muster; das schaerfste trifft 224 fremde Seiten ('sid=2' passt auf 'sid=202313')\n  - meine Nachbildung zaehlte 6.346 Sequenzeintraege, der laufende Server 6.347. Die Abweichung von genau einem Eintrag ist der Beleg, dass 'LIMIT 1 ohne ORDER BY' wirklich keine Reihenfolge zusichert - sie war bis dahin nur Theorie."
+        },
+        {
+          "timestamp": "2026-08-05T14:01:00+00:00",
+          "author": "Claude",
+          "action": "priority_change",
+          "old_value": "critical",
+          "new_value": "major",
+          "comment": "Schweregrad von 'critical' auf 'major' gesenkt - nicht weil der Fehler kleiner geworden waere, sondern weil die gemessene Groesse eine andere ist als die zuerst gemeldete: rund 2.000 uebergangene Seiten statt 73.796. Der Vorgang bleibt offen und bleibt Voraussetzung fuer c658fc41."
+        },
+        {
+          "timestamp": "2026-08-05T14:02:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "ZWEITE BERICHTIGUNG DERSELBEN ZAHL - gemessen am 05.08.2026 mit dem nach page_id zaehlenden Werkzeug aus Build 672.\n\n  Build 671 meldete : 73.796  (URLs gezaehlt - falsch)\n  ich schaetzte dann:  2.049  (URL-Arithmetik auf dem alten Befund - ebenfalls falsch)\n  GEMESSEN sind es  :    185  SEITEN\n\nAuch meine Schaetzung von 2.049 war eine URL-Rechnung: ich hatte nur die Pfadvariante '/forum/beginner/' zusammengelegt und uebersehen, dass eine Seite noch viele weitere Adressen traegt - im Bestand rund 23 URLs je Seite. Nur die page_id legt sie zuverlaessig zusammen.\n\nDIE 185 UEBERGANGENEN SEITEN:\n  107  Benachrichtigungsseiten (notifications.php?filter=N und ?id=N)\n   62  Folgeseiten von Themen (viewtopic.php?id=N&p=N) - AUSNAHMSLOS alle 62 sind Folgeseiten\n   16  Folgeseiten von Unterforen (viewforum.php?id=N&p=N)\nVon 6.531 erreichbaren Seiten sind das 2,8 Prozent.\n\nGEGENPROBE AM EINZELFALL: die Seiten, auf denen die Fehlersuche zu c658fc41 stattfand, stehen namentlich in der Luecke - /forum/viewtopic.php?id=120870&p=2 und &p=3 sowie /forum/viewtopic.php?id=24984&p=2; die zugehoerigen Basisseiten stehen in der Sequenz. Die Seite mit den 40 gemessenen Spuren ist also tatsaechlich eine der uebergangenen.\n\nBEWERTUNG: der Befund ist erheblich kleiner als zweimal gemeldet, aber er ist echt und trifft genau die Seiten, auf denen Spuren liegen. Grundregel 1 bleibt beruehrt - nicht wegen der Menge, sondern wegen des Inhalts. Die Sequenz enthaelt weiterhin NULL Eintraege mit Seitenteil."
+        },
+        {
+          "timestamp": "2026-08-05T14:03:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "ZURUECKGENOMMEN: die Abweichung 6346 gegen 6347 war KEIN Beleg fuer die unzugesicherte Reihenfolge von 'LIMIT 1'. Sie war ein Modellfehler meines Messwerkzeugs: ein Erfassungsziel mit ID-Spalte, deren Wert NULL ist, faellt im Produktivcode auf das blosse Fragment zurueck; mein Nachbau suchte nach '<fragment>None'. Berichtigt in Build 675 (Testfall SL07); die Zahl sollte jetzt mit dem Server uebereinstimmen.\n\nIch hatte damit eine EIGENE Abweichung mit einer FREMDEN Ursache erklaert - und die fremde Ursache klang plausibel genug, dass sie zwei Builds lang unwidersprochen im Bericht des Werkzeugs stand. Der Hinweis auf die Teilzeichenketten-Suche und die daraus folgende Obergrenze bleibt bestehen; er ist unabhaengig davon belegt.\n\nDie gemessene Luecke von 185 Seiten ist von der Berichtigung NICHT betroffen: sie beruht auf den Treffern der Ziele mit belegter Kennung."
+        }
+      ]
+    }
+  ]
+}
