@@ -118,8 +118,17 @@ WERKZEUGE_A: Dict[str, str] = {
         "templates.db, evidence_<uid>.db, assets_<uid>.db",
     "management/migration_fleet/migration_fleet_admin.py":
         "companion --confirm; der Rueckweg kopiert ueber das Original",
+    # BUILD 694 - GRUND AUSGETAUSCHT, EINSTUFUNG UNVERAENDERT.
+    # Bis Build 686 lautete er "--overwrite loescht die Ziel-Datei vor der
+    # Transaktion". Das trifft seit Vorgang 1400b31f nicht mehr zu: gebaut
+    # wird unter einem Nebennamen, getauscht erst nach dem COMMIT. Der neue
+    # Grund ist der Tausch selbst - er scheitert unter Windows, solange
+    # jemand die Zieldatei offen haelt, und der Auswertungsdienst tut das.
+    # OB DIE STUFE DESHALB NEU ZU BEURTEILEN IST, ist eine Entscheidung fuer
+    # mc und hier ausdruecklich NICHT vorweggenommen.
     "management/consolidate_default_db.py":
-        "--overwrite loescht die Ziel-Datei vor der Transaktion",
+        "os.replace() auf die default.db am Ende; eine Transaktion ueber "
+        "alle Quellen, kein Backup",
     "tools/forensic_index_upgrade.py":
         "--ausfuehren schreibt in die versiegelte forensic_<uid>.db",
     # BUILD 615 - Nachtrag, angestossen von mc am 2026-07-31.
