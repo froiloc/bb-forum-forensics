@@ -215,6 +215,14 @@ _GEPRUEFT_680 = ("Build 680, 2026-08-05, im Container (Python 3.13) gegen "
                  "einen echten Fall")
 
 
+#: Build 687. Gefahren gegen Wegwerf-HTML unter /tmp im Container. Es wurde
+#: KEIN Bestand beruehrt - das Werkzeug oeffnet keine Datenbank. Gemessen
+#: wurden neben den Beispielen auch die drei zurueckgebauten Altdefekte
+#: (Gegenprobe zu den Waechtern AH01-AH18).
+_GEPRUEFT_687 = ("Build 687, 2026-08-11, gegen Wegwerf-HTML unter /tmp, "
+                 "Python 3.12.3, lxml 6.0.2")
+
+
 def _bsp(aufruf: str, wirkung: str, geprueft: str = _GEPRUEFT) -> CliBeispiel:
     """Kurzform fuer einen GEFAHRENEN Beispielaufruf."""
     return CliBeispiel(aufruf=aufruf, wirkung=wirkung, geprueft=geprueft)
@@ -1740,80 +1748,130 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         schluessel="anon_html",
         pfad="tools/anon_html.py",
         aufruf="python tools/anon_html.py <datei.html> -x <xpath> [-o ziel.html] "
-               "[-d] [-v]",
+               "[--overwrite] [--encoding utf-8] [-d] [-v]",
         titel="HTML unverfaenglich machen",
         gruppe="Identitaeten und Externe",
-        zweck="In einer HTML-Datei den Text der ueber XPath ausgewaehlten "
-              "Elemente durch gleich langen Blindtext ('X') ersetzen und das "
-              "Ergebnis als NEUE Datei schreiben.",
+        zweck="In einer HTML-Datei den GESAMTEN Textinhalt der ueber XPath "
+              "ausgewaehlten Teilbaeume durch gleich langen Blindtext ('X') "
+              "ersetzen, das Ergebnis nachpruefen und als NEUE Datei "
+              "schreiben.",
         art="lesend",
         datenbanken=(),
         betrieb="Der Betrieb darf weiterlaufen. Das Werkzeug oeffnet keine "
                 "Datenbank und beruehrt den Bestand nicht - es liest eine "
                 "HTML-Datei und schreibt eine zweite daneben.",
-        ausgabe="HTML-Datei (--output; ohne Angabe '<original>.new.html').",
-        hinweis="ES IST EIN HANDWERKZEUG, KEIN VERFAHREN. Es ersetzt "
-                "ausschliesslich den unmittelbaren Text der getroffenen "
-                "Elemente - nicht den Text in deren Kindelementen. Wer damit "
-                "Material fuer die Weitergabe vorbereitet, muss das Ergebnis "
-                "MIT DEN AUGEN gegenlesen; die beiden Warnungen unten sind "
-                "nicht theoretisch, sie sind gemessen.",
+        ausgabe="HTML-Datei (--output; ohne Angabe '<original>.new.html'). "
+                "Sie entsteht NUR, wenn ersetzt wurde UND die Gegenprobe "
+                "bestanden ist.",
+        hinweis="SEIT BUILD 687 PRUEFT ES SICH SELBST NACH (Vorgang "
+                "ad88708d). Es ersetzt jetzt den gesamten Teilbaum - "
+                "einschliesslich Kindelementen, Text hinter Kindelementen "
+                "und Kommentaren - und liest die geschriebene Datei danach "
+                "WIEDER EIN, um zu messen, dass in den getroffenen "
+                "Teilbaeumen kein anderes Zeichen als 'X' und Leerraum mehr "
+                "steht. Besteht die Probe nicht, ENTSTEHT KEINE DATEI. "
+                "ES BLEIBT TROTZDEM EIN HANDWERKZEUG UND KEIN VERFAHREN: "
+                "die Probe belegt etwas ueber die GETROFFENE AUSWAHL, nicht "
+                "ueber den Rest der Datei und nicht ueber Attributwerte "
+                "(siehe Warnungen). Wer Material fuer die Weitergabe "
+                "vorbereitet, liest das Ergebnis weiterhin MIT DEN AUGEN "
+                "gegen.",
         # Build 640 (Welle 6): geprueft am ganzen Quelltext -
         # kein ConfigLoader, kein '--config', kein Zugriff auf config.yaml.
-        # Das Werkzeug liest eine HTML-Datei und schreibt eine neue daneben; es
-        # beruehrt keinen Bestand und keine Datenbank.
+        # Build 687 erneut geprueft: unveraendert, die beiden neuen Optionen
+        # '--overwrite' und '--encoding' kommen ausschliesslich von der
+        # Kommandozeile.
         konfiguration=KONFIG_KEINE,
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python tools/anon_html.py probe.html "
                      "-x \"//div[@class='postmsg']\" --dry-run",
                      "Zeigt je Treffer Original und Blindtext und schreibt "
-                     "NICHTS. Im Versuch: zwei Absaetze, 'Processed 2 text "
-                     "nodes.', Rueckgabewert 0.",
-                     _GEPRUEFT_630),
+                     "NICHTS. Im Versuch: 'Matched 2 element(s), replaced 4 "
+                     "text node(s).', dann '[DRY RUN] No file written.' "
+                     "Rueckgabewert 0.",
+                     _GEPRUEFT_687),
                 _bsp("python tools/anon_html.py probe.html "
                      "-x \"//div[@class='postmsg']\" -o anonym.html",
-                     "Schrieb anonym.html; die Beitragstexte standen darin "
-                     "als 'XXX XXXXXXXXXXXX ...' bei erhaltener Wortlaenge "
-                     "und Wortgrenze. Rueckgabewert 0.",
-                     _GEPRUEFT_630),
+                     "Schrieb anonym.html. Aus '<div>Vorname <b>Nachname</b> "
+                     "wohnt in Musterstadt.</div>' wurde '<div>XXXXXXX "
+                     "<b>XXXXXXXX</b> XXXXX XX XXXXXXXXXXXX</div>' - Wortlaenge "
+                     "und Wortgrenze erhalten, das <b> steht noch. Danach "
+                     "'VERIFIED: ... no text node contains any character "
+                     "other than X and whitespace.' Rueckgabewert 0.",
+                     _GEPRUEFT_687),
+                _bsp("python tools/anon_html.py probe.html "
+                     "-x \"//div[@class='gibtesnicht']\" -o anonym.html",
+                     "Bricht ab: 'FINDING: No elements matched the given "
+                     "XPath(s).' KEINE Datei geschrieben. Rueckgabewert 2.",
+                     _GEPRUEFT_687),
+                _bsp("python tools/anon_html.py probe.html "
+                     "-x \"//div[@class='postmsg']\" -o anonym.html "
+                     "(bei bereits vorhandener anonym.html)",
+                     "Bricht ab: 'ERROR: Output file already exists' und "
+                     "'Refusing to overwrite it.' Die vorhandene Datei bleibt "
+                     "unangetastet. Rueckgabewert 4.",
+                     _GEPRUEFT_687),
+                _bsp("python tools/anon_html.py probe.html "
+                     "-x \"//div\" --encoding ascii",
+                     "Bricht VOR jeder Verarbeitung ab: 'ERROR: File is not "
+                     "valid ascii: ... byte 0xc3 in position 29'. Keine "
+                     "Datei. Rueckgabewert 1.",
+                     _GEPRUEFT_687),
                 _bsp("python tools/anon_html.py probe.html",
                      "Bricht ab: 'ERROR: Either --xpath-file or --xpath must "
                      "be provided.' Rueckgabewert 1.",
-                     _GEPRUEFT_630),
+                     _GEPRUEFT_687),
             ),
-            exit_codes=((0, "durchgelaufen - AUCH DANN, wenn kein einziges "
-                            "Element getroffen wurde (siehe Warnung)"),
+            exit_codes=((0, "ersetzt, Gegenprobe bestanden, Datei "
+                            "geschrieben (bzw. Trockenlauf durchgelaufen)"),
                         (1, "Aufruffehler (kein XPath, beide XPath-Optionen "
-                            "zugleich), Eingabedatei fehlt, XPath ungueltig, "
-                            "HTML nicht lesbar oder Ausgabe nicht "
-                            "schreibbar")),
+                            "zugleich, leere Ausdrucksdatei), Eingabedatei "
+                            "fehlt, XPath ungueltig, Kodierung passt nicht "
+                            "zur Datei, HTML nicht lesbar oder Ausgabe nicht "
+                            "schreibbar"),
+                        (2, "BEFUND - kein Element getroffen ODER getroffen, "
+                            "aber nichts zu ersetzen. KEINE Datei "
+                            "geschrieben"),
+                        (3, "BEFUND - die Gegenprobe an der geschriebenen "
+                            "Datei ist gescheitert. KEINE Datei geschrieben, "
+                            "eine vorhandene Vorgaengerdatei blieb "
+                            "unangetastet"),
+                        (4, "die Zieldatei existiert und '--overwrite' wurde "
+                            "nicht angegeben - es wurde nichts getan")),
             warnungen=(
-                "ES WIRD NUR DER UNMITTELBARE TEXT DES ELEMENTS ERSETZT - "
-                "NICHT DER IN KINDELEMENTEN und nicht der Text HINTER einem "
-                "Kindelement. GEMESSEN am 2026-08-01: aus '<div>Vorname "
-                "<b>Nachname</b> wohnt in Musterstadt.</div>' wird '<div>"
-                "XXXXXXX <b>Nachname</b> wohnt in Musterstadt.</div>' - der "
-                "Name und der Ort bleiben im Klartext stehen. Ein Element, "
-                "dessen gesamter Inhalt in einem Kindelement steckt, wird GAR "
-                "NICHT anonymisiert. Beitraege eines Forums enthalten "
-                "regelmaessig <a>, <b>, <em> und <br>; in der Praxis "
-                "ueberlebt damit ein grosser Teil des Textes.",
-                "OHNE TREFFER ENDET DER LAUF MIT 0. Mit '-v' schreibt er "
-                "dabei sogar eine UNVERAENDERTE Kopie und meldet 'Written "
-                "anonymized HTML to: ...'. GEMESSEN am 2026-08-01. Eine "
-                "Datei, die 'anonymized' heisst und den Originaltext "
-                "enthaelt, ist die gefaehrlichste Ausgabe, die dieses "
-                "Werkzeug hat. Der Rueckgabewert unterscheidet 'anonymisiert' "
-                "nicht von 'nichts getroffen' - die Zeile 'Processed N text "
-                "nodes.' ist zu LESEN, und N muss zur Erwartung passen.",
-                "DIE AUSGABEDATEI WIRD WORTLOS UEBERSCHRIEBEN, auch die "
-                "Vorgabe '<original>.new.html'.",
+                "ATTRIBUTWERTE WERDEN NICHT ERSETZT. GEMESSEN am 2026-08-11: "
+                "'title=\"Klarname im Attribut\"' und "
+                "'href=\"mailto:klar@example.com\"' innerhalb eines "
+                "getroffenen Elements stehen unveraendert in der Ausgabe. "
+                "Das ist eine ENTSCHEIDUNG und kein Versehen - 'class' und "
+                "'href' blind zu ueberschreiben zerstoert genau die Gestalt, "
+                "um derentwillen die Datei weitergegeben wird. Das Werkzeug "
+                "MELDET stattdessen die Zahl der verbliebenen Attribute und "
+                "listet sie mit '-v' auf. DIESE ZEILE IST ZU LESEN.",
+                "DIE GEGENPROBE BELEGT NUR DIE GETROFFENE AUSWAHL. Sie sagt "
+                "NICHTS ueber den Rest der Datei. Wer den falschen XPath "
+                "waehlt, bekommt eine Datei, die 'VERIFIED' meldet und "
+                "danebenliegenden Klartext enthaelt. Die Auswahl bleibt die "
+                "Verantwortung des Bedieners; das Werkzeug prueft nur, ob es "
+                "getan hat, was es zugesagt hat.",
                 "DER BLINDTEXT ERHAELT WORTLAENGEN UND WORTGRENZEN. Das ist "
                 "gewollt (die Gestalt der Seite bleibt beurteilbar), heisst "
                 "aber auch: die Laenge jedes Wortes bleibt ablesbar. Fuer "
                 "eine Weitergabe, bei der auch das nicht stehen bleiben soll, "
                 "taugt das Ergebnis nicht.",
+                "DIE KODIERUNG WIRD ANGESAGT, NICHT GERATEN ('--encoding', "
+                "Vorgabe utf-8). Passt sie nicht zur Datei, BRICHT der Lauf "
+                "ab (Rueckgabewert 1), statt beschaedigten Text zu "
+                "schreiben. Das ist Absicht: bis Build 686 raet lxml ohne "
+                "'<meta charset>' und landet bei Latin-1 - GEMESSEN stand "
+                "danach ein gar nicht getroffener Absatz doppelt kodiert in "
+                "der Ausgabe, und der Blindtext war 40 statt 25 Zeichen lang.",
+                "DER INHALT VON <script> UND <style> WIRD MITGEBLENDET, wenn "
+                "er im getroffenen Teilbaum liegt. Ein ausgenommener Knoten "
+                "waere ein Versteck. Wer eine Seite weitergibt, deren "
+                "Darstellung von einem eingebetteten <style> im Teilbaum "
+                "abhaengt, muss das wissen.",
                 "'lxml' ist eine zusaetzliche Abhaengigkeit (requirements.txt "
                 "Zeile 7). Ohne sie bricht das Werkzeug beim Import ab.",
             ),
