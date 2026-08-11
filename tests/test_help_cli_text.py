@@ -14,6 +14,8 @@
 # CT01 - Umbruch: Breite eingehalten, langes Wort nicht zerschnitten
 # CT02 - Spaltenzeile: erste Zeile traegt den Kopf, Folgezeilen den Einzug
 # CT03 - hilfe_aufruf: aus jeder Aufrufform wird ein brauchbares '--help'
+# CT03c- der Vorschlag nennt das WERKZEUG - kein Unterbefehl, kein Argument
+# CT03d- Gegenprobe gegen die unabhaengige Ableitung aus Modul/Dateipfad
 # CT04 - Nahetreffer: Teilwort und Tippfehler fuehren zum Vorschlag
 # CT05 - liste: jedes Werkzeug kommt vor, jede Gruppe hat eine Ueberschrift
 # CT06 - zeige: alle Pflichtangaben stehen da, auch die fehlende Tiefe
@@ -23,7 +25,7 @@
 # CT10 - Rueckgabewerte des Werkzeugs: 0 / 1 / 2
 # CT11 - das Werkzeug fuehrt nichts aus und oeffnet nichts
 #
-# Version: v0.8.608 - Build: 608 - 2026-07-31
+# Version: v0.8.696 - Build: 696 - 2026-08-11
 # =============================================================================
 
 import os
@@ -130,6 +132,45 @@ def test_ct02_spaltenzeile():
      "python management/templates_db_status.py --help"),
     ("python run_tests.py [--python-only|--js-only]",
      "python run_tests.py --help"),
+
+    # --- Ticket 9e1ba63e, Build 696: die vier Faelle aus dem Bestand ---
+    # Sie stehen hier mit der VOLLEN Aufrufform, damit der Test auch dann
+    # noch der richtige ist, wenn der Katalogeintrag spaeter umformuliert
+    # wird. Alle vier lieferten bis Build 693 etwas anderes.
+    #
+    # (1) Unterbefehl als blosses Wort - der Fall aus der Ticketmeldung.
+    ("python -m management.export.export_admin case-status-xlsx "
+     "--out fall.xlsx",
+     "python -m management.export.export_admin --help"),
+    # (2) derselbe Fall, zweite Fundstelle.
+    ("python -m management.distribution.lkae_admin build --target D "
+     "--freigabe",
+     "python -m management.distribution.lkae_admin --help"),
+    # (3) NICHT im Ticket genannt, beim Bestandsdurchgang gefunden: hier ist
+    #     das stehengebliebene blosse Wort kein Unterbefehl, sondern ein
+    #     ARGUMENT. Dieselbe Ursache, deshalb dieselbe Abhilfe.
+    ("python tools/poc_m019_weg_a.py kopie.db",
+     "python tools/poc_m019_weg_a.py --help"),
+    # (4) NICHT im Ticket genannt und der schwerste der vier: die oeffnende
+    #     Klammer fiel durch das alte Raster, der Vorschlag lautete
+    #     '... pruefe_profilerfassung.py (--verzeichnis VERZ --help' - eine
+    #     Kommandozeile, die so gar nicht laufen kann.
+    ("python tools/pruefe_profilerfassung.py (--verzeichnis VERZ | "
+     "--forensic-db DATEI) [--fehlende N] [--csv DATEI]",
+     "python tools/pruefe_profilerfassung.py --help"),
+
+    # --- Randfaelle der neuen, strukturellen Regel ---
+    # Das Werkzeug wird genommen, ein spaeterer '.py'-Bestandteil nicht -
+    # weder als Argument noch als Platzhalter.
+    ("python tools/irgendwas.py <skript.py> --lauf",
+     "python tools/irgendwas.py --help"),
+    # Fehlt hinter '-m' das Modul, gaebe es kein Werkzeug zu nennen. Dann
+    # greift der Notnagel und liefert den schwachen, aber harmlosen Rest -
+    # statt mit IndexError abzustuerzen. Im Katalog gibt es diese Form nicht,
+    # und CT03b wuerde sie dort auch nicht durchgehen lassen.
+    ("python -m", "python --help"),
+    # Leere Eingabe darf nicht abstuerzen.
+    ("", "--help"),
 ])
 def test_ct03_hilfe_aufruf(aufruf, erwartet):
     assert hilfe_aufruf(aufruf) == erwartet
@@ -140,15 +181,80 @@ def test_ct03b_jeder_katalogeintrag_ergibt_einen_brauchbaren_hilfeaufruf():
     Die Probe aufs Ganze: fuer JEDEN Eintrag muss ein Aufruf herauskommen,
     der mehr ist als 'python --help'. Sonst waere der Verweis am Ende des
     Eintrags eine Sackgasse.
+
+    LUECKE DIESES TESTS BIS BUILD 693 (Ticket 9e1ba63e): Er verbot '<', '['
+    und '|' im Ergebnis - aber nicht die oeffnende Klammer. Genau die stand
+    im Vorschlag zu 'pruefe_profilerfassung', und der Test schwieg dazu.
+    Die Zeichenliste ist deshalb erweitert; wichtiger noch ist die Probe in
+    CT03c, die nicht mehr nach verdaechtigen ZEICHEN sucht, sondern die
+    FORM des Ergebnisses festlegt.
     """
     schwach = []
     for e in CLI_KATALOG:
         ruf = hilfe_aufruf(e.aufruf)
         if ruf in ("python --help", "--help", " --help"):
             schwach.append(e.schluessel)
-        if "<" in ruf or "[" in ruf or "|" in ruf:
-            schwach.append(e.schluessel + " (Platzhalter im Aufruf)")
+        for z in ("<", ">", "[", "]", "(", ")", "|", "{", "}"):
+            if z in ruf:
+                schwach.append("%s (Platzhalterzeichen '%s' im Aufruf: %s)"
+                               % (e.schluessel, z, ruf))
+                break
     assert not schwach, schwach
+
+
+def test_ct03c_der_vorschlag_nennt_das_werkzeug_und_sonst_nichts():
+    """
+    NEU Build 696 - Ticket 9e1ba63e.
+
+    Die Festlegung, die der Ticketfall verlangt, als Test formuliert: der
+    Vorschlag besteht aus dem Aufrufkopf, dem Werkzeug und '--help'. Nichts
+    dazwischen, nichts dahinter.
+
+    WARUM DIE FORM UND NICHT DIE ZEICHEN: CT03b konnte den Fehler nicht
+    sehen, weil ein stehengebliebener Unterbefehl ('case-status-xlsx') aus
+    lauter harmlosen Zeichen besteht. Ein Test, der Verdaechtiges aufzaehlt,
+    findet immer nur das, woran jemand gedacht hat. Dieser Test zaehlt statt-
+    dessen ab, was UEBRIG BLEIBEN DARF - und was uebrig bleiben darf, ist
+    abschliessend bekannt.
+    """
+    fehler = []
+    for e in CLI_KATALOG:
+        teile = hilfe_aufruf(e.aufruf).split()
+        modulform = teile[:2] == ["python", "-m"] and len(teile) == 4
+        dateiform = (len(teile) == 3 and teile[0] == "python"
+                     and teile[1].endswith(".py"))
+        if not (modulform and teile[-1] == "--help"
+                or dateiform and teile[-1] == "--help"):
+            fehler.append("%s -> %s" % (e.schluessel, " ".join(teile)))
+    assert not fehler, fehler
+
+
+def test_ct03d_gegenprobe_gegen_die_unabhaengige_ableitung():
+    """
+    NEU Build 696 - Ticket 9e1ba63e.
+
+    tests/test_help_cli_epilog.py._werkzeug_aufruf() bildet den Aufruf des
+    Werkzeugs seit Build 624 SELBST, weil es sich auf hilfe_aufruf() nicht
+    verlassen konnte (das war die Fundstelle des Tickets). Diese zweite
+    Ableitung wird nicht abgeschafft - zwei unabhaengige Wege, die dasselbe
+    ergeben muessen, sind mehr wert als einer.
+
+    Der Nachweis ist hier absichtlich NACHGEBAUT statt importiert: ein Import
+    wuerde die Unabhaengigkeit wieder aufheben, sobald jemand die Fassung
+    dort umstellt. Zusaetzlich wird gegen e.pfad geprueft - also gegen die
+    Angabe des Katalogs selbst, nicht gegen eine zweite Lesart der Zeile.
+    """
+    abweichend = []
+    for e in CLI_KATALOG:
+        teile = e.aufruf.split()
+        if "-m" in teile:
+            erwartet = "python -m %s --help" % teile[teile.index("-m") + 1]
+        else:
+            erwartet = "python %s --help" % e.pfad
+        ist = hilfe_aufruf(e.aufruf)
+        if ist != erwartet:
+            abweichend.append("%s: %r != %r" % (e.schluessel, ist, erwartet))
+    assert not abweichend, abweichend
 
 
 # --- CT04 ---------------------------------------------------------------------

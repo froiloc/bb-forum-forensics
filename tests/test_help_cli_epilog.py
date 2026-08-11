@@ -32,7 +32,7 @@
 #        zeigt den Epilog wirklich an
 # CE12 - der Epilog aendert nichts am Verhalten: dieselben Optionen wie ohne
 #
-# Version: v0.8.624 - Build: 624 - 2026-08-01
+# Version: v0.8.696 - Build: 696 - 2026-08-11
 # =============================================================================
 
 import argparse
@@ -329,16 +329,20 @@ def _werkzeug_aufruf(e):
     """
     Der Aufruf des WERKZEUGS SELBST mit '--help' - ohne Unterbefehl.
 
-    BEWUSST NICHT ueber cli_text.hilfe_aufruf(): das schneidet ab dem ersten
-    Platzhalter oder der ersten Option ab und laesst einen als BLOSSES WORT
-    geschriebenen Unterbefehl stehen. Bei 'export_admin' ergibt es deshalb
-    '... case-status-xlsx --help' - die Hilfe des Unterbefehls, nicht die
-    des Werkzeugs, und dort steht der Epilog nicht. (Bei 'backup_admin'
-    passiert das nicht, weil die Aufrufform dort 'plan|run|list' schreibt
-    und am '|' abgeschnitten wird. Die Ungleichbehandlung ist als Vorgang
-    festgehalten; sie ist kein Fehler dieses Builds.)
+    STAND BUILD 624 (Anlass dieser Fassung): cli_text.hilfe_aufruf() schnitt
+    ab dem ersten Platzhalter oder der ersten Option ab und liess einen als
+    BLOSSES WORT geschriebenen Unterbefehl stehen. Bei 'export_admin' ergab
+    es '... case-status-xlsx --help' - die Hilfe des Unterbefehls, nicht die
+    des Werkzeugs, und dort steht der Epilog nicht. Deshalb bildet dieser
+    Test seither aus Modul bzw. Dateipfad selbst, was gemeint ist.
 
-    Hier wird deshalb aus Modul bzw. Dateipfad gebildet, was gemeint ist.
+    STAND BUILD 696 (Ticket 9e1ba63e): hilfe_aufruf() ist auf genau diese
+    Ableitung umgestellt und liefert jetzt dasselbe. Diese Fassung wird
+    trotzdem NICHT durch einen Import ersetzt: sie ist ab hier die
+    UNABHAENGIGE Gegenprobe. Wuerde man sie durch den Aufruf der gepruefeten
+    Funktion ersetzen, pruefte CE11 nur noch, dass eine Funktion mit sich
+    selbst uebereinstimmt. Dass beide Wege dasselbe ergeben, haelt CT03d in
+    tests/test_help_cli_text.py fest.
     """
     teile = e.aufruf.split()
     if "-m" in teile:
