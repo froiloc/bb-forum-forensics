@@ -66,7 +66,11 @@ def test_hs01_ohne_rechte_nur_viewprefs():
 # --- HS02 --------------------------------------------------------------------
 
 @pytest.mark.parametrize("recht,erwartet", [
-    ("dashboard.view", {"dashboard", "faelle"}),
+    # BUILD 698 (Vorgang 60fe72fb): 'dashboard.view' oeffnet nur noch das
+    # Kachel-Dashboard. Die 'Falluebersicht' haengt an 'caseoverview.view' -
+    # beide Zeilen zusammen sind die Rechtetrennung, wie die Hilfe sie sieht.
+    ("dashboard.view", {"dashboard"}),
+    ("caseoverview.view", {"faelle"}),
     ("assignment.edit", {"assignment", "cases"}),
     ("crossref.view", {"crossref", "crossfindings", "alias", "merge"}),
     ("ops.view", {"integrity", "audit", "promotion"}),
@@ -110,7 +114,9 @@ def test_hs05_alle_rechte_alle_sichten():
 def test_hs06_reihenfolge_folgt_dem_katalog():
     # Register bewusst in VERKEHRTER Reihenfolge zusammengesetzt.
     reg = HilfeRegister((_kapitel("faelle"), _kapitel("dashboard")))
-    kapitel = sichtbare_kapitel(reg, ["dashboard.view"])
+    # Beide Rechte, weil hier die REIHENFOLGE geprueft wird und nicht die
+    # Rechtelage: seit Build 698 haengen die zwei Kapitel an zwei Rechten.
+    kapitel = sichtbare_kapitel(reg, ["dashboard.view", "caseoverview.view"])
     assert [k.sicht for k in kapitel] == ["dashboard", "faelle"]
 
 

@@ -10,7 +10,10 @@
 # CS04 — scope 'eigene': nur zugewiesene Faelle
 # CS05 — LIKE-Sonderzeichen (%,_) werden woertlich gesucht (escaped)
 # CS06 — limit + truncated-Flag (kein stilles Abschneiden, GR1)
-# CS07 — /api/search: 200 mit Treffern; 403 ohne dashboard.view
+# CS07 — /api/search: 200 mit Treffern; 403 ohne caseoverview.view.
+#        Recht seit Build 698 (Vorgang 60fe72fb): die Fallsuche der
+#        Kommandopalette liefert Faelle und haengt deshalb am Recht der
+#        Falluebersicht, nicht mehr am Recht des Kachel-Dashboards.
 # CS08 — /api/search: scope 'eigene' (investigator) filtert auf eigene Faelle
 #
 # Build 469: Schluesselumstellung user_id -> subject_id (M019)
@@ -141,8 +144,9 @@ class SearchEndpointTests(unittest.TestCase):
         w = CoordinatorWriter(con, AuditLog(con))
         rbac = RbacRepo(con, w)
         cases = CasesRepo(con, w)
-        rbac.grant("supervisor", "dashboard.view", scope="alle", actor_id=1)
-        rbac.grant("investigator", "dashboard.view", scope="eigene", actor_id=1)
+        rbac.grant("supervisor", "caseoverview.view", scope="alle", actor_id=1)
+        rbac.grant("investigator", "caseoverview.view", scope="eigene",
+               actor_id=1)
         rbac.assign_role(1, "supervisor", actor_id=1)
         rbac.assign_role(2, "investigator", actor_id=1)
         for uid in (18, 19):

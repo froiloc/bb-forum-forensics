@@ -5,7 +5,9 @@
 # Testsuite fuer Build 346: Management-Server-Backend (read-only).
 #
 # M01 — /api/whoami: Identitaet + aufgeloeste Rollen/Faehigkeiten.
-# M02 — /api/overview: 403 ohne dashboard.view; 200 mit; Scope 'eigene' filtert
+# M02 — /api/overview: 403 ohne caseoverview.view; 200 mit; Scope 'eigene'
+#       filtert. Recht seit Build 698 (Vorgang 60fe72fb); bis 696
+#       'dashboard.view'.
 #       auf eigene Zuweisungen, 'alle' liefert alle.
 # M03 — /api/integrity: 403 ohne ops.view; 200 mit (ok, tip_seq, detail).
 # M04 — / : liefert die statische cockpit.html (Nav-Container + Frontend-Skript).
@@ -101,12 +103,13 @@ class ManagementServerTests(unittest.TestCase):
         self.writer = CoordinatorWriter(self.con, self.audit)
         self.repo = RbacRepo(self.con, self.writer)
 
-        # h001 (person 1) = supervisor mit dashboard.view(alle) + ops.view(alle).
-        self.repo.grant("supervisor", "dashboard.view", scope="alle", actor_id=1)
+        # h001 (person 1) = supervisor mit caseoverview.view(alle) + ops.view(alle).
+        self.repo.grant("supervisor", "caseoverview.view", scope="alle",
+                        actor_id=1)
         self.repo.grant("supervisor", "ops.view", scope="alle", actor_id=1)
         self.repo.assign_role(1, "supervisor", actor_id=1)
-        # h002 (person 2) = investigator mit dashboard.view(eigene), kein ops.view.
-        self.repo.grant("investigator", "dashboard.view", scope="eigene",
+        # h002 (person 2) = investigator mit caseoverview.view(eigene), kein ops.view.
+        self.repo.grant("investigator", "caseoverview.view", scope="eigene",
                         actor_id=1)
         self.repo.assign_role(2, "investigator", actor_id=1)
         # Lastverteilung: supervisor sieht alle, investigator nur die eigene Zeile.
@@ -148,19 +151,19 @@ class ManagementServerTests(unittest.TestCase):
         self.assertEqual(data["system_username"], "h001")
         self.assertEqual(data["display_name"], "Chefin, Alpha")
         self.assertIn("supervisor", data["roles"])
-        self.assertEqual(data["capabilities"]["dashboard.view"], "alle")
+        self.assertEqual(data["capabilities"]["caseoverview.view"], "alle")
         self.assertIn("ops.view", data["capabilities"])
 
     # M02 --------------------------------------------------------------------
     def test_m02_overview_gating_and_scope(self):
-        # Person 2 hat dashboard.view(eigene) -> nur eigener Fall (18).
+        # Person 2 hat caseoverview.view(eigene) -> nur eigener Fall (18).
         r2 = self.app.dispatch(2, "/api/overview")
         self.assertEqual(r2.status, 200)
         d2 = self._json(r2)
         self.assertEqual(d2["scope"], "eigene")
         self.assertEqual({c["subject_id"] for c in d2["cases"]}, {18})
 
-        # Person 1 hat dashboard.view(alle) -> alle Faelle (18, 19).
+        # Person 1 hat caseoverview.view(alle) -> alle Faelle (18, 19).
         d1 = self._json(self.app.dispatch(1, "/api/overview"))
         self.assertEqual(d1["scope"], "alle")
         self.assertEqual({c["subject_id"] for c in d1["cases"]}, {18, 19})
@@ -171,7 +174,7 @@ class ManagementServerTests(unittest.TestCase):
         self.con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
         r_denied = self.app.dispatch(2, "/api/overview")
         self.assertEqual(r_denied.status, 403)
-        self.assertEqual(self._json(r_denied)["capability"], "dashboard.view")
+        self.assertEqual(self._json(r_denied)["capability"], "caseoverview.view")
 
     # M03 --------------------------------------------------------------------
     def test_m03_integrity_gating(self):

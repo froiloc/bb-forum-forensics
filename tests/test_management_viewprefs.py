@@ -117,7 +117,8 @@ class _Basis(unittest.TestCase):
     """
     coordinator.db mit zwei Personen.
 
-    Person 1 = Chefin (dashboard.view + escalation.view + ops.view),
+    Person 1 = Chefin (dashboard.view + caseoverview.view +
+    escalation.view + ops.view),
     Person 2 = Ermittler ohne jedes Recht. Der Unterschied traegt VP16.
     """
 
@@ -149,7 +150,11 @@ class _Basis(unittest.TestCase):
         self.writer = CoordinatorWriter(con, self.audit)
 
         rbac = RbacRepo(con, self.writer)
-        for cap in ("dashboard.view", "escalation.view", "ops.view"):
+        # Build 698 (Vorgang 60fe72fb): 'caseoverview.view' ergaenzt - die
+        # Kachel 'fallampel' haengt seither daran und nicht mehr am Recht
+        # des Kachel-Dashboards.
+        for cap in ("dashboard.view", "caseoverview.view",
+                    "escalation.view", "ops.view"):
             rbac.grant("supervisor", cap, scope="alle", actor_id=1)
         rbac.assign_role(1, "supervisor", actor_id=1)
         # Person 2 bekommt bewusst nichts.
@@ -482,7 +487,8 @@ class TestEndpunkte(_Basis):
         self.assertEqual(b["katalog"]["standard_widgets"], ["fallampel"])
 
         erlaubt = {w["key"]: w["erlaubt"] for w in b["katalog"]["widgets"]}
-        # Person 1 hat dashboard.view/escalation.view/ops.view.
+        # Person 1 hat dashboard.view/caseoverview.view/escalation.view/
+        # ops.view.
         self.assertTrue(erlaubt["fallampel"])
         self.assertTrue(erlaubt["eskalationen"])
         self.assertTrue(erlaubt["kettenzustand"])

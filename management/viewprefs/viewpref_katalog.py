@@ -147,11 +147,22 @@ class WidgetSpec:
 #  die allen die gewohnte Oberflaeche umbaut, waere im Produktivbetrieb ab
 #  01.07.2026 der falsche Weg.
 WIDGETS: Tuple[WidgetSpec, ...] = (
+    # BUILD 698 (Vorgang 60fe72fb): cap von 'dashboard.view' auf
+    # 'caseoverview.view'. Diese Kachel war die EINZIGE ohne eigenes Recht —
+    # sie lief auf dem Recht des Rahmens mit, waehrend jede andere Kachel hier
+    # ihr eigenes fuehrt. Damit bekam jede Person, die den Überblick öffnen
+    # darf, die vollständige Fallliste ungefragt dazu.
+    #
+    # DIE KACHEL BLEIBT WERKSEINSTELLUNG (standard=True). Wer das neue Recht
+    # nicht hat, sieht sie deshalb trotzdem nicht: der Rechtefilter läuft
+    # zuletzt. Die Werkseinstellung sagt, was jemand SEHEN WOLLTE, nicht, was
+    # er sehen DARF — diese beiden Fragen getrennt zu halten ist der Grund,
+    # warum die Kachelauswahl kein Zugangsmittel ist.
     WidgetSpec(
         key="fallampel", label="Fall-Übersicht (Ampel)",
         beschreibung="Die Fälle mit Ampel, Priorität und Zuweisung — "
                      "dieselbe Tabelle wie bisher im Überblick.",
-        cap="dashboard.view", api_path="/api/overview", standard=True),
+        cap="caseoverview.view", api_path="/api/overview", standard=True),
     WidgetSpec(
         key="eskalationen", label="Eskalationen",
         beschreibung="Was über eine Schwelle gelaufen ist, gedrängt auf die "

@@ -81,8 +81,17 @@ ROLES: Tuple[Role, ...] = (
 #   in Schnitt (b) ueber die auditierte policy_admin-CLI vergeben (default-deny;
 #   rbac_grant.audit_seq koppelt je Grant an audit_log, wie case_events).
 CAPABILITIES: Tuple[Capability, ...] = (
-    Capability("dashboard.view", "Ampel-Dashboard sehen",
-               "Falluebersicht mit Ampel und Kennzahlen lesen."),
+    # BUILD 698 (Vorgang 60fe72fb): Bezeichnung und Beschreibung berichtigt.
+    # Sie lauteten "Ampel-Dashboard sehen" / "Falluebersicht mit Ampel und
+    # Kennzahlen lesen" — das war seit dem Umbau auf das Kachelsystem falsch
+    # und beschrieb genau den Teil, der jetzt an 'caseoverview.view' haengt.
+    # Ein Rechtename, der etwas anderes verspricht als das Recht kann, ist in
+    # der RBAC-Matrix eine Falschangabe; berichtigt wird der DB-Text in
+    # Migration M038.
+    Capability("dashboard.view", "Kachel-Dashboard sehen",
+               "Den Ueberblick mit seinen Kacheln oeffnen. Das Recht traegt "
+               "den RAHMEN, nicht den Inhalt: welche Kacheln erscheinen, "
+               "entscheidet je Kachel deren eigenes Recht."),
     Capability("assignment.edit", "Zuweisungen bearbeiten",
                "Faelle Ermittler:innen zuweisen/entziehen."),
     Capability("mentoring.view", "Mentoring-/Support-Sicht",
@@ -417,6 +426,36 @@ CAPABILITIES: Tuple[Capability, ...] = (
                "Arbeit lesen. AUSWERTUNGSQUALITAET, KEIN MITARBEITER-"
                "BEWERTUNGSINSTRUMENT: keine Leistungsdaten, keine Rangfolge "
                "zwischen Personen."),
+    # -------------------------------------------------------------------------
+    # BUILD 698 (Vorgang 60fe72fb): DIE FALLUEBERSICHT BEKOMMT EIN EIGENES
+    # RECHT — 'dashboard.view' oben ist damit auf das Kachel-Dashboard verengt.
+    #
+    # WARUM DIE TRENNUNG: Bis Build 696 trug 'dashboard.view' ZWEI Dinge, die
+    # nichts miteinander zu tun haben. Als das Dashboard aus der Falltabelle
+    # bestand, war das dasselbe Recht fuer dieselbe Sache. Seit dem Umbau auf
+    # das Kachelsystem (Build 574) ist das Dashboard ein RAHMEN, dessen Inhalt
+    # jede Kachel ueber IHR eigenes Recht mitbringt — und die Falltabelle ist
+    # nur noch eine dieser Kacheln, daneben eine eigene Sicht. Wer den Rahmen
+    # sehen darf, bekam damit ungefragt die vollstaendige Fallliste mit
+    # Beschuldigten-Kontonamen dazu. Das ist eine Zweckbindungsfrage, keine
+    # Aufraeumarbeit (dieselbe Begruendung wie bei limitation.view, M031).
+    #
+    # WAS DIESES RECHT TRAEGT: die Sicht 'Falluebersicht', die Kachel
+    # 'Fall-Uebersicht (Ampel)' und die Fallsuche der Kommandopalette. Alle
+    # drei zeigen denselben Bestand ueber /api/overview bzw. /api/search;
+    # zwei davon an einem Recht und die dritte an einem anderen waere ein
+    # zweiter Zugang zu denselben Daten am Recht vorbei (Entscheidung Alex,
+    # 11.08.2026).
+    #
+    # SCOPE-BEHAFTET wie bisher: 'alle' sieht den ganzen Bestand, 'eigene' nur
+    # die zugewiesenen Faelle. Der Scope wandert bei der Umstellung 1:1 mit —
+    # siehe 'rbac_admin migrate-grants'.
+    # -------------------------------------------------------------------------
+    Capability("caseoverview.view", "Falluebersicht sehen",
+               "Die Falltabelle mit Ampel, Prioritaet und Zuweisung lesen — "
+               "als Sicht, als Kachel des Ueberblicks und ueber die Fallsuche "
+               "der Kommandopalette. Scope 'eigene' beschraenkt auf die "
+               "zugewiesenen Faelle."),
 )
 
 

@@ -188,7 +188,19 @@ class ManagementRbacSchemaTests(unittest.TestCase):
         #   Stand 43 aufgesetzt worden (Parallelbetrieb §6 Nr. 2/3);
         #   die Verschiebung auf 43 stammt von Instanz A. -> 44.
         # +1 ab Build 542 ('metrics.view', geseedet in M035) -> 45.
-        self.assertEqual(len(cat_caps), 45)
+        # +1 ab Build 698 ('caseoverview.view', geseedet in M038, Vorgang
+        #   60fe72fb): 'dashboard.view' trug bis dahin ZWEI Dinge - den
+        #   Rahmen des Kachel-Dashboards UND die Falltabelle darin. Getrennt
+        #   nach demselben Muster wie M030/M031: ein eigener Zweck bekommt
+        #   ein eigenes Recht. -> 46.
+        self.assertEqual(len(cat_caps), 46)
+        self.assertIn("caseoverview.view", cat_caps)
+        # M038 berichtigt zugleich den TEXT von 'dashboard.view'. Der Vergleich
+        # oben (db_caps == cat_caps) deckt das ab; hier steht die Erwartung
+        # ausdruecklich, weil ein stehengebliebener Text in der RBAC-Matrix
+        # eine Falschangabe an der Stelle waere, an der ueber Zugang
+        # entschieden wird.
+        self.assertEqual(cat_caps["dashboard.view"][0], "Kachel-Dashboard sehen")
         self.assertIn("external.view", cat_caps)
         self.assertIn("external.edit", cat_caps)
         self.assertIn("templates.edit", cat_caps)

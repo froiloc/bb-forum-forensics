@@ -87,7 +87,11 @@ _DEMO_PERSONS = (
 #: Faehigkeiten, die die Leitung (supervisor) im Demo bekommt (Scope 'alle'),
 #: damit das Cockpit vollstaendig befuellt gezeigt werden kann.
 _SUPERVISOR_CAPS = (
-    "dashboard.view", "ops.view", "ops.promote", "workload.view", "policy.view",
+    # Build 698 (Vorgang 60fe72fb): 'caseoverview.view' ergaenzt. Ohne diese
+    # Zeile zeigte das Demo einen Ueberblick ohne die Fall-Kachel und keine
+    # Falluebersicht - ein Vorfuehrbestand, der weniger kann als die Anlage.
+    "dashboard.view", "caseoverview.view",
+    "ops.view", "ops.promote", "workload.view", "policy.view",
     "assignment.edit", "stats.export_sta", "external.view", "external.edit",
     "results.view", "results.edit", "release.view", "release.grant",
     "onboarding.view", "onboarding.edit", "mentoring.view", "capacity.edit",

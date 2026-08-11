@@ -237,6 +237,12 @@ class ManagementDashboardTests(unittest.TestCase):
         # Ansichtseinstellung; EINE neue Tabelle, rein additiv, kein
         # Rechte-Seed).
         #
+        # Build 698: M038 (Vorgang 60fe72fb — Seed 'caseoverview.view' und
+        # Textberichtigung an 'dashboard.view'; rein additiv, KEIN Grant. Die
+        # Uebernahme der bestehenden Rechte ist ein eigener auditierter Lauf:
+        # 'rbac_admin migrate-grants --from dashboard.view
+        # --to caseoverview.view').
+        #
         # DIE LISTE STAND BIS BUILD 544 IN DREI TEILEN (_BASIS/_INSTANZ_A/
         # _INSTANZ_B). Der Grund dafuer war der Parallelbetrieb: beide
         # Instanzen mussten hier eintragen, und ein gemeinsames Literal hiesse,
@@ -250,7 +256,7 @@ class ManagementDashboardTests(unittest.TestCase):
         # DIE FRUEHERE LUECKE 35..39 GIBT ES NICHT MEHR. Der bisherige
         # Kommentar an dieser Stelle ("die Luecke ist beabsichtigt und kein
         # Fehler") beschrieb den Stand vor der Umnummerierung M040 -> M036 und
-        # waere jetzt schlicht falsch; die Kette laeuft lueckenlos 1-37.
+        # waere jetzt schlicht falsch; die Kette laeuft lueckenlos 1-38.
         # Der BEFUND dazu bleibt unangetastet, wo er hingehoert:
         # management/Vermerk_Migrationsluecke_Parallelbetrieb_v0_1.md und
         # tools/diag_migrationsluecke.py (Build 544, Leitfaden §17.5).
@@ -265,7 +271,7 @@ class ManagementDashboardTests(unittest.TestCase):
         #     python tools/pruefe_migrationskette.py --db <coordinator.db>
         _ALLE = [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
                  19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-                 33, 34, 35, 36, 37]
+                 33, 34, 35, 36, 37, 38]
         self.assertEqual(self.applied,
                          sorted(_ALLE)
                          if 3 not in self.applied

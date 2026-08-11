@@ -166,10 +166,18 @@
         // wurde (Ring + drei dringendste Faelle, mc 2026-07-30), waere sie
         // ohne diese Sicht STILL verschwunden - und mit ihr der Fall-Sprung
         // der Kommandopalette, der genau in diese Tabelle zielte.
-        // Recht: 'dashboard.view' - dasselbe, das die Kachel und der speisende
-        // Endpunkt /api/overview ohnehin pruefen. Es entsteht also KEIN neuer
-        // Zugang, nur ein zweiter Weg zu demselben Bestand.
-        { id: 'faelle',     cap: 'dashboard.view',       group: 'Fallsteuerung',     label: 'Fallübersicht',
+        // Recht bis Build 696: 'dashboard.view' - dasselbe, das die Kachel und
+        // der speisende Endpunkt /api/overview damals prueften. Es entstand
+        // also kein neuer Zugang, nur ein zweiter Weg zu demselben Bestand.
+        //
+        // BUILD 698 (Vorgang 60fe72fb): Recht ist jetzt 'caseoverview.view'.
+        // Die Begruendung von damals gilt unveraendert - sie sagt "dasselbe
+        // Recht wie Kachel und Endpunkt", und genau das ist es weiterhin.
+        // Getrennt wurde nicht diese Sicht vom Rest, sondern die FALLTABELLE
+        // vom RAHMEN des Kachel-Dashboards: 'dashboard.view' oeffnet seither
+        // nur noch den Ueberblick, dessen Kacheln je ihr eigenes Recht
+        // mitbringen.
+        { id: 'faelle',     cap: 'caseoverview.view',    group: 'Fallsteuerung',     label: 'Fallübersicht',
           stichworte: 'fall uebersicht tabelle ampel liste alle faelle bestand prioritaet zuweisung' },
         { id: 'mentoring',  cap: 'mentoring.view',       group: 'Betreuung',     label: 'Ermittler-Betreuung',
           stichworte: 'betreuung mentor anleitung begleitung einarbeitung ermittler' },

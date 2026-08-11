@@ -55,7 +55,7 @@ FAELLE = Sichthilfe(
     sicht="faelle",
     titel="Fallübersicht",
     recht_klartext=(
-        "Recht: dashboard.view. Mit dem Umfang „alle“ zeigt die Tabelle den "
+        "Recht: caseoverview.view. Mit dem Umfang „alle“ zeigt die Tabelle den "
         "gesamten Fallbestand, mit „eigene“ ausschließlich die Fälle, "
         "die Ihnen zugewiesen sind. Welcher Umfang gilt, steht als Klartext "
         "in der Zeile unter der Überschrift."
@@ -81,11 +81,20 @@ FAELLE = Sichthilfe(
         Abschnitt(
             "rechte", "Rechtelage",
             (
-                "Die Sicht hängt am Recht dashboard.view — demselben, das "
-                "auch die Kachel „Fall-Übersicht“ im Überblick verlangt. Es "
-                "entsteht also kein zusätzlicher "
-                "Zugang, nur ein zweiter Weg zu einem Bestand, den Sie "
-                "ohnehin sehen dürfen.",
+                "Die Sicht hängt am Recht caseoverview.view — demselben, "
+                "das auch die Kachel „Fall-Übersicht“ im Überblick und die "
+                "Fallsuche der Kommandopalette verlangen. Es entsteht also "
+                "kein zusätzlicher Zugang, nur ein weiterer Weg zu einem "
+                "Bestand, den Sie ohnehin sehen dürfen.",
+                "GEÄNDERT IM AUGUST 2026: Bis dahin trug diese Sicht "
+                "dashboard.view, also dasselbe Recht wie der Überblick "
+                "selbst. Damit bekam jede Person, die den Überblick öffnen "
+                "durfte, den vollständigen Fallbestand mit den "
+                "Beschuldigten-Kontonamen dazu. Beides ist getrennt: "
+                "dashboard.view öffnet nur noch den Rahmen des Überblicks, "
+                "caseoverview.view trägt den Fallbestand. Sehen Sie diese "
+                "Sicht seit der Umstellung nicht mehr, fehlt Ihnen "
+                "caseoverview.view — die Chef-Ermittlerin kann es vergeben.",
                 "Der zugeteilte Umfang entscheidet: „alle“ zeigt den "
                 "Gesamtbestand (Leitungssicht), „eigene“ nur die Ihnen "
                 "zugewiesenen Fälle. Fremde Fälle sind bei „eigene“ nicht "
@@ -226,8 +235,8 @@ FAELLE = Sichthilfe(
             "faelle.umfang", "Geltender Umfang",
             "Nennt im Klartext, welcher Ausschnitt des Bestands Ihnen "
             "angezeigt wird: alle Fälle oder nur die Ihnen zugewiesenen. Der "
-            "Umfang folgt dem, was Ihnen zum Recht dashboard.view zugeteilt "
-            "ist, und lässt sich hier nicht erweitern.",
+            "Umfang folgt dem, was Ihnen zum Recht caseoverview.view "
+            "zugeteilt ist, und lässt sich hier nicht erweitern.",
             verweis="faelle#rechte"),
         # --- Spaltenkoepfe (Anker aus dem Tabellen-Werkzeug, Build 548) ----
         Kontexthilfe(
