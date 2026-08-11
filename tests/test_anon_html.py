@@ -34,8 +34,28 @@
 # AH14 - DIE GEGENPROBE KANN SCHEITERN, und dann entsteht keine Datei
 # AH15 - der Trockenlauf schreibt nichts
 # AH16 - es bleibt keine Nebendatei liegen
+# AH17 - Aufrufpruefungen (kein XPath, beide Quellen, leere Liste, ungueltig)
+# AH18 - zwei Ausdruecke treffen dasselbe Element nur einmal
 #
-# Version: v0.8.687 - Build: 687 - 2026-08-11
+# NACHTRAG BUILD 690 - aus dem Vergleich mit der zweiten, unabhaengig
+# gebauten Fassung (Vermerk 'Vergleich_anon_html_Build687_gegen_Build690').
+# AH19-AH21 sichern die drei dort gefundenen Befunde, AH22-AH27 die
+# Bausteine und die Zusagen, die bis dahin nur im Katalog standen:
+#
+# AH19 - BEFUND 6: ein Fragment mit mehreren Knoten oberster Ebene laeuft
+#        durch (Build 687: RC 3, gar keine Datei)
+# AH20 - BEFUND 7: verschachtelte Treffer werden nicht doppelt gezaehlt
+# AH21 - BEFUND 8: der von lxml erfundene Rahmen wird gemeldet
+# AH22 - Lagepfad und Aufloesung passen zueinander
+# AH23 - eine verschobene Struktur wird bemerkt statt stillschweigend geprueft
+# AH24 - der DOCTYPE wird woertlich aus den Rohbytes geholt (auch mit BOM)
+# AH25 - blind_text haelt Wortgrenzen, auch bei nicht-lateinischer Schrift
+# AH26 - <script> und <style> sind kein Versteck
+# AH27 - ohne '-o' entsteht '<original>.new.html'
+# AH28 - DER KATALOGEINTRAG STIMMT MIT DEM WERKZEUG UEBEREIN
+# AH29 - das Werkzeug ist uebersetzbar (Grundregel 9)
+#
+# Version: v0.8.690 - Build: 690 - 2026-08-11
 # =============================================================================
 
 import importlib.util
@@ -342,6 +362,28 @@ def test_ah13_nicht_element_treffer_werden_benannt(tmp_path, capsys):
 # AH14 - die Gegenprobe
 # -----------------------------------------------------------------------------
 
+def _halbherzig(text):
+    """
+    Ein absichtlich UNVOLLSTAENDIGER Blindsetzer fuer die Sabotage-Tests.
+
+    Er blendet alles ausser dem letzten Zeichen. Damit ist er zweierlei
+    zugleich, und beides wird gebraucht:
+      * eine ECHTE Aenderung - der Lauf kommt bis zur Gegenprobe,
+      * mit ueberlebendem Klartext - die Gegenprobe muss anschlagen.
+
+    BUILD 690, WARUM NICHT MEHR 'lambda text: text': Seit Befund 7 zaehlt das
+    Werkzeug nur, was sich AENDERT. Ein Saboteur, der den Text unveraendert
+    zurueckgibt, fuehrt deshalb auf "getroffen, aber nichts zu ersetzen"
+    (RC 2, keine Datei) - ebenfalls ein sicherer Ausgang, aber nicht der,
+    den diese beiden Faelle messen wollen. Der halbherzige Saboteur bildet
+    den gefaehrlicheren Fall ab: ein Blindsetzer, der ARBEITET und dabei
+    etwas stehen laesst.
+    """
+    if not text:
+        return text
+    return "X" * (len(text) - 1) + text[-1]
+
+
 def test_ah14_gegenprobe_kann_scheitern_und_verhindert_die_datei(
         tmp_path, monkeypatch, capsys):
     """
@@ -359,7 +401,7 @@ def test_ah14_gegenprobe_kann_scheitern_und_verhindert_die_datei(
     ziel = tmp_path / "n.out.html"
     ziel.write_text("VORGAENGER", encoding="utf-8")
 
-    monkeypatch.setattr(anon_html, "blind_text", lambda text: text)
+    monkeypatch.setattr(anon_html, "blind_text", _halbherzig)
 
     rc = _lauf(quelle, "-x", '//div[@class="postmsg"]', "-o", ziel,
                "--overwrite")
@@ -433,7 +475,7 @@ def test_ah16_keine_nebendatei_bleibt_liegen(tmp_path, monkeypatch):
                  "-o", ziel) == anon_html.RC_OK
     assert not list(tmp_path.glob("*.anon-tmp-*"))
 
-    monkeypatch.setattr(anon_html, "blind_text", lambda text: text)
+    monkeypatch.setattr(anon_html, "blind_text", _halbherzig)
     assert _lauf(quelle, "-x", '//div[@class="postmsg"]', "-o", ziel,
                  "--overwrite") == anon_html.RC_GEGENPROBE
     assert not list(tmp_path.glob("*.anon-tmp-*"))
@@ -488,3 +530,272 @@ def test_ah18_zwei_ausdruecke_treffen_dasselbe_element_einmal(tmp_path,
 
     assert _lauf(quelle, "-f", liste, "-o", ziel) == anon_html.RC_OK
     assert "Matched 1 element(s)" in capsys.readouterr().err
+
+
+# =============================================================================
+# AH19-AH21 - die drei Befunde aus dem Vergleich der beiden Fassungen
+# =============================================================================
+
+def test_ah19_fragment_mit_mehreren_knoten_laeuft_durch(tmp_path, capsys):
+    """
+    AH19 - BEFUND 6, der Fall, an dem Build 687 gescheitert ist.
+
+    GEMESSEN an Build 687: '<div class="postmsg">Klarname</div><p>Rest</p>'
+    endete mit 'position path /html/div/div resolved to 0 element(s)',
+    Rueckgabewert 3 - und es entstand GAR KEINE Datei. Ursache war
+    getroottree().getpath(): es haengt an dem Dokumentbaum, den lxml sich
+    fuer ein Fragment erfindet ('/html/div' OHNE <body>), und der wird beim
+    Neueinlesen der geschriebenen Datei anders gebaut.
+
+    Das war kein Datensicherheitsproblem - es entstand keine FALSCHE Datei,
+    sondern gar keine. Aber es traf genau den Eingabefall, den der Dateikopf
+    selbst als den wichtigen benennt: das von Hand herausgeschnittene Stueck.
+    """
+    quelle = _schreibe(tmp_path / "frag.html",
+                       '<div class="postmsg">Klarname</div><p>Rest</p>')
+    ziel = tmp_path / "frag.out.html"
+
+    assert _lauf(quelle, "-x", '//div[@class="postmsg"]',
+                 "-o", ziel) == anon_html.RC_OK
+    ergebnis = ziel.read_text(encoding="utf-8")
+    assert "Klarname" not in ergebnis
+    assert "Rest" in ergebnis                 # ausserhalb der Auswahl
+    assert "VERIFIED" in capsys.readouterr().err
+
+
+def test_ah19b_fragment_mit_einem_knoten_laeuft_weiterhin_durch(tmp_path):
+    """
+    AH19b - die Gegenprobe zu AH19.
+
+    Der Fall mit EINEM Knoten der obersten Ebene war nie kaputt. Er steht
+    hier, damit die Berichtigung von Befund 6 ihn nicht nebenbei mitnimmt -
+    das ist die haeufigere Richtung, in der eine Reparatur schiefgeht.
+    """
+    quelle = _schreibe(tmp_path / "e.html",
+                       '<div class="postmsg">Klarname</div>')
+    ziel = tmp_path / "e.out.html"
+
+    assert _lauf(quelle, "-x", '//div[@class="postmsg"]',
+                 "-o", ziel) == anon_html.RC_OK
+    ergebnis = ziel.read_text(encoding="utf-8")
+    assert "Klarname" not in ergebnis
+    # Das Fragment bleibt ein Fragment - es wird kein Dokument daraus gebaut.
+    assert ergebnis.strip().startswith("<div")
+    assert "<html" not in ergebnis.lower()
+
+
+def test_ah20_verschachtelte_treffer_werden_nicht_doppelt_gezaehlt(tmp_path,
+                                                                   capsys):
+    """
+    AH20 - BEFUND 7.
+
+    Trifft der XPath ein Element UND dessen Elternteil, so wird die Textstelle
+    EINMAL ersetzt. Build 687 meldete 'replaced 2 text node(s)', weil der
+    zweite Durchgang den bereits geblendeten Text noch einmal zaehlte.
+
+    WARUM DAS NICHT KOSMETIK IST: Der Katalog sagt der/dem Ermittelnden
+    ausdruecklich, diese Zahl gegen die eigene Erwartung zu halten. Eine zu
+    hohe Zahl laesst einen Lauf vollstaendiger aussehen, als er war.
+    """
+    quelle = _schreibe(tmp_path / "n.html", _seite(
+        '<div class="postmsg"><div class="postmsg">Klarname</div></div>'))
+    ziel = tmp_path / "n.out.html"
+
+    assert _lauf(quelle, "-x", '//div[@class="postmsg"]',
+                 "-o", ziel) == anon_html.RC_OK
+    assert ("Matched 2 element(s), replaced 1 text node(s)."
+            in capsys.readouterr().err)
+    assert "Klarname" not in ziel.read_text(encoding="utf-8")
+
+
+def test_ah21_der_erfundene_rahmen_wird_gemeldet(tmp_path, capsys):
+    """
+    AH21 - BEFUND 8.
+
+    lxml baut um ein Fragment einen Rahmen. Der steht dann in der Weitergabe,
+    ohne je in der Vorlage gestanden zu haben, und ein weiter Ausdruck
+    ('//div') trifft ihn mit. Das Werkzeug kann das nicht aufloesen - ein
+    hinzugefuegter Rahmen ist vom gleichnamigen echten Element der Vorlage
+    nicht sicher zu unterscheiden. Es BENENNT die Lage; die Entscheidung
+    bleibt bei dem Auge, das die Vorlage kennt.
+    """
+    quelle = _schreibe(tmp_path / "f.html",
+                       '<div class="postmsg">Klarname</div><p>Rest</p>')
+    ziel = tmp_path / "f.out.html"
+
+    assert _lauf(quelle, "-x", '//div[@class="postmsg"]',
+                 "-o", ziel) == anon_html.RC_OK
+    bericht = capsys.readouterr().err
+    assert "processed as a FRAGMENT" in bericht
+
+    # Gegenprobe: bei einem vollstaendigen Dokument schweigt der Hinweis.
+    quelle2 = _schreibe(tmp_path / "g.html", _seite(BEITRAG))
+    assert _lauf(quelle2, "-x", '//div[@class="postmsg"]',
+                 "-o", tmp_path / "g.out.html") == anon_html.RC_OK
+    assert "FRAGMENT" not in capsys.readouterr().err
+
+
+# =============================================================================
+# AH22-AH27 - die Bausteine und die Zusagen aus dem Katalog
+# =============================================================================
+
+def test_ah22_lagepfad_und_aufloesung_passen_zueinander(tmp_path):
+    """
+    AH22 - die beiden Haelften des Lagepfads gehoeren zusammen geprueft.
+
+    Getrennt sind sie beide plausibel; falsch werden sie erst gemeinsam.
+    Geprueft wird ueber JEDEN Knoten des Baums, nicht ueber einen ausgesuchten.
+    """
+    quelle = _schreibe(tmp_path / "p.html", _seite(BEITRAG + NUR_KIND))
+    roh = quelle.read_bytes()
+    baum = anon_html.baue_baum(roh, "utf-8", sys.stderr)
+
+    for knoten in baum.iter():
+        kette = anon_html.lagepfad(knoten, baum)
+        assert kette is not None
+        gefunden, grund = anon_html.loese_lagepfad(baum, kette)
+        assert grund is None, grund
+        assert gefunden is knoten
+
+
+def test_ah23_verschobene_struktur_wird_bemerkt(tmp_path):
+    """
+    AH23 - der Knotenname im Lagepfad ist kein Zierrat.
+
+    Eine reine Indexkette wuerde nach einer Strukturaenderung stillschweigend
+    auf einen ANDEREN Knoten zeigen und diesen pruefen - die Gegenprobe
+    haette dann etwas gemessen, aber nicht das Gemeinte. Hier wird eine
+    solche Verschiebung nachgestellt und gemessen, dass sie AUFFAELLT.
+    """
+    quelle = _schreibe(tmp_path / "v.html", _seite(
+        '<div class="postmsg">Klarname</div><p>Rest</p>'))
+    baum = anon_html.baue_baum(quelle.read_bytes(), "utf-8", sys.stderr)
+    div = baum.xpath('//div[@class="postmsg"]')[0]
+    kette = anon_html.lagepfad(div, baum)
+
+    # Denselben Platz mit einem anderen Element besetzen.
+    eltern = div.getparent()
+    stelle = eltern.index(div)
+    eltern.remove(div)
+    from lxml import html as _html
+    eltern.insert(stelle, _html.fromstring("<section>Klarname</section>"))
+
+    gefunden, grund = anon_html.loese_lagepfad(baum, kette)
+    assert gefunden is None
+    assert "expected <div>" in grund and "found <section>" in grund
+
+
+def test_ah24_doctype_wird_woertlich_aus_den_rohbytes_geholt():
+    """
+    AH24 - und ausdruecklich NICHT aus lxmls geparster Fassung.
+
+    'docinfo.doctype' liefert fuer eine Datei OHNE DOCTYPE einen erfundenen
+    ('HTML 4.0 Transitional'). Wer sich darauf verliesse, haette Befund 4 nur
+    umgedreht: statt einen DOCTYPE zu verlieren, dichtete das Werkzeug einen
+    hinzu - und aenderte damit den Darstellungsmodus des Browsers.
+    """
+    hole = anon_html.doctype_aus_rohdaten
+    assert hole(b"<!DOCTYPE html><html>") == b"<!DOCTYPE html>"
+    assert hole(b"\xef\xbb\xbf<!DOCTYPE html>\n<html>") == b"<!DOCTYPE html>"
+    assert hole(b"<!-- Vermerk -->\n<!doctype HTML>\n<html>") == b"<!doctype HTML>"
+    assert hole(b'<div>x</div>') is None
+    # Ein '<!DOCTYPE' MITTEN in der Datei ist keiner und wird nicht uebernommen.
+    assert hole(b"<div><!DOCTYPE html></div>") is None
+
+
+def test_ah25_blind_text_haelt_wortgrenzen():
+    """
+    AH25 - die zugesagte Eigenschaft, seit Build 630 unveraendert.
+
+    Der letzte Fall ist der wichtige: das Forum ist multilingual. Ein
+    Blindsetzer, der nur Latein kann, waere hier eine Falle.
+    """
+    assert anon_html.blind_text("Hans Meier") == "XXXX XXXXX"
+    assert anon_html.blind_text("a\nbb\tccc") == "X\nXX\tXXX"
+    assert anon_html.blind_text("") == ""
+    assert anon_html.blind_text(None) is None
+    assert anon_html.blind_text("Маша") == "XXXX"
+    assert anon_html.blind_text("Grüße") == "XXXXX"
+
+
+def test_ah26_script_und_style_sind_kein_versteck(tmp_path):
+    """
+    AH26 - ein ausgenommener Knoten waere ein Versteck.
+
+    Das Forum kommt ohne JavaScript aus; ein <script> im weiterzugebenden
+    Material ist ohnehin erklaerungsbeduerftig. Klartext darin stehen zu
+    lassen, weil es "ja nur Code" ist, waere die falsche Reihenfolge der
+    Ueberlegung.
+    """
+    quelle = _schreibe(tmp_path / "s.html", _seite(
+        '<div class="postmsg">'
+        '<script>var name = "Klarname";</script>'
+        '<style>/* Klarname */</style></div>'))
+    ziel = tmp_path / "s.out.html"
+    assert _lauf(quelle, "-x", '//div[@class="postmsg"]',
+                 "-o", ziel) == anon_html.RC_OK
+    assert "Klarname" not in ziel.read_text(encoding="utf-8")
+
+
+def test_ah27_vorgabepfad_der_ausgabe(tmp_path):
+    """
+    AH27 - ohne '-o' entsteht '<original>.new.html' neben der Vorlage.
+
+    Unveraendert seit Build 630; hier festgehalten, damit der Umbau die
+    Zusage aus dem Katalog nicht nebenbei verschiebt.
+    """
+    quelle = _schreibe(tmp_path / "probe.html", _seite(BEITRAG))
+    assert _lauf(quelle, "-x", '//div[@class="postmsg"]') == anon_html.RC_OK
+    assert (tmp_path / "probe.new.html").exists()
+
+
+# =============================================================================
+# AH28-AH29 - Hilfe und Uebersetzbarkeit
+# =============================================================================
+
+def test_ah28_der_katalogeintrag_stimmt_mit_dem_werkzeug_ueberein():
+    """
+    AH28 - "keine Neuerung ohne Hilfe", und ausdruecklich mehr als das.
+
+    Die drei Warnungen aus Build 630 (Kindelemente, "ohne Treffer RC 0",
+    "wortlos ueberschrieben") beschreiben einen Stand, den es seit Build 687
+    nicht mehr gibt. EINE WARNUNG, DIE NICHT MEHR STIMMT, IST SCHLIMMER ALS
+    KEINE - sie kostet Vertrauen in die uebrigen. Dieser Waechter macht die
+    Suite rot, falls sie je zurueckkehren, und haelt die Rueckgabewerte des
+    Katalogs gegen die des Werkzeugs.
+    """
+    from management.help import cli_katalog
+    eintrag = {e.schluessel: e for e in cli_katalog.CLI_KATALOG}["anon_html"]
+    assert eintrag.pfad == "tools/anon_html.py"
+
+    text = " ".join(eintrag.tiefe.warnungen) + " " + eintrag.hinweis
+    for ueberholt in ("NICHT DER IN KINDELEMENTEN",
+                      "OHNE TREFFER ENDET DER LAUF MIT 0",
+                      "WORTLOS UEBERSCHRIEBEN"):
+        assert ueberholt not in text, (
+            "Der Katalog warnt wieder vor einem Stand, den es nicht mehr "
+            "gibt: %r" % ueberholt)
+
+    verzeichnet = dict(eintrag.tiefe.exit_codes)
+    for wert in (anon_html.RC_OK, anon_html.RC_AUFRUF,
+                 anon_html.RC_KEIN_TREFFER, anon_html.RC_GEGENPROBE,
+                 anon_html.RC_ZIEL_DA):
+        assert wert in verzeichnet, (
+            "Rueckgabewert %d ist im Katalog nicht verzeichnet - wer ihn "
+            "bekommt, findet nichts dazu." % wert)
+
+
+def test_ah29_das_werkzeug_ist_uebersetzbar(tmp_path):
+    """
+    AH29 - Grundregel 9: nur fehlerfrei kompilierbarer Code wird uebergeben.
+
+    Steht hier, weil dieses Werkzeug ausserhalb der Pakete liegt und von
+    keinem Import der uebrigen Suite beruehrt wird. Das Ergebnis geht in ein
+    Wegwerf-Verzeichnis - py_compile weigert sich gegen os.devnull
+    (gemessen), und der Bestand soll dabei keine .pyc bekommen.
+    """
+    import py_compile
+    ziel = tmp_path / "anon_html.pyc"
+    py_compile.compile(str(_WURZEL / "tools" / "anon_html.py"),
+                       doraise=True, cfile=str(ziel))
+    assert ziel.exists()

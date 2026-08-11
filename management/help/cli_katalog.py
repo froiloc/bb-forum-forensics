@@ -223,6 +223,17 @@ _GEPRUEFT_687 = ("Build 687, 2026-08-11, gegen Wegwerf-HTML unter /tmp, "
                  "Python 3.12.3, lxml 6.0.2")
 
 
+#: Build 690. Die Nachbesserung aus dem Vergleich mit einer zweiten,
+#: unabhaengig gebauten Fassung desselben Vorgangs (technische Panne, beide
+#: Bearbeitungen liefen parallel). Gefahren gegen Wegwerf-HTML unter /tmp:
+#: Fragment mit mehreren Knoten der obersten Ebene, Fragment mit einem
+#: Knoten, verschachtelte Treffer, Volldokument mit und ohne DOCTYPE,
+#: gemischte Ausdrucksliste, unbekannter Kodierungsname. Der Vergleich steht
+#: im Vermerk 'Vergleich_anon_html_Build687_gegen_Build690_v1_0.md'.
+_GEPRUEFT_690 = ("Build 690, 2026-08-11, gegen Wegwerf-HTML unter /tmp, "
+                 "Python 3.13, lxml 6.1.1")
+
+
 def _bsp(aufruf: str, wirkung: str, geprueft: str = _GEPRUEFT) -> CliBeispiel:
     """Kurzform fuer einen GEFAHRENEN Beispielaufruf."""
     return CliBeispiel(aufruf=aufruf, wirkung=wirkung, geprueft=geprueft)
@@ -1764,18 +1775,21 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "Sie entsteht NUR, wenn ersetzt wurde UND die Gegenprobe "
                 "bestanden ist.",
         hinweis="SEIT BUILD 687 PRUEFT ES SICH SELBST NACH (Vorgang "
-                "ad88708d). Es ersetzt jetzt den gesamten Teilbaum - "
-                "einschliesslich Kindelementen, Text hinter Kindelementen "
-                "und Kommentaren - und liest die geschriebene Datei danach "
-                "WIEDER EIN, um zu messen, dass in den getroffenen "
-                "Teilbaeumen kein anderes Zeichen als 'X' und Leerraum mehr "
-                "steht. Besteht die Probe nicht, ENTSTEHT KEINE DATEI. "
-                "ES BLEIBT TROTZDEM EIN HANDWERKZEUG UND KEIN VERFAHREN: "
-                "die Probe belegt etwas ueber die GETROFFENE AUSWAHL, nicht "
-                "ueber den Rest der Datei und nicht ueber Attributwerte "
-                "(siehe Warnungen). Wer Material fuer die Weitergabe "
-                "vorbereitet, liest das Ergebnis weiterhin MIT DEN AUGEN "
-                "gegen.",
+                "ad88708d): es blendet den GANZEN Teilbaum, liest die "
+                "GESCHRIEBENE Datei neu ein und misst nach, dass darin kein "
+                "Textknoten der getroffenen Auswahl mehr etwas anderes "
+                "enthaelt als 'X' und Leerraum. Erst dann entsteht die "
+                "Zieldatei. WAS DIESE PROBE NICHT ABDECKT, sagt die "
+                "Schlussmeldung woertlich: den Rest der Datei und alle "
+                "Attributwerte. BUILD 690 hat drei Nachbesserungen "
+                "eingearbeitet, die erst der Vergleich mit einer zweiten, "
+                "unabhaengig gebauten Fassung sichtbar gemacht hat - ein "
+                "Fragment mit mehreren Knoten der obersten Ebene lief bis "
+                "dahin GAR NICHT durch (die Gegenprobe scheiterte immer), "
+                "verschachtelte Treffer wurden doppelt gezaehlt, und der von "
+                "lxml erfundene Rahmen wurde nicht gemeldet. ES BLEIBT EIN "
+                "HANDWERKZEUG: wer damit Material fuer die Weitergabe "
+                "vorbereitet, liest das Ergebnis MIT DEN AUGEN gegen.",
         # Build 640 (Welle 6): geprueft am ganzen Quelltext -
         # kein ConfigLoader, kein '--config', kein Zugriff auf config.yaml.
         # Build 687 erneut geprueft: unveraendert, die beiden neuen Optionen
@@ -1818,6 +1832,16 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "valid ascii: ... byte 0xc3 in position 29'. Keine "
                      "Datei. Rueckgabewert 1.",
                      _GEPRUEFT_687),
+                _bsp("python tools/anon_html.py schnipsel.html "
+                     "-x \"//div[@class='postmsg']\" -o anonym.html",
+                     "Auf einem von Hand herausgeschnittenen Stueck OHNE "
+                     "'<html>' und mit mehreren Knoten der obersten Ebene: "
+                     "laeuft durch, Rueckgabewert 0, mit dem Hinweis "
+                     "'NOTE: ... processed as a FRAGMENT'. BIS BUILD 687 "
+                     "endete genau dieser Fall mit Rueckgabewert 3 und "
+                     "'position path ... resolved to 0 element(s)' - es "
+                     "entstand GAR KEINE Datei.",
+                     _GEPRUEFT_690),
                 _bsp("python tools/anon_html.py probe.html",
                      "Bricht ab: 'ERROR: Either --xpath-file or --xpath must "
                      "be provided.' Rueckgabewert 1.",
@@ -1840,21 +1864,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                         (4, "die Zieldatei existiert und '--overwrite' wurde "
                             "nicht angegeben - es wurde nichts getan")),
             warnungen=(
+                "DIE GEGENPROBE BELEGT NUR DIE GETROFFENE AUSWAHL. Sie sagt "
+                "NICHTS ueber den Rest der Datei und NICHTS ueber "
+                "Attributwerte. Wer den falschen XPath waehlt, bekommt eine "
+                "Datei, die 'VERIFIED' meldet und daneben Klartext enthaelt. "
+                "Die Schlussmeldung sagt diese Grenze woertlich - sie ist zu "
+                "LESEN und nicht zu ueberblaettern.",
                 "ATTRIBUTWERTE WERDEN NICHT ERSETZT. GEMESSEN am 2026-08-11: "
                 "'title=\"Klarname im Attribut\"' und "
                 "'href=\"mailto:klar@example.com\"' innerhalb eines "
-                "getroffenen Elements stehen unveraendert in der Ausgabe. "
-                "Das ist eine ENTSCHEIDUNG und kein Versehen - 'class' und "
-                "'href' blind zu ueberschreiben zerstoert genau die Gestalt, "
-                "um derentwillen die Datei weitergegeben wird. Das Werkzeug "
-                "MELDET stattdessen die Zahl der verbliebenen Attribute und "
-                "listet sie mit '-v' auf. DIESE ZEILE IST ZU LESEN.",
-                "DIE GEGENPROBE BELEGT NUR DIE GETROFFENE AUSWAHL. Sie sagt "
-                "NICHTS ueber den Rest der Datei. Wer den falschen XPath "
-                "waehlt, bekommt eine Datei, die 'VERIFIED' meldet und "
-                "danebenliegenden Klartext enthaelt. Die Auswahl bleibt die "
-                "Verantwortung des Bedieners; das Werkzeug prueft nur, ob es "
-                "getan hat, was es zugesagt hat.",
+                "getroffenen Elements ueberleben unveraendert. Das ist eine "
+                "ENTSCHEIDUNG und kein Versehen - 'class' und 'href' blind zu "
+                "ueberschreiben zerstoert genau die Gestalt, um derentwillen "
+                "die Datei weitergegeben wird. Ihre ZAHL wird immer gemeldet, "
+                "mit '-v' die Liste. Sie sind von Hand zu pruefen.",
                 "DER BLINDTEXT ERHAELT WORTLAENGEN UND WORTGRENZEN. Das ist "
                 "gewollt (die Gestalt der Seite bleibt beurteilbar), heisst "
                 "aber auch: die Laenge jedes Wortes bleibt ablesbar. Fuer "
@@ -1862,18 +1885,29 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "taugt das Ergebnis nicht.",
                 "DIE KODIERUNG WIRD ANGESAGT, NICHT GERATEN ('--encoding', "
                 "Vorgabe utf-8). Passt sie nicht zur Datei, BRICHT der Lauf "
-                "ab (Rueckgabewert 1), statt beschaedigten Text zu "
-                "schreiben. Das ist Absicht: bis Build 686 raet lxml ohne "
-                "'<meta charset>' und landet bei Latin-1 - GEMESSEN stand "
-                "danach ein gar nicht getroffener Absatz doppelt kodiert in "
-                "der Ausgabe, und der Blindtext war 40 statt 25 Zeichen lang.",
+                "ab (Rueckgabewert 1), statt beschaedigten Text zu schreiben. "
+                "GRUND, gemessen: ohne '<meta charset>' riet lxml bis Build "
+                "686 und landete bei Latin-1; nicht getroffener Text kam dann "
+                "DOPPELT KODIERT aus dem Lauf. Ein von Hand "
+                "herausgeschnittenes Fragment hat regelmaessig keine "
+                "Deklaration.",
+                "EIN FRAGMENT OHNE '<html>' BEKOMMT VON lxml EINEN RAHMEN. "
+                "GEMESSEN: um mehrere Knoten der obersten Ebene ein <div>, um "
+                "blossen Text ein <span>; offene Tags werden geschlossen. "
+                "Dieser Rahmen steht dann in der Weitergabe, ohne je in der "
+                "Vorlage gestanden zu haben, und ein weiter Ausdruck "
+                "('//div') trifft ihn MIT. Seit Build 690 meldet das Werkzeug "
+                "die Lage ('NOTE: ... processed as a FRAGMENT'); aufloesen "
+                "kann es sie nicht - ein hinzugefuegter Rahmen ist von einem "
+                "gleichnamigen echten Element nicht sicher zu unterscheiden. "
+                "HIER IST DER VERGLEICH MIT DER VORLAGE PFLICHT.",
                 "DER INHALT VON <script> UND <style> WIRD MITGEBLENDET, wenn "
                 "er im getroffenen Teilbaum liegt. Ein ausgenommener Knoten "
-                "waere ein Versteck. Wer eine Seite weitergibt, deren "
-                "Darstellung von einem eingebetteten <style> im Teilbaum "
-                "abhaengt, muss das wissen.",
-                "'lxml' ist eine zusaetzliche Abhaengigkeit (requirements.txt "
-                "Zeile 7). Ohne sie bricht das Werkzeug beim Import ab.",
+                "waere ein Versteck. Wer eine Seite samt Skript vorfuehren "
+                "will, waehlt den XPath entsprechend enger.",
+                "'lxml' ist eine zusaetzliche Abhaengigkeit "
+                "(requirements.txt Zeile 7). Ohne sie bricht das Werkzeug "
+                "beim Import ab.",
             ),
         ),
     ),
