@@ -30,7 +30,7 @@
 # zusaetzlich, in welcher Zeile es geknallt hat -- 'set -e' allein bricht
 # wortlos ab.
 #
-# Version: v0.8.662 - Build: 662 - 2026-08-02
+# Version: v0.8.697 - Build: 697 - 2026-08-11 (Nummernabgleich + MD5-Gegenprobe)
 # =============================================================================
 set -euo pipefail
 trap 'echo "" >&2; echo "ABBRUCH in Zeile ${LINENO}: ${BASH_COMMAND}" >&2' ERR
@@ -119,6 +119,71 @@ if [ "$anzahl_commits" -eq 0 ]; then
 fi
 echo "Zweig ${zweig}, Lieferung Build ${build_no}, ${anzahl_commits} Commit(s) gegenueber ${basis_ref}."
 
+# -----------------------------------------------------------------------------
+# BUILD 697 -- DIE NUMMER IM AUFRUF MUSS DIE NUMMER IN build.json SEIN.
+#
+# WOZU: Die Buildnummer benennt hier vier Dinge (Bundle, Archiv, MD5-Liste,
+# Protokoll) und beim Empfaenger die Ref, den Integrationszweig und den
+# erwarteten Dateinamen. Ein Zahlendreher erzeugt ein Archiv, dessen Name
+# nicht zu seinem Inhalt passt -- und faellt erst weit spaeter auf, wenn
+# ueberhaupt. Die Angabe steht ohnehin schon in build.json; sie zweimal von
+# Hand richtig zu tippen ist keine Pruefung, sondern eine Gelegenheit.
+#
+# KEIN STILLES DURCHWINKEN, wenn build.json nicht lesbar ist: dann ist etwas
+# grundlegend nicht in Ordnung, und ein Archiv aus einem Bestand mit kaputter
+# build.json waere ohnehin nichts wert (GR1, GR4).
+# -----------------------------------------------------------------------------
+if [ ! -f build.json ]; then
+    echo "ABBRUCH: build.json nicht gefunden." >&2
+    exit 1
+fi
+build_in_json="$(python3 -c 'import json;print(json.load(open("build.json"))["build"])' 2>/dev/null || true)"
+if [ -z "$build_in_json" ]; then
+    echo "ABBRUCH: build.json liess sich nicht lesen (Schluessel 'build')." >&2
+    echo "Ohne sie ist nicht zu pruefen, ob die Nummer im Aufruf stimmt." >&2
+    exit 1
+fi
+if [ "$build_in_json" != "$build_no" ]; then
+    echo "ABBRUCH: Die Nummern gehen auseinander." >&2
+    echo "  build.json sagt : ${build_in_json}" >&2
+    echo "  Aufruf sagt     : ${build_no}" >&2
+    echo "Eine der beiden ist falsch. Die Lieferung wuerde sonst unter einem" >&2
+    echo "Namen ausgeliefert, der nicht zu ihrem Inhalt passt." >&2
+    exit 1
+fi
+echo "build.json und Aufruf nennen dieselbe Nummer (${build_no})."
+
+# -----------------------------------------------------------------------------
+# BUILD 697 -- IST DIESE NUMMER SCHON AUSGELIEFERT?
+#
+# Der Empfaenger erkennt eine Lieferung an ihrer Nummer (refs/claude/build<N>).
+# Eine zweite Lieferung unter derselben Nummer kommt dort deshalb NICHT an --
+# gemessen am 11.08.2026, zweimal, jeweils mit gruener Meldung. Seit dem
+# gleichen Datum bricht bundle_einspielen.sh in diesem Fall ab; hier faellt es
+# schon eine Stufe frueher auf, naemlich beim Erzeuger.
+#
+# Es wird GEWARNT und nicht abgebrochen: 'Uebernahme ... Build <N>' ist die
+# Betreffzeile, die der Empfaenger beim Einspielen setzt -- sie steht also
+# erst NACH einer erfolgreichen Uebernahme in der Baubasis. Ein Treffer ist
+# damit ein starkes Anzeichen, aber kein Beweis (der Betreff koennte auch aus
+# einem anderen Anlass so lauten). Ein Abbruch auf ein Anzeichen hin waere
+# hier das falsche Mass; ein Verschweigen aber auch.
+# -----------------------------------------------------------------------------
+schon_geliefert="$(git log --oneline "$basis_ref" \
+                   --grep="Build ${build_no}\$" --grep="Build ${build_no} " \
+                   -E -i | head -3 || true)"
+if [ -n "$schon_geliefert" ]; then
+    echo ""
+    echo "ACHTUNG -- IN ${basis_ref} STEHT SCHON ETWAS ZU BUILD ${build_no}:"
+    echo "$schon_geliefert" | sed 's/^/  /'
+    echo ""
+    echo "Wurde diese Nummer bereits ausgeliefert, kommt eine zweite Lieferung"
+    echo "unter derselben Nummer beim Empfaenger NICHT an -- dort entscheidet"
+    echo "die Nummer, nicht der Inhalt. Bitte eine freie Nummer verwenden."
+    echo "(Wenn der Treffer aus einem anderen Anlass stammt: weitermachen.)"
+    echo ""
+fi
+
 # =============================================================================
 # 1) Vorabprobe -- data-exchange.md Abschnitt 3.3
 # =============================================================================
@@ -200,18 +265,64 @@ fi
 
 bash tools/md5sums_build.sh "$build_no" "${geaendert[@]}"
 
+# =============================================================================
 # Die MD5-Liste gehoert in den Commit -- sonst weicht der ausgelieferte Stand
-# von dem ab, was das Bundle enthaelt. Das Nachziehen wird ausdruecklich
-# gemeldet: eine stille Aenderung an einem Commit waere das Gegenteil dessen,
-# was dieses Verfahren erreichen soll.
-if [ -n "$(git status --porcelain -- "$md5_liste")" ]; then
+# von dem ab, was das Bundle enthaelt.
+#
+# BUILD 697 -- DIESE ABSICHT WAR SEIT BUILD 665 WIRKUNGSLOS (Vorgang
+# a1c7f0d2). Bis hierher lautete die Bedingung:
+#
+#     if [ -n "$(git status --porcelain -- "$md5_liste")" ]; then
+#
+# '.gitignore' fuehrt aber 'MD5SUMS_Build*.txt' (Zeile 90), und
+# 'git status --porcelain' OHNE '--ignored' gibt fuer eine ignorierte Datei
+# NICHTS aus. Die Bedingung war also immer falsch, der Zweig lief nie -- und
+# weil er nur im Erfolgsfall etwas ausgab, meldete er auch nichts.
+#
+# GEMESSEN am 11.08.2026 im Produktivbestand:
+#     git ls-files | grep -c '^MD5SUMS'   ->  0
+#     ls MD5SUMS_Build*.txt | wc -l       ->  26   (alle unverfolgt)
+#
+# FOLGE, und sie wiegt schwer: Keine MD5-Liste war je in einem Bundle. Beim
+# Empfaenger fehlte sie deshalb im Arbeitsbaum, und Schritt 8 von
+# bundle_einspielen.sh ("Abnahmeprobe") endete AUSNAHMSLOS mit "KEINE ABNAHME
+# MOEGLICH". Die Probe, die in Build 666 eigens eingefuehrt wurde, weil 173
+# Pruefsummenlisten erzeugt und nie geprueft worden waren, ist bis dahin kein
+# einziges Mal gelaufen. Damit fiel auch der letzte Waechter aus, der eine
+# nicht angekommene Lieferung haette aufdecken koennen.
+#
+# ZWEI AENDERUNGEN, und die zweite ist die wichtigere:
+#   1. 'git add -f' -- ueberstimmt die .gitignore-Regel. Sie bleibt bestehen:
+#      die uebrigen 26 Altlisten sollen weiterhin nicht im Bestand auftauchen,
+#      und ein '.gitignore'-Eingriff waere eine Entscheidung ueber den
+#      dauerhaften Inhalt des Bestandes, nicht ueber dieses Werkzeug.
+#   2. EINE GEGENPROBE DANACH. Erst sie macht aus einer stillen Nichtwirkung
+#      einen lauten Abbruch. Genau daran hat es gefehlt -- nicht am Vorsatz.
+# =============================================================================
+if ! git ls-files --error-unmatch "$md5_liste" >/dev/null 2>&1 \
+   || [ -n "$(git status --porcelain --ignored -- "$md5_liste")" ]; then
     echo ""
     echo "HINWEIS: ${md5_liste} wird in den letzten Commit nachgezogen"
-    echo "         (git add + git commit --amend --no-edit)."
-    git add "$md5_liste"
+    echo "         (git add -f + git commit --amend --no-edit)."
+    git add -f "$md5_liste"
     git commit -q --amend --no-edit
     echo "         Neuer Commit: $(git rev-parse --short HEAD)"
 fi
+
+# GEGENPROBE: liegt die Liste jetzt wirklich im Commit? Ohne sie kann der
+# Empfaenger die Abnahme nach Grundregel 8 nicht fahren -- und das soll nicht
+# noch einmal jahrelang unbemerkt bleiben.
+if ! git ls-files --error-unmatch "$md5_liste" >/dev/null 2>&1; then
+    echo "" >&2
+    echo "ABBRUCH: ${md5_liste} liegt NICHT im Commit." >&2
+    echo "Damit waere sie in keinem Bundle, beim Empfaenger nicht im" >&2
+    echo "Arbeitsbaum, und die Abnahmeprobe (Schritt 8 von" >&2
+    echo "bundle_einspielen.sh, Grundregel 8) koennte nicht laufen." >&2
+    echo "" >&2
+    echo "Pruefen: git check-ignore -v ${md5_liste}" >&2
+    exit 1
+fi
+echo "${md5_liste} ist im Commit -- die Abnahmeprobe ist beim Empfaenger moeglich."
 
 # =============================================================================
 # 4) Bundle

@@ -1134,11 +1134,14 @@ function initTabulatorTables(container) {
             title:     th.textContent.trim(),
             field:     `col${colIdx}`,
             headerFilter: 'input',
+            // Build 692: gegen den SICHTBAREN Text filtern, nicht gegen das
+            // Markup. Begründung in sichtbarerText()/htmlHeaderFilter().
+            headerFilterFunc: htmlHeaderFilter,
             sorter:    _tsSorter,
             formatter: 'html',  // HTML-Inhalt (Links, Spans) erhalten
         }));
 
-        // Datenzeilen aus <tbody> extrahieren (Build 687: inkl. Zeilenkopf-<th>)
+        // Datenzeilen aus <tbody> extrahieren (Build 689: inkl. Zeilenkopf-<th>)
         const rows = extractTabulatorRows(table, headers.length);
 
         // Wrapper-Div für Tabulator erstellen (ersetzt die Tabelle im DOM)
@@ -1153,6 +1156,85 @@ function initTabulatorTables(container) {
         // eslint-disable-next-line no-new
         new Tabulator(wrapper, buildTabulatorConfig(rows, columns));
     });
+}
+
+/**
+ * Liefert den SICHTBAREN Text eines Zellinhalts — ohne Markup.
+ *
+ * Build 692 · Vorgang 8f2c19aa · Beleg: Entscheidung Alex 2026-08-11.
+ *
+ * Die Zellen der BLOB-Tabellen enthalten fertiges HTML (Links, Spans,
+ * <strong>), und einige tragen einen VERSTECKTEN Sortierschluessel:
+ *   <span class="forensic-ts" data-ts="1772323200" style="display:none">
+ * Der Prepper erzeugt das seit Build 060 fuer jeden Zeitstempel und seit
+ * Build 131 auch fuer die Monatsspalte der Timeline.
+ *
+ * WARUM DAS FUER DEN FILTER EIN PROBLEM IST — gemessen, nicht vermutet:
+ * Tabulators Standardvergleich arbeitet auf dem ROHEN Feldwert. Aus der
+ * ausgelieferten Bibliothek (static/vendor/tabulator/tabulator.min.js):
+ *   like:function(e,t,i,s){ ... String(t).toLowerCase().indexOf(e.toLowerCase())>-1 ...}
+ * ``t`` ist der Feldwert, hier also das innerHTML der Zelle. Wer im
+ * Monatsfeld "7" eintippt, trifft damit auch jede Zeile, deren
+ * data-ts-Ziffernfolge eine 7 enthaelt — und das sind fast alle. Der Filter
+ * durchsucht etwas, das der Ermittler gar nicht sehen kann.
+ *
+ * Das galt schon vor Build 131 fuer JEDE Zeitstempelspalte des Werkzeugs.
+ * Es fiel nur nicht auf, weil dort ohnehin nach Datumsbestandteilen gesucht
+ * wird, die zufaellig auch im Zeitstempel vorkommen. Mit der Monatsspalte
+ * wurde es sichtbar; behoben wird es fuer alle Spalten zugleich.
+ *
+ * Umsetzung ueber DOMParser statt eines Tag-Regex: ein Regex ueber HTML
+ * scheitert an Attributwerten, die spitze Klammern enthalten (etwa ein Titel
+ * mit "<3"). Der Parser ist die dafuer gebaute Stelle. display:none-Inhalte
+ * verschwinden dabei NICHT von selbst (der Parser rendert kein CSS) — der
+ * versteckte Span wird deshalb ausdruecklich entfernt.
+ *
+ * @param   {*} wert — Feldwert (in der Regel innerHTML einer Zelle)
+ * @returns {string} sichtbarer Text, Leerzeichen zusammengefasst
+ */
+function sichtbarerText(wert) {
+    if (wert === null || wert === undefined) return '';
+    const roh = String(wert);
+    // Schnellweg: kein Markup -> nichts zu tun. Spart den Parser fuer die
+    // grosse Mehrheit der Zellen (blosse Zahlen und Namen).
+    if (roh.indexOf('<') === -1) return roh.trim();
+    let text;
+    try {
+        const doc = new DOMParser().parseFromString(roh, 'text/html');
+        // Versteckte Sortierschluessel entfernen: sie gehoeren nicht zum
+        // sichtbaren Inhalt und haben im Filter nichts zu suchen.
+        doc.body.querySelectorAll('.forensic-ts, [style*="display:none"]')
+           .forEach(el => el.remove());
+        text = doc.body.textContent || '';
+    } catch (e) {
+        // Kein stiller Rueckfall auf den Rohwert ohne Vermerk (GR1): wer
+        // hier landet, soll es in der Konsole sehen koennen.
+        console.warn('[forensic] sichtbarerText(): Parsen fehlgeschlagen — '
+                     + 'es wird auf dem Rohwert gefiltert.', e);
+        return roh;
+    }
+    return text.replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Header-Filter fuer Tabulator: vergleicht gegen den sichtbaren Text.
+ *
+ * Build 692. Verhaelt sich sonst wie Tabulators eingebautes "like":
+ * Teilzeichenkette, ohne Beachtung der Gross-/Kleinschreibung, leerer
+ * Suchbegriff trifft alles.
+ *
+ * @param   {*} suchbegriff — Eingabe im Kopffilter
+ * @param   {*} zellwert    — Feldwert der Zeile (innerHTML)
+ * @returns {boolean} true, wenn die Zeile sichtbar bleibt
+ */
+function htmlHeaderFilter(suchbegriff, zellwert) {
+    if (suchbegriff === null || suchbegriff === undefined
+            || String(suchbegriff) === '') {
+        return true;
+    }
+    return sichtbarerText(zellwert)
+        .toLowerCase()
+        .indexOf(String(suchbegriff).toLowerCase()) > -1;
 }
 
 /**

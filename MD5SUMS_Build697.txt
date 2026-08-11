@@ -1,0 +1,7 @@
+00ceb134f855eecff877488254c2127e  build.json
+ea3ac5ea49c2556f97d1d05f2e249447  issue-tracker/eintraege_claude_Build697.json
+0518d13f987b483446a419e61bbc2a34  tests/test_lieferkette.py
+80a77f9a0b27a516214baa7c347335b2  tests/unit/test_tabulator_headerfilter.test.js
+4c3f194554e3af6a90c5bf069be96b06  tools/bundle_bauen.sh
+05a6b41b3c5e647cb4f0ce89766b1513  tools/bundle_einspielen.sh
+91072f82541e8ccd34f11ca5d0d28dec  userinfo/userinfo.js

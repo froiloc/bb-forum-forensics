@@ -49,7 +49,7 @@
 #   (Schritt 0/1), 2 = falscher Aufruf. Der Code allein sagt damit, wo
 #   es hing -- ohne die Ausgabe zurueckscrollen zu muessen.
 #
-# Version: v0.8.665 - Build: 665 - 2026-08-04
+# Version: v0.8.697 - Build: 697 - 2026-08-11 (Inhaltsabgleich statt Nummer)
 # -----------------------------------------------------------------------------
 #
 # Aufruf:   ./bundle_einspielen.sh <paket> <buildnummer> [testbefehl]
@@ -275,31 +275,40 @@ if [ "$aktueller_zweig" != "master" ]; then
     exit 1
 fi
 
-# BUILD 665: eine bereits geholte Lieferung ist KEIN Abbruchgrund mehr.
-# Frueher endete hier jeder zweite Lauf -- also genau der Lauf, den man nach
-# einem behobenen Fehler braucht. Der Zustand wird stattdessen FESTGESTELLT
-# und den Schritten mitgegeben; Schritt 3 ueberspringt sich dann.
-if git rev-parse --verify --quiet "$ref" >/dev/null; then
-    if git merge-base --is-ancestor "$ref" master 2>/dev/null; then
-        echo "FERTIG: master traegt Build ${build_no} bereits."
-        echo "Nichts zu tun. ($ref bleibt stehen -- data-exchange.md 4.4)"
-        git --no-pager log --oneline -1 master
-        fertig=1
-        exit 0
-    fi
-    echo "WIEDERAUFNAHME: ${ref} ist schon geholt, master traegt sie noch nicht."
-    echo "Schritt 3 wird uebersprungen."
-    schon_geholt=1
-fi
+# =============================================================================
+# BUILD 697 -- DIE LIEFERUNG WIRD GELESEN, BEVOR UEBER SIE ENTSCHIEDEN WIRD.
+#
+# BEFUND (Alex, 11.08.2026; Vorgang a1c7f0d2): Build 692 kam ZWEIMAL nicht an,
+# beide Male mit gruener Meldung. Ursache: die Identitaet einer Lieferung war
+# ihre BUILDNUMMER -- alles haengt an $ref="refs/claude/build<N>". Der INHALT
+# des uebergebenen Bundles wurde nirgends dagegen gehalten. Daraus folgten
+# zwei stille Fehlschlaege:
+#
+#   A1  $ref vorhanden UND in master  ->  "FERTIG", exit 0. Die uebergebene
+#       Datei wurde nicht einmal geoeffnet (dieser Block stand VOR Schritt 1).
+#       Ein leeres, beschaedigtes oder voellig fremdes Bundle ergab dieselbe
+#       Ausgabe.
+#
+#   A2  $ref vorhanden, master traegt sie NICHT (der Normalzustand nach einem
+#       abgebrochenen Lauf oder roter Regression)  ->  Schritt 3 uebersprang
+#       den fetch, Schritt 1 verifizierte aber das UEBERGEBENE Bundle und
+#       meldete "is okay". Gemergt wurde die ALTE Ref. Der Bediener sah eine
+#       verifizierte Lieferung, einen erfolgreichen Merge und ein "Fertig" --
+#       im Bestand lag Inhalt, den niemand geliefert hatte. Nachgestellt und
+#       gemessen am 11.08.2026.
+#
+# DIE BEHEBUNG IST EIN ZEICHENKETTENVERGLEICH. 'git bundle list-heads' nennt
+# die Spitze als SHA, OHNE dass das Objekt lokal vorliegen muss -- das Bundle
+# laesst sich also befragen, bevor irgendetwas geholt wurde. Deshalb wandert
+# Schritt 1 (verify + list-heads) VOR den Wiederaufnahme-Block.
+#
+# DIE WIEDERAUFNAHME BLEIBT ERHALTEN. Sie war richtig gedacht (Build 665: der
+# zweite Lauf nach einem behobenen Fehler darf nicht scheitern) und greift
+# weiterhin -- aber nur noch, wenn Ref und Bundle DENSELBEN Stand tragen.
+# Genau dafuer war sie gemeint.
+# =============================================================================
 
-case "$bundle" in
-    "$(git rev-parse --show-toplevel)"/*)
-        echo "HINWEIS: Die Bundle-Datei liegt IM Arbeitsbaum. Das geht, ist aber"
-        echo "unsauber -- sie taucht als unverfolgte Datei im Bestand auf." ;;
-esac
-echo "master, $ref noch frei, Bundle vorhanden."
-
-# --- 1) Bundle pruefen, bevor irgendetwas angefasst wird --------------------
+# --- 1) Bundle pruefen, BEVOR ueber es entschieden wird ---------------------
 meld "1) git bundle verify"
 git bundle verify "$bundle"
 
@@ -310,7 +319,62 @@ if [ "$anzahl_heads" -ne 1 ]; then
     exit 1
 fi
 zweig="$(git bundle list-heads "$bundle" | awk '{print $2}')"
+bundle_spitze="$(git bundle list-heads "$bundle" | awk '{print $1}')"
 echo "Quellzweig im Bundle: ${zweig}"
+echo "Spitze im Bundle:     ${bundle_spitze}"
+
+# --- 1b) Wiederaufnahme -- jetzt MIT Inhaltsabgleich ------------------------
+meld "1b) Abgleich Bundle gegen ${ref}"
+if git rev-parse --verify --quiet "$ref" >/dev/null; then
+    ref_spitze="$(git rev-parse "$ref")"
+    if [ "$ref_spitze" != "$bundle_spitze" ]; then
+        echo "" >&2
+        echo "ABBRUCH: Buildnummer ${build_no} ist hier bekannt, das uebergebene" >&2
+        echo "Bundle traegt aber einen ANDEREN Stand." >&2
+        echo "" >&2
+        echo "  vorhanden (${ref}):" >&2
+        echo "    ${ref_spitze}" >&2
+        echo "  im Bundle ${bundle}:" >&2
+        echo "    ${bundle_spitze}" >&2
+        echo "" >&2
+        echo "EINE NUMMER, ZWEI STAENDE -- das ist nie gewollt (GR4/GR5)." >&2
+        echo "Zwei Faelle kommen in Frage, und sie sind zu unterscheiden:" >&2
+        echo "" >&2
+        echo "  (a) Es ist eine NACHLIEFERUNG unter verbrauchter Nummer." >&2
+        echo "      Dann gehoert sie unter eine NEUE Nummer. Ohne diese" >&2
+        echo "      Pruefung waere sie hier stillschweigend ausgefallen --" >&2
+        echo "      genau das ist am 11.08.2026 zweimal passiert." >&2
+        echo "" >&2
+        echo "  (b) Es ist die FALSCHE DATEI. Dann bitte die richtige nehmen." >&2
+        echo "" >&2
+        echo "Ansehen, was der Unterschied waere:" >&2
+        echo "  git log --oneline ${ref}" >&2
+        echo "  git bundle list-heads ${bundle}" >&2
+        exit 1
+    fi
+    # Ab hier ist belegt: Ref und Bundle tragen denselben Stand. Die
+    # Kurzwege aus Build 665 sind damit wieder das, was sie sein sollten.
+    if git merge-base --is-ancestor "$ref" master 2>/dev/null; then
+        echo "FERTIG: master traegt Build ${build_no} bereits."
+        echo "Der Stand ist DERSELBE wie im uebergebenen Bundle (${bundle_spitze})."
+        echo "Nichts zu tun. ($ref bleibt stehen -- data-exchange.md 4.4)"
+        git --no-pager log --oneline -1 master
+        fertig=1
+        exit 0
+    fi
+    echo "WIEDERAUFNAHME: ${ref} ist schon geholt (gleicher Stand wie im Bundle),"
+    echo "master traegt sie noch nicht. Schritt 3 wird uebersprungen."
+    schon_geholt=1
+else
+    echo "${ref} ist hier noch nicht bekannt -- regulaere Erstlieferung."
+fi
+
+case "$bundle" in
+    "$(git rev-parse --show-toplevel)"/*)
+        echo "HINWEIS: Die Bundle-Datei liegt IM Arbeitsbaum. Das geht, ist aber"
+        echo "unsauber -- sie taucht als unverfolgte Datei im Bestand auf." ;;
+esac
+echo "master, $ref geklaert, Bundle vorhanden."
 
 # --- 2) Arbeitsbaum sichern -------------------------------------------------
 schritt=2
