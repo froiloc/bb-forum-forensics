@@ -7,7 +7,7 @@
 # ausgewaehlten Teilbaeume durch gleich langen Blindtext ('X') ersetzen und
 # das Ergebnis als NEUE Datei schreiben.
 #
-# WARUM DIESE DATEI IN BUILD 687 UMGEBAUT WURDE (Vorgang ad88708d, dazu drei
+# WARUM DIESE DATEI IN BUILD 687 UMGEBAUT UND IN BUILD 690 NACHGEBESSERT WURDE (Vorgang ad88708d, dazu drei
 # beim Nachmessen gefundene Befunde). Alles Folgende ist GEMESSEN, nicht
 # hergeleitet - Container, Python 3.12.3, lxml 6.0.2, Wegwerf-HTML unter /tmp:
 #
@@ -48,13 +48,64 @@
 #   NACHTRAG AUS DER EIGENEN AENDERUNG: Der naheliegende Weg (immer den BAUM
 #   serialisieren) erzeugt die Kehrseite - lxml DICHTET einer Datei ohne
 #   DOCTYPE beim Schreiben einen HTML-4.0-Transitional-DOCTYPE an (gemessen).
-#   Deshalb entscheidet die Eingabe, siehe hat_doctype().
+#   Deshalb entscheidet die EINGABE, siehe doctype_aus_rohdaten() - und seit
+#   Build 690 wird der DOCTYPE woertlich von dort uebernommen.
 #
 #   BEFUND 5 - ATTRIBUTE UND NICHT-ELEMENT-TREFFER. Innerhalb eines
 #   getroffenen Elements ueberlebten 'title="Klarname im Attribut"' und
 #   'href="mailto:klar@example.com"' unveraendert. Ausserdem verwarf die
 #   alte Fassung Nicht-Element-Ergebnisse eines XPath ('.../text()',
 #   '/@href') STILLSCHWEIGEND (Grundregel 1).
+#
+# -----------------------------------------------------------------------------
+# NACHTRAG BUILD 690 - WAS EINE ZWEITE, UNABHAENGIGE BEARBEITUNG ERGEBEN HAT
+#
+# Derselbe Vorgang ist durch eine technische Panne ZWEIMAL bearbeitet worden
+# (Build 687 und eine zweite Fassung auf Basis 686). Beide kamen auf dieselben
+# fuenf Befunde und dieselben Entwurfsentscheidungen; an einer realistischen
+# Forenseite lieferten sie eine BYTEWEISE IDENTISCHE Ausgabedatei. Der
+# Vergleich steht in 'Vergleich_anon_html_Build687_gegen_Build690_v1_0.md'.
+# Drei Punkte hat erst der Vergleich sichtbar gemacht - sie sind hier
+# eingearbeitet:
+#
+#   BEFUND 6 - DIE GEGENPROBE SCHEITERTE BEI FRAGMENTEN MIT MEHREREN KNOTEN
+#   DER OBERSTEN EBENE. GEMESSEN an Build 687:
+#       Eingabe : <div class="postmsg">Klarname</div><p>Rest</p>
+#       Ausgabe : FINDING: The verification pass FAILED.
+#                 position path /html/div/div resolved to 0 element(s)
+#                 RC 3 - es entstand GAR KEINE Datei.
+#   URSACHE: getroottree().getpath() haengt an dem Dokumentbaum, den lxml
+#   sich fuer ein Fragment ERFINDET - hier '/html/div/...' OHNE <body>.
+#   Geschrieben wird (richtigerweise) nur das Element; beim Neueinlesen baut
+#   lxml den Rahmen anders, naemlich '/html/body/div', und der gemerkte Pfad
+#   loest sich nicht mehr auf.
+#   TRAGWEITE: Es entstand keine FALSCHE Datei, sondern GAR KEINE - also kein
+#   Datensicherheitsproblem. Aber das Werkzeug war fuer genau den Eingabefall
+#   unbenutzbar, den dieser Dateikopf oben selbst als den wichtigen benennt
+#   (das von Hand herausgeschnittene Fragment), und die Meldung zeigte auf
+#   die Datei ("the structure changed"), obwohl die Ursache im Werkzeug lag.
+#   NICHT betroffen waren Fragmente mit genau EINEM Knoten der obersten Ebene
+#   und alle vollstaendigen Dokumente - deshalb ist es AH11 nicht aufgefallen.
+#   BEHOBEN: siehe lagepfad(). Der Bezugspunkt ist jetzt der Knoten, der auch
+#   SERIALISIERT wird; der Knotenname wird beim Aufloesen mitgeprueft.
+#
+#   BEFUND 7 - VERSCHACHTELTE TREFFER WURDEN DOPPELT GEZAEHLT. Traf der XPath
+#   ein Element UND dessen Elternteil, meldete Build 687 'replaced 2 text
+#   node(s)', obwohl EINE Stelle ersetzt wurde (der zweite Durchgang blendete
+#   bereits geblendeten Text). Die Zeile ist die, an der die Ermittelnden die
+#   Zahl gegen ihre Erwartung halten - eine zu hohe Zahl schadet dort mehr
+#   als eine fehlende. BEHOBEN: gezaehlt wird, was sich AENDERT.
+#
+#   BEFUND 8 - DER VON lxml ERFUNDENE RAHMEN WURDE NICHT GEMELDET. Bei einem
+#   Fragment baut lxml ein <div> um mehrere Knoten der obersten Ebene bzw.
+#   ein <span> um blossen Text (gemessen). Der Rahmen steht dann in der
+#   Weitergabe und kann von einem weiten XPath ('//div') selbst getroffen
+#   werden. BEHOBEN: siehe ist_fragment() - er wird BENANNT, nicht behauptet.
+#
+#   AUSSERDEM: Der DOCTYPE wird jetzt WOERTLICH aus den Rohbytes uebernommen
+#   statt aus lxmls geparster Fassung, und am Dateianfang verankert gesucht
+#   (BOM beruecksichtigt) statt in den ersten 4096 Zeichen. Siehe
+#   doctype_aus_rohdaten().
 #
 # WAS DIESE FASSUNG TUT UND WAS SIE AUSDRUECKLICH NICHT TUT:
 #
@@ -78,11 +129,11 @@
 #   entsteht die Zieldatei NIE - und eine vorhandene Vorgaengerdatei bleibt
 #   unangetastet.
 #
-#   WARUM POSITIONSPFADE UND NICHT DER XPATH: Nach dem Blenden trifft ein
+#   WARUM LAGEPFADE UND NICHT DER XPATH: Nach dem Blenden trifft ein
 #   textabhaengiger Ausdruck ('//div[contains(text(),"Klarname")]') seine
-#   eigenen Treffer nicht mehr. Gemerkt wird deshalb vor dem Schreiben
-#   getroottree().getpath(elem) - ein reiner Lagepfad ('/html/body/div[2]'),
-#   der nur an der Struktur haengt, und die aendert sich hier nicht.
+#   eigenen Treffer nicht mehr. Gemerkt wird deshalb vor dem Schreiben die
+#   LAGE im Baum. Sie haengt nur an der Struktur, und die aendert sich hier
+#   nicht. Wie diese Lage gebildet wird, ist Befund 6 - siehe lagepfad().
 #
 #   WAS DIE GEGENPROBE NICHT BELEGT: Sie sagt etwas ueber die GETROFFENE
 #   AUSWAHL. Sie sagt nichts ueber den Rest der Datei und nichts ueber
@@ -95,11 +146,12 @@
 # Die bestehenden Optionsnamen sind unveraendert; jemand kann sie in einem
 # Skript stehen haben.
 #
-# Version: v0.8.687 - Build: 687 - 2026-08-11
+# Version: v0.8.690 - Build: 690 - 2026-08-11
 # =============================================================================
 
 import argparse
 import os
+import re
 import sys
 
 # Direktaufruf als Skript: das Paketverzeichnis muss im Suchpfad liegen
@@ -284,6 +336,14 @@ def anonymisiere(elem, ausdruecke, verbose, dry_run, strom):
         if not original or not original.strip():
             continue
         geblendet = blind_text(original)
+        if geblendet == original:
+            # BEFUND 7 (Build 690): Hier aendert sich NICHTS - der Knoten ist
+            # bereits geblendet, weil ein umschliessendes Element ebenfalls
+            # getroffen war. Bis Build 687 wurde er trotzdem mitgezaehlt; die
+            # Meldung nannte dann mehr Ersetzungen, als stattgefunden haben.
+            # Genau diese Zahl haelt die/der Ermittelnde gegen die eigene
+            # Erwartung (so steht es im Katalog) - sie muss stimmen.
+            continue
         if verbose or dry_run:
             marke = "[DRY RUN]" if dry_run else "[VERBOSE]"
             print("%s %s  (matched by: %s)"
@@ -312,6 +372,101 @@ def pruefe_teilbaum(elem):
         if [ch for ch in wert if not ch.isspace() and ch != "X"]:
             beanstandet.append((name, wert[:120]))
     return beanstandet
+
+
+def lagepfad(elem, wurzel):
+    """
+    Die Kette der Kindindizes von 'wurzel' bis 'elem', mit Knotennamen.
+
+    Rueckgabe: Tupel von (index, name) - oder None, wenn 'elem' nicht unter
+    'wurzel' liegt. 'name' ist der Tag-Name bzw. 'node' fuer Kommentare und
+    Verarbeitungsanweisungen.
+
+    BEFUND 6 (Build 690) - WARUM NICHT getroottree().getpath(): Der Pfad, den
+    getpath() liefert, haengt an dem Dokumentbaum, den lxml sich fuer ein
+    FRAGMENT erfindet. GEMESSEN: fuer '<div>a</div><p>b</p>' liefert getpath()
+    '/html/div' - OHNE <body>. Geschrieben wird aber nur das Element; beim
+    Neueinlesen baut lxml den Rahmen als '/html/body/div', und der Pfad loest
+    sich nicht mehr auf. Die Gegenprobe scheiterte dadurch IMMER, und es
+    entstand gar keine Datei.
+
+    DER BEZUGSPUNKT IST DESHALB DER KNOTEN, DER AUCH SERIALISIERT WIRD. Was
+    geschrieben wird und was gemessen wird, haengt damit an derselben Wurzel -
+    und keine Annahme darueber, wie lxml Fragmente einbettet, geht mehr ein.
+
+    DER KNOTENNAME WIRD MITGEFUEHRT, obwohl die Indexkette allein den Knoten
+    schon bestimmt. Das ist die Staerke des alten Weges, die erhalten bleibt:
+    ein reiner Index wuerde bei einer Strukturaenderung stillschweigend auf
+    einen ANDEREN Knoten zeigen und diesen pruefen. Mit dem Namen faellt das
+    auf, und ein Auffallen ist hier mehr wert als ein Ergebnis.
+
+    Die Kette zaehlt ALLE Kinder mit, auch Kommentare - genau so, wie lxml
+    indiziert.
+    """
+    kette = []
+    knoten = elem
+    while knoten is not wurzel:
+        eltern = knoten.getparent()
+        if eltern is None:
+            return None
+        kette.append((eltern.index(knoten), _tagname(knoten)))
+        knoten = eltern
+    kette.reverse()
+    return tuple(kette)
+
+
+def _tagname(knoten):
+    """Der Tag-Name als Zeichenkette; 'node' fuer Kommentare und PIs."""
+    return knoten.tag if isinstance(knoten.tag, str) else "node"
+
+
+def loese_lagepfad(wurzel, kette):
+    """
+    Den Knoten zur Kette liefern - oder (None, Grund) bei einer Abweichung.
+
+    Rueckgabe: (knoten, None) bei Erfolg, sonst (None, Grund als Text).
+    Jede Abweichung ist eine BEANSTANDUNG und kein uebersprungener Fall
+    (Grundregel 1): sie hiesse, dass die geschriebene Datei anders aussieht
+    als der Baum, der geblendet wurde - und dann ist ueber sie nichts belegt.
+    """
+    knoten = wurzel
+    for tiefe, (index, name) in enumerate(kette):
+        kinder = list(knoten)
+        if index >= len(kinder):
+            return None, ("child %d of <%s> is missing at depth %d"
+                          % (index, _tagname(knoten), tiefe))
+        knoten = kinder[index]
+        if _tagname(knoten) != name:
+            return None, ("expected <%s> at depth %d, found <%s>"
+                          % (name, tiefe, _tagname(knoten)))
+    return knoten, None
+
+
+def _lagepfad_text(kette):
+    """Lesbare Fassung fuer Meldungen: '/div[0]/b[1]'."""
+    if not kette:
+        return "/ (the matched element is the root itself)"
+    return "".join("/%s[%d]" % (name, index) for index, name in kette)
+
+
+def ist_fragment(roh):
+    """
+    Traegt die Vorlage KEIN <html>-Element?
+
+    BEFUND 8 (Build 690) - WOZU DIE FRAGE: Bei einem Fragment baut lxml sich
+    einen Rahmen. GEMESSEN: aus '<div>a</div><p>b</p>' wird ein umschliessendes
+    <div>, aus blossem Text ein <span>. Dieser Rahmen steht dann in der
+    Weitergabe, ohne je in der Vorlage gestanden zu haben - und ein '//div'
+    trifft ihn mit.
+
+    ABSICHTLICH ALS LAGE GEMELDET UND NICHT ALS MESSWERT: ein hinzugefuegter
+    Rahmen laesst sich vom gleichnamigen echten Element der Vorlage nicht
+    sicher unterscheiden ('<div>a</div><p>b</p>' wird zu einem <div> um ein
+    <div>). Zu behaupten, es sei einer hinzugekommen, waere ebenso ungenau
+    wie zu schweigen. Also wird die Lage benannt und die Entscheidung dem
+    Auge ueberlassen, das die Vorlage kennt.
+    """
+    return not re.search(rb"<\s*html[\s>]", roh, re.I)
 
 
 def lies_und_pruefe_kodierung(pfad, kodierung, strom):
@@ -358,42 +513,60 @@ def baue_baum(roh, kodierung, strom):
         return None
 
 
-def hat_doctype(roh, kodierung):
-    """
-    Trug die EINGABE einen DOCTYPE?
+#: Der DOCTYPE wird WOERTLICH aus den Rohbytes geholt. Erlaubt sind eine
+#: Byte-Reihenfolge-Marke, Leerraum und Kommentare davor - mehr nicht.
+#:
+#: WARUM NICHT 'docinfo.doctype' (Befund 4, Kehrseite): Es beantwortet die
+#: Frage NICHT. GEMESSEN: fuer eine Datei OHNE DOCTYPE liefert es
+#: '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" ...' -
+#: einen erfundenen. Wer sich darauf verliesse, haette Befund 4 nur
+#: umgedreht: statt einen DOCTYPE zu verlieren, wuerde das Werkzeug einen
+#: HINZUDICHTEN und damit den Darstellungsmodus des Browsers aendern.
+#:
+#: WARUM VERANKERT UND NICHT "in den ersten 4096 Zeichen" (Build 690): Die
+#: Suche im Vorspann findet auch ein '<!doctype', das dort nichts zu suchen
+#: hat. Ein DOCTYPE steht am Anfang oder gar nicht.
+_DOCTYPE_MUSTER = re.compile(
+    rb"^\s*(?:<!--.*?-->\s*)*(<![Dd][Oo][Cc][Tt][Yy][Pp][Ee][^>]*>)", re.S)
 
-    WARUM DAS AN DEN ROHBYTES HAENGT UND NICHT AN lxml: 'docinfo.doctype'
-    beantwortet die Frage NICHT. Gemessen (Build 687): fuer eine Datei OHNE
-    DOCTYPE liefert es '<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0
-    Transitional//EN" ...' - einen erfundenen. Wer sich darauf verliesse,
-    haette Befund 4 nur umgedreht: statt einen DOCTYPE zu verlieren, wuerde
-    das Werkzeug einen hinzudichten und damit den Darstellungsmodus des
-    Browsers aendern. Beides ist eine stille Veraenderung an einer Datei,
-    die weitergegeben wird.
+#: Byte-Reihenfolge-Marke. Sie darf vor dem DOCTYPE stehen.
+_BOM = b"\xef\xbb\xbf"
 
-    Gesucht wird nur im VORSPANN - alles vor dem Wurzelelement. Weiter
-    hinten kann ein DOCTYPE nicht stehen; ein '<!doctype' im Fliesstext
-    einer Forenseite waere maskiert ('&lt;!DOCTYPE').
+
+def doctype_aus_rohdaten(roh):
     """
-    text = roh.decode(kodierung, errors="replace")
-    stelle = text.lower().find("<html")
-    vorspann = text[:stelle] if stelle >= 0 else text[:4096]
-    return "<!doctype" in vorspann.lower()
+    Der DOCTYPE der Vorlage, woertlich - oder None.
+
+    GRENZE, ausdruecklich benannt: ein DOCTYPE mit internem Teilsatz, der ein
+    '>' enthaelt, wuerde abgeschnitten. In HTML kommt das nicht vor (weder
+    HTML5 noch die HTML-4-Varianten haben einen); bei XHTML mit eigenen
+    Entitaeten waere es denkbar. Faellt es doch einmal an, meldet sich die
+    Gegenprobe - denn die liest die geschriebene Datei NEU EIN.
+    """
+    daten = roh[len(_BOM):] if roh.startswith(_BOM) else roh
+    treffer = _DOCTYPE_MUSTER.match(daten)
+    return treffer.group(1) if treffer else None
 
 
 def schreibe(baum, ziel, kodierung, doctype, strom):
     """
-    Baum serialisieren und schreiben.
+    Den getroffenen Baum serialisieren und schreiben.
 
-    'baum.getroottree()' statt 'baum' ist der Unterschied zwischen "DOCTYPE
-    erhalten" und "DOCTYPE verloren" (Befund 4). Gemessen: tostring(elem)
-    liefert '<html>...', tostring(roottree) liefert '<!DOCTYPE html>' und
-    dann '<html>...'. Welcher der beiden Wege richtig ist, entscheidet
-    ausschliesslich die EINGABE - siehe hat_doctype().
+    ES WIRD IMMER DAS ELEMENT SERIALISIERT und der DOCTYPE der Vorlage
+    woertlich davorgesetzt. Bis Build 687 entschied ein Schalter zwischen
+    tostring(element) und tostring(roottree) - beides fuer sich richtig, aber
+    mit zwei Nachteilen:
+      (a) tostring(roottree) haengt einem FRAGMENT '<html><body>' um. Aus
+          einem herausgeschnittenen '<div>' wuerde ein vollstaendiges
+          Dokument - eine Weitergabe, die etwas anderes zeigt als die Vorlage.
+      (b) Was geschrieben wird, haette dann zwei moegliche Wurzeln. Die
+          Gegenprobe misst aber gegen GENAU EINE (siehe lagepfad(), Befund 6).
+          Ein Weg, eine Wurzel, eine Aussage.
     """
     try:
-        was = baum.getroottree() if doctype else baum
-        daten = html.tostring(was, encoding=kodierung, method="html")
+        daten = html.tostring(baum, encoding=kodierung, method="html")
+        if doctype:
+            daten = doctype + b"\n" + daten
         with open(ziel, "wb") as datei:
             datei.write(daten)
         return True
@@ -402,7 +575,7 @@ def schreibe(baum, ziel, kodierung, doctype, strom):
         return False
 
 
-def gegenprobe(pfad, kodierung, lagepfade, strom):
+def gegenprobe(pfad, kodierung, ketten, wurzelname, strom):
     """
     Die geschriebene Datei neu einlesen und messen. Rueckgabe: Beanstandungen.
 
@@ -410,6 +583,10 @@ def gegenprobe(pfad, kodierung, lagepfade, strom):
     Baum und der Datei liegen Serialisierung und Kodierung - also genau die
     beiden Schritte, an denen Befund 3 und 4 haengen. Eine Probe am Baum
     haette beide nicht gesehen. Geprueft wird das, was weitergegeben wird.
+
+    'wurzelname' ist der Tag-Name der Wurzel, die geschrieben wurde. Passt er
+    nach dem Neueinlesen nicht, sind alle Ketten gegenstandslos - dann wird
+    das EINMAL gesagt und nicht je Kette wiederholt.
     """
     beanstandet = []
 
@@ -422,18 +599,22 @@ def gegenprobe(pfad, kodierung, lagepfade, strom):
     if baum is None:
         return ["the written file could not be parsed back"]
 
-    wurzelbaum = baum.getroottree()
-    for lagepfad in lagepfade:
-        wieder = wurzelbaum.xpath(lagepfad)
-        if len(wieder) != 1:
+    if _tagname(baum) != wurzelname:
+        return ["the written file has <%s> at its root, but <%s> was written -"
+                " nothing about it can be verified"
+                % (_tagname(baum), wurzelname)]
+
+    for kette in ketten:
+        knoten, grund = loese_lagepfad(baum, kette)
+        if knoten is None:
             beanstandet.append(
-                "position path %s resolved to %d element(s) after writing - "
-                "the structure changed and the result cannot be verified"
-                % (lagepfad, len(wieder)))
+                "position %s cannot be found in the written file (%s) - the "
+                "structure changed and the result cannot be verified"
+                % (_lagepfad_text(kette), grund))
             continue
-        for name, wert in pruefe_teilbaum(wieder[0]):
+        for name, wert in pruefe_teilbaum(knoten):
             beanstandet.append("%s %s still contains plain text: %r"
-                               % (lagepfad, name, wert))
+                               % (_lagepfad_text(kette), name, wert))
     return beanstandet
 
 
@@ -555,6 +736,21 @@ def main(argv=None):
     if baum is None:
         return RC_AUFRUF
 
+    doctype = doctype_aus_rohdaten(roh)
+    if not doctype:
+        print("NOTE: The input has no DOCTYPE, so the output will not have "
+              "one either - none is invented. A browser renders such a file "
+              "in quirks mode; the layout is then not fully comparable.",
+              file=strom)
+    if ist_fragment(roh):
+        # Begruendung fuer die vorsichtige Formulierung: siehe ist_fragment().
+        print("NOTE: The input has no <html> element and is processed as a "
+              "FRAGMENT. lxml builds a frame around a fragment (measured: a "
+              "<div> around several top-level nodes, a <span> around bare "
+              "text) and closes open tags. That frame is part of the output "
+              "and can itself be hit by a broad XPath such as '//div'. "
+              "Compare the output against the source by eye.", file=strom)
+
     # -------------------------------------------------------------- Treffer
     elemente, zuordnung, nicht_elemente = sammle_treffer(baum, xpaths, strom)
     if elemente is None:
@@ -577,7 +773,19 @@ def main(argv=None):
     # ---------------------------------------------------------- Lagepfade
     # VOR dem Blenden gemerkt. Begruendung im Dateikopf: ein textabhaengiger
     # XPath findet seine eigenen Treffer danach nicht mehr wieder.
-    lagepfade = [baum.getroottree().getpath(elem) for elem in elemente]
+    # Bezugspunkt ist 'baum' - also der Knoten, der auch geschrieben wird
+    # (Befund 6, siehe lagepfad()).
+    ketten = []
+    for elem in elemente:
+        kette = lagepfad(elem, baum)
+        if kette is None:
+            # Kann nur eintreten, wenn ein Ausdruck aus dem Baum herausfuehrt.
+            # Stillschweigend weglassen waere Grundregel 1.
+            print("ERROR: A matched element does not lie below the root that "
+                  "will be written, so it could not be verified. Nothing has "
+                  "been written.", file=strom)
+            return RC_KEIN_TREFFER
+        ketten.append(kette)
 
     # ------------------------------------------------------------- Blenden
     ersetzt = 0
@@ -624,13 +832,13 @@ def main(argv=None):
     # selben Dateisystem ist und nicht ein Kopieren ueber eine Grenze hinweg.
     # Das ist auf den UNC-Pfaden der Anlage kein Detail.
     nebendatei = "%s.anon-tmp-%d" % (ziel, os.getpid())
-    if not schreibe(baum, nebendatei, args.encoding,
-                    hat_doctype(roh, args.encoding), strom):
+    if not schreibe(baum, nebendatei, args.encoding, doctype, strom):
         _entferne(nebendatei)
         return RC_AUFRUF
 
     # ------------------------------------------------------------ Gegenprobe
-    befunde = gegenprobe(nebendatei, args.encoding, lagepfade, strom)
+    befunde = gegenprobe(nebendatei, args.encoding, ketten,
+                         _tagname(baum), strom)
     if befunde:
         _entferne(nebendatei)
         print("FINDING: The verification pass FAILED. No file has been "
@@ -653,7 +861,7 @@ def main(argv=None):
     print("Written anonymized HTML to: %s" % ziel, file=strom)
     print("VERIFIED: re-read the written file; in the %d matched subtree(s) "
           "no text node contains any character other than 'X' and "
-          "whitespace." % len(lagepfade), file=strom)
+          "whitespace." % len(ketten), file=strom)
     print("          This says nothing about the rest of the file and "
           "nothing about attribute values.", file=strom)
     return RC_OK
