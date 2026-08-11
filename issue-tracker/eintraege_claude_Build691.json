@@ -1,0 +1,78 @@
+{
+  "issues": [
+    {
+      "id": "c658fc41-b368-4b06-9142-5ff519b8d9c9",
+      "type": "bug",
+      "title": "Toolbar Seiten-Wechsel-Schaltflächen ohne Funktion",
+      "affected_version": "0.8.575",
+      "reporter": "Alex",
+      "reported_at": "2026-07-30T09:41:56.741676+00:00",
+      "prerequisites": "Es gibt zu einem Benutzer mehrere Spuren, verteilt über mehrere Seiten.",
+      "description": "Es gibt die Schaltflächen #forensic-btn-nav-prev und #forensic-btn-nav-next in der Toolbar. Allerdings scheinen diese funktionslos zu sein. Durch Anklicken wird keine andere Seite geöffnet, obwohl Spuren auf anderen Seiten verfügbar sind.",
+      "expected_behavior": "Die aktuelle Seite verfügt innerhalb der Spuren um einen bestimmten Rang/Postion. Mit Verwendung von #forensic-btn-nav-prev sollte zur vorherigen Spur beinhaltenden Seite gewechselt werden und mit #forensic-btn-nav-next zur nächsten.",
+      "actual_behavior": "Nix passiert.",
+      "status": "resolved",
+      "priority": "high",
+      "severity": "critical",
+      "assigned_to": "Claude",
+      "related_to": [
+        "2f1044b9-818d-49bb-9621-04fbf5208791",
+        "c290939f-1bfa-4da0-8a6b-b84e5a28db88"
+      ],
+      "resolved_in_version": "0.8.691",
+      "target_version": "0.8.691",
+      "environment": {
+        "python_version": "3.14",
+        "database": "forensic_<uid>.db"
+      },
+      "tags": [
+        "Spuren",
+        "Seiten",
+        "Wechsel"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-07-30T09:41:56.741698+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
+        },
+        {
+          "timestamp": "2026-08-05T11:40:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "URSACHEN GEMESSEN am 2026-08-05 in der VM, auf /forum/viewtopic.php?id=120870&p=2 (drei Seiten, 40 Spuren). Es sind DREI voneinander unabhaengige Fehler, nicht einer.\n\n(1) DER WEITER-KNOPF IST DEAKTIVIERT, UND ZWAR AUF JEDER SEITE. _detectPagination() (toolbar.js Z. 2182) sucht ausschliesslich a[rel='next']. Die ausgelieferte Seite traegt aber nur am Zurueck-Verweis ein rel-Attribut:\n\n    <li class=\"previous\"><a href=\"viewtopic.php?id=120870\" rel=\"prev\">Vorherige</a></li>\n    <li class=\"next\">    <a href=\"viewtopic.php?id=120870&p=3\">N</a></li>\n\nGemessen: a[rel='next'] im ganzen Dokument 0-mal, a[rel='prev'] 2-mal. Damit ist nextBtn.disabled dauerhaft wahr (Z. 2191), und ein deaktivierter Knopf loest kein Klickereignis aus. Das liegt an der Vorlage des Forums, nicht an den Daten - es betrifft also alle Seiten.\n\n(2) DER ZURUECK-KNOPF WAR AKTIV UND UEBERGAB EINE UNBRAUCHBARE URL. _detectPagination() liest mit getAttribute('href') (Z. 2183) und erhaelt die unaufgeloeste Form. Beobachtet wurde die abgesetzte Abfrage:\n\n    /_forensic/page?url=viewtopic.php%3Fid%3D120870\n    -> in_scope: false, fetch_failed: true, http_status: 0, html: keines\n    -> Hinweisstreifen 'Diese Seite liegt nicht im Umfang der Ermittlungen'\n\nJeder andere Navigationsweg benutzt die Eigenschaft a.href und schneidet Protokoll und Rechnernamen ab (Z. 2103-2119), liefert also '/forum/viewtopic.php?id=120870'. Die Seitennavigation uebergibt als einzige die rohe Form. 'Nix passiert' war also ein Hinweisstreifen, der die eigentliche Ursache verdeckt.\n\n(3) DIE SPURENSEQUENZ KENNT DIE SEITE NICHT. traceSeqIndex war -1, obwohl die Seite 40 Spuren traegt. Abgetrennt als 2f1044b9 (Sequenz fuehrt je Thema nur eine Seite) und c290939f (Rang -1 wird wie ein gueltiger Rang weitergerechnet).\n\nENTSCHEIDUNG VON ALEX am 2026-08-05: Die Knoepfe sollen die SPURENTRAGENDEN SEITEN durchblaettern, nicht die Seitenzaehlung des Forums. Damit ist die Spurensequenz ihre Datengrundlage - und 2f1044b9 ist vor diesem Vorgang zu beheben. Auf einer Sequenz, die Seiten verschweigt, laesst sich dieser Vorgang nicht redlich schliessen."
+        },
+        {
+          "timestamp": "2026-08-05T11:41:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "in_progress",
+          "comment": "Ursachen gemessen und belegt; Umsetzung wartet auf die Behebung von 2f1044b9."
+        },
+        {
+          "timestamp": "2026-08-11T18:10:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "in_progress",
+          "new_value": "resolved",
+          "comment": "BEHOBEN in Build 691, toolbar/toolbar.js.\n\nUMGESETZT IST DIE ENTSCHEIDUNG VOM 05.08.2026: die Knoepfe blaettern durch die SPURENTRAGENDEN SEITEN. Datengrundlage ist die Spurensequenz aus /_forensic/trace_sequence - dieselbe, auf der die Spurnavigation arbeitet.\n\n(1) _detectPagination() IST ERSATZLOS ENTFALLEN. Damit sind die Ursachen (1) und (2) aus der Messung gegenstandslos: das gesuchte a[rel='next'], das die Forumsvorlage nicht setzt, und der rohe getAttribute('href'), der eine unaufloesbare Adresse weiterreichte. Beides waren Fehler beim Auslesen einer Datengrundlage, die gar nicht die richtige ist.\n\n(2) NEU IST SpurSeitenNavigationModule. Es haelt keinen eigenen Seitenzustand, sondern liest Rang und Sequenz aus dem State. NavigationModule.navigatePrev/navigateNext sind nur noch dessen Anschluss - so bleiben die Verdrahtung der Knoepfe und die Kuerzel Alt+Pfeil unveraendert.\n\n(3) KEIN RUECKFALL AUF DIE FORUMS-PAGINIERUNG. Ein Knopf, der je nach Lage mal das eine und mal das andere tut, war genau der Fehler aus c290939f. Die Seitenverweise des Forums bleiben in der Seite selbst anklickbar; dort loest _interceptLinks sie ueber die Eigenschaft a.href sauber auf.\n\n(4) JEDER GESPERRTE ZUSTAND NENNT SEINEN GRUND - erste Seite, letzte Seite, oder 'steht nicht in der Spurenliste' samt Ausweg ueber die Seitenuebersicht (Alt+K). Der gemeldete Befund lautete 'Nix passiert'; ein Knopf, der schweigt, ist von einem kaputten Knopf nicht zu unterscheiden.\n\n(5) DIE STANDANZEIGE ZEIGT JETZT EINE ANDERE GROESSE. Bis Build 690 stand dort die Seitenzahl des Themas ('2 / 5'), jetzt der Rang in der Spurenliste ('2 / 3'). Bei unbekanntem Rang steht '? / N' - eine Zahl an dieser Stelle waere erfunden.\n\n(6) BESCHRIFTUNG: das sichtbare Label bleibt 'Seite' (Entscheidung von Alex am 11.08.2026); die geaenderte Bedeutung steht in title und aria-label ('Vorherige/Naechste Seite mit Spuren') und nennt zusaetzlich die Zielseite.\n\nABHAENGIGKEIT: Die Behebung setzt 2f1044b9 voraus (Sequenz fuehrt jetzt alle Seiten eines Themas, Build 677). 2f1044b9 steht noch auf 'testing' - die Bestaetigung der 185 zurueckgewonnenen Seiten in der VM steht aus. Solange sie aussteht, ist die VOLLSTAENDIGKEIT der Blaetterung nicht abschliessend belegt, ihre RICHTIGKEIT dagegen schon."
+        },
+        {
+          "timestamp": "2026-08-11T18:15:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "REGRESSION: tests/unit/test_spurseiten_navigation.test.js, Faelle SN01 bis SN09. Der Test faehrt den echten Ladeweg in JSDOM und protokolliert jede Abfrage an /_forensic/page.\n\nGEGENPROBE GEGEN DEN ALTEN STAND (toolbar.js aus Build 686, Commit 970d9d5): ALLE NEUN FAELLE FALLEN dort, keiner ist gruen. SN03 faellt mit genau dem gemessenen Bild - angefragt wurde '/_forensic/page?url=viewtopic.php?id=100' statt 'url=/forum/viewtopic.php?id=100'.\n\nSN02 stellt die Forumsvorlage so nach, wie sie gemessen wurde: rel nur am Zurueck-Verweis, Adressen relativ. Im Test ist ausdruecklich belegt, dass a[rel='next'] null Treffer hat - und der Knopf trotzdem laedt.\n\nEIN FUND AM PRUEFSTAND, KEIN PRODUKTFEHLER: In JSDOM baute sich die Toolbar zweimal auf, weil das von Hand nachgeschobene DOMContentLoaded auf das eigene von jsdom traf. Folge: doppelt haengende Tastenkuerzel - ein Tastendruck blaetterte zwei Seiten weit. Im Browser feuert das Ereignis genau einmal. Beide Testdateien pruefen jetzt, ob die Toolbar schon steht, statt es anzunehmen; die aeltere Datei test_spurnav_unbekannter_rang.test.js wurde mit Build 691 nachgezogen und ihre Gegenprobe gegen Build 682 wiederholt (unveraendert: UR01+UR03, UR02, UR05 rot, UR04 gruen).\n\nLAUF 691: JS 126 Dateien / 1814 Faelle gruen. Python 3371 gruen; PY08 und PY10 fallen containerbedingt (Python 3.11 kann die PEP-701-f-string in editor/html_renderer.py:349 nicht parsen) - sie fallen ebenso auf unberuehrtem origin/master und sind KEIN Befund dieser Lieferung.\n\nHILFESYSTEM: keine Anpassung noetig. Die Aenderung betrifft die Ermittler-Toolbar, nicht das Management; zur Seiten- oder Spurnavigation gibt es im Hilfebestand keinen Eintrag (per Volltextsuche ueber management/, templates/ und documents/ geprueft)."
+        }
+      ]
+    }
+  ]
+}

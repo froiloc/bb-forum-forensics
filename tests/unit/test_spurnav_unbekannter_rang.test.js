@@ -38,7 +38,13 @@
  * Seite, die Beschriftung stand also auch alt auf '▶'. Erst UR05 trifft die
  * Stelle, an der gerechnet wurde.
  *
- * Version: 0.1.0 · Build: 685 · 2026-08-05
+ * NACHTRAG BUILD 691: Der Pruefstand baute die Toolbar zweimal auf (das
+ * von Hand nachgeschobene DOMContentLoaded traf auf das eigene von jsdom).
+ * Berichtigt; die Gegenprobe gegen toolbar.js aus Build 682 (Commit
+ * 02f4bde) wurde danach wiederholt und faellt unveraendert aus: UR01+UR03,
+ * UR02 und UR05 rot, UR04 gruen.
+ *
+ * Version: 0.1.1 · Build: 691 · 2026-08-11
  * Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
  */
 
@@ -109,9 +115,27 @@ async function baueUndLade(seiteUrl, spuren) {
     return { addEventListener: () => {}, close: () => {} };
   };
   dom.window.eval(QUELLE);
-  dom.window.document.dispatchEvent(
-    new dom.window.Event("DOMContentLoaded", { bubbles: true })
-  );
+
+  // GENAU EIN AUFBAU - nachgemessen, nicht angenommen (Build 691).
+  //
+  // Bis Build 690 stand hier ein bedingungsloses dispatchEvent. jsdom stellt
+  // das Dokument aber nebenlaeufig fertig und feuert sein EIGENES
+  // DOMContentLoaded; trifft das nach dem eval ein, hat die Toolbar sich
+  // bereits selbst aufgebaut, und das von Hand nachgeschobene Ereignis baut
+  // sie EIN ZWEITES MAL auf. Folgen: doppelt haengende Tastenkuerzel (ein
+  // Tastendruck blaettert zwei Seiten weit) und doppelte Ereignis-Anmeldungen.
+  // Auf die Aussagen von UR01 bis UR05 wirkte sich das nicht aus - deshalb
+  // fiel es hier auch nicht auf, sondern erst in
+  // tests/unit/test_spurseiten_navigation.test.js (Vorgang c658fc41).
+  // Es bleibt trotzdem ein Fehler des Pruefstands: er stellt einen Zustand
+  // her, den es im Browser nicht gibt, und ein solcher Zustand kann kuenftige
+  // Befunde erzeugen oder verdecken, die niemand dem Pruefstand zuordnet.
+  await schlafe(30);
+  if (!dom.window.document.getElementById("forensic-btn-trace-next")) {
+    dom.window.document.dispatchEvent(
+      new dom.window.Event("DOMContentLoaded", { bubbles: true })
+    );
+  }
   await schlafe(200);       // Seitenload, Sequenz, init()
   return dom;
 }

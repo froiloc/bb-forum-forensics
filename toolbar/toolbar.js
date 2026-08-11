@@ -161,9 +161,12 @@
  *     hierher verschoben, "Ann."-Text entfernt, initial disabled.
  *     Rechts-Ausrichtung via margin-left:auto auf erstem Ann.-Button.
  *   Sektion 3: Ann.-Buttons entfernt.
- *   Sektion 4: Label "Seite" ergänzt. Buttons initial disabled — werden
- *     von _detectPagination() aktiviert wenn rel="prev"/"next" gefunden.
- *     page-info zeigt Seitenzahl "N / M" oder ist leer (kein "—" mehr).
+ *   Sektion 4: Label "Seite" ergänzt. Buttons initial disabled — wurden bis
+ *     Build 686 von _detectPagination() aktiviert, wenn rel="prev"/"next"
+ *     gefunden wurde. SEIT BUILD 691 (Vorgang c658fc41) blättern sie durch
+ *     die Seiten MIT SPUREN; zuständig ist SpurSeitenNavigationModule,
+ *     _detectPagination() ist entfallen. page-info zeigt den Stand in der
+ *     Spurenliste ("N / M") oder ist leer, solange keine Liste vorliegt.
  *   Annotations-Navigation: echter _annIdx-Counter, sequenziell durch alle
  *     Annotationen der Seite. _updateAnnButtons() hält disabled-Zustand aktuell.
  *     Highlight-Outline bei Sprung (gelb, 1.2s). AccessibilityModule.announce().
@@ -1628,17 +1631,28 @@
 
           '<div class="forensic-separator" aria-hidden="true"></div>' +
 
-          // Sektion 4: Seitennavigation (Pagination)
-          // Label "Seite" links. Buttons sind initial disabled — NavigationModule
-          // aktiviert sie sobald rel="prev"/"next"-Links auf der Seite gefunden werden.
+          // Sektion 4: Seitennavigation
           // Build 077: Label ergänzt, initial disabled.
-          '<div class="forensic-section forensic-sec4" aria-label="Seitennavigation">' +
-          '<span class="forensic-sec-label">Seite</span>' +
+          // BUILD 691 (Vorgang c658fc41): Die Knöpfe blättern nicht mehr durch
+          // die Seitenzählung des Forums, sondern durch die SEITEN MIT SPUREN
+          // (Entscheidung von Alex am 05.08.2026). Beschriftung und aria-label
+          // sagen das jetzt auch — die alte Fassung versprach „Vorherige
+          // Seite", und wer das als Seitenzählung des Themas liest, wird an
+          // eine ganz andere Stelle geführt, als er erwartet. Die endgültigen
+          // Texte setzt SpurSeitenNavigationModule; hier steht nur der Stand
+          // vor dem ersten Seitenload.
+          '<div class="forensic-section forensic-sec4" ' +
+          'aria-label="Seiten mit Spuren durchblättern">' +
+          '<span class="forensic-sec-label" ' +
+          'title="Blättert durch die Seiten, auf denen der Beschuldigte Spuren hinterlassen hat">Seite</span>' +
           '<button id="forensic-btn-nav-prev" class="forensic-btn forensic-nav-btn" ' +
-          'aria-label="Vorherige Seite (Alt+Pfeil links)" title="Vorherige Seite [Alt+←]" disabled>◀</button>' +
-          '<span id="forensic-page-info" class="forensic-page-info" aria-label="Seitenposition" aria-live="polite"></span>' +
+          'aria-label="Vorherige Seite mit Spuren (Alt+Pfeil links)" ' +
+          'title="Vorherige Seite mit Spuren [Alt+←]" disabled>◀</button>' +
+          '<span id="forensic-page-info" class="forensic-page-info" ' +
+          'aria-label="Stand innerhalb der Spurenliste" aria-live="polite"></span>' +
           '<button id="forensic-btn-nav-next" class="forensic-btn forensic-nav-btn" ' +
-          'aria-label="Nächste Seite (Alt+Pfeil rechts)" title="Nächste Seite [Alt+→]" disabled>▶</button>' +
+          'aria-label="Nächste Seite mit Spuren (Alt+Pfeil rechts)" ' +
+          'title="Nächste Seite mit Spuren [Alt+→]" disabled>▶</button>' +
           '</div>' +
           '<div class="forensic-separator" aria-hidden="true"></div>' +
 
@@ -1851,9 +1865,19 @@
   // PHASE 3: NavigationModule — AJAX-Load, Link-Abfangung, History
   // ===========================================================================
   var NavigationModule = (function () {
-    // Pagination-Links der aktuellen Seite
-    var _prevUrl = null;
-    var _nextUrl = null;
+    // -------------------------------------------------------------------------
+    // BUILD 691 (Vorgang c658fc41): DIE SEITEN-KNOEPFE HABEN KEINE EIGENEN
+    // URLs MEHR.
+    //
+    // Bis Build 686 hielt dieses Modul '_prevUrl'/'_nextUrl' - die Adressen
+    // aus den rel-Verweisen der Forumsseite. Beide sind entfallen, weil die
+    // Knoepfe seit diesem Build durch die SPURENTRAGENDEN SEITEN blaettern
+    // (Entscheidung von Alex am 05.08.2026) und ihre Ziele damit aus der
+    // Spurensequenz stammen. Zustaendig ist SpurSeitenNavigationModule; die
+    // beiden Funktionen hier sind nur noch dessen Anschluss, damit die
+    // Verdrahtung der Knoepfe und die Tastenkuerzel Alt+Pfeil unveraendert
+    // bleiben.
+    // -------------------------------------------------------------------------
 
     function loadPage(url, pushState, method) {
       // method: HTTP-Methode des Originalrequests ('GET' oder 'POST').
@@ -1945,8 +1969,11 @@
       // Links abfangen
       _interceptLinks(viewport);
 
-      // Pagination erkennen
-      _detectPagination(viewport, envelope);
+      // BUILD 691 (Vorgang c658fc41): Hier stand '_detectPagination(...)'.
+      // Die Seiten-Knoepfe lesen ihre Ziele nicht mehr aus der Seite,
+      // sondern aus der Spurensequenz; sie werden von
+      // SpurSeitenNavigationModule beim Ereignis 'page:loaded' und bei jeder
+      // Aenderung der Sequenz nachgefuehrt.
 
       // Alle nachgelagerten Module nach Load benachrichtigen
       ForensicToolbar.events.emit("page:loaded", {
@@ -2175,49 +2202,52 @@
       });
     }
 
-    function _detectPagination(viewport, envelope) {
-      _prevUrl = null; _nextUrl = null;
-      // FluxBB-Paginierung: Links mit rel="prev"/"next"
-      var prevA = viewport.querySelector("a[rel='prev']");
-      var nextA = viewport.querySelector("a[rel='next']");
-      _prevUrl = prevA ? prevA.getAttribute("href") : null;
-      _nextUrl = nextA ? nextA.getAttribute("href") : null;
-
-      // Buttons aktivieren/deaktivieren je nach verfügbarer Paginierung
-      var prevBtn  = document.getElementById("forensic-btn-nav-prev");
-      var nextBtn  = document.getElementById("forensic-btn-nav-next");
-      var pageInfo = document.getElementById("forensic-page-info");
-      if (prevBtn)  prevBtn.disabled  = !_prevUrl;
-      if (nextBtn)  nextBtn.disabled  = !_nextUrl;
-
-      // Seiteninfo: "2 / 5" wenn Paginierung erkennbar, sonst leer
-      if (pageInfo) {
-        if (_prevUrl || _nextUrl) {
-          // Seitenzahl aus URL extrahieren (?p=N) wenn vorhanden
-          var curPage = null, totalPages = null;
-          var pageLinks = viewport.querySelectorAll("a.paged-num, .pagination a, a[class*='page']");
-          pageLinks.forEach(function (a) {
-            var m = a.href && a.href.match(/[?&]p=(\d+)/);
-            if (m) totalPages = Math.max(totalPages || 0, parseInt(m[1], 10));
-          });
-          var curM = (location.search || "").match(/[?&]p=(\d+)/);
-          curPage  = curM ? parseInt(curM[1], 10) : (_prevUrl ? null : 1);
-          if (curPage && totalPages) {
-            pageInfo.textContent = curPage + " / " + totalPages;
-          } else {
-            pageInfo.textContent = _prevUrl ? "›" : "1";
-          }
-        } else {
-          pageInfo.textContent = "";
-        }
-      }
-    }
-
+    // -------------------------------------------------------------------------
+    // navigatePrev / navigateNext — Anschluss der Seiten-Knoepfe.
+    //
+    // BUILD 691 (Vorgang c658fc41): DREI GEMESSENE URSACHEN, EINE ENTSCHEIDUNG.
+    //
+    // Bis Build 686 stand hier die Auswertung der Forums-Paginierung
+    // (_detectPagination). Sie ist ersatzlos entfallen. Was sie tat und
+    // warum sie nicht zu retten war - gemessen am 05.08.2026 in der VM auf
+    // /forum/viewtopic.php?id=120870&p=2:
+    //
+    //   (1) DER WEITER-KNOPF WAR AUF JEDER SEITE TOT. Gesucht wurde
+    //       a[rel='next']. Die Vorlage des Forums setzt rel aber NUR am
+    //       Zurueck-Verweis: gemessen 0 Treffer fuer rel='next', 2 fuer
+    //       rel='prev'. Damit war nextBtn.disabled dauerhaft wahr - und ein
+    //       deaktivierter Knopf loest kein Klickereignis aus. Das lag an der
+    //       Vorlage, nicht an den Daten, betraf also ALLE Seiten.
+    //
+    //   (2) DER ZURUECK-KNOPF UEBERGAB EINE UNBRAUCHBARE ADRESSE. Gelesen
+    //       wurde mit getAttribute('href') - die unaufgeloeste Form
+    //       'viewtopic.php?id=120870'. Jeder andere Navigationsweg im Modul
+    //       benutzt die Eigenschaft a.href und schneidet Protokoll und
+    //       Rechnernamen ab. Die Abfrage lief deshalb ins Leere
+    //       (in_scope=false, fetch_failed=true), und der Ermittler sah einen
+    //       Hinweisstreifen statt der Seite. 'Nix passiert' war also ein
+    //       Fehlschlag, der wie eine Zustaendigkeitsgrenze aussah.
+    //
+    //   (3) DIE SPURENSEQUENZ KANNTE DIE SEITE NICHT (traceSeqIndex -1 auf
+    //       einer Seite mit 40 Spuren). Abgetrennt als 2f1044b9 (behoben in
+    //       Build 677) und c290939f (behoben in Build 685).
+    //
+    // ENTSCHEIDUNG VON ALEX am 05.08.2026: Die Knoepfe sollen die
+    // SPURENTRAGENDEN SEITEN durchblaettern, nicht die Seitenzaehlung des
+    // Forums. Damit sind (1) und (2) gegenstandslos - beides waren Fehler im
+    // Auslesen einer Datengrundlage, die gar nicht mehr die richtige ist.
+    //
+    // KEIN RUECKFALL AUF DIE FORUMS-PAGINIERUNG. Ein Knopf, der je nach Lage
+    // mal das eine und mal das andere tut, ist genau der Fehler, der in
+    // c290939f behoben wurde. Die Seitenverweise des Forums bleiben in der
+    // Seite selbst anklickbar - dort werden sie ueber _interceptLinks
+    // sauber aufgeloest.
+    // -------------------------------------------------------------------------
     function navigatePrev() {
-      if (_prevUrl) loadPage(_prevUrl, true);
+      SpurSeitenNavigationModule.blaettere("prev");
     }
     function navigateNext() {
-      if (_nextUrl) loadPage(_nextUrl, true);
+      SpurSeitenNavigationModule.blaettere("next");
     }
 
     window.addEventListener("popstate", function (e) {
@@ -5772,6 +5802,223 @@
   })();
 
   // ===========================================================================
+  // SpurSeitenNavigationModule — die Knöpfe „Seite" blättern durch die
+  // SPURENTRAGENDEN SEITEN (Vorgang c658fc41, Build 691)
+  // ===========================================================================
+  // WAS DIESES MODUL VON DER SPURNAVIGATION UNTERSCHEIDET — die beiden sehen
+  // sich ähnlich und sind es nicht:
+  //
+  //   Spur-Knöpfe (◄ ►):   gehen Spur für Spur. Innerhalb der Seite wird
+  //                        gescrollt; erst am Rand der Seite wird gewechselt.
+  //   Seiten-Knöpfe (◀ ▶): gehen SEITE für Seite. Die verbleibenden Spuren
+  //                        der aktuellen Seite werden dabei übersprungen —
+  //                        das ist der Zweck, nicht ein Versäumnis.
+  //
+  // Beide lesen dieselbe Datengrundlage: die Spurensequenz aus
+  // /_forensic/trace_sequence, also die Liste der Seiten, auf denen der
+  // Beschuldigte nachweislich Spuren hinterlassen hat.
+  //
+  // WARUM EIN EIGENES MODUL UND KEIN ZWEITER ZWEIG IN DER SPURNAVIGATION:
+  // Vorgang c290939f war genau der Fall, dass zwei Stellen dieselbe Frage
+  // verschieden beantworteten. Zwei Zuständigkeiten in einem Modul, die sich
+  // eine Zustandsvariable teilen (_currentIdx), hätten das wiederholt. Die
+  // Sequenz ist die gemeinsame Grundlage, der Zustand bleibt getrennt.
+  //
+  // GRUNDREGEL 1 IM KLEINEN: Ein Knopf, der nicht reagiert, muss sagen,
+  // warum. Sonst wird er für kaputt gehalten — oder, schlimmer, das Ende der
+  // Spurenliste wird dort vermutet, wo nur der Rang der aktuellen Seite
+  // unbekannt ist.
+  // ===========================================================================
+  var SpurSeitenNavigationModule = (function () {
+
+    // Die Gruppenbezeichnungen der Sequenz in lesbarer Form. Bewusst dieselbe
+    // Zuordnung wie in TraceNavigationModule._navigate — zwei Listen mit
+    // denselben Schlüsseln laufen erfahrungsgemäß auseinander, deshalb steht
+    // hier eine Notiz statt einer Kopie mit eigenem Leben.
+    var GRUPPEN_NAMEN = {
+      "profile": "Profilseiten",
+      "pm":      "Private Nachrichten",
+      "topic":   "Beiträge",
+      "other":   "Sonstige Seiten",
+    };
+
+    var HINWEIS_UNBEKANNT =
+      "Diese Seite steht nicht in der Spurenliste - von hier aus laesst sich "
+      + "keine vorherige oder naechste Spurenseite bestimmen. Ueber die "
+      + "Seitenuebersicht (Alt+K) zu einer Seite mit Spuren wechseln.";
+
+    var HINWEIS_KEINE_LISTE =
+      "Die Spurenliste liegt noch nicht vor. Sobald sie geladen ist, "
+      + "blaettern diese Knoepfe durch die Seiten mit Spuren.";
+
+    function _seq() {
+      return _state.traceSequence || [];
+    }
+
+    function _url() {
+      return _state.currentUrl || "";
+    }
+
+    // -------------------------------------------------------------------------
+    // _rang — Rang der aktuellen Seite in der Spurensequenz, oder -1.
+    //
+    // Gleiche Regel wie in TraceNavigationModule._rang(): der gespeicherte
+    // Rang gilt, und nur wenn keiner vorliegt, wird die URL nachgeschlagen.
+    // -1 ist KEIN Rang, sondern die Auskunft „steht nicht in der Liste" —
+    // damit wird nicht weitergerechnet (Vorgang c290939f, Build 685).
+    // -------------------------------------------------------------------------
+    function _rang() {
+      var idx = _state.traceSeqIndex;
+      if (typeof idx === "number" && idx >= 0) return idx;
+      var seq = _seq();
+      var url = _url();
+      for (var i = 0; i < seq.length; i++) {
+        if (seq[i].url === url) return i;
+      }
+      return -1;
+    }
+
+    // -------------------------------------------------------------------------
+    // _ziel — die Nachbarseite in der Sequenz, oder null samt Grund.
+    //
+    // Liefert { rang, eintrag } oder { grund: "<Text>" }. Der Grund wird
+    // zurückgegeben und nicht verschluckt: er landet als Tooltip am Knopf.
+    // -------------------------------------------------------------------------
+    function _ziel(richtung) {
+      var seq = _seq();
+      if (!seq.length) return { grund: HINWEIS_KEINE_LISTE };
+
+      var rang = _rang();
+      if (rang < 0) return { grund: HINWEIS_UNBEKANNT };
+
+      var k = (richtung === "next") ? rang + 1 : rang - 1;
+      if (k < 0) {
+        return { grund: "Dies ist bereits die erste Seite mit Spuren "
+                        + "(1 von " + seq.length + ")." };
+      }
+      if (k >= seq.length) {
+        return { grund: "Dies ist bereits die letzte Seite mit Spuren ("
+                        + seq.length + " von " + seq.length + ")." };
+      }
+      return { rang: k, eintrag: seq[k] };
+    }
+
+    // -------------------------------------------------------------------------
+    // _beschrifte — einen Knopf in Stand setzen: Freigabe, Titel, aria-label.
+    // -------------------------------------------------------------------------
+    function _beschrifte(knopf, ziel, wort, taste) {
+      if (!knopf) return;
+      if (ziel && ziel.eintrag) {
+        var titel = ziel.eintrag.title || ziel.eintrag.url;
+        var text  = wort + " Seite mit Spuren: " + titel
+                  + " (" + (ziel.rang + 1) + " von " + _seq().length + ")";
+        knopf.disabled = false;
+        knopf.setAttribute("title", text + " [" + taste + "]");
+        knopf.setAttribute("aria-label", text);
+      } else {
+        // Der Grund steht am Knopf. Ohne ihn wäre nicht unterscheidbar, ob
+        // die Liste zu Ende ist, die Seite nicht darin steht oder das
+        // Werkzeug klemmt — drei Lagen, die verschiedene Schritte verlangen.
+        var grund = (ziel && ziel.grund) || HINWEIS_KEINE_LISTE;
+        knopf.disabled = true;
+        knopf.setAttribute("title", grund);
+        knopf.setAttribute("aria-label", wort + " Seite mit Spuren - " + grund);
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // aktualisiere — Knöpfe und Standanzeige nachführen.
+    // -------------------------------------------------------------------------
+    function aktualisiere() {
+      var prevBtn  = document.getElementById("forensic-btn-nav-prev");
+      var nextBtn  = document.getElementById("forensic-btn-nav-next");
+      var pageInfo = document.getElementById("forensic-page-info");
+
+      _beschrifte(prevBtn, _ziel("prev"), "Vorherige", "Alt+←");
+      _beschrifte(nextBtn, _ziel("next"), "Naechste",  "Alt+→");
+
+      if (!pageInfo) return;
+
+      var seq  = _seq();
+      var rang = _rang();
+      if (!seq.length) {
+        // Kein Stand vortäuschen, solange nichts vorliegt.
+        pageInfo.textContent = "";
+        pageInfo.setAttribute("title", HINWEIS_KEINE_LISTE);
+        return;
+      }
+      if (rang < 0) {
+        // '?' statt einer Zahl: eine Zahl an dieser Stelle wäre erfunden.
+        pageInfo.textContent = "? / " + seq.length;
+        pageInfo.setAttribute("title", HINWEIS_UNBEKANNT);
+        return;
+      }
+      pageInfo.textContent = (rang + 1) + " / " + seq.length;
+      pageInfo.setAttribute(
+        "title",
+        "Seite " + (rang + 1) + " von " + seq.length
+        + " Seiten mit Spuren des Beschuldigten.");
+    }
+
+    // -------------------------------------------------------------------------
+    // blaettere — eine Seite vor oder zurück innerhalb der Spurensequenz.
+    // -------------------------------------------------------------------------
+    function blaettere(richtung) {
+      var ziel = _ziel(richtung);
+      if (!ziel || !ziel.eintrag) {
+        // Über die Tastenkürzel ist der Knopf umgehbar; dann wird der Grund
+        // vorgelesen statt wortlos nichts zu tun.
+        if (ziel && ziel.grund) AccessibilityModule.announce(ziel.grund);
+        return;
+      }
+
+      // Gruppenwechsel ankündigen — dieselbe Geste wie in der Spurnavigation.
+      var seq      = _seq();
+      var rang     = _rang();
+      var vorGrp   = (rang >= 0 && seq[rang]) ? seq[rang].group : null;
+      if (vorGrp && ziel.eintrag.group !== vorGrp) {
+        ToastModule.show(
+          "Gruppe: " + (GRUPPEN_NAMEN[ziel.eintrag.group] || ziel.eintrag.group),
+          ToastModule.TYPES[0]
+        );
+      }
+
+      // Den Rang vorab setzen, damit die Anzeige nach dem Laden ohne Umweg
+      // stimmt. Nach dem Laden schreibt TraceNavigationModule ihn ohnehin aus
+      // der URL neu - der Vorabwert ist eine Beschleunigung, keine Quelle.
+      ForensicToolbar._setState({ traceSeqIndex: ziel.rang });
+
+      AccessibilityModule.announce(
+        "Seite " + (ziel.rang + 1) + " von " + seq.length + ": "
+        + (ziel.eintrag.title || ziel.eintrag.url));
+
+      ForensicToolbar.navigation.loadPage(ziel.eintrag.url, true);
+    }
+
+    // Nachführen: nach jedem Seitenload und bei jeder Änderung der Sequenz
+    // oder des Rangs. Die Sequenz trifft asynchron ein - ohne den zweiten
+    // Anlass stünden die Knöpfe beim allerersten Seitenaufbau dauerhaft auf
+    // „keine Liste".
+    ForensicToolbar.events.on("page:loaded", function () {
+      setTimeout(aktualisiere, 0);
+    });
+    ForensicToolbar.events.on("state:changed", function (updates) {
+      if ("traceSequence" in updates || "traceSeqIndex" in updates
+          || "currentUrl" in updates) {
+        aktualisiere();
+      }
+    });
+
+    return {
+      blaettere:    blaettere,
+      aktualisiere: aktualisiere,
+    };
+  })();
+
+  // Öffentlich exponiert — für die Regressionsfälle und für andere Fenster.
+  ForensicToolbar.spurseiten = SpurSeitenNavigationModule;
+
+  // ===========================================================================
   // PHASE 7: ViewportTrackerModule — IntersectionObserver → /_forensic/viewport
   // ===========================================================================
   var ViewportTrackerModule = (function () {
@@ -6107,14 +6354,15 @@
           return;
         }
 
-        // Alt+→: Nächste Seite
+        // Alt+→: Nächste Seite MIT SPUREN (Build 691, Vorgang c658fc41 -
+        // die Kürzel folgen den Knöpfen, deren Bedeutung sich geändert hat)
         if (e.key === "ArrowRight" && e.altKey) {
           e.preventDefault();
           NavigationModule.navigateNext();
           return;
         }
 
-        // Alt+←: Vorherige Seite
+        // Alt+←: Vorherige Seite MIT SPUREN (Build 691, Vorgang c658fc41)
         if (e.key === "ArrowLeft" && e.altKey) {
           e.preventDefault();
           NavigationModule.navigatePrev();
