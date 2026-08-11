@@ -1,0 +1,325 @@
+{
+  "issues": [
+    {
+      "id": "5c4a1e02-9d3b-4f61-a8c7-2e5b74091fd3",
+      "type": "improvement",
+      "title": "Timeline: Monat an der Quelle berichtigen, sortierbar, Bestand migrieren",
+      "affected_version": "0.8.689",
+      "reporter": "Alex",
+      "reported_at": "2026-08-11T13:50:00+00:00",
+      "prerequisites": "Vorgang 1ad6bd69 (Auslese im Webserver) ist eingespielt; forensic_<uid>.db-Bestand vorhanden.",
+      "expected_behavior": "Der Monat steht als gewoehnliche Datenzelle im BLOB, sortiert chronologisch, und der vorhandene Bestand wird durch ein Migrationswerkzeug nachgezogen. Die Datei belegt selbst, dass die Berichtigung an ihr stattgefunden hat.",
+      "actual_behavior": "Der BLOB traegt den Monat als <th>; die Sortierung waere lexikografisch; ein Migrationsweg fuer den Bestand ist nicht gebahnt.",
+      "status": "testing",
+      "priority": "medium",
+      "severity": "minor",
+      "assigned_to": "Claude",
+      "related_to": [
+        "1ad6bd69-730e-46d3-a2a3-aecfbd5a0a8f",
+        "2dc0b8f0-26e6-4d78-88ae-4849ae217d56",
+        "8b1d55d7-64ac-4e29-b3f5-91d0c6a8e472",
+        "8f2c19aa-3d47-4c86-b215-9e0af7d3c614"
+      ],
+      "resolved_in_version": "0.1.132",
+      "target_version": "0.1.132",
+      "environment": {
+        "python_version": "3.14",
+        "database": "forensic_<uid>.db"
+      },
+      "tags": [
+        "Prepper",
+        "Timeline",
+        "Migration",
+        "Selbstbeschreibung",
+        "phase_b_html_renderer.py"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-11T13:50:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "DER VERMERK IN DER DATENBANK IST BEREITS EIN OFFENER VORGANG - 2dc0b8f0. Das dafuer vorgesehene Mittel ist die Registry 'schema_migrations' (Datenmigrationsleitfaden v0.2, 'Selbstbeschreibende Datenbanken', Abschnitt 6.4 'Autoritativ = in der DB'). Sie wird seit Prepper-Build 127 in evidence_<uid>.db und assets_<uid>.db gestempelt (stage2/schema_registry.py), in forensic_<uid>.db aber NICHT - genau das ist 2dc0b8f0, und dort steht ausdruecklich 'Zu ENTSCHEIDEN durch mc, nicht von mir vorwegzunehmen'.\n\nEIN ARGUMENT, DAS IN 2dc0b8f0 NOCH NICHT STEHT: Der dort genannte Einwand ist, dass der Registereintrag in den inhaltsbasierten Siegel-Hash eingeht und damit die Siegel aller kuenftigen Dateien gegenueber den bisherigen aendert. Fuer die HIER benoetigte Nachruestung entfaellt dieser Einwand: die Migration setzt das Siegel ohnehin neu (_reseal, der alte und der neue Wert stehen im Protokoll). Der Registereintrag kostet an dieser Stelle also nichts, was nicht ohnehin anfaellt. Die Migration ist damit der guenstigste denkbare Zeitpunkt, das Register in forensic_<uid>.db einzuziehen.\n\nZWEI PUNKTE, DIE BEI DER ENTSCHEIDUNG ZU BEDENKEN SIND: (1) schema_migrations.kind kennt nur 'additive' und 'destructive' (CHECK-Bedingung, stage2/schema_registry.py Z. 115ff). Ein ausgetauschter BLOB ist nach dieser Einteilung 'destructive' - der Modulkopf der bestehenden BLOB-Migration sagt das ueber sich selbst ebenso ('DIESE MIGRATION IST NICHT ADDITIV'). Das ist zu benennen und nicht zu beschoenigen, auch wenn kein Beweiswert verloren geht: ausgetauscht wird ein ABGELEITETES Darstellungsartefakt, die uid_*-Tabellen und die pages-BLOBs bleiben Byte fuer Byte unberuehrt (nachgewiesen durch migration/static_page_diff.py). (2) Ohne Register braeuchte die Migration ein anderes Uebersprungkriterium; der billigere Ersatz waere ein Schluessel in forensic_meta (key/value, existiert bereits). Er waere aber NICHT das im Leitfaden vorgesehene Register und loeste 2dc0b8f0 nicht mit."
+        },
+        {
+          "timestamp": "2026-08-11T13:52:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "ZUR FRAGE, OB DIE AUSLESE IM WEBSERVER (1ad6bd69) DANACH ZURUECKGEBAUT WERDEN KANN - Empfehlung: NEIN, sie sollte bleiben. Nicht als Symptombehandlung, sondern als Leseregel.\n\n(1) EIN LESER, DER EINE WOHLGEFORMTE ZELLE STILL UEBERGEHT, IST SELBST MANGELHAFT. <th scope=\"row\"> ist zulaessige Auszeichnung fuer einen Zeilenkopf. Ein Leser, der sie verwirft, verletzt Grundregel 1, unabhaengig davon, ob eine Quelle sie derzeit erzeugt.\n\n(2) DER BESTAND WIRD NIE VOLLSTAENDIG MIGRIERT SEIN. Phase-1-Sicherungen und WORM-Archive tragen ihren alten BLOB - sie MUESSEN das, das ist der Zweck eines Archivs. Wird eine solche Datei geoeffnet, muss sie richtig angezeigt werden und nicht still falsch.\n\n(3) DIE MIGRATION IST EIN VIER-PHASEN-VERFAHREN MIT MENSCHLICHER GEGENZEICHNUNG. Zwischen dem berichtigten Renderer und der letzten migrierten Falldatei liegt ein Zeitraum, der nicht kurz ist. In diesem Zeitraum ist die Auslese die EINZIGE Sicherung.\n\n(4) KOSTEN UND RISIKO SIND GEMESSEN, NICHT GESCHAETZT: rund zehn Zeilen, 9 Tests. Fuer Tabellen aus reinen <td> ist das Ergebnis nachweislich unveraendert (eigener Test). Wer sie dennoch zurueckbauen will, muesste zuvor sicherstellen, dass KEIN nicht migrierter BLOB je wieder geoeffnet wird - und das ist mit Archiven nicht sicherzustellen."
+        },
+        {
+          "timestamp": "2026-08-11T16:30:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "testing",
+          "comment": "PREPPER-BUILD 131 (Quelle) und 132 (Bestand) ausgeliefert.\n\nBUILD 131 — DIE QUELLE:\n  * _render_timeline_agg setzt den Monat als <td> statt <th>. Nachgezaehlt: von 19 Tabellen der Klasse 'forensic-data' fuehrte genau eine — diese — einen Zeilenkopf; die uebrigen 18 arbeiten durchgehend mit <td>. <th> war fuer einen Zeilenkopf NICHT falsch, es war uneinheitlich (und wurde ohnehin ohne 'scope' gesetzt).\n  * Sortierschluessel ueber den seit Build 060 vorhandenen Mechanismus: <span class=\"forensic-ts\" data-ts=\"<unix des Monatsersten, UTC>\" style=\"display:none\">. _tsSorter in userinfo.js liest genau dieses Attribut — AM WEBSERVER WAR DAFUER NICHTS ZU AENDERN. Der Wert ist im Test nachgerechnet, nicht nur auf Vorhandensein geprueft.\n  * Ohne Schluessel haette die Spalte lexikografisch sortiert (Apr, Aug, Dez) — ein Mangel, den man sich mit der Behebung erst einhandelt.\n\nBUILD 132 — DER BESTAND:\n  * Uebersprungkriterium der Nachruestung vom Merkmal auf den FASSUNGSSTAND umgestellt. Das war der Kern: bis dahin galt 'traegt der BLOB den Heatmap-Umschalter, ist nichts zu tun'. Eine Datei, welche die Nachruestung aus Build 127 schon hinter sich hat, waere fuer immer uebersprungen worden — ohne Meldung. UB27-UB30 stellen genau diesen Fall nach und weisen nach, dass er jetzt bearbeitet wird.\n  * DIE TROCKENUEBUNG IM CLI TRUG DIESELBE FALLE und war dort gefaehrlicher, weil der Operator seine Entscheidung darauf stuetzt. Mit umgestellt.\n  * SKIPPED_NO_HEATMAP ist durch SKIPPED_UNCHANGED ersetzt: der BLOB wird neu gerechnet und BYTEWEISE verglichen. Gemessen statt geschlossen. Der alte Statuswert bleibt im Enum stehen, weil er in bereits geschriebenen migration_log.jsonl-Zeilen vorkommt.\n\nRegression Prepper: 948 bestanden, 8 uebersprungen (27 Tests mehr als 131). Gegenprobe: mit dem Renderer-Stand vor Build 131 fallen 9 der 16 einschlaegigen Tests rot.\n\nOFFEN und nicht behauptet: Phase 0 des Datenmigrationsleitfadens (synthetische Referenz-DB, Trockenlauf mit Erwartungswertabgleich, erprobter Rueckweg, Pruefprotokollvorlage) ist NICHT Gegenstand dieser Lieferungen. Die Tests stellen den Ablauf nach, sie ersetzen die Vieraugen-Pruefung nicht."
+        },
+        {
+          "timestamp": "2026-08-11T16:43:24.312772+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build689.json"
+        }
+      ]
+    },
+    {
+      "id": "2dc0b8f0-26e6-4d78-88ae-4849ae217d56",
+      "type": "improvement",
+      "title": "forensic_<uid>.db koennte das Register schon beim Anlegen tragen",
+      "affected_version": "0.2.127",
+      "reporter": "Claude",
+      "reported_at": "2026-07-30T12:00:00+00:00",
+      "prerequisites": "Prepper erzeugt forensic_<uid>.db und versiegelt sie am Ende.",
+      "expected_behavior": "Die Datei traegt schema_migrations und ist damit im Sinne des Datenmigrationsleitfadens (Abschnitt 6.4) selbstbeschreibend; tools/migrate-dbs.py braucht fuer sie keinen Sonderfall mehr.",
+      "actual_behavior": "tools/migrate-dbs.py meldet 'versiegelt - Register nicht moeglich, keine Luecke'.",
+      "status": "testing",
+      "priority": "low",
+      "severity": "minor",
+      "assigned_to": "Claude",
+      "related_to": [
+        "5c4a1e02-9d3b-4f61-a8c7-2e5b74091fd3"
+      ],
+      "resolved_in_version": "0.1.132",
+      "target_version": "0.1.132",
+      "environment": {
+        "python_version": "3.14",
+        "database": "forensic_<uid>.db"
+      },
+      "tags": [
+        "Prepper",
+        "forensic",
+        "Migration",
+        "Selbstbeschreibung"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-07-30T21:30:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Beim Umsetzen von Ticket 2c9e0f41 aufgefallen. BEWUSST NICHT mitgemacht: es beruehrt das Siegel des Beweismittels und ist damit keine Nebensache."
+        },
+        {
+          "timestamp": "2026-07-31T00:03:10.371491+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Prepper_Build127.json"
+        },
+        {
+          "timestamp": "2026-08-11T16:35:00+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "comment": "ENTSCHEIDUNG 2026-08-11: 'Ja, das soll zentral mit erfasst werden.' Damit ist die im Vorgang vorbehaltene Entscheidung getroffen."
+        },
+        {
+          "timestamp": "2026-08-11T16:40:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "testing",
+          "comment": "PREPPER-BUILD 132: schema_migrations wird mit der Baseline-Version 1 eingezogen, und zwar in seal() — der EINZIGEN Stelle, durch die jede forensic_<uid>.db hindurchmuss. Ein Aufrufer kann das Stempeln vergessen, dieser Punkt nicht. Schlaegt es fehl, bricht seal() ab; eine Datei, die versiegelt wird, obwohl ihr Register nicht geschrieben werden konnte, waere genau die stille Luecke, die hier zu schliessen war.\n\nVERSION UND BEZEICHNUNG SIND WORTGLEICH mit management/migrations/forensic/m001_baseline.py (VERSION/NAME) — dasselbe Vorgehen wie bei evidence (stage2/evidence_tatzeit_schema.py: 'WORTGLEICH mit m002.NAME'). Ein eigener Test haelt beide Fassungen gegeneinander.\n\nDER IM VORGANG GENANNTE EINWAND IST EINGETRETEN UND BENANNT: Die Registry geht in den inhaltsbasierten Siegel-Hash ein; das Siegel kuenftig erzeugter Dateien weicht von dem bisher erzeugter ab. Beweisdaten aendern sich nicht — es kommen Herkunftstabellen hinzu, keine Zeile wird angefasst. Das Siegel bleibt self-konsistent, weil das Register VOR der Versiegelung geschrieben wird; ein Test rechnet es nach.\n\nBEI DER UMSETZUNG AUFGEFALLEN — eigener Vorgang 4e91b3c7: Es waere naheliegend gewesen, auch den BLOB-Vermerk hier einzutragen. Das waere GEFAEHRLICH gewesen; siehe dort. Der Prepper stempelt fuer forensic deshalb ausschliesslich Version 1, und ein Test misst diese Obergrenze."
+        }
+      ]
+    },
+    {
+      "id": "8b1d55d7-64ac-4e29-b3f5-91d0c6a8e472",
+      "type": "bug",
+      "title": "Timeline-Kopf: zwei PN-Quellen mit identischem Anzeigetext",
+      "affected_version": "0.8.689",
+      "reporter": "Claude",
+      "reported_at": "2026-08-11T13:55:00+00:00",
+      "prerequisites": "Ein Benutzer, fuer den beide Quellen Belege tragen.",
+      "expected_behavior": "Jede Quelltabelle traegt einen eigenen, eindeutigen Anzeigetext; ein Test macht die Suite rot, sobald zwei Quellen denselben Text bekommen.",
+      "actual_behavior": "Zwei Spalten heissen gleich; welche Zahl aus welcher Quelle stammt, ist der Ansicht nicht zu entnehmen.",
+      "status": "testing",
+      "priority": "medium",
+      "severity": "minor",
+      "assigned_to": "Claude",
+      "related_to": [
+        "5c4a1e02-9d3b-4f61-a8c7-2e5b74091fd3",
+        "3f7ae4c1-2b98-4d57-9e16-c4f83a0b5d61"
+      ],
+      "resolved_in_version": "0.1.131",
+      "target_version": "0.1.131",
+      "environment": {
+        "python_version": "3.14",
+        "database": "forensic_<uid>.db"
+      },
+      "tags": [
+        "Prepper",
+        "Timeline",
+        "Userinfo",
+        "phase_b_html_renderer.py"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-11T13:55:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Aufgefallen bei der Auswertung des DOM-Auszugs zu 1ad6bd69 - also als Nebenbefund einer anderen Untersuchung und nicht durch gezielte Suche. Die Dublette besteht seit Prepper-Build 052; sie faellt nur auf, wenn beide Quellen fuer denselben Benutzer Belege tragen."
+        },
+        {
+          "timestamp": "2026-08-11T16:20:00+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "comment": "AUSKUNFT UND ENTSCHEIDUNG 2026-08-11: 'pms_new_posts ist die Obermenge, welche auch pms_cracked_bundles beinhaltet. Das sollte getrennt ausgewiesen werden. Bei Letzterem handelt es sich um die entschluesselten privaten Nachrichten.' Anzeigetext festgelegt: 'PN (entschluesselt)'."
+        },
+        {
+          "timestamp": "2026-08-11T16:25:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "testing",
+          "comment": "PREPPER-BUILD 131: pms_cracked_bundles traegt 'PN (entschluesselt)'.\n\nEIN VORHANDENER TEST WURDE UMGEDREHT, NICHT GELOESCHT. TestBuild059SourceTableLabels forderte woertlich, dass pms_cracked_bundles als 'Private Nachrichten' erscheint — also mit demselben Text wie pms_new_posts. DER TEST WAR GRUEN UND DIE ANSICHT TROTZDEM UNBRAUCHBAR: er hat genau das gesichert, was zu beheben war. Er prueft jetzt, dass die Texte sich UNTERSCHEIDEN; der alte Wortlaut steht als Begruendung im Test.\n\nNEU HINZU: TestBuild131AnzeigetexteEindeutig — es darf ueberhaupt keine zwei Quellen mit gleichem Anzeigetext mehr geben. Die Dublette bestand seit Build 052 und fiel erst am 11.08.2026 auf, bei der Auswertung eines DOM-Auszugs zu einem ANDEREN Vorgang. Ohne diesen Test brachte der naechste Zusatz zur Tabelle die naechste Dublette."
+        },
+        {
+          "timestamp": "2026-08-11T16:43:24.312797+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build689.json"
+        }
+      ]
+    },
+    {
+      "id": "8f2c19aa-3d47-4c86-b215-9e0af7d3c614",
+      "type": "bug",
+      "title": "Spaltenfilter durchsucht das Markup statt des sichtbaren Textes",
+      "affected_version": "0.8.689",
+      "reporter": "Claude",
+      "reported_at": "2026-08-11T14:10:00+00:00",
+      "prerequisites": "Nutzerinfo-Fenster, eine Tabelle mit Zeitstempel- oder Monatsspalte.",
+      "description": "Der Kopffilter der BLOB-Tabellen vergleicht gegen den ROHEN Zellinhalt, also gegen das HTML einschliesslich der Attribute. Belegt aus der ausgelieferten Bibliothek (static/vendor/tabulator/tabulator.min.js):\n\n  like:function(e,t,i,s){ ... String(t).toLowerCase().indexOf(e.toLowerCase())>-1 ...}\n\n't' ist der Feldwert, hier das innerHTML der Zelle. Die Zellen tragen seit Prepper-Build 060 einen versteckten Sortierschluessel <span class=\"forensic-ts\" data-ts=\"1700000000\" style=\"display:none\">.\n\nFOLGE: Wer in einer Zeitstempel- oder Monatsspalte '7' eintippt, trifft auch jede Zeile, deren Zeitstempel eine 7 enthaelt — und das sind fast alle. Der Filter durchsucht etwas, das der Ermittler gar nicht sehen kann. Ebenso trifft 'span', 'href' oder 'data-ts'.\n\nDAS IST KEIN NEUER FEHLER. Er besteht seit Build 060 fuer JEDE Zeitstempelspalte und fiel nicht auf, weil dort nach Datumsbestandteilen gesucht wird, die zufaellig auch im Zeitstempel vorkommen. Mit der Monatsspalte (Prepper-Build 131) wurde er sichtbar.",
+      "expected_behavior": "Der Filter durchsucht das, was in der Zelle steht und gelesen werden kann.",
+      "actual_behavior": "Der Filter durchsucht zusaetzlich unsichtbare Attributwerte und Markup; die Trefferliste ist fuer den Bediener nicht nachvollziehbar.",
+      "status": "testing",
+      "priority": "medium",
+      "severity": "minor",
+      "assigned_to": "Claude",
+      "related_to": [
+        "5c4a1e02-9d3b-4f61-a8c7-2e5b74091fd3",
+        "1ad6bd69-730e-46d3-a2a3-aecfbd5a0a8f"
+      ],
+      "resolved_in_version": "0.8.692",
+      "target_version": "0.8.692",
+      "environment": {
+        "browser": "Chromium in der Windows-VM",
+        "python_version": "3.14",
+        "database": "forensic_<uid>.db (static_pages)"
+      },
+      "tags": [
+        "Userinfo",
+        "Tabulator",
+        "Filter",
+        "userinfo.js"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-11T14:10:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Aufgefallen beim Entwurf des Sortierschluessels fuer die Monatsspalte (Vorgang 5c4a1e02) und dort ausdruecklich als Nebenwirkung benannt, statt sie stillschweigend mitzunehmen. Alex am 2026-08-11: 'Verstehe, dann bitte mitbehandeln.'"
+        },
+        {
+          "timestamp": "2026-08-11T16:45:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "testing",
+          "comment": "Build 692: Neue Funktionen sichtbarerText() und htmlHeaderFilter() in userinfo/userinfo.js; die Spaltendefinitionen bekommen headerFilterFunc. Behoben ist es damit fuer ALLE Spalten zugleich, nicht nur fuer die Monatsspalte.\n\nDOMParser STATT TAG-REGEX: Ein Regex ueber HTML scheitert an Attributwerten mit spitzen Klammern (etwa ein Titel mit '<3'). Ein eigener Test misst genau diesen Fall. display:none-Inhalte verschwinden beim Parsen NICHT von selbst (der Parser rendert kein CSS) — der versteckte Span wird deshalb ausdruecklich entfernt.\n\nGEGENPROBE IM TEST: Der Standardvergleich von Tabulator ist im Test nachgebaut, und es wird gezeigt, dass er trifft, wo die neue Funktion nicht trifft. Damit misst der Test einen ECHTEN Unterschied und nicht nur sich selbst.\n\nNachweis: tests/unit/test_tabulator_headerfilter.test.js, 16 Tests. Regression: JavaScript 1830 bestanden. Der eigentliche Nachweis ist die Sichtpruefung in der VM — deshalb 'testing'."
+        }
+      ]
+    },
+    {
+      "id": "4e91b3c7-8a25-4f93-b7d1-06c2ef5a9b48",
+      "type": "documentation",
+      "title": "Fremde Version in schema_migrations laesst Migrationen still ausfallen",
+      "affected_version": "0.8.692",
+      "reporter": "Claude",
+      "reported_at": "2026-08-11T16:50:00+00:00",
+      "prerequisites": "Eine Fall-Datenbank, deren schema_migrations eine Version traegt, zu der es im Webserver kein Migrationsmodul gibt.",
+      "description": "BEFUND BEI DER UMSETZUNG VON 2dc0b8f0, hier festgehalten, damit er nicht wieder gefunden werden muss.\n\nDer Migrationslaeufer bestimmt den Stand ueber MAX(version) und ueberspringt JEDE Migration mit VERSION <= diesem Wert:\n\n  management/migrations/runner.py, run():\n      current = self.current_version()          # SELECT MAX(version)\n      for mod in self._migrations:\n          if mod.VERSION <= current:\n              self._check_checksum(mod)\n              continue\n\nTraegt eine Datenbank eine Version, die NICHT von einem Migrationsmodul stammt — etwa weil ein anderes Werkzeug sie gestempelt hat —, dann faellt jede spaeter hinzukommende Migration mit derselben oder einer kleineren Nummer STILL aus. Sie laeuft nie, es gibt keine Meldung, und _check_checksum greift nicht (es warnt nur bei ABWEICHENDER Pruefsumme zu einer VORHANDENEN Zeile, nicht bei einer Zeile ohne zugehoeriges Modul).\n\nHEUTE IST NICHTS KAPUTT: Fuer evidence stempelt der Prepper die Versionen 1 und 2, und der Webserver kennt m001 bis m004 — die Nummern gehen also auf. Fuer assets ebenso. Fuer forensic stempelt der Prepper ab 0.1.132 ausschliesslich Version 1, und der Webserver kennt nur m001_baseline.\n\nDIE GEFAHR IST DIE NAECHSTE ERWEITERUNG. Genau diese Ueberlegung hat beim Prepper-Build 132 dazu gefuehrt, den Vermerk ueber neu gerechnete BLOBs NICHT in schema_migrations zu stempeln, sondern in ein eigenes Register (stage2/blob_revisions.py). Waere er dort gelandet, haette eine kuenftige echte Schema-Migration fuer forensic still nie gelaufen.\n\nZU ENTSCHEIDEN (nicht von mir vorwegzunehmen): ob der Laeufer eine Version im Bestand, zu der er kein Modul kennt, kuenftig MELDEN soll. Ein blosser Abbruch waere zu hart (der Prepper stempelt zu Recht ohne Modul); eine Warnung mit Nennung der Nummer waere die kleinste wirksame Massnahme. Bis dahin ist die Regel redaktionell: KEIN Werkzeug ausser dem Migrationslaeufer stempelt eine hoehere Version als die Baseline.",
+      "expected_behavior": "Eine Version im Bestand ohne zugehoeriges Migrationsmodul wird gemeldet, statt kuenftige Migrationen stillschweigend zu unterdruecken.",
+      "actual_behavior": "Sie unterdrueckt sie stillschweigend. Kein Protokolleintrag, keine Warnung.",
+      "status": "open",
+      "priority": "medium",
+      "severity": "major",
+      "assigned_to": "Alex",
+      "related_to": [
+        "2dc0b8f0-26e6-4d78-88ae-4849ae217d56"
+      ],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14",
+        "database": "alle Fall-Datenbanken mit schema_migrations"
+      },
+      "tags": [
+        "Migration",
+        "runner",
+        "Selbstbeschreibung",
+        "Grundregel1"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-11T16:50:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Als 'documentation' eingetragen und nicht als 'bug': heute faellt nichts aus, die Nummern gehen auf. Es ist eine Eigenschaft des Laeufers, die man kennen muss, bevor man das naechste Werkzeug stempeln laesst. Zugewiesen an Alex, weil die Frage, wie streng der Laeufer reagieren soll, eine Betriebsentscheidung ist."
+        }
+      ]
+    },
+    {
+      "id": "a1c7f0d2-5b64-4e37-9c81-3fa20d6e4b75",
+      "type": "bug",
+      "title": "Einspielwerkzeug erkennt eine Lieferung an der Nummer, nicht am Inhalt",
+      "affected_version": "0.8.694",
+      "reporter": "Claude",
+      "reported_at": "2026-08-11T20:30:00+00:00",
+      "prerequisites": "Eine Buildnummer wurde bereits einmal eingespielt; danach wird ein Bundle mit ANDEREM Stand unter derselben Nummer uebergeben.",
+      "description": "BEFUND AM LEBENDEN OBJEKT: Build 692 kam ZWEIMAL nicht beim Empfaenger an - beide Male mit gruener Meldung und Rueckgabewert 0. Alex hat auf dem unveraenderten Stand getestet, ohne dass es jemand bemerken konnte. Drei Ursachen, alle vom selben Muster: es wird ueber eine Lieferung entschieden, BEVOR sie gelesen wurde.\n\n(A1) tools/bundle_einspielen.sh Z. 282-289 (Stand 0.8.694): Ist refs/claude/build<N> vorhanden UND in master, wird 'FERTIG' gemeldet und mit 0 beendet - VOR Schritt 1. Die uebergebene Datei wird nicht einmal geoeffnet, nicht verifiziert, nicht auf ihren Zweig hin angesehen. Ein leeres, beschaedigtes oder voellig fremdes Bundle ergibt dieselbe Ausgabe.\n\n(A2) DER GEFAEHRLICHERE WEG, Z. 290-292 und 391-393: Ist die Ref vorhanden, master traegt sie aber NICHT - der Normalzustand nach einem abgebrochenen Lauf oder einer roten Regression -, dann laeuft der Ablauf vollstaendig durch, holt das uebergebene Bundle aber nie. Schritt 1 verifiziert es trotzdem und meldet 'is okay'; Schritt 5 mergt die ALTE Ref. NACHGESTELLT UND GEMESSEN: der Bediener sieht ein verifiziertes Bundle, einen erfolgreichen Merge, eine gruene Regression und 'Fertig' - im Bestand liegt Inhalt, den niemand geliefert hat.\n\n(B) DIE ABNAHMEPROBE NACH GRUNDREGEL 8 HAT NIE STATTGEFUNDEN. .gitignore Z. 90 fuehrt 'MD5SUMS_Build*.txt'. tools/bundle_bauen.sh prueft mit 'git status --porcelain' OHNE '--ignored'; fuer eine ignorierte Datei ist die Ausgabe leer, die Bedingung also immer falsch. Der Zweig, der die Liste in den Commit ziehen soll, lief nie - und weil er nur im Erfolgsfall etwas ausgibt, meldete er auch nichts. GEMESSEN IM PRODUKTIVBESTAND (Alex, 11.08.2026): 'git ls-files | grep -c ^MD5SUMS' -> 0, 'ls MD5SUMS_Build*.txt | wc -l' -> 26. Folge: keine Liste in einem Bundle, beim Empfaenger keine im Arbeitsbaum, Schritt 8 endet ausnahmslos mit 'KEINE ABNAHME MOEGLICH'. Damit fiel auch der letzte Waechter aus, der A1/A2 haette aufdecken koennen.\n\n(C) tools/bundle_bauen.sh prueft die Nummer im Aufruf nicht gegen build.json.\n\nVollstaendige Untersuchung: Projektdokument 'Befund_Einspielverfahren_stille_Fehlschlaege_v1_0.md'.",
+      "expected_behavior": "Eine Lieferung wird an ihrem INHALT erkannt. Traegt das uebergebene Bundle einen anderen Stand als die bekannte Ref, bricht der Lauf ab und nennt beide Staende. Die MD5-Liste liegt im Bundle, damit die Abnahme nach GR8 laufen kann.",
+      "actual_behavior": "Die Buildnummer ist die Identitaet. Eine zweite Lieferung unter derselben Nummer faellt still aus - mit Erfolgsmeldung. Die Abnahmeprobe kann mangels Datei nie laufen.",
+      "status": "testing",
+      "priority": "high",
+      "severity": "major",
+      "assigned_to": "Claude",
+      "related_to": [
+        "8f2c19aa-3d47-4c86-b215-9e0af7d3c614"
+      ],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "os": "Linux",
+        "python_version": "3.14"
+      },
+      "tags": [
+        "Datenaustausch",
+        "bundle_einspielen.sh",
+        "bundle_bauen.sh",
+        "Grundregel1",
+        "Grundregel8"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-11T20:30:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Untersucht auf Weisung Alex vom 11.08.2026 ('in aller Tiefe und Breite'). Alle drei Ursachen sind nachgestellt, nicht erschlossen: A1 und A2 in einem Wegwerf-Bestand mit den echten Werkzeugen, B durch Messung im Produktivbestand (M1)."
+        },
+        {
+          "timestamp": "2026-08-11T20:35:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "testing",
+          "comment": "BEHOBEN. Drei Aenderungen:\n\n(1) bundle_einspielen.sh: Schritt 1 (verify + list-heads) wandert VOR den Wiederaufnahme-Block. 'git bundle list-heads' nennt die Spitze als SHA, OHNE dass das Objekt lokal vorliegen muss - das Bundle laesst sich also befragen, bevor irgendetwas geholt wurde. Weicht die Spitze von der bekannten Ref ab, bricht der Lauf ab und nennt BEIDE Staende samt der zwei in Frage kommenden Gruende. DIE WIEDERAUFNAHME AUS BUILD 665 BLEIBT ERHALTEN - sie greift nur noch bei gleichem Stand, wofuer sie gemeint war.\n\n(2) bundle_bauen.sh: 'git add -f' fuer die MD5-Liste UND eine Gegenprobe danach ('git ls-files --error-unmatch'). Der Kern ist nicht das -f, sondern die Gegenprobe: erst sie macht aus einer stillen Nichtwirkung einen lauten Abbruch. Die .gitignore-Regel bleibt unangetastet - sie ueber den dauerhaften Inhalt des Bestandes zu entscheiden ist nicht Sache dieses Werkzeugs.\n\n(3) bundle_bauen.sh: Abbruch, wenn die Nummer im Aufruf nicht der in build.json entspricht; Warnung (kein Abbruch), wenn in der Baubasis schon ein Commit zu dieser Nummer steht.\n\nNACHWEIS: tests/test_lieferkette.py, 9 Tests, die die ECHTEN Skripte in einem Wegwerf-Bestand fahren. GEGENPROBE: mit den Werkzeugen im Stand vor der Behebung fallen 8 der 9 rot. Der neunte (LK06, Wiederaufnahme) ist auf beiden Staenden gruen - richtig so, dieses Verhalten sollte sich nicht aendern.\n\nBesonders LK08 haelt A2 fest: mit dem alten Werkzeug wird master veraendert, obwohl das uebergebene Bundle einen anderen Stand traegt.\n\nDer eigentliche Nachweis ist der Lauf in deiner Umgebung - deshalb 'testing'."
+        }
+      ]
+    }
+  ]
+}
