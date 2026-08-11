@@ -369,6 +369,59 @@ Abweichung — `tools/bundle_einspielen.sh`, erklärt durch Commit `717fa12`.
 Prüfung darf nicht wie eine bestandene aussehen; das wäre die gefährlichste
 Ausgabe dieses Schrittes.
 
+#### Die Probe ordnet ihre Befunde ein *(Build 695, Vorgang 08c9c821-725e-4e9f-89cd-9b012ce18c28)*
+
+**Anlass, gemessen am 2026-08-11.** Build 693 wurde eingespielt. Der Merge lief
+sauber durch, die Regression aus Schritt 6 war grün, `master` war nachgezogen —
+und dann meldete diese Probe eine Abweichung an `toolbar/toolbar.js`. Der
+Rollout wurde gestoppt. Die Aufklärung dauerte mehrere Wortwechsel und endete
+mit dem Ergebnis, daß **alles in Ordnung war**: zwischen der Baubasis der
+Lieferung (0.8.689) und dem Einspielen war Build 691 auf `master` gelandet und
+hatte dieselbe Datei angefaßt.
+
+Das war kein Fehlalarm im Sinne von „zu empfindlich". Die Probe hat richtig
+gemessen. Sie hat nur nicht gesagt, **was** sie gemessen hat — und ließ damit
+genau die beiden Fälle ununterscheidbar, die entgegengesetzte Schritte
+verlangen:
+
+| Lage | Richtiger Schritt |
+|---|---|
+| (a) Die Lieferung ist beschädigt oder unvollständig angekommen | Anhalten, nachfassen |
+| (b) Die Lieferung ist unversehrt angekommen und wurde mit einer zweiten Lieferung verschmolzen | In Ordnung, weitermachen |
+
+**Der Nachweis lag bereits vor, er wurde nur nicht benutzt.** Abschnitt 4.4
+verlangt, daß `refs/claude/build<N>` nach dem Einspielen stehenbleibt — sie
+*ist* die Lieferung, unverändert, als Git-Objekt. Die Probe hält jede
+abweichende Datei jetzt zusätzlich gegen diese Ref und schreibt eine Einordnung
+dazu:
+
+| Code | Bedeutung |
+|---|---|
+| `VERSCHMOLZEN` | Lieferung unversehrt in der Ref, Ref in `HEAD`, andere Commits erklären den Unterschied — sie werden **namentlich** genannt |
+| `BEFUND` | Schon die Ref weicht von ihrer eigenen Liste ab. Liste und Bundle passen nicht zusammen — der Fehler liegt auf der **Erstellerseite** |
+| `NICHT-EINGESPIELT` | Die Ref steckt nicht in `HEAD` |
+| `LOKAL` | Unversehrt und eingespielt, der Unterschied ist aber **nicht committet** |
+| `UNERKLAERT` | Unversehrt und eingespielt, kein Commit erklärt den Unterschied — vermutlich eine Konfliktauflösung im Merge |
+| `OFFEN` | Ohne Lieferref nicht einzuordnen (Verhalten bis Build 693) |
+
+**Neuer Rückgabewert 3**, wenn *jede* Abweichung als `VERSCHMOLZEN` erklärt ist.
+Bewußt nicht `0` — es *ist* ein Unterschied zur Lieferung, und wer maschinell
+auswertet, soll ihn sehen. Bewußt auch nicht `1` — das heißt „hier muß jemand
+hinsehen", und das trifft dann nicht mehr zu. `bundle_einspielen.sh` Schritt 8
+wertet `3` aus und bricht nicht mehr ab.
+
+**Ein zweiter, systematischer Fall verschwindet damit gleich mit:**
+`merge-new-tickets.sh` **löscht** `issue-tracker/eintraege_claude_Build<N>.json`,
+nachdem sie eingemischt wurde — so steht es in der Anleitung nach dem
+Einspielen. Diese Datei steht aber in jeder Prüfsummenliste. Bis Build 693
+meldete die Probe sie deshalb bei *jeder* Lieferung als `FEHLEND`, ohne
+Erklärung. Jetzt steht der löschende Commit daneben.
+
+**Was die Erweiterung nicht tut:** Sie prüft nicht, ob die verschmolzene Fassung
+*fachlich* richtig ist. Das kann keine Prüfsumme. Dafür ist die Regression
+zuständig, die im Einspielvorgang **vor** dieser Probe läuft (Schritt 6) — sie
+hatte am 2026-08-11 längst grün gemeldet, als die Probe anschlug.
+
 ---
 
 ### 4.4b Das Werkzeug liefert sich selbst aus *(Build 666)*
@@ -460,6 +513,7 @@ Jede Lieferung trägt ein Übergabedokument bei. Verpflichtender Inhalt:
 |---|---|
 | Ist die Datei unverfälscht angekommen? | MD5 der Bundle-Datei (GR8) |
 | Stimmt eine einzelne Datei mit der Lieferung überein? | Einzel-MD5 in `MD5SUMS_Build<N>.txt` (GR8) |
+| Ist eine Abweichung ein Schaden oder eine Verschmelzung? | `tools/pruefe_lieferung.sh` hält die Datei gegen `refs/claude/build<N>` (Abschnitt 4.4a) |
 | Auf welchem Stand wurde gearbeitet? | `git bundle verify` → `requires this ref: <SHA>` |
 | Ist der eingespielte Stand derselbe wie der ausgelieferte? | Gleichheit des Commit-SHA auf beiden Seiten |
 | Was genau wurde geändert? | `git diff master refs/claude/<Zweig>` |

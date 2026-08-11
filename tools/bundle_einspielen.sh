@@ -49,7 +49,12 @@
 #   (Schritt 0/1), 2 = falscher Aufruf. Der Code allein sagt damit, wo
 #   es hing -- ohne die Ausgabe zurueckscrollen zu muessen.
 #
-# Version: v0.8.665 - Build: 665 - 2026-08-04
+# BUILD 695: Schritt 8 wertet den neuen Rueckgabewert 3 von
+# tools/pruefe_lieferung.sh aus ("Abweichung, aber als Verschmelzung mit
+# einer anderen Lieferung erklaert") und bricht dann NICHT mehr ab. Siehe
+# die Begruendung unmittelbar vor Schritt 8.
+#
+# Version: v0.8.695 - Build: 695 - 2026-08-11
 # -----------------------------------------------------------------------------
 #
 # Aufruf:   ./bundle_einspielen.sh <paket> <buildnummer> [testbefehl]
@@ -516,25 +521,57 @@ git branch -d "$integration"
 # Liste bei jeder Lieferung erzeugt, mitgeliefert und committet -- und von
 # niemandem geprueft (gemessen: 173 MD5SUMS-Dateien im Bestand, null
 # Vorkommen von 'md5sum -c').
+#
+# BUILD 695 (Vorgang 08c9c821-725e-4e9f-89cd-9b012ce18c28): DER RUECKGABEWERT 3 WIRD AUSGEWERTET.
+# Am 11.08.2026 hat dieser Schritt einen KORREKTEN Rollout angehalten: Build
+# 693 war sauber gemergt, die Regression aus Schritt 6 gruen, master bereits
+# nachgezogen -- und die Probe meldete eine Abweichung an toolbar/toolbar.js,
+# weil zwischen der Baubasis der Lieferung und dem Einspielen Build 691
+# dieselbe Datei angefasst hatte. Die verschmolzene Datei KANN die Pruefsumme
+# einer einzelnen Lieferung nicht treffen. Die Probe ordnet solche Faelle
+# seit Build 695 selbst ein und meldet sie mit 3 statt mit 1.
+#
+# Der Rueckgabewert wird ausdruecklich in einer Variablen gefangen: 'if bash
+# ...' haette 3 wie 1 behandelt, und genau diese Gleichsetzung war das
+# Problem.
 schritt=8
 meld "8) Abnahmeprobe (MD5)"
 if [ -f "$md5liste" ] && [ -f "$pruefwerkzeug" ]; then
-    if bash "$pruefwerkzeug" "$md5liste"; then
-        echo "Abnahme bestanden: der Arbeitsbaum entspricht der Lieferung."
-    else
-        echo "" >&2
-        echo "ABNAHME FEHLGESCHLAGEN." >&2
-        echo "Der Merge ist durchgelaufen, aber der Arbeitsbaum entspricht" >&2
-        echo "NICHT der ausgelieferten Fassung. master wurde bereits" >&2
-        echo "nachgezogen -- der Bestand ist also veraendert." >&2
-        echo "" >&2
-        echo "Haeufigste Ursache: eine Konfliktaufloesung hat eine Datei" >&2
-        echo "anders stehenlassen als geliefert. Das kann richtig sein" >&2
-        echo "(eigene Aenderung behalten) oder ein Versehen. Bitte die oben" >&2
-        echo "genannten Dateien einzeln ansehen:" >&2
-        echo "  git diff ${ref} -- <datei>" >&2
-        exit 1
-    fi
+    rc_probe=0
+    bash "$pruefwerkzeug" "$md5liste" "$ref" || rc_probe=$?
+    case "$rc_probe" in
+        0)
+            echo "Abnahme bestanden: der Arbeitsbaum entspricht der Lieferung."
+            ;;
+        3)
+            # KEIN STILLES DURCHWINKEN, sondern ein benannter Ausgang. Die
+            # Probe hat oben Datei fuer Datei gesagt, WELCHE Lieferung
+            # zusaetzlich beteiligt ist; hier steht nur noch die Folgerung.
+            echo ""
+            echo "Abnahme bestanden MIT VERSCHMELZUNG."
+            echo "Die gelieferten Dateien stecken unveraendert in ${ref}; der"
+            echo "Arbeitsbaum enthaelt zusaetzlich Aenderungen aus anderen"
+            echo "Lieferungen (oben namentlich genannt). Der Bestand ist in"
+            echo "Ordnung -- die Regression aus Schritt 6 lief auf genau"
+            echo "dieser verschmolzenen Fassung und war gruen."
+            ;;
+        *)
+            echo "" >&2
+            echo "ABNAHME FEHLGESCHLAGEN." >&2
+            echo "Der Merge ist durchgelaufen, aber der Arbeitsbaum entspricht" >&2
+            echo "NICHT der ausgelieferten Fassung. master wurde bereits" >&2
+            echo "nachgezogen -- der Bestand ist also veraendert." >&2
+            echo "" >&2
+            echo "Die Probe konnte die Abweichung NICHT als Verschmelzung" >&2
+            echo "erklaeren. Ihre Zeile zu jeder Datei sagt, woran es liegt." >&2
+            echo "Haeufigste Ursache: eine Konfliktaufloesung hat eine Datei" >&2
+            echo "anders stehenlassen als geliefert. Das kann richtig sein" >&2
+            echo "(eigene Aenderung behalten) oder ein Versehen. Bitte die oben" >&2
+            echo "genannten Dateien einzeln ansehen:" >&2
+            echo "  git diff ${ref} -- <datei>" >&2
+            exit 1
+            ;;
+    esac
 else
     # KEIN STILLES DURCHWINKEN. Eine ausgefallene Pruefung darf nicht wie
     # eine bestandene aussehen -- das waere die gefaehrlichste Ausgabe dieses
