@@ -1138,15 +1138,8 @@ function initTabulatorTables(container) {
             formatter: 'html',  // HTML-Inhalt (Links, Spans) erhalten
         }));
 
-        // Datenzeilen aus <tbody> extrahieren
-        const rows = Array.from(table.querySelectorAll('tbody tr')).map(tr => {
-            const cells = Array.from(tr.querySelectorAll('td'));
-            const row = {};
-            cells.forEach((td, colIdx) => {
-                row[`col${colIdx}`] = td.innerHTML;
-            });
-            return row;
-        });
+        // Datenzeilen aus <tbody> extrahieren (Build 687: inkl. Zeilenkopf-<th>)
+        const rows = extractTabulatorRows(table, headers.length);
 
         // Wrapper-Div für Tabulator erstellen (ersetzt die Tabelle im DOM)
         const wrapper = document.createElement('div');
@@ -1159,6 +1152,76 @@ function initTabulatorTables(container) {
         // kein maxHeight -> Pager wird nicht mehr gekappt.
         // eslint-disable-next-line no-new
         new Tabulator(wrapper, buildTabulatorConfig(rows, columns));
+    });
+}
+
+/**
+ * Liest die Datenzeilen einer BLOB-Tabelle fuer Tabulator aus.
+ *
+ * BEFUND (Ticket 1ad6bd69-730e-46d3-a2a3-aecfbd5a0a8f, Alex 2026-08-11,
+ * betroffen 0.8.686): In der "Aktivitaets-Timeline (Jahr/Monat x Quelle)" blieb
+ * die Spalte "Monat" leer; nur vereinzelt stand dort eine Zahl.
+ *
+ * URSACHE (belegt, nicht vermutet):
+ *   Der Prepper rendert den Monat als ZEILENKOPF, nicht als Datenzelle:
+ *     stage1/phase_b_html_renderer.py:1324  ->  f"<th>{MONTH_NAMES[month]}</th>"
+ *   Die bisherige Auslese hier nahm ausschliesslich <td>:
+ *     Array.from(tr.querySelectorAll('td'))
+ *   Damit fehlte je Zeile die ERSTE Zelle. Alle uebrigen Werte rutschten um
+ *   genau eine Spalte nach LINKS: col0 (Kopf "Monat") trug in Wahrheit den Wert
+ *   der ersten Quellspalte, die letzte Spalte ("Summe") blieb leer.
+ *
+ * BELEG AUS DEM TICKET (DOM-Auszug, Zeile mit Summe 9):
+ *   Kopf:  Monat | Bearbeitungen | ... | Abstimmungen | Beitraege | ... | Summe
+ *   Daten: col0=1 | col4=1 | col5=7 | col7=9 | col8=(leer)
+ *   9 Kopfspalten stehen 8 Datenzellen gegenueber; 1+1+7=9 landet in col7 statt
+ *   in col8. Das erklaert BEIDE Symptome (leerer Monat, leere Summe) aus EINER
+ *   Ursache und erklaert auch die "vereinzelten" Monatswerte: sichtbar wurde
+ *   dort nicht der Monat, sondern der verrutschte Wert der Nachbarspalte.
+ *
+ * WARUM DER FIX HIER UND NICHT IM PREPPER LIEGT:
+ *   Die Nutzerinfo-Seiten liegen als BLOB in evidence_<uid>.db. Ein geaenderter
+ *   Prepper repariert nur KUENFTIG erzeugte BLOBs; alle bereits erfassten
+ *   Faelle blieben falsch und muessten neu erhoben oder migriert werden
+ *   (Wartungsvorbehalt ab 01.07.2026). Die Auslese im Webserver dagegen wirkt
+ *   sofort auf JEDEN Bestand. <th> als Zeilenkopf ist ausserdem semantisch
+ *   korrekt und bleibt zulaessig — diese Funktion nimmt beide Formen an.
+ *
+ * :scope-Selektor: nur die DIREKTEN Zellen der Zeile, damit eine kuenftig
+ * verschachtelte Tabelle nicht Zellen in die Elternzeile einschleust.
+ *
+ * GRUNDREGEL 1 (kein stilles Uebergehen): Weicht die Zellenzahl einer Zeile von
+ * der Zahl der Kopfspalten ab, wird das auf der Konsole vermerkt. Die Zeile
+ * wird trotzdem uebernommen — ein unvollstaendiger Beleg ist besser als ein
+ * unterschlagener —, aber der Befund ist auffindbar.
+ *
+ * @param   {HTMLTableElement} table          — Tabelle mit <thead> und <tbody>
+ * @param   {number}           [columnCount]  — Zahl der Kopfspalten (Pruefmass)
+ * @returns {Array<object>} Zeilenobjekte {col0..colN} mit innerHTML je Zelle
+ */
+function extractTabulatorRows(table, columnCount) {
+    // ':scope > tbody > tr' statt 'tbody tr': eine verschachtelte Tabelle darf
+    // ihre Zeilen nicht als Zeilen der AEUSSEREN Tabelle einschleusen. Der
+    // HTML-Parser ergaenzt fehlende <tbody> selbsttaetig, die Auswahl bleibt
+    // also auch bei Tabellen ohne ausgeschriebenes <tbody> vollstaendig.
+    return Array.from(table.querySelectorAll(':scope > tbody > tr')).map((tr, rowIdx) => {
+        // ':scope > th, :scope > td' liefert in DOKUMENTREIHENFOLGE — der
+        // Zeilenkopf <th> steht damit korrekt an Position 0, unabhaengig von
+        // der Reihenfolge im Selektor.
+        const cells = Array.from(tr.querySelectorAll(':scope > th, :scope > td'));
+        const row = {};
+        cells.forEach((cell, colIdx) => {
+            row[`col${colIdx}`] = cell.innerHTML;
+        });
+        if (typeof columnCount === 'number' && columnCount > 0
+                && cells.length !== columnCount) {
+            console.warn(
+                '[forensic] Tabelle ' + (table.id || '(ohne ID)') + ', Zeile '
+                + (rowIdx + 1) + ': ' + cells.length + ' Zellen bei '
+                + columnCount + ' Kopfspalten — Spaltenzuordnung pruefen.'
+            );
+        }
+        return row;
     });
 }
 
