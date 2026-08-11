@@ -35,7 +35,15 @@
 # ADRESSAT: die Betriebsseite. Regel H-1 (Anwendersprache) gilt hier
 #   ausdruecklich NICHT - die Begruendung steht im Kopf von cli_modell.py.
 #
-# Version: v0.8.606 - Build: 606 - 2026-07-31
+# AENDERUNG BUILD 696 (Ticket 9e1ba63e): EINE Textstelle - die Beschreibung
+#   des Unterbefehls 'zeige' beim Eintrag 'hilfe'. Sie sagte bisher, die
+#   Ausgabe ende mit dem '--help'-Aufruf "des Zielwerkzeugs"; genau das traf
+#   bei vier Werkzeugen nicht zu. Mit der Berichtigung in cli_text.py trifft
+#   es zu, und die Beschreibung sagt jetzt ausdruecklich, dass NIE ein
+#   Unterbefehl gemeint ist. Das ist die Hilfe-Anpassung zu dieser Aenderung
+#   (Gebot 'keine Aenderung ohne Anpassung in der Hilfe').
+#
+# Version: v0.8.696 - Build: 696 - 2026-08-11
 # =============================================================================
 
 from __future__ import annotations
@@ -2641,7 +2649,8 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "'--nur-schreibend' zeigt nur die aendernden."),
             _b("zeige", "lesend",
                "Ein Werkzeug im Einzelnen. Endet mit dem '--help'-Aufruf des "
-               "Zielwerkzeugs."),
+               "Zielwerkzeugs SELBST - nie mit dem eines Unterbefehls, auch "
+               "dann nicht, wenn die Aufrufform oben einen nennt."),
             _b("suche", "lesend",
                "Volltextsuche ueber den Katalog. Rueckgabewert 1 bedeutet "
                "'kein Treffer' - eine Auskunft, kein Fehler."),

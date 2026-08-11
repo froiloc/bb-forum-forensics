@@ -33,7 +33,14 @@
 #   'Einstellungen in config.yaml' aus - mit allen DREI Zustaenden, also
 #   auch 'geprueft, liest keinen Eintrag' und 'noch nicht erhoben'.
 #
-# Version: v0.8.639 - Build: 639 - 2026-08-01
+# AENDERUNG BUILD 696 (Ticket 9e1ba63e): hilfe_aufruf() leitet den Vorschlag
+#   'X --help' nicht mehr aus der SCHREIBWEISE der Aufrufform ab, sondern aus
+#   ihrer STRUKTUR - Modul hinter '-m' bzw. Dateipfad auf '.py'. Vier von 71
+#   Katalogeintraegen nannten bis dahin die Hilfe eines Unterbefehls oder
+#   eines Arguments statt die des Werkzeugs; einer davon war als Befehlszeile
+#   gar nicht lauffaehig. Naeheres bei hilfe_aufruf().
+#
+# Version: v0.8.696 - Build: 696 - 2026-08-11
 # =============================================================================
 
 from __future__ import annotations
@@ -117,9 +124,18 @@ def spaltenzeile(marke: str, name: str, text: str,
     return zeilen if zeilen else (kopf.rstrip(),)
 
 
+#: Zeichen, an denen ein Bestandteil der Aufrufform als Platzhalter, Option
+#: oder Alternative erkennbar ist. Nur noch fuer den Notnagel in
+#: hilfe_aufruf() gebraucht - siehe dort. '(' steht seit Build 696 mit
+#: in der Liste: 'pruefe_profilerfassung' schreibt seine Alternative als
+#: '(--verzeichnis VERZ | --forensic-db DATEI)', und die oeffnende Klammer
+#: fiel durch jedes Raster, das nur '-', '<', '[' und '|' kannte.
+_ABBRUCHZEICHEN: Tuple[str, ...] = ("-", "<", "[", "(", "{")
+
+
 def hilfe_aufruf(aufruf: str) -> str:
     """
-    Aus der Aufrufform den Aufruf mit '--help' bilden.
+    Aus der Aufrufform den Aufruf des WERKZEUGS mit '--help' bilden.
 
     WOZU: Jeder gezeigte Eintrag endet mit dem Verweis auf die eingebaute
     Hilfe des Zielwerkzeugs. Der Katalog sagt, WOZU ein Werkzeug da ist;
@@ -127,26 +143,79 @@ def hilfe_aufruf(aufruf: str) -> str:
     zwar immer aktuell, waehrend ein abgeschriebener Optionsblock veralten
     wuerde.
 
-    Abgeschnitten wird ab dem ersten Bestandteil, der ein Platzhalter oder
-    eine Option ist ('<befehl>', '[--json]', '--status', 'a|b'). '-m' und
-    das folgende Modul bleiben stehen - sonst hiesse der Vorschlag
-    'python --help'.
+    AENDERUNG BUILD 696 (Ticket 9e1ba63e-8d6b-4fcc-819b-91b059d9c713):
+    Bis Build 693 wurde ab dem ersten Bestandteil abgeschnitten, der wie ein
+    Platzhalter, eine Option oder eine Alternative AUSSAH. Dieses Raster ist
+    aufgegeben, weil es nicht am Werkzeug hing, sondern an der SCHREIBWEISE
+    der Aufrufform im Katalog. Ein als blosses Wort geschriebener Unterbefehl
+    fiel hindurch und blieb stehen:
+
+      export_admin           -> '... export_admin case-status-xlsx --help'
+      lkae_admin             -> '... lkae_admin build --help'
+      poc_m019_weg_a         -> '... poc_m019_weg_a.py kopie.db --help'
+      pruefe_profilerfassung -> '... pruefe_profilerfassung.py (--verzeichnis
+                                 VERZ --help'   (nicht nur unpassend, sondern
+                                 als Kommandozeile unbrauchbar)
+
+    Bei 'backup_admin' geschah es NICHT - allein deshalb, weil die Aufrufform
+    dort 'plan|run|list' schreibt und am '|' abgeschnitten wurde. Dieselbe
+    Sache, zwei Ergebnisse, je nach Tippweise: das war der eigentliche Fehler.
+
+    DIE JETZIGE REGEL IST STRUKTURELL statt textlich. Sie fragt nicht, wie
+    der Rest der Zeile geschrieben ist, sondern woraus ein Python-Aufruf
+    besteht - und davon gibt es im Bestand genau zwei Formen:
+
+      Weg 1  Modulaufruf: '... -m <modul> ...'  -> 'python -m <modul> --help'
+      Weg 2  Dateiaufruf: '... <pfad>.py ...'   -> 'python <pfad>.py --help'
+
+    Alles hinter dem Modul bzw. dem Dateipfad ist Sache des Werkzeugs und
+    gehoert nicht in einen Vorschlag, der die Hilfe DES WERKZEUGS ankuendigt.
+    Damit liefert die Zeile 'Vollstaendige Optionen nennt das Werkzeug selbst'
+    bei jedem Eintrag dasselbe, unabhaengig von der Schreibweise.
+
+    Es ist bewusst die im Ticket erstgenannte Loesung: der Vorschlag nennt das
+    Werkzeug. Die dort ebenfalls erwogene Gegenvariante - Unterbefehl stehen
+    lassen, dafuer die 'a|b'-Aufrufformen nachziehen - haette die angekuendigte
+    Wirkung der Zeile geaendert und in 26 Katalogeintraegen eine Auswahl
+    verlangt, welcher Unterbefehl der beispielhafte sei. Das waere eine neue
+    Pflegestelle ohne Gegenwert.
+
+    DIESELBE ABLEITUNG fuehrt tests/test_help_cli_epilog.py._werkzeug_aufruf()
+    seit Build 624 als eigene Fassung, weil sie sich auf hilfe_aufruf() nicht
+    verlassen konnte. Sie bleibt dort als UNABHAENGIGE Gegenprobe stehen; CT03d
+    haelt fest, dass beide Wege fuer jeden Katalogeintrag dasselbe ergeben.
+
+    NOTNAGEL: Kommt eine Aufrufform ohne '-m' und ohne '.py' daher - im
+    Bestand gibt es keine, kuenftig kann es eine geben -, greift das alte
+    Raster. Es ist als Rueckfall besser als ein leerer Vorschlag; still
+    bleibt der Fall nicht, denn CT03c faehrt jeden Eintrag dagegen.
     """
     teile = (aufruf or "").split()
+    if not teile:
+        return "--help"
+    kopf = teile[0]                      # in aller Regel 'python'
+
+    # --- Weg 1: Modulaufruf ----------------------------------------------
+    # '-m' und das unmittelbar folgende Modul sind der Aufruf des Werkzeugs.
+    if "-m" in teile:
+        i = teile.index("-m")
+        if i + 1 < len(teile):
+            return "%s -m %s --help" % (kopf, teile[i + 1])
+
+    # --- Weg 2: Dateiaufruf ----------------------------------------------
+    # Der erste Bestandteil, der auf '.py' endet und KEIN Platzhalter ist.
+    # Die Platzhalterprobe ist noetig, weil eine Aufrufform kuenftig auch
+    # '<skript.py>' als Argument fuehren kann - das waere nicht das Werkzeug.
+    for t in teile[1:]:
+        if t.endswith(".py") and not t.startswith(_ABBRUCHZEICHEN):
+            return "%s %s --help" % (kopf, t)
+
+    # --- Notnagel: das alte Raster ---------------------------------------
     behalten: List[str] = []
-    i = 0
-    while i < len(teile):
-        t = teile[i]
-        if t == "-m" and i + 1 < len(teile):
-            behalten.append(t)
-            behalten.append(teile[i + 1])
-            i += 2
-            continue
-        if behalten and (t.startswith("-") or t.startswith("<")
-                         or t.startswith("[") or "|" in t):
+    for t in teile:
+        if behalten and (t.startswith(_ABBRUCHZEICHEN) or "|" in t):
             break
         behalten.append(t)
-        i += 1
     return " ".join(behalten) + " --help"
 
 
