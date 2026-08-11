@@ -2,7 +2,7 @@
  * scroll_memory.js
  * IT-Forensisches Ermittlungswerkzeug — Baustelle 3 (Toolbar der Hauptseite)
  * ---------------------------------------------------------------------------
- * Version: v0.8.688 · Build: 688 · 2026-08-11
+ * Version: v0.8.693 · Build: 693 · 2026-08-11
  *
  * ZWECK
  *   Merkt sich pro Forum-Seite (per kanonischer URL) die Lese-Position und
@@ -18,6 +18,11 @@
  *              bleiben lesbar und laufen ueber den Y-Pfad.
  *   Build 688: URI-ANKER HAT VORRANG vor der gemerkten Position
  *              (Vorgang 74a95cba-21ba-4fc8-b882-afd44a887c17). Siehe unten.
+ *   Build 693: KEINE VERHALTENSAENDERUNG — nur der Kopf ist nachgezogen.
+ *              Der in Build 688 hier vermerkte Befund an toolbar.js
+ *              (Vorgang b9b830f4) ist behoben; die Beschreibung von
+ *              Anker-Quelle 3 und zwei Zeilenverweise waeren sonst falsch
+ *              stehengeblieben. Kein Code angefasst, keine Testaenderung.
  *
  * WARUM ANKER-PRIMAER (belegt durch DevTools-Messungen im Feld):
  *   F1 VERFUEGBARKEIT: Lange Thread-Seiten tragen hunderte stabile Anker
@@ -66,23 +71,37 @@
  *     haelt die Aenderung aus fremden Baustellen heraus.
  *
  *   WOHER DER ANKER KOMMT (drei Quellen, in dieser Reihenfolge):
- *     1. d.fragment aus dem 'page:loaded'-Ereignis, falls eine spaetere
- *        Fassung von toolbar.js es mitliefert (heute nicht der Fall).
- *     2. ForensicToolbar.state.get('fragment'). toolbar.js Z. 1894 setzt
+ *     1. d.fragment aus dem 'page:loaded'-Ereignis.
+ *        STAND BUILD 688 (historisch): vorgesehen, aber von toolbar.js nicht
+ *        mitgeliefert; die Auswertung lief immer ueber Quelle 2.
+ *        STAND BUILD 693 (Vorgang b9b830f4): toolbar.js legt das Feld in die
+ *        Nutzlast (Z. 2037). Damit ist der Anker an das Ereignis gebunden
+ *        statt an den Zeitpunkt, zu dem wir den Zustand lesen - Quelle 2
+ *        setzte voraus, dass _setState VOR dem emit gelaufen ist, was zwar
+ *        zutrifft, aber nirgends zugesagt war.
+ *     2. ForensicToolbar.state.get('fragment'). toolbar.js Z. 1953 setzt
  *        diesen Wert bei JEDER Navigation neu (envelope.fragment || null),
- *        und zwar VOR dem Aussenden von 'page:loaded' (Z. 1951). Das ist die
+ *        und zwar VOR dem Aussenden von 'page:loaded' (Z. 2034). Das ist die
  *        tragende Quelle. Sie deckt zusaetzlich den Fall ab, in dem der
  *        Server den Anker erst aus einem Alias ableitet (blob_handler.py
  *        Z. 309-313: '?pid=12345' -> 'p12345') — dort steht im Adressfeld
  *        gar kein '#'.
- *     3. window.location.hash als Rueckfallebene. Sie traegt den Fall
- *        "Seite mit #-Anker neu geladen": toolbar.js Z. 8393 laedt die
- *        Startseite mit location.pathname + location.search und laesst den
- *        Hash weg, der Server sieht ihn also nie und envelope.fragment
- *        bleibt leer. Das Adressfeld traegt ihn aber weiterhin.
- *        (Dass toolbar.js den Hash dort und im popstate-Zweig Z. 2224
- *        fallenlaesst, ist ein eigener Befund und in diesem Build NICHT
- *        angefasst — er ist im Vorgang vermerkt.)
+ *     3. window.location.hash als Rueckfallebene.
+ *        STAND BUILD 688 (historisch): Sie war hier tragend, weil toolbar.js
+ *        den Anker auf zwei von drei Wegen fallenliess — beim Startaufruf und
+ *        im popstate-Rueckfall wurde die Adresse aus
+ *        'location.pathname + location.search' gebildet. Der Server sah den
+ *        Anker in diesen Faellen nie, envelope.fragment blieb leer.
+ *        STAND BUILD 693 (Vorgang b9b830f4): Das ist behoben. toolbar.js
+ *        setzt die Adresse an beiden Stellen jetzt ueber
+ *        _pageRequestUrlFromAddressBar() zusammen (Z. 2315 und Z. 8490), der
+ *        Anker erreicht den Server also auf allen drei Wegen und Quelle 2
+ *        traegt den Fall bereits.
+ *        DIESE QUELLE BLEIBT TROTZDEM STEHEN, und zwar mit Absicht: Sie
+ *        kostet nichts, sie ist durch SM25 gemessen, und sie faengt jeden
+ *        kuenftigen Weg ab, der die Adresse erneut ohne Anker zusammensetzt.
+ *        Eine Sicherung abzubauen, weil die Ursache HEUTE behoben ist, hiesse
+ *        sich auf die Erinnerung des naechsten Bearbeiters zu verlassen.
  *
  *   OBERKANTE: Der Anker wird NICHT auf y=0 gesetzt, sondern unter die fest
  *     eingeblendeten Leisten. toolbar.css Z. 112-116 setzt #forensic-toolbar
