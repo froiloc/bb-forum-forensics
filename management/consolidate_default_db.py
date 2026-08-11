@@ -20,21 +20,44 @@
 #   Der Abgleichbericht wird auf die Konsole und (append-only) in die
 #   Report-Datei geschrieben; Herkunft zusätzlich in default_meta.merge_provenance.
 #
-# WARTUNGSVORBEHALT — STUFE A (Build 612):
-#   Mit --overwrite wird die vorhandene Ziel-Datei GELOESCHT, BEVOR die
-#   Transaktion beginnt; ein Abbruch danach laesst gar keine default.db
-#   zurueck, und ein Backup legt das Werkzeug nicht an. Es prueft deshalb vor
-#   dem Lauf Ziel UND Quellen auf Ruhe und faehrt ohne aktives
-#   Wartungsfenster nur nach Eingabe eines vollstaendigen Wortes fort
-#   (maintenance/wartungsvorbehalt.py). Einstufung:
-#   Vermerk_Wartungsvorbehalt_Analyse_K1_K8_v1_0.md, von mc bestaetigt am
-#   2026-07-31.
+# BUILD 694 — ERST BAUEN, DANN TAUSCHEN (Vorgang 1400b31f):
+#   Die Zusammenfuehrung entsteht unter einem Nebennamen im Zielverzeichnis
+#   und kommt erst nach dem COMMIT per os.replace() an ihren Platz. Ein
+#   Abbruch laesst die vorhandene default.db damit unberuehrt.
+#
+#   WAS VORHER WAR, und es war schaerfer als im Vorgang beschrieben: Das
+#   unlink() lag vor dem BEGIN, das kanonische Schema wurde davor angelegt
+#   und committet. Nach einem Abbruch blieb deshalb nicht "gar keine"
+#   default.db zurueck, sondern eine LEERE, syntaktisch einwandfreie — der
+#   Auswertungsdienst oeffnet sie anstandslos und findet nur keine Vorlagen.
+#   Und der Befund hing NICHT an --overwrite: auch der Erstlauf ohne den
+#   Schalter hinterliess sie. Beides gemessen am 2026-08-11 gegen
+#   Wegwerf-Datenbanken unter /tmp; Einzelheiten im Kopf von
+#   management/maintenance/default_db_merger.py (_open_target).
+#
+# WARTUNGSVORBEHALT — STUFE A (Build 612, Begruendung fortgeschrieben 694):
+#   DIE EINSTUFUNG BLEIBT, ihr erster Grund ist aber ein anderer geworden.
+#   (1) Der Lauf haengt an EINER Transaktion ueber alle Quellen; eine Quelle,
+#       die waehrend des Lesens beschrieben wird, ergibt eine
+#       zusammengefuehrte Datei, die niemandem auffaellt und trotzdem falsch
+#       ist. Ein Backup legt das Werkzeug nicht an.
+#   (2) NEU SEIT BUILD 694: Der letzte Handgriff ist ein os.replace() auf die
+#       Ziel-Datei. Unter Windows scheitert der, solange eine andere
+#       Anwendung sie offen haelt — und der Auswertungsdienst haelt die
+#       default.db lesend offen. Der Vorbehalt schuetzt also jetzt den
+#       Abschluss statt des Anfangs.
+#   Der urspruengliche erste Grund ("--overwrite loescht vor der
+#   Transaktion") ist mit Build 694 ENTFALLEN. Ob die Stufe deshalb neu zu
+#   beurteilen ist, ist eine Entscheidung fuer mc und wird hier NICHT
+#   vorweggenommen — Grund (2) traegt sie fuer sich.
+#   Einstufung: Vermerk_Wartungsvorbehalt_Analyse_K1_K8_v1_0.md, von mc
+#   bestaetigt am 2026-07-31.
 #
 # Exit-Codes: 0 = ok (auch mit aufgelösten Konflikten) · 1 = harter Fehler
 #             3 = Wartungsvorbehalt, es wurde NICHTS geschrieben.
 #
 # Beleg: Projektgespräch 2026-07-01 (mc), Analyse default.db-Konsolidierung.
-# Version: v0.8.612 · Build: 612 · 2026-07-31
+# Version: v0.8.694 · Build: 694 · 2026-08-11
 # =============================================================================
 
 import argparse
@@ -122,11 +145,20 @@ def main(argv=None) -> int:
     print(f"[consolidate] Ziel:    {target}")
     print(f"[consolidate] Quellen: {len(sources)}")
 
-    # --- WARTUNGSVORBEHALT (Stufe A, Build 612) --------------------------
-    # Zwei Gruende, und der erste allein genuegt: Mit --overwrite wird die
-    # vorhandene Ziel-Datei GELOESCHT, BEVOR die Transaktion beginnt. Bricht
-    # der Lauf danach ab, holt das Zurueckrollen sie nicht wieder — es bleibt
-    # gar keine default.db (Befund 2 des Vermerks, eigener Vorgang).
+    # --- WARTUNGSVORBEHALT (Stufe A, Build 612; Gruende 694 neu) ---------
+    # ERSTER GRUND, SEIT BUILD 694: Der letzte Handgriff ist ein os.replace()
+    # auf die Ziel-Datei. Unter Windows scheitert der, solange eine andere
+    # Anwendung sie offen haelt — und der Auswertungsdienst haelt die
+    # default.db lesend offen. Die Arbeit ist dann zwar nicht verloren (sie
+    # bleibt unter ihrem Nebennamen liegen, das Werkzeug sagt wo), aber
+    # jemand muss von Hand nachfassen.
+    #
+    # WAS HIER FRUEHER STAND: "Mit --overwrite wird die Ziel-Datei geloescht,
+    # BEVOR die Transaktion beginnt." Das war bis Build 686 richtig und ist
+    # es seit Build 694 nicht mehr — die Zusammenfuehrung wird unter einem
+    # Nebennamen gebaut und erst nach dem COMMIT getauscht (Vorgang
+    # 1400b31f). Der Satz ist ersetzt und nicht stehen geblieben: eine
+    # Begruendung, die nicht mehr traegt, macht die uebrigen unglaubwuerdig.
     #
     # GEPRUEFT WIRD AUCH AUF DIE QUELLEN, obwohl sie nur gelesen werden: Eine
     # Quelle, die waehrend des Lesens beschrieben wird, ergibt eine
@@ -138,8 +170,8 @@ def main(argv=None) -> int:
         werkzeug="consolidate_default_db",
         was_geschieht=("fuehrt %d Quell-default.db in %s zusammen%s"
                        % (len(sources), target,
-                          "; die vorhandene Ziel-Datei wird dabei ZUVOR "
-                          "geloescht (--overwrite) und es gibt kein Backup"
+                          "; die vorhandene Ziel-Datei wird dabei am Ende "
+                          "ERSETZT (--overwrite) und es gibt kein Backup"
                           if args.overwrite else "")))
     print(befund.text)
     if not befund.erlaubt:

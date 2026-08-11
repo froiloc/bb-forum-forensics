@@ -234,6 +234,15 @@ _GEPRUEFT_690 = ("Build 690, 2026-08-11, gegen Wegwerf-HTML unter /tmp, "
                  "Python 3.13, lxml 6.1.1")
 
 
+#: Build 694. Vorgang 1400b31f - "erst bauen, dann tauschen" fuer
+#: consolidate_default_db. Gefahren gegen WEGWERF-default.db unter /tmp, mit
+#: einem herbeigefuehrten Abbruch in der zweiten Quelle. Es wurde KEIN
+#: Bestand beruehrt. Gemessen wurde der Zustand AUF DER PLATTE vor, waehrend
+#: und nach dem Lauf - nicht der Ablauf im Speicher.
+_GEPRUEFT_694 = ("Build 694, 2026-08-11, gegen Wegwerf-default.db unter "
+                 "/tmp, Python 3.13")
+
+
 def _bsp(aufruf: str, wirkung: str, geprueft: str = _GEPRUEFT) -> CliBeispiel:
     """Kurzform fuer einen GEFAHRENEN Beispielaufruf."""
     return CliBeispiel(aufruf=aufruf, wirkung=wirkung, geprueft=geprueft)
@@ -3398,24 +3407,38 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         zweck="Mehrere versehentlich je Beschuldigtem angelegte default.db "
               "verlustfrei in eine zentrale zusammenfuehren.",
         art="schreibend",
-        datenbanken=("default.db am Ziel (schreibend)",
+        datenbanken=("default.db am Ziel (schreibend - seit Build 694 erst "
+                     "am Ende, siehe Hinweis)",
                      "die Quell-Dateien (strikt lesend, mode=ro)"),
-        betrieb="STUFE A - WARTUNGSFENSTER ERFORDERLICH (Analyse Build "
-                "609). Zwei Gruende: (1) mit --overwrite wird die vorhandene "
-                "Ziel-default.db GELOESCHT, und zwar VOR der Transaktion - "
-                "ein Abbruch danach laesst gar keine default.db zurueck, das "
-                "Zuruckrollen holt sie nicht wieder. (2) Der ganze Lauf "
-                "haengt an EINER Transaktion ueber alle Quellen. Die "
-                "default.db haelt der Auswertungsdienst lesend offen. Ein "
-                "Backup legt das Werkzeug nicht an. "
-                "SEIT BUILD 612 SETZT DAS WERKZEUG DAS SELBST DURCH: es prueft vor "
-                "dem scharfen Lauf, ob die betroffenen Dateien ruhig sind, bricht "
-                "bei einer belegten Datei ohne Rueckfrage ab und faehrt ohne "
-                "aktives Wartungsfenster nur nach Eingabe des Wortes 'OHNE "
-                "WARTUNGSFENSTER' fort.",
-        hinweis="Die Herkunft jeder uebernommenen Zeile wird im Ziel "
+        betrieb="STUFE A - WARTUNGSFENSTER ERFORDERLICH (Analyse Build 609; "
+                "die Gruende sind mit Build 694 fortgeschrieben). (1) Der "
+                "letzte Handgriff ist ein os.replace() auf die default.db. "
+                "Unter Windows scheitert der, solange eine andere Anwendung "
+                "sie offen haelt - und der Auswertungsdienst haelt sie lesend "
+                "offen. (2) Der ganze Lauf haengt an EINER Transaktion ueber "
+                "alle Quellen; eine Quelle, die waehrend des Lesens "
+                "beschrieben wird, ergibt ein Ergebnis, das niemandem "
+                "auffaellt und trotzdem falsch ist. Ein Backup legt das "
+                "Werkzeug nicht an. "
+                "DER URSPRUENGLICHE ERSTE GRUND IST ENTFALLEN: bis Build 690 "
+                "loeschte '--overwrite' die vorhandene Ziel-Datei VOR der "
+                "Transaktion. Das tut es seit Build 694 nicht mehr. "
+                "SEIT BUILD 612 SETZT DAS WERKZEUG DEN VORBEHALT SELBST "
+                "DURCH: es prueft vor dem scharfen Lauf, ob die betroffenen "
+                "Dateien ruhig sind, bricht bei einer belegten Datei ohne "
+                "Rueckfrage ab und faehrt ohne aktives Wartungsfenster nur "
+                "nach Eingabe des Wortes 'OHNE WARTUNGSFENSTER' fort.",
+        hinweis="ERST BAUEN, DANN TAUSCHEN (seit Build 694, Vorgang "
+                "1400b31f). Die Zusammenfuehrung entsteht unter einem "
+                "Nebennamen '<ziel>.merge-tmp-<pid>' im Zielverzeichnis und "
+                "kommt erst nach dem COMMIT per os.replace() an ihren Platz. "
+                "EIN ABBRUCH LAESST DIE VORHANDENE default.db DAMIT "
+                "UNBERUEHRT - und beim Erstlauf entsteht gar keine. "
+                "Die Herkunft jeder uebernommenen Zeile wird im Ziel "
                 "vermerkt.",
         # Build 640 (Welle 5): geprueft an consolidate_default_db.py Z. 56-70.
+        # Build 694: am umgebauten Quelltext erneut geprueft - die Aufloesung
+        # des Ziels ist unveraendert.
         konfiguration=(
             _k("paths.default_db",
                "Die gemeinsame Vorgaben-Datenbank, in die zusammengefuehrt "
@@ -3425,18 +3448,55 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "management/consolidate_default_db.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 646)", "--target"),
         ),
         tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.consolidate_default_db "
+                     "--target ./data/default.db --source ./a/default.db "
+                     "--source ./b/default.db --overwrite",
+                     "Bei einem HERBEIGEFUEHRTEN Abbruch in der zweiten "
+                     "Quelle: die vorhandene default.db stand danach Zeile "
+                     "fuer Zeile unveraendert an ihrem Platz, und es lag "
+                     "keine Arbeitsdatei daneben. BIS BUILD 690 stand dort "
+                     "eine LEERE, syntaktisch einwandfreie default.db - "
+                     "gemessen 'assets=0 urls=0' statt vorher "
+                     "'assets=1 urls=1'.",
+                     _GEPRUEFT_694),
+                _bsp("python -m management.consolidate_default_db "
+                     "--target ./data/default.db --source ./a/default.db "
+                     "--source ./b/default.db",
+                     "Erstlauf ohne '--overwrite', ebenfalls mit "
+                     "herbeigefuehrtem Abbruch: danach existierte GAR KEINE "
+                     "Ziel-Datei. Bis Build 690 blieb auch hier eine leere "
+                     "zurueck, und der naechste Versuch scheiterte dann an "
+                     "'Ziel existiert bereits' - einer Meldung, die auf eine "
+                     "ganz andere Ursache zeigt.",
+                     _GEPRUEFT_694),
+            ),
             exit_codes=((0, "erledigt, auch mit aufgeloesten Konflikten"),
                         (1, "harter Fehler - der ganze Lauf wurde "
-                            "zurueckgerollt"),
+                            "zurueckgerollt; die vorhandene default.db ist "
+                            "unberuehrt geblieben"),
                         (3, "Wartungsvorbehalt - der Lauf wurde nicht ausgefuehrt; es wurde NICHTS geschrieben")),
             warnungen=(
-                "Mit --overwrite wird die vorhandene Ziel-default.db "
-                "GELOESCHT, und zwar VOR der Transaktion. Ein Abbruch danach "
-                "laesst gar keine default.db zurueck; das Zurueckrollen holt "
-                "sie nicht wieder.",
+                "SCHEITERT DER LETZTE HANDGRIFF, LIEGT DAS ERGEBNIS NEBENAN "
+                "UND MUSS VON HAND EINGESAMMELT WERDEN. os.replace() kann "
+                "fehlschlagen - unter Windows regelmaessig dann, wenn eine "
+                "andere Anwendung die Ziel-Datei offen haelt. Die "
+                "Zusammenfuehrung ist in dem Fall FERTIG und wird NICHT "
+                "weggeworfen: sie bleibt unter '<ziel>.merge-tmp-<pid>' "
+                "liegen, und die Meldung nennt Pfad und Handgriff. Die "
+                "vorhandene default.db bleibt unberuehrt. WER DIE MELDUNG "
+                "UEBERLIEST, haelt einen fehlgeschlagenen Lauf fuer einen "
+                "verlorenen und faengt von vorn an.",
+                "WAEHREND DES LAUFS LIEGEN BEIDE DATEIEN NEBENEINANDER - die "
+                "alte default.db und die im Aufbau befindliche. Der "
+                "Platzbedarf ist dadurch voruebergehend doppelt so hoch. Das "
+                "ist der Preis dafuer, dass ein Abbruch nichts kostet.",
                 "Der ganze Lauf haengt an EINER Transaktion. Es gibt keinen "
                 "Wiederaufsetzpunkt - ein Abbruch bedeutet: von vorn.",
-                "Ein Backup legt das Werkzeug nicht an.",
+                "Ein Backup legt das Werkzeug nicht an. Es braucht seit "
+                "Build 694 auch keines mehr, um einen Abbruch zu ueberstehen "
+                "- wohl aber, um einen ERFOLGREICHEN Lauf zurueckzunehmen, "
+                "der sich hinterher als falsch herausstellt.",
             ),
         ),
     ),

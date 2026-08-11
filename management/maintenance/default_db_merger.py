@@ -55,6 +55,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import time
 from dataclasses import dataclass, field
@@ -329,6 +330,9 @@ class DefaultDbMerger:
         self._allow_host_mismatch = allow_host_mismatch
 
         self._target: Optional[sqlite3.Connection] = None
+        #: Die Arbeitsdatei, unter der gebaut wird (Build 694, Vorgang
+        #: 1400b31f). None, sobald sie an den Zielort getauscht wurde.
+        self._bau_pfad: Optional[Path] = None
         self._report = MergeReport(target=str(self._target_path))
         # TableStat je Tabelle vorinitialisieren (auch 0-Zeilen erscheinen im Bericht)
         for name in _MERGE_ORDER:
@@ -336,7 +340,16 @@ class DefaultDbMerger:
 
     # ------------------------------------------------------------------ public
     def run(self) -> MergeReport:
-        """Führt den kompletten Merge in EINER Transaktion aus."""
+        """
+        Fuehrt den kompletten Merge in EINER Transaktion aus.
+
+        BUILD 694 - ERST BAUEN, DANN TAUSCHEN (Vorgang 1400b31f).
+        Gebaut wird unter einem NEBENNAMEN im Zielverzeichnis; an den Zielort
+        kommt das Ergebnis erst nach dem COMMIT, per os.replace(). Ein
+        Abbruch - gleich aus welchem Grund - laesst damit die vorhandene
+        Ziel-Datei unberuehrt und hinterlaesst keine halbfertige.
+        Begruendung und Messwerte: siehe _open_target() und _tausche_ein().
+        """
         self._report.started_at = int(time.time())
         self._validate_inputs()
 
@@ -364,10 +377,19 @@ class DefaultDbMerger:
                 self._target.execute("ROLLBACK")
             except sqlite3.Error:
                 pass
-            raise
-        finally:
+            # Die Nebendatei ist ein Zwischenstand und kein Ergebnis - sie
+            # wird weggeraeumt. Die Ziel-Datei ist dabei nie angefasst worden.
             self._target.close()
             self._target = None
+            self._raeume_bau_weg()
+            raise
+        finally:
+            if self._target is not None:
+                self._target.close()
+                self._target = None
+
+        # AB HIER IST DIE NEBENDATEI FERTIG UND GESCHLOSSEN.
+        self._tausche_ein()
 
         self._report.finished_at = int(time.time())
         logger.info("Konsolidierung abgeschlossen: %s", self._target_path)
@@ -445,16 +467,139 @@ class DefaultDbMerger:
 
     # ------------------------------------------------------------------- target
     def _open_target(self) -> None:
-        if self._target_path.exists() and self._overwrite:
-            self._target_path.unlink()
-            logger.info("Bestehendes Ziel entfernt (--overwrite): %s", self._target_path)
+        """
+        Die Arbeitsdatei anlegen - UNTER EINEM NEBENNAMEN, nicht am Zielort.
+
+        BIS BUILD 690 wurde hier bei '--overwrite' die vorhandene Ziel-Datei
+        per unlink() entfernt und danach am selben Platz eine neue angelegt.
+        GEMESSEN am 2026-08-11 gegen Wegwerf-Datenbanken unter /tmp, mit
+        einem Abbruch in der zweiten Quelle:
+
+          Fall A  Ziel vorhanden (assets=1 urls=1), '--overwrite', Abbruch
+                  -> danach: assets=0 urls=0.
+          Fall B  Ziel FEHLT, OHNE '--overwrite', Abbruch
+                  -> danach: assets=0 urls=0.
+
+        ZWEIERLEI IST DARAN WICHTIG, und beides steht so nicht im Vorgang:
+
+        (1) Es blieb NICHT "gar keine default.db" zurueck, sondern eine
+            LEERE, syntaktisch einwandfreie. Das kanonische Schema wird von
+            executescript()+commit() angelegt, und zwar VOR dem BEGIN - der
+            ROLLBACK holt es folglich nicht weg. EINE FEHLENDE DATEI SCHREIT,
+            EINE LEERE GUELTIGE SCHWEIGT: der Auswertungsdienst oeffnet sie
+            anstandslos und findet nur keine Vorlagen. Das ist die
+            gefaehrlichere der beiden Lagen.
+
+        (2) Der Befund haengt NICHT an '--overwrite'. Auch der Erstlauf ohne
+            den Schalter hinterlaesst nach einem Abbruch eine leere
+            default.db - und der naechste Versuch scheitert dann an "Ziel
+            existiert bereits", was auf eine ganz andere Ursache zeigt.
+
+        DESHALB EIN WEG FUER BEIDE FAELLE (Entscheidung Alex, 2026-08-11):
+        Gebaut wird immer unter einem Nebennamen. Zwei Codebahnen haetten
+        bedeutet, dass eine davon selten gefahren wird - und selten gefahrene
+        Bahnen sind die, in denen so ein Befund entsteht.
+
+        DIE NEBENDATEI LIEGT IM ZIELVERZEICHNIS, damit os.replace() ein
+        Umbenennen innerhalb EINES Dateisystems ist und kein Kopieren ueber
+        eine Grenze hinweg. Auf den UNC-Pfaden der Anlage ist das kein Detail.
+        Der Name traegt die Prozesskennung, damit zwei gleichzeitige Laeufe
+        sich nicht ins Gehege kommen.
+        """
         self._target_path.parent.mkdir(parents=True, exist_ok=True)
-        con = sqlite3.connect(self._target_path)
+        self._bau_pfad = self._target_path.with_name(
+            "%s.merge-tmp-%d" % (self._target_path.name, os.getpid()))
+
+        # Ein Rest aus einem abgestuerzten Vorlauf mit derselben
+        # Prozesskennung. Er ist per Bauart nie ein Ergebnis (ein Ergebnis
+        # waere getauscht worden), also wird er entfernt - aber GESAGT.
+        if self._bau_pfad.exists():
+            logger.warning("Rest eines frueheren Laufs wird entfernt: %s",
+                           self._bau_pfad)
+            self._raeume_bau_weg()
+
+        con = sqlite3.connect(self._bau_pfad)
         con.row_factory = sqlite3.Row
         con.executescript(_CANONICAL_DDL)
         con.commit()
         self._target = con
-        logger.info("Ziel-default.db angelegt: %s", self._target_path)
+        logger.info("Arbeitsdatei angelegt: %s (Ziel: %s)",
+                    self._bau_pfad, self._target_path)
+
+    def _raeume_bau_weg(self) -> None:
+        """
+        Die Nebendatei samt etwaiger Beidateien entfernen.
+
+        Ein Fehlschlag hier darf den Befund, der gerade gemeldet wird, nicht
+        ueberdecken - deshalb wird er protokolliert und nicht geworfen. Die
+        Datei traegt '.merge-tmp-<pid>' im Namen und ist als Rest erkennbar.
+        """
+        if self._bau_pfad is None:
+            return
+        for pfad in (self._bau_pfad,
+                     Path(str(self._bau_pfad) + "-journal"),
+                     Path(str(self._bau_pfad) + "-wal"),
+                     Path(str(self._bau_pfad) + "-shm")):
+            try:
+                if pfad.exists():
+                    pfad.unlink()
+            except OSError as exc:
+                logger.warning("Arbeitsdatei blieb liegen: %s (%s)", pfad, exc)
+
+    def _tausche_ein(self) -> None:
+        """
+        Die fertige Nebendatei an den Zielort bringen. Der letzte Handgriff.
+
+        VORHER WIRD AUF BEIDATEIEN GESEHEN. Ein '-wal' oder '-journal' neben
+        der geschlossenen Arbeitsdatei hiesse, dass Inhalt ausserhalb der
+        Hauptdatei liegt; sie allein zu verschieben wuerde ihn verlieren -
+        lautlos. GEMESSEN (2026-08-11): dieses Werkzeug arbeitet im
+        Journalmodus 'delete', nach dem Schliessen bleibt keine Beidatei
+        zurueck. Die Pruefung steht trotzdem hier, weil sie diese Annahme
+        AUSSPRICHT: stellt sie jemand spaeter um, faellt es auf, statt Daten
+        zu kosten.
+
+        SCHEITERT DER TAUSCH, WIRD DIE ARBEIT NICHT WEGGEWORFEN
+        (Entscheidung Alex, 2026-08-11). Der haeufigste Grund dafuer ist
+        Windows: os.replace() schlaegt fehl, solange eine andere Anwendung
+        die Zieldatei offen haelt - und der Auswertungsdienst haelt die
+        default.db lesend offen. Der Wartungsvorbehalt (Stufe A) verlangt
+        zwar Ruhe auf der Datei, aber zwischen seiner Pruefung und diesem
+        Handgriff bleibt ein Restfenster. Die fertige Datei bleibt dann unter
+        ihrem Nebennamen liegen und die Meldung nennt Pfad UND Handgriff.
+        Aus dem Verlust einer langen Zusammenfuehrung wird so ein
+        Zwischenstand, den man von Hand einsammeln kann; die vorhandene
+        default.db bleibt dabei unangetastet.
+        """
+        assert self._bau_pfad is not None
+        beidateien = [Path(str(self._bau_pfad) + endung)
+                      for endung in ("-journal", "-wal", "-shm")]
+        vorhanden = [p.name for p in beidateien if p.exists()]
+        if vorhanden:
+            raise MergeError(
+                "Neben der Arbeitsdatei liegen noch Beidateien (%s). Sie "
+                "allein zu verschieben wuerde Inhalt verlieren. Es wurde "
+                "NICHTS getauscht; die vorhandene %s ist unberuehrt, das "
+                "Zwischenergebnis liegt in %s."
+                % (", ".join(vorhanden), self._target_path, self._bau_pfad))
+
+        try:
+            os.replace(self._bau_pfad, self._target_path)
+        except OSError as exc:
+            raise MergeError(
+                "Die Zusammenfuehrung ist FERTIG, konnte aber nicht an ihren "
+                "Platz gebracht werden: %s\n"
+                "  Die vorhandene %s ist UNBERUEHRT geblieben.\n"
+                "  Das fertige Ergebnis liegt in %s.\n"
+                "  Unter Windows ist der haeufigste Grund, dass eine andere "
+                "Anwendung die Zieldatei offen haelt (der Auswertungsdienst "
+                "haelt default.db lesend offen). Handgriff: den Dienst "
+                "anhalten und die Datei von Hand umbenennen - der Inhalt ist "
+                "vollstaendig und geprueft."
+                % (exc, self._target_path, self._bau_pfad)) from exc
+
+        self._bau_pfad = None
+        logger.info("Ergebnis an den Zielort gebracht: %s", self._target_path)
 
     # -------------------------------------------------------------- merge steps
     def _merge_one_source(self, src: SourceInfo) -> None:
