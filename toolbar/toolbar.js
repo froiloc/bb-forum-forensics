@@ -2,7 +2,29 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.7.469 · Build: 469 · 2026-07-20
+ * Version: v0.8.693 · Build: 693 · 2026-08-11
+ *
+ * Aenderungen Build 693 (Vorgang b9b830f4 — 2026-08-11):
+ *   DER ANKER DER ADRESSZEILE ERREICHT DEN SERVER JETZT AUF ALLEN DREI WEGEN.
+ *   Bis Build 689 setzten zwei von drei Wegen die Seitenadresse aus
+ *   'location.pathname + location.search' zusammen und liessen den Anker
+ *   dabei fallen — der Startaufruf (Phase 3 des Two-Phase-Load) und der
+ *   Rueckfall im popstate-Zweig. Nur _interceptLinks machte es richtig.
+ *   Folge: envelope.fragment blieb auf diesen Wegen leer, der Sprung zum
+ *   verlinkten Beitrag unterblieb, und die serverseitige Alias-Ableitung
+ *   ('?pid=12345' -> 'p12345') lief ins Leere.
+ *   Neu: _pageRequestUrlFromAddressBar() als die eine Stelle, die diese Frage
+ *   beantwortet, und _stripFragment() als ihr Gegenstueck fuer den einen
+ *   Punkt, an dem eine Anforderungs-Adresse zum Schluessel werden koennte
+ *   (_handleEnvelope, Rueckfall auf 'url').
+ *   AUSDRUECKLICH NICHT geaendert: RestoreModalModule.open() und
+ *   SearchProgressModule.init(). Beide bilden Schluessel bzw. erkennen die
+ *   Seitenart; ein Anker haette dort nichts zu suchen.
+ *   MITGENOMMEN (Entscheidung Alex): 'page:loaded' fuehrt das Fragment jetzt
+ *   in der NUTZLAST. Damit haengt der Anker am Ereignis statt an dem
+ *   Zeitpunkt, zu dem ein Abonnent den Zustand liest. 'url' bleibt dabei
+ *   ausdruecklich der ankerfreie Schluessel.
+ *   Tests: tests/unit/test_adresszeile_anker.test.js (AN01-AN11).
  *
  * Aenderungen Build 469 (M019 — 2026-07-20):
  *   Build 469: Schluesselumstellung user_id -> subject_id (M019).
@@ -678,6 +700,47 @@
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
+  }
+
+  /**
+   * Build 693 (Vorgang b9b830f4): Die Adresszeile als SEITENANFORDERUNG —
+   * Pfad + Abfrage + ANKER.
+   *
+   * WOZU: Ein Anker in der Adresszeile ist eine Angabe zur Seite und gehoert
+   * an den Server; erst dort wird aus '#p12345' das Envelope-Feld 'fragment',
+   * und erst damit greift auch die serverseitige Alias-Ableitung
+   * (blob_handler.py: '?pid=12345' -> 'p12345'). Bis Build 689 setzten der
+   * Startaufruf und der popstate-Rueckfall die Adresse aus
+   * 'location.pathname + location.search' zusammen und liessen den Anker
+   * damit stillschweigend fallen; nur der Klick-Weg (_interceptLinks) machte
+   * es richtig. Diese Funktion ist die EINE Stelle, die das jetzt beantwortet.
+   *
+   * ABGRENZUNG — HIER NICHT VERWENDEN: Wo eine Adresse als SCHLUESSEL dient,
+   * darf der Anker NICHT mitlaufen. Annotationen, Markierungen und die
+   * gemerkte Leseposition haengen an der Seite, nicht an einem Beitrag darin;
+   * mit Anker im Schluessel wuerde dieselbe Seite je nach Sprungmarke zu
+   * mehreren Datensaetzen zerfallen. Betroffen sind RestoreModalModule.open()
+   * und SearchProgressModule.init() — beide bleiben deshalb ausdruecklich bei
+   * 'pathname + search'. Der Regelfall laeuft ohnehin ueber
+   * _state.currentUrl, und das traegt die vom Server zurueckgemeldete
+   * kanonische Adresse (immer ohne Anker, siehe blob_handler.py:
+   * url_no_fragment).
+   */
+  function _pageRequestUrlFromAddressBar() {
+    return (location.pathname || "") + (location.search || "") + (location.hash || "");
+  }
+
+  /**
+   * Build 693: Anker von einer Adresse abtrennen.
+   * Gegenstueck zur Funktion darueber und aus demselben Grund vorhanden:
+   * Sie sichert die eine Stelle, an der eine ANFORDERUNGS-Adresse zum
+   * SCHLUESSEL werden koennte (_handleEnvelope, Rueckfall auf 'url', wenn der
+   * Server keine kanonische Adresse mitschickt).
+   */
+  function _stripFragment(url) {
+    var s = String(url == null ? "" : url);
+    var i = s.indexOf("#");
+    return i === -1 ? s : s.slice(0, i);
   }
 
   /** UUID v4 generieren (Browser-seitig) */
@@ -1920,7 +1983,17 @@
       // Beleg: Build 064 Fix A — currentUrl erst hier setzen, nicht vor den
       // Fehlerchecks. Andernfalls übernimmt _state.currentUrl die neue URL auch
       // bei 404/NOT_IN_SCOPE, und nachfolgende Annotationen erhalten falsche page_url.
-      ForensicToolbar._setState({ currentUrl: envelope.url_canonical || url });
+      // Build 693 (Vorgang b9b830f4): Der Rueckfall trennt den Anker ab.
+      // 'url' ist eine ANFORDERUNGS-Adresse und darf seit diesem Build auf
+      // ALLEN drei Wegen einen Anker tragen; 'currentUrl' ist dagegen der
+      // SCHLUESSEL, unter dem Annotationen, Markierungen und die gemerkte
+      // Leseposition gefuehrt werden. Der Regelfall ist davon unberuehrt —
+      // der Server liefert 'url_canonical' und darin steht nie ein Anker
+      // (blob_handler.py bildet url_no_fragment). Es geht um den Rueckfall:
+      // ohne dieses Abtrennen zerfiele dieselbe Seite je nach Sprungmarke in
+      // mehrere Datensaetze, und bereits erfasste Erkenntnisse waeren unter
+      // dem alten Schluessel nicht mehr auffindbar.
+      ForensicToolbar._setState({ currentUrl: envelope.url_canonical || _stripFragment(url) });
 
       // BLOB-Inhalt injizieren (erlaubter DOM-Eingriff: Navigation)
       viewport.innerHTML = envelope.html;
@@ -1948,10 +2021,24 @@
       // Pagination erkennen
       _detectPagination(viewport, envelope);
 
-      // Alle nachgelagerten Module nach Load benachrichtigen
+      // Alle nachgelagerten Module nach Load benachrichtigen.
+      //
+      // Build 693 (Vorgang b9b830f4): 'fragment' liegt jetzt IN DER NUTZLAST.
+      // Wozu, wo es doch schon im Zustand steht: Ein Abonnent, der den Anker
+      // aus ForensicToolbar.state liest, verlaesst sich stillschweigend
+      // darauf, dass _setState (weiter oben in dieser Funktion) VOR diesem
+      // emit gelaufen ist. Das stimmt heute, ist aber eine Zusage, die
+      // nirgends steht und die eine Umstellung dieser Funktion lautlos
+      // brechen wuerde - der Abonnent bekaeme dann den Anker der VORIGEN
+      // Seite und spraenge an eine Stelle, die zu einem anderen Beitrag
+      // gehoert. In der Nutzlast ist der Wert an das Ereignis gebunden.
+      // 'url' ist bewusst weiterhin _state.currentUrl und damit OHNE Anker:
+      // es ist der Schluessel, unter dem die Abonnenten ihre Daten fuehren.
+      // Erster Nutzer: scroll_memory.js (Build 688, Anker-Quelle 1).
       ForensicToolbar.events.emit("page:loaded", {
-        url:    _state.currentUrl,
-        html:   envelope.html,
+        url:      _state.currentUrl,
+        html:     envelope.html,
+        fragment: _state.fragment,
       });
 
       // Annotationen laden, Highlights + Minimap (inkl. Spuren) wiederherstellen
@@ -2221,7 +2308,15 @@
     }
 
     window.addEventListener("popstate", function (e) {
-      var url = (e.state && e.state.forensicUrl) || location.pathname + location.search;
+      // Build 693 (Vorgang b9b830f4): Der Rueckfall traegt den Anker jetzt mit.
+      // Der History-Zustand hatte ihn schon immer — pushState speichert in
+      // _handleEnvelope genau die Adresse, die _interceptLinks zusammengesetzt
+      // hat, samt Anker. Der Rueckfall greift nur bei Eintraegen, die nicht von
+      // uns stammen (allen voran der ERSTE Eintrag des Fensters, also die vom
+      // Ermittler aufgerufene Adresse). Gerade dort ist der Anker der einzige
+      // vorhandene Hinweis auf den gesuchten Beitrag — und ging bisher verloren.
+      // 'location' zeigt zum Zeitpunkt von popstate bereits auf den Zieleintrag.
+      var url = (e.state && e.state.forensicUrl) || _pageRequestUrlFromAddressBar();
       loadPage(url, false);
     });
 
@@ -8390,8 +8485,13 @@
       .catch(function () {});
 
     // Phase 3: Initiale Seite laden (Two-Phase-Load)
+    // Build 693 (Vorgang b9b830f4): mit Anker. Das ist der Weg, den ein
+    // Ermittler geht, wenn er eine Adresse mit '#p<id>' aus einem Vermerk
+    // kopiert und einfuegt, und der Weg nach jedem Neuladen (F5). Bis Build
+    // 689 kam der Anker hier nie am Server an; envelope.fragment blieb leer,
+    // und der Sprung zum Beitrag unterblieb.
     NavigationModule.loadPage(
-      location.pathname + location.search, false
+      _pageRequestUrlFromAddressBar(), false
     );
   });
 
