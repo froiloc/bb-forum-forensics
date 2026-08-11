@@ -768,6 +768,11 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Den im Code hinterlegten Katalog der Rollen und Rechte "
                "ausgeben - ohne Datenbank."),
             _b("grant", "schreibend", "Einer Rolle ein Recht geben."),
+            _b("migrate-grants", "schreibend",
+               "Die aktiven Rechte eines Rechts auf ein anderes uebernehmen "
+               "(--from/--to, Umfang unveraendert). Gebraucht, wenn ein Recht "
+               "geteilt wird: ohne diesen Lauf verliert jede Rolle die Sicht, "
+               "die an das neue Recht wandert. Erst mit '--probe' fahren."),
             _b("revoke-grant", "schreibend",
                "Ein Recht zuruecknehmen. Kein Loeschen, sondern Widerruf."),
             _b("assign-role", "schreibend",
@@ -796,11 +801,21 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "Gibt Rollen und Rechte aus, ohne eine Datenbank zu "
                      "oeffnen. Im Versuch: 8 Rollen, danach die Rechte, "
                      "Rueckgabewert 0."),
+                _bsp("python -m management.rbac.rbac_admin migrate-grants "
+                     "--from dashboard.view --to caseoverview.view --probe",
+                     "Zeigt Rolle fuer Rolle, wer das neue Recht bekaeme und "
+                     "mit welchem Umfang, und was bereits vorhanden ist. "
+                     "Schreibt nichts. Ohne '--probe' derselbe Lauf scharf, "
+                     "mit einem eigenen Beleg je vergebenem Recht."),
             ),
             exit_codes=((0, "erledigt"), (1, "Fehler")),
             warnungen=(
                 "'revoke-grant' und 'revoke-role' loeschen nicht, sie "
                 "widerrufen. Die Zeile bleibt als Beleg erhalten.",
+                "'migrate-grants' nimmt das Quellrecht NICHT zurueck. Nach "
+                "dem Lauf hat jede Rolle beide Rechte; ob das alte bleiben "
+                "soll, ist eine Entscheidung je Rolle und gehoert einzeln mit "
+                "'revoke-grant' getroffen.",
             ),
         ),
     ),

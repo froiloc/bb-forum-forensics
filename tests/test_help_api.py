@@ -84,7 +84,7 @@ CREATE TABLE scrape_jobs (
 
 class HilfeApiTest(unittest.TestCase):
     """
-    Person 1 = Chefin (dashboard.view, ops.view),
+    Person 1 = Chefin (dashboard.view, caseoverview.view, ops.view),
     Person 2 = Ermittler OHNE jedes Recht. Der Unterschied traegt die Sperre.
     """
 
@@ -116,7 +116,10 @@ class HilfeApiTest(unittest.TestCase):
         self.writer = CoordinatorWriter(con, self.audit)
 
         rbac = RbacRepo(con, self.writer)
-        for cap in ("dashboard.view", "ops.view"):
+        # Build 698 (Vorgang 60fe72fb): 'caseoverview.view' ergaenzt, damit
+        # HA01 weiterhin BEIDE Kapitel prueft. Die Trennung selbst prueft
+        # tests/test_help_sichtbarkeit.py (HS02).
+        for cap in ("dashboard.view", "caseoverview.view", "ops.view"):
             rbac.grant("supervisor", cap, scope="alle", actor_id=1)
         rbac.assign_role(1, "supervisor", actor_id=1)
         # Person 2 bekommt bewusst nichts.
@@ -150,7 +153,7 @@ class HilfeApiTest(unittest.TestCase):
         resp = self._get("/help")
         self.assertEqual(200, resp.status)
         html = resp.body.decode("utf-8")
-        # dashboard.view -> 'dashboard' und 'faelle' sind erlaubt
+        # dashboard.view -> 'dashboard'; caseoverview.view -> 'faelle'
         self.assertIn('id="dashboard"', html)
         self.assertIn('id="faelle"', html)
         # ops.view -> 'integrity', 'audit', 'promotion'

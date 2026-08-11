@@ -62,6 +62,18 @@ from management.help.render_html import (                # noqa: E402
 )
 
 
+#: Die Rechteprobe dieser Testdatei.
+#
+#  BUILD 698 (Vorgang 60fe72fb): Sie bestand aus 'dashboard.view' allein.
+#  Seit der Trennung traegt dieses Recht nur noch die Sicht 'dashboard'; die
+#  'Falluebersicht' haengt an 'caseoverview.view'. Hier geht es NICHT um die
+#  Rechtelage, sondern um das Rendern der Hilfeseite - die Probe soll also
+#  weiterhin BEIDE Kapitel sichtbar machen. Wer die Rechtetrennung selbst
+#  geprueft sehen will, findet sie in tests/test_help_sichtbarkeit.py (HS02)
+#  und tests/test_rechtetrennung_falluebersicht.py.
+_RECHTE = ["dashboard.view", "caseoverview.view"]
+
+
 def _kapitel(sicht_id, zusatz=(), kontext=(), titel=None, stand=589):
     return Sichthilfe(
         sicht=sicht_id, titel=titel or ("Kapitel %s" % sicht_id),
@@ -75,7 +87,7 @@ def _kapitel(sicht_id, zusatz=(), kontext=(), titel=None, stand=589):
 
 def test_hd01_gliederung_filtert_und_ordnet():
     reg = HilfeRegister((_kapitel("faelle"), _kapitel("dashboard")))
-    g = baue_gliederung(reg, ["dashboard.view"])
+    g = baue_gliederung(reg, _RECHTE)
     assert [gr for gr, _ in g.gruppen] == ["Ueberblick", "Fallsteuerung",
                                            "Persoenlich"]
     assert [e.sicht_id for e in g.eintraege()] == ["dashboard", "faelle",
@@ -84,7 +96,7 @@ def test_hd01_gliederung_filtert_und_ordnet():
 
 def test_hd02_offene_sicht_bleibt_sichtbar():
     reg = HilfeRegister((_kapitel("dashboard"),))
-    g = baue_gliederung(reg, ["dashboard.view"])
+    g = baue_gliederung(reg, _RECHTE)
     eintraege = {e.sicht_id: e for e in g.eintraege()}
     assert eintraege["dashboard"].vorhanden is True
     assert eintraege["faelle"].vorhanden is False
@@ -95,7 +107,7 @@ def test_hd02_offene_sicht_bleibt_sichtbar():
 
 def test_hd03_verzeichnis_und_markierung():
     reg = HilfeRegister((_kapitel("dashboard"),))
-    html = render_hilfe_seite(baue_gliederung(reg, ["dashboard.view"]))
+    html = render_hilfe_seite(baue_gliederung(reg, _RECHTE))
     assert 'href="#dashboard"' in html
     assert 'href="#faelle"' in html
     assert "Hilfe folgt" in html
@@ -106,7 +118,7 @@ def test_hd04_kapitel_html():
     reg = HilfeRegister((_kapitel(
         "dashboard",
         zusatz=[Abschnitt("ampel", "Die Ampel", ("Erklaerung.",))]),))
-    html = render_hilfe_seite(baue_gliederung(reg, ["dashboard.view"]))
+    html = render_hilfe_seite(baue_gliederung(reg, _RECHTE))
     assert '<article class="aiw-h-kapitel" id="dashboard">' in html
     assert "Rechtelage:" in html
     assert "Scope &#x27;alle&#x27;" in html or "Scope 'alle'" in html
@@ -125,7 +137,7 @@ def test_hd05_escaping():
     boese = 'Ein <script>alert("x")</script> & ein Anfuehrungszeichen "'
     reg = HilfeRegister((_kapitel(
         "dashboard", zusatz=[Abschnitt("probe", "Probe", (boese,))]),))
-    html = render_hilfe_seite(baue_gliederung(reg, ["dashboard.view"]))
+    html = render_hilfe_seite(baue_gliederung(reg, _RECHTE))
     assert "<script>" not in html
     assert "&lt;script&gt;" in html
     assert "&amp;" in html
@@ -136,7 +148,7 @@ def test_hd06_listen():
         Abschnitt("schritte", "Schritte", (), ("erst", "dann"), True),
         Abschnitt("punkte", "Punkte", (), ("a", "b"), False),
     ]),))
-    html = render_hilfe_seite(baue_gliederung(reg, ["dashboard.view"]))
+    html = render_hilfe_seite(baue_gliederung(reg, _RECHTE))
     assert "<ol>\n<li>erst</li>" in html
     assert "<ul>\n<li>a</li>" in html
 
@@ -145,7 +157,7 @@ def test_hd06_listen():
 
 def test_hd07_fusszeile():
     reg = HilfeRegister((_kapitel("dashboard"),))
-    html = render_hilfe_seite(baue_gliederung(reg, ["dashboard.view"]),
+    html = render_hilfe_seite(baue_gliederung(reg, _RECHTE),
                               version="0.8.589", build=589,
                               stand_datum="2026-07-31")
     assert "0.8.589" in html
@@ -158,7 +170,7 @@ def test_hd07_fusszeile():
 def test_hd08_aufbauhinweis_nur_solange_offen():
     # alles offen -> Hinweis da
     html_offen = render_hilfe_seite(
-        baue_gliederung(HilfeRegister(()), ["dashboard.view"]))
+        baue_gliederung(HilfeRegister(()), _RECHTE))
     assert "im Aufbau" in html_offen
 
     # nur 'viewprefs' sichtbar UND vorhanden -> kein Hinweis
@@ -203,7 +215,7 @@ def test_hd11_platzhalter_text_ist_ehrlich():
 
 def test_hd12_suchindex_inhalt():
     reg = HilfeRegister((_kapitel("dashboard"),))
-    idx = suchindex(baue_gliederung(reg, ["dashboard.view"]))
+    idx = suchindex(baue_gliederung(reg, _RECHTE))
     nach_id = {e["id"]: e for e in idx}
     assert set(nach_id) == {"dashboard", "faelle", "viewprefs"}
 
@@ -222,7 +234,7 @@ def test_hd12_suchindex_inhalt():
 
 def test_hd13_suchindex_ist_gefiltert():
     reg = HilfeRegister((_kapitel("dashboard"), _kapitel("policy")))
-    ids = {e["id"] for e in suchindex(baue_gliederung(reg, ["dashboard.view"]))}
+    ids = {e["id"] for e in suchindex(baue_gliederung(reg, _RECHTE))}
     assert "policy" not in ids, (
         "Was gesperrt ist, darf auch nicht durchsuchbar sein (E1).")
 
@@ -233,7 +245,7 @@ def test_hd14_eingebetteter_index_ist_gueltiges_json():
     boese = 'Ein </script> und ein <b>Tag</b>'
     reg = HilfeRegister((_kapitel(
         "dashboard", zusatz=[Abschnitt("probe", boese, ("Text.",))]),))
-    html = render_hilfe_seite(baue_gliederung(reg, ["dashboard.view"]))
+    html = render_hilfe_seite(baue_gliederung(reg, _RECHTE))
     m = re.search(
         r'<script type="application/json" id="aiw-h-index">(.*?)</script>',
         html, re.S)
@@ -247,7 +259,7 @@ def test_hd14_eingebetteter_index_ist_gueltiges_json():
 
 def test_hd15_blaetterleiste():
     reg = HilfeRegister((_kapitel("dashboard"),))
-    g = baue_gliederung(reg, ["dashboard.view"])
+    g = baue_gliederung(reg, _RECHTE)
     html = render_hilfe_seite(g)
     eintraege = g.eintraege()
     assert len(eintraege) >= 3
@@ -260,7 +272,7 @@ def test_hd15_blaetterleiste():
 
 def test_hd16_suchfeld_und_skript():
     html = render_hilfe_seite(
-        baue_gliederung(HilfeRegister(()), ["dashboard.view"]))
+        baue_gliederung(HilfeRegister(()), _RECHTE))
     assert '<script src="/static/help.js"></script>' in html
     # Ohne JavaScript bleibt das Feld verborgen - ein totes Eingabefeld waere
     # schlechter als keines.
@@ -288,13 +300,13 @@ from management.help.cli_katalog import CLI_KATALOG       # noqa: E402
 
 def _seite_ohne_betrieb():
     reg = HilfeRegister((_kapitel("dashboard"),))
-    return render_hilfe_seite(baue_gliederung(reg, ["dashboard.view"]))
+    return render_hilfe_seite(baue_gliederung(reg, _RECHTE))
 
 
 def _seite_mit_betrieb(caps=(CLI_RECHT,)):
     reg = HilfeRegister((_kapitel("dashboard"),))
     return render_hilfe_seite(
-        baue_gliederung(reg, ["dashboard.view"]),
+        baue_gliederung(reg, _RECHTE),
         betrieb=baue_betriebsgliederung(caps))
 
 

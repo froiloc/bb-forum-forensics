@@ -68,7 +68,7 @@ DASHBOARD = Sichthilfe(
             "rechte", "Rechtelage",
             (
                 "Die Sicht selbst hängt an dashboard.view. Die Kacheln haben "
-                "eigene Rechte: Fall-Übersicht an dashboard.view, "
+                "eigene Rechte: Fall-Übersicht an caseoverview.view, "
                 "Eskalationen an escalation.view, Nächstbeste Aktion an "
                 "nextactions.view, Fällige Wiedervorlagen an external.view, "
                 "Fristen an limitation.view, Lastverteilung an "
@@ -78,6 +78,17 @@ DASHBOARD = Sichthilfe(
                 "berechtigt sind. Er kann also nichts einblenden, was Ihnen "
                 "verwehrt ist — die Auswahl ordnet und blendet aus, sie "
                 "erlaubt nichts.",
+                "GEÄNDERT IM AUGUST 2026: Die Fall-Übersicht hing bis dahin "
+                "am selben Recht wie der Überblick selbst (dashboard.view) "
+                "und war damit die einzige Kachel ohne eigenes. Wer den "
+                "Überblick öffnen durfte, bekam die vollständige Fallliste "
+                "ungefragt dazu. Sie trägt jetzt caseoverview.view. "
+                "dashboard.view öffnet seither nur noch den Rahmen: Sie sehen "
+                "die Kachelfläche, aber jede Kachel darin nach ihrem eigenen "
+                "Recht.",
+                "Fehlt Ihnen die Fall-Übersicht seit der Umstellung, ist das "
+                "kein Ausfall: Ihnen fehlt caseoverview.view. Die "
+                "Chef-Ermittlerin kann es vergeben.",
             ),
         ),
         Abschnitt(
@@ -184,7 +195,8 @@ DASHBOARD = Sichthilfe(
         Kontexthilfe(
             "dashboard.kachel.fallampel", "Kachel „Fall-Übersicht (Ampel)“",
             "Die Verteilung der Fälle auf die Dringlichkeits-Ampel, dazu die "
-            "dringendsten Fälle. Recht: dashboard.view. Der vollständige "
+            "dringendsten Fälle. Recht: caseoverview.view — seit August 2026 "
+            "ein eigenes Recht, vorher dashboard.view. Der vollständige "
             "Bestand steht in der Sicht „Fallübersicht“.",
             verweis="dashboard#kachel"),
         Kontexthilfe(

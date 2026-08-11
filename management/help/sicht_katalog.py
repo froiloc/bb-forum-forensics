@@ -101,8 +101,13 @@ SICHT_KATALOG: Tuple[SichtEintrag, ...] = (
         "Fallsteuerung", "Fall-Erkennung",
         "fall anlegen erkennung neuaufnahme portal beschuldigter akte",
         False),
+    # BUILD 698 (Vorgang 60fe72fb): Recht von 'dashboard.view' auf
+    # 'caseoverview.view'. Muss dem VIEW_CATALOG in cockpit.js folgen — dieser
+    # Katalog ist dessen Spiegel, und ein Spiegel, der etwas anderes zeigt,
+    # macht die Hilfe an genau der Stelle falsch, an der jemand nachschlaegt,
+    # warum er eine Sicht nicht sieht.
     SichtEintrag(
-        "faelle", "dashboard.view", (),
+        "faelle", "caseoverview.view", (),
         "Fallsteuerung", "Fallübersicht",
         "fall uebersicht tabelle ampel liste alle faelle bestand prioritaet zuweisung",
         False),

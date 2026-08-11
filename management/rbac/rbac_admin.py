@@ -17,6 +17,12 @@
 #          --role ROLE --capability CAP [--scope alle|eigene] [--note "..."]
 #          [--actor SYSUSER] [--coordinator-db PATH] [--config ...]
 #
+#   python -m management.rbac.rbac_admin migrate-grants
+#          --from CAP --to CAP [--probe] [--note "..."] [--actor SYSUSER] ...
+#          Uebernimmt die aktiven Grants eines Rechts auf ein anderes, Scope
+#          1:1, je Grant ein eigener Beleg. Das Quellrecht bleibt unangetastet.
+#          ERST '--probe' fahren. (Build 698, Vorgang 60fe72fb)
+#
 #   python -m management.rbac.rbac_admin revoke-grant --id N
 #          [--note "..."] [--actor SYSUSER] ...
 #
@@ -137,6 +143,24 @@ def _build_parser() -> argparse.ArgumentParser:
     p_grant.add_argument("--scope", choices=["alle", "eigene"], default=None)
     p_grant.add_argument("--note", default=None)
 
+    # migrate-grants (Build 698, Vorgang 60fe72fb)
+    # '--probe' ist bewusst NICHT der Standard: ein Werkzeug, das ohne
+    # weiteres Zutun nichts tut, wird ohne Nachdenken zweimal gefahren. Es ist
+    # dafuer in der Hilfe, im Katalog und im Kopf der Migration als ERSTER
+    # Schritt genannt.
+    p_mg = sub.add_parser(
+        "migrate-grants", parents=[common, actor],
+        help="Aktive Grants eines Rechts auf ein neues Recht uebernehmen "
+             "(Scope 1:1, je Grant ein eigener Beleg).")
+    p_mg.add_argument("--from", dest="von", required=True,
+                      metavar="CAP", help="Recht, dessen Grants Vorlage sind.")
+    p_mg.add_argument("--to", dest="nach", required=True,
+                      metavar="CAP", help="Recht, das vergeben wird.")
+    p_mg.add_argument("--probe", action="store_true",
+                      help="Nur zeigen, was geschehen wuerde. Kein Schreiben.")
+    p_mg.add_argument("--note", default=None,
+                      help="Zusatz zur Notiz jedes uebernommenen Grants.")
+
     # revoke-grant
     p_rg = sub.add_parser("revoke-grant", parents=[common, actor],
                           help="Grant zuruecknehmen (Soft-Revoke).")
@@ -194,6 +218,111 @@ def _cmd_grant(repo, args, actor_id, meta) -> int:
                      actor_id=actor_id, note=args.note, meta=meta)
     print("[rbac_admin] Grant %s -> %s (scope=%s) vergeben (audit seq=%d)"
           % (args.role, args.capability, args.scope or "-", seq))
+    return 0
+
+
+# =============================================================================
+# migrate-grants — bestehende Rechte auf ein neues Recht uebernehmen
+# =============================================================================
+# BUILD 698 (Vorgang 60fe72fb). Der Anlass: 'dashboard.view' wurde in den
+# Rahmen (Kachel-Dashboard) und den Inhalt (caseoverview.view, Falluebersicht)
+# getrennt. Im Augenblick der Trennung hat NIEMAND das neue Recht — auch nicht,
+# wer das alte besitzt. Ohne diesen Lauf verschwaende die Falluebersicht fuer
+# alle, bis jemand von Hand jede Rolle einzeln nachvergibt.
+#
+# WARUM DAS NICHT DIE MIGRATION MACHT: rbac_grant.audit_seq ist NOT NULL.
+# Jeder Grant traegt den Beleg seiner Vergabe; eine Migration hat weder Akteur
+# noch Beleg. Ein von ihr geschriebener Grant waere ein Zugang, den niemand
+# vergeben hat — das ist der Grund, warum M006 rbac_grant ausdruecklich LEER
+# starten laesst. Dieser Lauf geht deshalb denselben Weg wie jede Vergabe von
+# Hand: ueber RbacRepo.grant, also ueber das CoordinatorWriter-Gateway, mit
+# einem eigenen Beleg je Grant.
+#
+# WARUM ALLGEMEIN UND NICHT AUF DIESEN EINEN FALL ZUGESCHNITTEN: Die Trennung
+# eines Rechts wird nicht die letzte sein — M022 hat einmal zusammengefuehrt,
+# M030/M031 haben getrennt. Ein Werkzeug, das '--from' und '--to' nimmt, ist
+# nicht aufwendiger als eines mit zwei fest verdrahteten Rechten, aber beim
+# naechsten Mal schon da.
+#
+# WAS ER NICHT TUT: Er nimmt das alte Recht NICHT zurueck. Ob 'dashboard.view'
+# einer Rolle erhalten bleibt, ist eine fachliche Entscheidung je Rolle und
+# gehoert nicht in einen Uebernahmelauf. Wer es entziehen will, tut das
+# danach mit 'revoke-grant' — sichtbar, einzeln und mit eigenem Beleg.
+# =============================================================================
+def _cmd_migrate_grants(repo, args, actor_id, meta) -> int:
+    quelle = args.von
+    ziel = args.nach
+
+    # Beide Rechte muessen im Katalog stehen. Ohne diese Pruefung liefe ein
+    # Tippfehler im Zielrecht in einen Lauf, der nichts findet und '0
+    # uebernommen' meldet - eine Erfolgsmeldung fuer einen Fehlschlag.
+    unbekannt = [c for c in (quelle, ziel)
+                 if c not in catalog.CAPABILITY_CODES]
+    if unbekannt:
+        print("[rbac_admin] Unbekannte Faehigkeit(en): %s"
+              % ", ".join(unbekannt), file=sys.stderr)
+        return 1
+    if quelle == ziel:
+        print("[rbac_admin] --von und --nach sind dasselbe Recht (%s)."
+              % quelle, file=sys.stderr)
+        return 1
+
+    alle = repo.list_grants(active_only=True)
+    vorlagen = [g for g in alle if g["capability_code"] == quelle]
+    vorhanden = {g["role_code"] for g in alle
+                 if g["capability_code"] == ziel}
+
+    if not vorlagen:
+        # KEIN stiller Erfolg. Ein Bestand ohne Grants auf das Quellrecht ist
+        # moeglich (frische Anlage), sieht aber genauso aus wie ein Lauf gegen
+        # die falsche Datenbank - deshalb wird beides benannt.
+        print("[rbac_admin] Keine aktiven Grants auf '%s' gefunden. Es gibt "
+              "nichts zu uebernehmen." % quelle)
+        print("[rbac_admin] Falls das ueberrascht: Datenbank pruefen (%s) "
+              "und 'list-grants --all' fahren."
+              % (args.coordinator_db or "Pfad aus config.yaml"))
+        return 0
+
+    zu_tun = [g for g in vorlagen if g["role_code"] not in vorhanden]
+    uebersprungen = [g for g in vorlagen if g["role_code"] in vorhanden]
+
+    print("[rbac_admin] Uebernahme %s -> %s" % (quelle, ziel))
+    print("[rbac_admin] %d aktive(r) Grant(e) auf '%s' gefunden."
+          % (len(vorlagen), quelle))
+    for g in zu_tun:
+        print("    UEBERNEHMEN  rolle=%-14s scope=%s"
+              % (g["role_code"], g["scope"] or "-"))
+    # Grundregel 1: was uebersprungen wird, wird BENANNT. Ein Lauf, der nur
+    # meldet, was er getan hat, laesst offen, ob der Rest vergessen wurde.
+    for g in uebersprungen:
+        print("    BEREITS DA   rolle=%-14s (aktiver Grant auf '%s' "
+              "vorhanden - unveraendert)" % (g["role_code"], ziel))
+
+    if args.probe:
+        print("[rbac_admin] PROBELAUF - es wurde nichts geschrieben. "
+              "Fuer den scharfen Lauf '--probe' weglassen.")
+        return 0
+
+    if not zu_tun:
+        print("[rbac_admin] Nichts zu tun - alle Rollen haben '%s' bereits."
+              % ziel)
+        return 0
+
+    getan = 0
+    for g in zu_tun:
+        notiz = ("Uebernahme aus '%s' (Grant #%d), Scope unveraendert."
+                 % (quelle, g["id"]))
+        if args.note:
+            notiz = args.note + " | " + notiz
+        seq = repo.grant(g["role_code"], ziel, scope=g["scope"],
+                         actor_id=actor_id, note=notiz, meta=meta)
+        getan += 1
+        print("[rbac_admin] %s -> %s (scope=%s) vergeben (audit seq=%d)"
+              % (g["role_code"], ziel, g["scope"] or "-", seq))
+
+    print("[rbac_admin] %d Grant(e) uebernommen, %d bereits vorhanden. "
+          "Das Recht '%s' bleibt unangetastet."
+          % (getan, len(uebersprungen), quelle))
     return 0
 
 
@@ -333,6 +462,8 @@ def main(argv=None) -> int:
 
         if args.action == "grant":
             return _cmd_grant(repo, args, actor_id, meta)
+        if args.action == "migrate-grants":
+            return _cmd_migrate_grants(repo, args, actor_id, meta)
         if args.action == "revoke-grant":
             return _cmd_revoke_grant(repo, args, actor_id, meta)
         if args.action == "assign-role":

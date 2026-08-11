@@ -405,7 +405,15 @@ GETEILTE_ASSETS = {
 }
 
 #: Faehigkeits-Gates je Endpunkt (None = kein Gate, nur eigene Identitaet).
-CAP_OVERVIEW = "dashboard.view"
+# BUILD 698 (Vorgang 60fe72fb): CAP_OVERVIEW zeigt auf 'caseoverview.view'.
+# Bis Build 696 stand hier 'dashboard.view'. Der Name der Konstante bleibt,
+# weil sie den ENDPUNKT benennt (/api/overview), nicht das Recht — und weil
+# ein zusaetzlicher Umbenennungs-Durchlauf durch alle Aufrufstellen die
+# eigentliche Aenderung im Diff untergehen liesse.
+# 'dashboard.view' traegt seither nur noch den Rahmen des Kachel-Dashboards;
+# es hat hier keinen Endpunkt, weil der Rahmen keine Daten hat: jede Kachel
+# holt ihre Zahlen ueber IHREN Endpunkt und IHR Recht.
+CAP_OVERVIEW = "caseoverview.view"
 CAP_INTEGRITY = "ops.view"
 CAP_WORKLOAD = "workload.view"
 CAP_CAPACITY = "capacity.edit"
@@ -3302,8 +3310,16 @@ class ManagementApp:
                 query: Optional[Dict[str, List[str]]]) -> Response:
         """
         Fall-/Nutzer-Suche fuer die Kommandopalette (read-only; Build 458).
-        SCOPE-BEWUSST ueber CAP_OVERVIEW (dashboard.view): 'alle' -> alle
-        Faelle, 'eigene' -> nur eigene zugewiesene. Query 'q' (Pflicht) + 'limit'.
+        SCOPE-BEWUSST ueber CAP_OVERVIEW (seit Build 698: 'caseoverview.view',
+        davor 'dashboard.view'): 'alle' -> alle Faelle, 'eigene' -> nur eigene
+        zugewiesene. Query 'q' (Pflicht) + 'limit'.
+
+        WARUM DIESE SUCHE AM RECHT DER FALLUEBERSICHT HAENGT UND NICHT AM
+        DASHBOARD (Entscheidung Alex, 11.08.2026): Sie liefert Faelle und
+        springt in die Falluebersicht — denselben Bestand, den die Kachel und
+        die Sicht zeigen. Bliebe sie an 'dashboard.view', waere die
+        Kommandopalette ein zweiter Zugang zu genau den Falldaten, die das
+        neue Recht schuetzen soll.
         """
         policy = self.resolve_policy(person_id)
         if not policy.can(CAP_OVERVIEW):

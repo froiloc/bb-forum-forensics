@@ -77,6 +77,7 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Supervisor-artig: dashboard.view + workload.view + ops.view.
     const caps = {
       "dashboard.view": "alle",
+      "caseoverview.view": "alle",
       "workload.view": "alle",
       "ops.view": "alle",
     };
@@ -88,6 +89,10 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Build 574: 'faelle' (Fallübersicht) haengt am selben Recht
     // 'dashboard.view' wie der Ueberblick und steht in der Katalogfolge in der
     // Gruppe 'Fallsteuerung' - also direkt nach 'dashboard'.
+    // BUILD 698 (Vorgang 60fe72fb): 'faelle' haengt jetzt an
+    // 'caseoverview.view'. Die Probe fuehrt beide Rechte, weil hier die
+    // KATALOGFOLGE geprueft wird; dass die Trennung greift, prueft
+    // tests/unit/test_rechtetrennung_falluebersicht.test.js (RT01-RT04).
     expect(ids).toEqual(
       ["dashboard", "faelle", "workload", "integrity", "audit", "promotion",
        "viewprefs"]);
@@ -234,7 +239,8 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Wer zuweisen darf, sieht auch die Fall-Erkennung - und nur der.
     expect(api.visibleViews({ "assignment.edit": "alle" }).map((x) => x.id))
       .toEqual(["assignment", "cases", "viewprefs"]);
-    expect(api.visibleViews({ "dashboard.view": "eigene" }).map((x) => x.id))
+    expect(api.visibleViews({ "dashboard.view": "eigene",
+                             "caseoverview.view": "eigene" }).map((x) => x.id))
       .toEqual(["dashboard", "faelle", "viewprefs"]);
   });
 
@@ -281,7 +287,8 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     expect(api.visibleViews({ "templates.edit": "alle" }).map((x) => x.id))
       .toEqual(["templates", "doctemplates", "modules", "viewprefs"]);
     // Ohne das Recht ist die Sicht unsichtbar (kein Leak in die Navigation).
-    expect(api.visibleViews({ "dashboard.view": "alle" }).map((x) => x.id))
+    expect(api.visibleViews({ "dashboard.view": "alle",
+                             "caseoverview.view": "alle" }).map((x) => x.id))
       .toEqual(["dashboard", "faelle", "viewprefs"]);
   });
 
@@ -363,7 +370,8 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Falls kein #aiw-nav vorhanden (leeres body): temporaeres Element nutzen.
     win.document.body.appendChild(nav);
 
-    const caps = { "dashboard.view": "alle", "mycases.view": "eigene" };
+    const caps = { "dashboard.view": "alle", "caseoverview.view": "alle",
+                   "mycases.view": "eigene" };
     const views = api.visibleViews(caps);
     api.buildNav(nav, views, caps, "mycases", () => {});
 
@@ -385,8 +393,10 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     const tags = Array.from(nav.querySelectorAll(".aiw-scopetag")).map(
       (t) => t.textContent
     );
-    // Build 574: ZWEIMAL 'alle' — 'dashboard' und 'faelle' haengen beide am
-    // Recht 'dashboard.view' und tragen deshalb beide dessen Scope-Marke.
+    // Build 574: ZWEIMAL 'alle' — 'dashboard' und 'faelle' trugen beide die
+    // Scope-Marke von 'dashboard.view'. Seit Build 698 sind es ZWEI Rechte
+    // mit demselben Umfang; an der Anzeige aendert das nichts, und genau das
+    // ist hier die Aussage.
     expect(tags.sort()).toEqual(["alle", "alle", "eigene"]);
   });
 

@@ -1,0 +1,66 @@
+{
+  "issues": [
+    {
+      "id": "60fe72fb-b0bb-4c29-9a80-3ac1996bba78",
+      "type": "improvement",
+      "title": "Änderung des Rechts dashboard.view",
+      "affected_version": "0.8.596",
+      "reporter": "Alex",
+      "reported_at": "2026-07-31T10:24:46.568560+00:00",
+      "prerequisites": "Es gibt das bestehende Recht dashboard.view. Das Dashboard wurde geändert. Es besteht nun nicht mehr nur aus der Fallübersicht, sondern aus einem Kachelsystem.",
+      "description": "Mit der Änderung des Dashboards auf das Kachelsystem ergibt es keinen Sinn mehr dieses Recht and die Fallübersicht zu koppeln.\r\nDas Recht dashboard.view sollte daher auf die Anzeige des Kachel-Dashboards beschränkt werden. Und für die Sicht \"Fallübersicht\" sollte ein Recht caseoverview.view eingeführt werden. Dieses Recht sollte für die Kachel \"Fall-Übersicht (Ampel)\" und die Sicht \"Fallübersicht\" gelten.",
+      "expected_behavior": "Das Recht dashboard.view gilt nur noch für das Kachel-Dashboard.\r\nDas neue Recht caseoverview.view gilt für die Fallübersicht und die einzelne Kachel",
+      "actual_behavior": "",
+      "status": "resolved",
+      "priority": "high",
+      "severity": "major",
+      "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": "0.8.698",
+      "target_version": "0.8.698",
+      "environment": {
+        "python_version": "3.14",
+        "database": "coordinator.db"
+      },
+      "tags": [
+        "Dashboard",
+        "Rechte"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-07-31T10:24:46.568588+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
+        },
+        {
+          "timestamp": "2026-08-11T22:20:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "resolved",
+          "comment": "UMGESETZT in Build 698.\n\n(1) NEUES RECHT 'caseoverview.view' (Migration M038, Muster M030/M031: eigener Zweck, eigenes Recht). Es traegt die Sicht 'Falluebersicht', die Kachel 'Fall-Uebersicht (Ampel)' und - siehe (2) - die Fallsuche der Kommandopalette. 'dashboard.view' oeffnet nur noch den RAHMEN des Ueberblicks; welche Kacheln darin erscheinen, entscheidet je Kachel deren eigenes Recht.\n\nZUR BEGRUENDUNG, die weiter traegt als die Beschreibung im Vorgang: Die Falltabelle war die EINZIGE Kachel ohne eigenes Recht - sie lief auf dem Recht des Rahmens mit, waehrend jede andere Kachel ihres fuehrt. Wer den Ueberblick oeffnen durfte, bekam damit die vollstaendige Fallliste mit den Beschuldigten-Kontonamen ungefragt dazu.\n\n(2) DIE FALLSUCHE DER KOMMANDOPALETTE IST MITGEWANDERT (Entscheidung Alex, 11.08.2026; im Vorgang stand dazu nichts). /api/search lieferte Faelle und sprang in die Falluebersicht, prueft aber bis Build 696 'dashboard.view'. Waere sie geblieben, gaebe es einen zweiten Zugang zu genau den Daten, die das neue Recht schuetzen soll.\n\n(3) DER TEXT VON 'dashboard.view' IST MITBERICHTIGT ('Ampel-Dashboard sehen' / 'Falluebersicht mit Ampel und Kennzahlen lesen' -> 'Kachel-Dashboard sehen' / Rahmen statt Inhalt). Die RBAC-Matrix zeigt diese Texte woertlich an; wer dort Rechte vergibt, entscheidet nach ihnen. M038 aendert den Text NUR, wenn er unveraendert der aus M006 ist - eine von Hand angepasste Fassung bleibt stehen und wird gemeldet.\n\n(4) NACHGEZOGEN: Kachelkatalog (viewpref_katalog), Sichtenkatalog der Hilfe (sicht_katalog), VIEW_CATALOG in cockpit.js, die Hilfekapitel 'Ueberblick' und 'Fallsteuerung' samt Kontexthilfe der Kachel, der CLI-Katalog und der Demo-Bestand.\n\n(5) DIE HILFE ERKLAERT DIE UMSTELLUNG, statt nur das Recht zu tauschen (Entscheidung Alex, 11.08.2026). Entscheidender Satz in beiden Kapiteln: 'Sehen Sie diese Sicht seit der Umstellung nicht mehr, fehlt Ihnen caseoverview.view.' Ohne ihn meldet der Betroffene einen Ausfall, den es nicht gibt."
+        },
+        {
+          "timestamp": "2026-08-11T22:25:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "ZUM EINSPIELEN - DIE REIHENFOLGE IST DIESMAL NICHT GLEICHGUELTIG.\n\nDIE MIGRATION VERGIBT KEINE GRANTS, und das ist kein Versaeumnis: rbac_grant.audit_seq ist NOT NULL, jeder Grant traegt den Beleg seiner Vergabe. Eine Migration hat weder Akteur noch Beleg; ein von ihr geschriebener Grant waere ein Zugang, den niemand vergeben hat (deshalb laesst M006 rbac_grant ausdruecklich leer starten).\n\nFOLGE: Unmittelbar nach M038 sieht NIEMAND die Falluebersicht - auch nicht, wer 'dashboard.view' besitzt. Der Zustand ist sichtbar und nicht still: Sicht und Kachel verschwinden, /api/overview antwortet 403 und NENNT das fehlende Recht.\n\nDIE UEBERNAHME IST EIN EIGENER AUDITIERTER LAUF, neu in rbac_admin:\n  python -m management.rbac.rbac_admin migrate-grants \\\n         --from dashboard.view --to caseoverview.view --probe\n  python -m management.rbac.rbac_admin migrate-grants \\\n         --from dashboard.view --to caseoverview.view --actor <SYSUSER>\nEr uebernimmt je Rolle den Umfang 1:1, schreibt je Grant einen eigenen Beleg und NIMMT DAS QUELLRECHT NICHT ZURUECK - ob 'dashboard.view' einer Rolle erhalten bleibt, ist eine fachliche Entscheidung je Rolle und gehoert einzeln mit 'revoke-grant' getroffen. Er gehoert in DASSELBE Wartungsfenster wie das Einspielen.\n\nOFFEN UND BENANNT: Wer heute 'dashboard.view' hat, die Falluebersicht aber NICHT sehen soll, bekommt sie durch den Uebernahmelauf trotzdem - der Lauf kann nicht wissen, was fachlich gemeint ist. Genau dafuer ist der Probelauf da: er zeigt die Liste VOR dem Schreiben."
+        },
+        {
+          "timestamp": "2026-08-11T22:30:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "REGRESSION: tests/test_rechtetrennung_falluebersicht.py (RB01-RB10) und tests/unit/test_rechtetrennung_falluebersicht.test.js (RT01-RT04).\n\nGEGENPROBE: RT01-RT03 fallen auf cockpit.js aus Build 696; RT04 (mit beiden Rechten ist alles wie vorher) bleibt gruen - eine Trennung, die den gemeinsamen Fall kaputtmacht, waere keine. Auf der Serverseite fallen RB04, RB05/RB06 und RB10 gegen die Dateien aus Build 696.\n\nAM LEBENDEN WERKZEUG ERPROBT, nicht nur im Test: Demo-Bestand angelegt, den caseoverview-Grant zurueckgenommen (Ausgangslage vor der Umstellung), Probelauf (schreibt nichts, Belegbuch unveraendert), scharfer Lauf (uebernimmt supervisor/alle, audit seq 91), zweiter Lauf (meldet 'BEREITS DA' und vergibt nichts doppelt). Audit-Kette danach intakt.\n\nNEUN BESTEHENDE TESTDATEIEN SIND MITGEZOGEN - jede war eine Gegenprobe, weil sie das alte Recht kodierte. Wo eine Datei die RECHTELAGE prueft (HS02), fuehrt sie jetzt zwei Zeilen - eine je Recht. Wo sie etwas anderes prueft (Rendern der Hilfeseite, Katalogfolge der Navigation), fuehrt die Rechteprobe beide Rechte, damit der Fall weiter das prueft, wofuer es ihn gibt. Die Unterscheidung ist an jeder Fundstelle begruendet.\n\nLAUF 698: Python 3439 gruen, JS 129 Dateien / 1850 Faelle gruen. PY08 und PY10 fallen containerbedingt (Python 3.11 kann die PEP-701-f-string in editor/html_renderer.py:349 nicht parsen) - sie fallen ebenso auf unberuehrtem origin/master und sind KEIN Befund dieser Lieferung."
+        }
+      ]
+    }
+  ]
+}
