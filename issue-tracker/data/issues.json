@@ -8946,6 +8946,14 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Build689.json"
+        },
+        {
+          "timestamp": "2026-08-12T19:35:36.733789+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Ich habe das nun für Benutzer 1488 getestet.\r\nDer hat:\r\n235 Einträge in pms_created_bundles,\r\n4652 Einträge in pms_new_posts und\r\n213 davon sind überlappend.\r\n\r\nWas man aber noch unbedingt beachten muss ist, dass nicht jede ID, die es in pms_cracked_bundles gibt auch in pms_new_posts geben muss. Es kann nämlich sein, dass der Empfänger die entschlüsselte Nachricht bereits gelöscht hat und sie nur noch beim Absender in pms_my_posts auftaucht, nicht aber mehr in pms_new_posts.\r\n\r\nEine ID in pms_cracked_bundles kann in einem der beiden oder in beiden Tabellen (pms_new_posts, pms_my_posts) vorhanden sein."
         }
       ]
     },
