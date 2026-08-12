@@ -1026,6 +1026,54 @@ class ForensicDb:
             pm_topic_id=int(row["pm_topic_id"]),
         )
 
+    def list_pm_post_ids(self, pm_topic_id: int) -> "list[int]":
+        """
+        Liefert ALLE erfassten pm_post_ids EINES PN-Dialogs (Build 703).
+
+        Gegenstueck zu resolve_pm_alias(): dort ein Beitrag → sein Dialog, hier
+        ein Dialog → seine Beitraege.
+
+        WOZU: Die Uebersetzungsanzeige braucht je Seite die Menge der
+        Nachrichten, zu denen eine Uebersetzung vorliegen KOENNTE, und zwar
+        BEVOR das Seiten-DOM steht (der Abruf laeuft parallel zum Seitenabruf).
+        Bei Forenbeitraegen liefert trdb.translations.topic_id diese Menge
+        selbst; bei privaten Nachrichten steht dort NICHTS — der
+        Uebersetzungslauf fuellt topic_id/forum_id nur fuer 'posts'
+        (Beleg: Datenprobe Alex, 12.08.2026: source='pms' mit leerem topic_id).
+        Die Zuordnung Nachricht → Dialog steht deshalb hier, in fdb.pm_aliases.
+
+        VOLLSTAENDIGKEIT: pm_aliases enthaelt BEIDE Seiten des Dialogs, nicht
+        nur die Nachrichten des Beschuldigten — der Prepper leitet sie aus
+        'pms_new_posts WHERE topic_id IN (erfasste pm_topics)' ab
+        (aiw_sqlite_prepper stage1/query_blocks.py, run_alias_derivation).
+        Das ist wesentlich: gerade die EINGEHENDEN Nachrichten sind die, deren
+        Uebersetzung die Ermittlerin braucht.
+
+        Args:
+            pm_topic_id: Dialog-ID (tid aus 'pmsnew.php?mdl=topic&tid=<tid>').
+
+        Returns:
+            Liste der pm_post_ids. Leer, wenn der Dialog nicht erfasst ist
+            oder pm_aliases fehlt — beides wird protokolliert, nicht geraten.
+        """
+        try:
+            rows = self._con.execute(
+                "SELECT pm_post_id FROM fdb.pm_aliases WHERE pm_topic_id = ?",
+                (pm_topic_id,),
+            ).fetchall()
+        except sqlite3.OperationalError as exc:
+            logger.error(
+                "list_pm_post_ids(%r) fehlgeschlagen: %s", pm_topic_id, exc
+            )
+            return []
+        ids = [int(r["pm_post_id"]) for r in rows]
+        if not ids:
+            logger.debug(
+                "list_pm_post_ids(%r): kein Eintrag in fdb.pm_aliases.",
+                pm_topic_id,
+            )
+        return ids
+
     def resolve_notify_alias(self, notify_id: int) -> Optional[NotifyAliasRecord]:
         """
         Löst eine notify_id auf den zugehörigen Post auf.

@@ -6663,6 +6663,24 @@
   //      wir schneiden gegen die tatsaechlich vorhandenen Container).
   //   4. Klick -> GET /_forensic/translate?post_id= -> Panel toggeln.
   //
+  // BUILD 703 (Vorgang da84f94f): DASSELBE FUER PRIVATE NACHRICHTEN.
+  //   Die Fallakten fuehren neben Forenbeitraegen auch fremdsprachige PN. Fuer
+  //   sie liegen Uebersetzungen im selben Bestand (trdb.translations mit
+  //   source='pms'), sie wurden aber nie angeboten: dieses Modul lief nur auf
+  //   viewtopic-Seiten an.
+  //   Getragen wird der Unterschied von EINEM Wert, der 'Quelle' (_source):
+  //     'posts' — viewtopic.php?id=<topic_id>
+  //     'pms'   — pmsnew.php?mdl=topic&tid=<dialog_id>
+  //   Er geht an beide Endpunkte mit und steht am Panel (data-source), von wo
+  //   ihn die Erfassung in den Markierungs-Anker uebernimmt (Build 333).
+  //
+  //   WARUM DIE QUELLE UEBERALL MITLAUFEN MUSS: Forenbeitrags- und
+  //   PN-IDs stammen aus EIGENEN, ueberlappenden ID-Raeumen — dieselbe Zahl
+  //   kann beides bezeichnen. Ohne die Quelle im Zwischenspeicher, in der
+  //   Abfrage und am Anker koennte die Uebersetzung eines Forenbeitrags unter
+  //   einer privaten Nachricht erscheinen. Das waere kein Anzeigefehler,
+  //   sondern eine falsche Zuschreibung (GR1).
+  //
   // Original/Angepasst: alle injizierten Elemente tragen .aux-part und
   // verschwinden im Original-Modus automatisch (ViewModeModule setzt die
   // Body-Klasse aiw-view-original). Der Original-Translate-Link bleibt dabei
@@ -6672,9 +6690,10 @@
     var CONF = ForensicToolbar.config;
 
     var _translatedSet = null;  // Set<number> der post_ids mit Uebersetzung
-    var _cache         = {};    // post_id -> Antwortobjekt von /translate
-    var _pending       = {};    // Build 332: post_id -> true, solange ein /translate-Fetch laeuft
+    var _cache         = {};    // Build 703: "<quelle>:<post_id>" -> Antwort von /translate
+    var _pending       = {};    // Build 332/703: "<quelle>:<post_id>" -> true, solange ein Fetch laeuft
     var _topicId       = null;
+    var _source        = "posts";   // Build 703: 'posts' | 'pms'
 
     // ---- reine Hilfsfunktionen (auch fuer vitest exportiert) --------------
 
@@ -6683,6 +6702,55 @@
       if (!url || String(url).indexOf("viewtopic.php") === -1) return null;
       var m = String(url).match(/[?&]id=(\d+)/);
       return m ? parseInt(m[1], 10) : null;
+    }
+
+    // Build 703: Dialog-ID (tid) einer PN-Dialogseite lesen.
+    // Die PN-Uebersicht ('pmsnew.php' ohne mdl=topic) ist KEINE Dialogseite —
+    // sie fuehrt Gespraechszeilen, keine Nachrichten-Container. Deshalb wird
+    // 'mdl=topic' ausdruecklich verlangt und nicht nur 'tid='.
+    // Beleg fuer die Adressform: toolbar.js PMSTableOrganizerModule
+    // ('pmsnew.php?mdl=topic&tid=<tid>'), Prepper url_builder 'pmsnew_topic'.
+    function pmTopicIdFromUrl(url) {
+      var s = String(url || "");
+      if (s.indexOf("pmsnew.php") === -1) return null;
+      if (s.indexOf("mdl=topic") === -1) return null;
+      var m = s.match(/[?&]tid=(\d+)/);
+      return m ? parseInt(m[1], 10) : null;
+    }
+
+    // Build 703: Welches Gespraech zeigt diese Seite?
+    // Rueckgabe { source: 'posts'|'pms', id: <n> } oder null (keine der
+    // beiden Seitenarten -> das Modul bleibt untaetig).
+    // Eine Funktion statt zweier Abfragen an der Aufrufstelle, damit Quelle
+    // und ID IMMER zusammen entstehen und nicht auseinanderlaufen koennen.
+    function gespraechAusUrl(url) {
+      var topicId = topicIdFromUrl(url);
+      if (topicId !== null) return { source: "posts", id: topicId };
+      var pmId = pmTopicIdFromUrl(url);
+      if (pmId !== null) return { source: "pms", id: pmId };
+      return null;
+    }
+
+    // Build 703: Schluessel des Zwischenspeichers. Die Quelle gehoert hinein,
+    // weil dieselbe Zahl einen Forenbeitrag UND eine private Nachricht
+    // bezeichnen kann (getrennte ID-Raeume).
+    function cacheKey(source, postId) {
+      return String(source) + ":" + String(postId);
+    }
+
+    // Build 703: Zeitangabe der Pflichtkopfzeile.
+    // BEI PRIVATEN NACHRICHTEN IST created_at LEER — der Uebersetzungslauf
+    // setzt dort nur updated_at (Datenprobe Alex, 12.08.2026). Ohne diesen
+    // Rueckfall traege die Kopfzeile jeder PN-Uebersetzung KEIN Datum, und
+    // die Provenienz waere unvollstaendig.
+    // Die beiden Werte werden NICHT stillschweigend gleichgesetzt: 'erstellt'
+    // und 'zuletzt geaendert' sind verschiedene Aussagen, deshalb wird der
+    // Rueckfall als 'Stand' ausgewiesen. Rein, damit vitest ihn ohne DOM misst.
+    function _zeitangabe(data) {
+      if (!data) return "";
+      if (data.created_at) return " · " + data.created_at;
+      if (data.updated_at) return " · Stand " + data.updated_at;
+      return "";
     }
 
     // post_id aus der #p<n>-Container-Id (Beleg: toolbar.js Post-Container-Muster).
@@ -6769,18 +6837,60 @@
           || null;
     }
 
+    // Build 703: Notanker fuer Nachrichten-Container ohne eine der bekannten
+    // Aktionslisten.
+    //
+    // WARUM ES IHN GIBT: Bis Build 699 endete _injectButton in diesem Fall mit
+    // einer Debug-Zeile und OHNE Flagge. Fuer Forenbeitraege war das
+    // vertretbar — beide Layouts sind vermessen (Build 396). Fuer die
+    // PN-Dialogseite ist es das NICHT: ihr Aufbau ist hier nicht belegt (es
+    // liegt kein anonymisierter Auszug vor, s. Uebergabe). Eine vorhandene
+    // Uebersetzung, die wegen eines unbekannten Aufbaus unsichtbar bleibt,
+    // waere genau die stille Auslassung, die GR1 verbietet.
+    //
+    // Der Notanker haengt eine eigene Leiste ans Ende des Containers. Sie
+    // traegt .aux-part, verschwindet also in der Originalansicht wie jedes
+    // andere AIW-Element, und sie steht unmittelbar vor der Stelle, an der
+    // auch das Uebersetzungsfeld erscheint.
+    function _notAnker(container) {
+      var bar = container.querySelector(".aiw-flag-fallback");
+      if (bar) return bar;
+      bar = document.createElement("div");
+      bar.className = "aiw-flag-fallback aux-part";
+      container.appendChild(bar);
+      return bar;
+    }
+
     function _injectButton(container, postId) {
       // Doppel-Injektion vermeiden (z.B. wiederholte _apply-Laeufe).
       if (container.querySelector(".aiw-translate-flag")) return;
       var foot = resolveFlagAnchor(container);
       if (!foot) {
-        _dbg("[Translation] kein Flaggen-Anker (.postfootright/.post-actions/"
-             + ".rate-buttons) fuer post", postId);
-        return;
+        // Kein bekannter Anker -> Notanker. Die Abweichung wird protokolliert,
+        // damit der tatsaechliche Aufbau nachgetragen werden kann.
+        _dbg("[Translation] kein bekannter Flaggen-Anker (.postfootright/"
+             + ".post-actions/.rate-buttons) fuer post " + postId
+             + " — Notanker wird verwendet", { quelle: _source });
+        foot = _notAnker(container);
       }
-      // Wrapper-<span> analog zu den vorhandenen ul-Eintraegen; traegt .aux-part.
-      var wrap = document.createElement("span");
-      wrap.className = "aux-part";
+      // Wrapper analog zu den vorhandenen Eintraegen der Fussleiste; traegt
+      // .aux-part und verschwindet damit in der Originalansicht.
+      //
+      // BUILD 703 (Beleg: Auszug einer PN-Dialogseite, Alex 12.08.2026):
+      // Der Anker ist dort - wie in der Vollansicht eines Forenbeitrags - ein
+      // <ul>, dessen Kinder <li> sind:
+      //   <div class="postfootright"><ul>
+      //     <li class="postreport"><span><a …>Block</a></span></li>
+      //     <li class="postquote"><span><a …>Antworten</a></span></li>
+      //   </ul></div>
+      // In ein <ul> gehoert ein <li> und kein <span>: nur so greift die
+      // Formatierung, die das Forum den Eintraegen dieser Leiste gibt, und
+      // nur so ist die Liste gueltiges HTML. Ausserhalb einer Liste (z. B. am
+      // Notanker) bleibt es beim <span> - dort waere ein <li> genauso falsch.
+      var wrap = document.createElement(
+        foot.tagName === "UL" ? "li" : "span"
+      );
+      wrap.className = "aiw-translate-item aux-part";
       var btn = document.createElement("button");
       btn.type = "button";
       btn.className = "aiw-translate-flag aux-part";
@@ -6793,7 +6903,19 @@
         ev.preventDefault();
         _togglePanel(container, postId, btn);
       });
-      wrap.appendChild(btn);
+      // Innerer <span> wie bei den Eintraegen des Forums
+      // (<li class="postquote"><span><a …></a></span></li>): die Formatierung
+      // der Fussleiste greift dort auf 'li span'.
+      if (wrap.tagName === "LI") {
+        var innen = document.createElement("span");
+        innen.appendChild(btn);
+        wrap.appendChild(innen);
+      } else {
+        wrap.appendChild(btn);
+      }
+      // ERSTES Element der Leiste (Weisung Alex, 12.08.2026): die Flagge steht
+      // vor 'Block'/'Antworten'. insertBefore(firstChild) setzt sie auch dann
+      // an den Anfang, wenn dort ein Zeilenumbruch als Textknoten steht.
       foot.insertBefore(wrap, foot.firstChild);
     }
 
@@ -6801,7 +6923,9 @@
       var hasPanel = !!container.querySelector(
         '.aiw-translation-panel[data-post-id="' + postId + '"]'
       );
-      var action = clickAction(hasPanel, !!_pending[postId], !!_cache[postId]);
+      // Build 703: Zwischenspeicher und Laufmarke haengen an Quelle UND ID.
+      var key = cacheKey(_source, postId);
+      var action = clickAction(hasPanel, !!_pending[key], !!_cache[key]);
 
       if (action === "close") {
         var existing = container.querySelector(
@@ -6819,23 +6943,24 @@
         return;
       }
       if (action === "render") {
-        _renderPanel(container, postId, _cache[postId], btn);
+        _renderPanel(container, postId, _cache[key], btn);
         return;
       }
 
       // action === "fetch": laden, mit Warte-Cursor bis zur Antwort.
-      _dbg("[Translation] Lade Uebersetzung fuer post", postId);
-      _pending[postId] = true;
+      _dbg("[Translation] Lade Uebersetzung", { postId: postId, quelle: _source });
+      _pending[key] = true;
       btn.classList.add("aiw-translate-flag--loading");
-      ajaxGet(CONF.API_TRANSLATE + "?post_id=" + encodeURIComponent(postId))
+      ajaxGet(CONF.API_TRANSLATE + "?post_id=" + encodeURIComponent(postId)
+              + "&source=" + encodeURIComponent(_source))
         .then(function (data) {
-          _cache[postId] = data;
-          delete _pending[postId];
+          _cache[key] = data;
+          delete _pending[key];
           btn.classList.remove("aiw-translate-flag--loading");
           _renderPanel(container, postId, data, btn);
         })
         .catch(function (err) {
-          delete _pending[postId];
+          delete _pending[key];
           btn.classList.remove("aiw-translate-flag--loading");
           _dbg("[Translation] Fetch-Fehler /translate fuer post", postId, err);
         });
@@ -6857,7 +6982,10 @@
       panel.className = "aiw-translation-panel aux-part";
       panel.setAttribute("data-post-id", String(postId));
       // Build 333: source am Panel hinterlegen (Erfassung liest es fuer den Anker).
-      panel.setAttribute("data-source", "posts");
+      // Build 703: nicht mehr fest 'posts'. Die Antwort des Servers hat
+      // Vorrang vor dem Modulzustand — sie sagt, WORAUF sich der gelieferte
+      // Text bezieht; _source sagt nur, wonach gefragt wurde.
+      panel.setAttribute("data-source", data.source || _source || "posts");
       // Build 340: Provenienz am Panel hinterlegen -> beim Markieren wird sie in
       // den Anker EINGEFROREN, damit der Bericht Modell/Datum zum Markierungs-
       // zeitpunkt zeigt (unabhaengig von einer spaeteren Neu-Uebersetzung).
@@ -6869,7 +6997,7 @@
       head.className = "aiw-translation-head";
       head.textContent = "\u26A0 Maschinell \u00FCbersetzt"
         + (data.model_used ? " \u00B7 Modell " + data.model_used : "")
-        + (data.created_at ? " \u00B7 " + data.created_at : "")
+        + _zeitangabe(data)
         + " \u00B7 nicht gerichtsverwertbar";
 
       // Koerper: reiner Text (BB-Codes wurden beim Uebersetzen entfernt).
@@ -6927,7 +7055,7 @@
       });
       _dbg("[Translation] Buttons injiziert:", count, "von",
            _translatedSet ? _translatedSet.size : 0,
-           "uebersetzten Posts im Topic");
+           "uebersetzten Beitraegen im Gespraech (Quelle " + _source + ")");
       // Build 338: Rahmen der Flaggen faerben, wo eine Markierung in der
       // Uebersetzung vorliegt (sichtbar auch bei zugeklapptem Panel).
       _updateFlagIndicators();
@@ -6938,17 +7066,26 @@
 
     function init(viewport, pageUrl) {
       if (!viewport) { _dbg("[Translation] init: kein viewport"); return; }
-      _topicId = topicIdFromUrl(pageUrl);
-      if (_topicId === null) {
-        _dbg("[Translation] init: keine viewtopic-Seite — inaktiv", pageUrl);
+      // Build 703: Quelle und ID entstehen gemeinsam (s. gespraechAusUrl).
+      var gespraech = gespraechAusUrl(pageUrl);
+      if (gespraech === null) {
+        _dbg("[Translation] init: weder Thema noch PN-Dialog — inaktiv", pageUrl);
+        _translatedSet = null;   // kein Rest der vorigen Seite
         return;
       }
-      _dbg("[Translation] init auf topic_id", _topicId);
-      ajaxGet(CONF.API_TRANSLATIONS + "?topic_id=" + encodeURIComponent(_topicId))
+      _topicId = gespraech.id;
+      _source  = gespraech.source;
+      _dbg("[Translation] init", { quelle: _source, id: _topicId, url: pageUrl });
+      ajaxGet(CONF.API_TRANSLATIONS + "?topic_id=" + encodeURIComponent(_topicId)
+              + "&source=" + encodeURIComponent(_source))
         .then(function (data) {
           var ids = (data && data.post_ids) || [];
           _translatedSet = new Set(ids.map(function (x) { return parseInt(x, 10); }));
-          _dbg("[Translation] Uebersetzte post_ids im Topic:", _translatedSet.size);
+          _dbg("[Translation] Uebersetzte Beitraege im Gespraech:",
+               { anzahl: _translatedSet.size, quelle: _source,
+                 // Build 703: Der Server nennt, ueber welchen Weg er die
+                 // Menge bestimmt hat (pm_aliases | topic_id | keiner).
+                 weg: (data && data.resolved_via) || "?" });
           _apply(viewport);
         })
         .catch(function (err) {
@@ -6974,7 +7111,12 @@
         clickAction:           clickAction,
         findTranslationMark:   _findTranslationMark,
         // Build 396: Flaggen-Anker-Aufloesung (beide Post-Layouts).
-        resolveFlagAnchor:     resolveFlagAnchor
+        resolveFlagAnchor:     resolveFlagAnchor,
+        // Build 703 (Vorgang da84f94f): PN-Uebersetzungen.
+        pmTopicIdFromUrl:      pmTopicIdFromUrl,
+        gespraechAusUrl:       gespraechAusUrl,
+        cacheKey:              cacheKey,
+        zeitangabe:            _zeitangabe
       }
     };
   })();

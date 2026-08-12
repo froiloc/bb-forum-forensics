@@ -268,3 +268,93 @@ def test_get_meta_unbekannte_source_ist_none(tmp_path):
     _make_trdb_mit_pms(p)
     tdb = TranslationsDb(_open_trdb(p))
     assert tdb.get_meta(705985, source="unbekannt") is None
+
+
+# =============================================================================
+# Build 703 (Vorgang da84f94f): get_meta gegen das GELIEFERTE Schema
+#
+# DER BEFUND: Build 398 baute auf eine Tabelle 'pms_cleaned'. Die gelieferte
+# translations.db (Schema Alex, 12.08.2026) hat sie NICHT — dort traegt
+# posts_cleaned eine Spalte 'source' und den Primaerschluessel
+# (post_id, source). get_meta(source='pms') haette gegen diese Datenbank
+# ausnahmslos None geliefert: der Original-Text einer privaten Nachricht waere
+# im Bericht stillschweigend leer geblieben.
+#
+# GM01 — geliefertes Schema: posts/pms werden ueber die Spalte getrennt
+# GM02 — geliefertes Schema: gleiche ID in beiden Quellen bleibt getrennt
+# GM03 — geliefertes Schema: Provenienz kommt aus der passenden Zeile
+# =============================================================================
+
+def _make_trdb_geliefertes_schema(path):
+    """Aufbau (A) — 1:1 nach dem gelieferten Schema (translations.db.sql)."""
+    con = sqlite3.connect(str(path))
+    con.execute(
+        "CREATE TABLE posts_cleaned ("
+        "  post_id INTEGER NOT NULL, topic_id INTEGER NOT NULL, "
+        "  forum_id INTEGER NOT NULL, clean_text TEXT NOT NULL, "
+        "  word_count INTEGER DEFAULT 0, source_lang TEXT DEFAULT 'en', "
+        "  source TEXT NOT NULL DEFAULT 'posts', "
+        "  PRIMARY KEY(post_id, source))"
+    )
+    con.execute(
+        "CREATE TABLE translations ("
+        "  post_id INTEGER NOT NULL, translated_text TEXT, model_used TEXT, "
+        "  created_at TEXT, updated_at TEXT, "
+        "  source TEXT NOT NULL DEFAULT 'posts', topic_id INTEGER, "
+        "  forum_id INTEGER, PRIMARY KEY(post_id, source))"
+    )
+    # DIESELBE ID in beiden Quellen — der kritische Fall (getrennte ID-Raeume).
+    con.execute(
+        "INSERT INTO posts_cleaned (post_id, topic_id, forum_id, clean_text, "
+        "source_lang, source) VALUES (44573, 20, 29, 'FORUM ORIGINAL', 'en', 'posts')"
+    )
+    con.execute(
+        "INSERT INTO posts_cleaned (post_id, topic_id, forum_id, clean_text, "
+        "source_lang, source) VALUES (44573, 0, 0, 'PRIVATE ORIGINAL', 'ru', 'pms')"
+    )
+    con.execute(
+        "INSERT INTO translations (post_id, translated_text, model_used, "
+        "created_at, updated_at, source, topic_id, forum_id) VALUES "
+        "(44573, 'UEB FORUM', 'llama3', '2026-07-05 23:39:38', "
+        " '2026-07-05 23:39:38', 'posts', 20, 29)"
+    )
+    # PN-Zeile wie in der Datenprobe: created_at LEER, topic_id/forum_id LEER.
+    con.execute(
+        "INSERT INTO translations (post_id, translated_text, model_used, "
+        "created_at, updated_at, source, topic_id, forum_id) VALUES "
+        "(44573, 'UEB PN', 'llama3', NULL, '2026-07-14 02:47:37', 'pms', NULL, NULL)"
+    )
+    con.commit()
+    con.close()
+
+
+def test_GM01_geliefertes_schema_trennt_ueber_die_spalte(tmp_path):
+    p = tmp_path / "translations.db"
+    _make_trdb_geliefertes_schema(p)
+    tdb = TranslationsDb(_open_trdb(p))
+
+    post = tdb.get_meta(44573, source="posts")
+    pm = tdb.get_meta(44573, source="pms")
+
+    assert post is not None and pm is not None
+    assert post.original_text == "FORUM ORIGINAL"
+    assert pm.original_text == "PRIVATE ORIGINAL"
+
+
+def test_GM02_geliefertes_schema_sprache_je_quelle(tmp_path):
+    p = tmp_path / "translations.db"
+    _make_trdb_geliefertes_schema(p)
+    tdb = TranslationsDb(_open_trdb(p))
+    assert tdb.get_meta(44573, source="posts").source_lang == "en"
+    assert tdb.get_meta(44573, source="pms").source_lang == "ru"
+
+
+def test_GM03_geliefertes_schema_provenienz_je_quelle(tmp_path):
+    p = tmp_path / "translations.db"
+    _make_trdb_geliefertes_schema(p)
+    tdb = TranslationsDb(_open_trdb(p))
+    post = tdb.get_meta(44573, source="posts")
+    pm = tdb.get_meta(44573, source="pms")
+    assert post.created_at == "2026-07-05 23:39:38"
+    # Datenprobe: bei PN ist created_at leer. get_meta erfindet nichts.
+    assert pm.created_at is None

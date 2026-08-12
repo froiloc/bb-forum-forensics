@@ -129,3 +129,129 @@ def test_fehlende_topic_id_spalte_liefert_leer_kein_crash(tmp_path):
     assert tdb.list_translated_post_ids(69192) == []   # keine Spalte -> leer, kein Crash
     rec = tdb.get_translation(706037)                  # braucht kein topic_id
     assert rec is not None and rec.post_id == 706037
+
+
+# =============================================================================
+# Build 703 (Vorgang da84f94f): Uebersetzungen privater Nachrichten
+#
+# DER AUSGANGSPUNKT: Fuer PN fuellt der Uebersetzungslauf topic_id/forum_id
+# NICHT (Datenprobe Alex, 12.08.2026 — source='pms' mit leeren Spalten). Die
+# Frage 'welche Nachrichten dieses Dialogs sind uebersetzt?' ist ueber
+# translations.topic_id daher gar nicht zu beantworten. Sie wird stattdessen
+# gegen eine VORGEGEBENE Menge gestellt, die aus dem forensischen Bestand
+# stammt (fdb.pm_aliases).
+#
+# FT01 — filter_translated_post_ids trennt posts und pms
+# FT02 — leere Eingabe -> leere Ausgabe (keine Abfrage)
+# FT03 — leerer translated_text zaehlt NICHT als Uebersetzung
+# FT04 — mehr als eine Stapelgroesse (SQLite-Parametergrenze)
+# FT05 — nicht angebundene trdb -> leer, kein Absturz
+# FT06 — get_translation liefert updated_at mit (PN haben kein created_at)
+# =============================================================================
+
+def _make_trans_db_pn(path):
+    """PN-Bestand wie in der Datenprobe: created_at/topic_id/forum_id leer."""
+    con = sqlite3.connect(str(path))
+    con.execute(
+        "CREATE TABLE translations ("
+        "  post_id INTEGER NOT NULL, translated_text TEXT, model_used TEXT, "
+        "  created_at TEXT, updated_at TEXT, "
+        "  source TEXT NOT NULL DEFAULT 'posts', topic_id INTEGER, "
+        "  forum_id INTEGER, PRIMARY KEY(post_id, source))"
+    )
+    con.executemany(
+        "INSERT INTO translations (post_id, translated_text, model_used, "
+        "created_at, updated_at, source, topic_id, forum_id) VALUES (?,?,?,?,?,?,?,?)",
+        [
+            # PN — genau die Gestalt der Datenprobe.
+            (44573, "Hallo mein Freund, moegen all deine Wuensche wahr werden.",
+             "llama3:8b-instruct-q4_K_M", None, "2026-07-14 02:47:37", "pms", None, None),
+            (44574, "Zweite Nachricht", "llama3", None, "2026-07-14 02:48:00",
+             "pms", None, None),
+            (44575, "", "llama3", None, "2026-07-14 02:49:00", "pms", None, None),
+            # Forenbeitrag mit DERSELBEN ID wie eine PN — getrennte ID-Raeume.
+            (44573, "Hola Kurzpost!", "llama3", "2026-07-05 23:39:38",
+             "2026-07-05 23:39:38", "posts", 20, 29),
+        ],
+    )
+    con.commit()
+    con.close()
+
+
+def test_FT01_filter_trennt_posts_und_pms(tmp_path):
+    p = tmp_path / "translations.db"
+    _make_trans_db_pn(p)
+    tdb = TranslationsDb(_open_with_trdb(p))
+
+    pms = tdb.filter_translated_post_ids([44573, 44574, 44575, 99999], "pms")
+    assert sorted(pms) == [44573, 44574]
+
+    # Dieselbe Menge als 'posts' gefragt: nur der Forenbeitrag 44573.
+    posts = tdb.filter_translated_post_ids([44573, 44574, 44575], "posts")
+    assert posts == [44573]
+
+
+def test_FT02_leere_eingabe(tmp_path):
+    p = tmp_path / "translations.db"
+    _make_trans_db_pn(p)
+    tdb = TranslationsDb(_open_with_trdb(p))
+    assert tdb.filter_translated_post_ids([], "pms") == []
+
+
+def test_FT03_leerer_text_zaehlt_nicht(tmp_path):
+    p = tmp_path / "translations.db"
+    _make_trans_db_pn(p)
+    tdb = TranslationsDb(_open_with_trdb(p))
+    # 44575 hat eine Zeile, aber leeren Text -> keine Uebersetzung.
+    assert tdb.filter_translated_post_ids([44575], "pms") == []
+
+
+def test_FT04_mehr_als_eine_stapelgroesse(tmp_path):
+    """FT04: Ein Dialog kann mehrere hundert Nachrichten fuehren (gemessen:
+    283 Container auf einer PN-Dialogseite). Die Abfrage wird gestapelt —
+    ohne das schlaegt SQLite ab 999 Parametern fehl."""
+    p = tmp_path / "translations.db"
+    con = sqlite3.connect(str(p))
+    con.execute(
+        "CREATE TABLE translations ("
+        "  post_id INTEGER NOT NULL, translated_text TEXT, model_used TEXT, "
+        "  created_at TEXT, updated_at TEXT, source TEXT NOT NULL DEFAULT 'posts', "
+        "  topic_id INTEGER, forum_id INTEGER, PRIMARY KEY(post_id, source))"
+    )
+    con.executemany(
+        "INSERT INTO translations (post_id, translated_text, source) VALUES (?,?,?)",
+        [(i, "Text", "pms") for i in range(1, 2001, 2)],   # nur ungerade IDs
+    )
+    con.commit()
+    con.close()
+    tdb = TranslationsDb(_open_with_trdb(p))
+
+    alle = list(range(1, 2001))            # 2000 IDs -> drei Stapel
+    treffer = tdb.filter_translated_post_ids(alle, "pms")
+    assert len(treffer) == 1000
+    assert all(t % 2 == 1 for t in treffer)
+
+
+def test_FT05_ohne_trdb_leer():
+    con = sqlite3.connect(":memory:")
+    con.row_factory = sqlite3.Row
+    tdb = TranslationsDb(con)   # KEIN trdb-ATTACH
+    assert tdb.filter_translated_post_ids([1, 2, 3], "pms") == []
+
+
+def test_FT06_get_translation_liefert_updated_at(tmp_path):
+    """FT06: Bei PN ist created_at leer. Ohne updated_at traege die
+    Pflichtkopfzeile der Anzeige dort KEIN Datum."""
+    p = tmp_path / "translations.db"
+    _make_trans_db_pn(p)
+    tdb = TranslationsDb(_open_with_trdb(p))
+
+    pn = tdb.get_translation(44573, source="pms")
+    assert pn is not None
+    assert pn.created_at is None
+    assert pn.updated_at == "2026-07-14 02:47:37"
+
+    # Der gleichnamige Forenbeitrag bleibt davon unberuehrt.
+    post = tdb.get_translation(44573, source="posts")
+    assert post.translated_text == "Hola Kurzpost!"
+    assert post.created_at == "2026-07-05 23:39:38"

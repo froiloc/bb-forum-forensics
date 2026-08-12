@@ -137,9 +137,16 @@ class TranslateEndpoint:
             {
                 "post_id":         rec.post_id,
                 "found":           True,
+                "source":          source,
                 "translated_text": rec.translated_text,
                 "model_used":      rec.model_used,
                 "created_at":      rec.created_at,
+                # Build 703: Bei privaten Nachrichten ist created_at leer —
+                # der PM-Lauf setzt nur updated_at (Datenprobe Alex,
+                # 12.08.2026). Ohne dieses Feld traege die Pflichtkopfzeile
+                # der Anzeige dort kein Datum. Die Toolbar zeigt updated_at
+                # ausdruecklich als 'Stand' an und nicht als Erstellung.
+                "updated_at":      rec.updated_at,
             },
             ensure_ascii=False,
         ).encode("utf-8")
