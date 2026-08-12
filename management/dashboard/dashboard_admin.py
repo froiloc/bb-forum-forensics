@@ -16,7 +16,13 @@
 #          dashboard_repo.classify_ampel.
 #
 # Beleg: Bauplan B7 v0.9 Paragraph 9.5, mc 2026-07-02.
-# Version: v0.7.469 · Build: 469 · 2026-07-20
+#
+# BUILD 706 (Vorgang 70641ff9): Konnte eine Angabe des Erzeugungsvermerks
+#   nicht ermittelt werden, steht das seit Build 702 im erzeugten Dokument.
+#   Seit Build 706 wird es zusaetzlich auf der Fehlerausgabe benannt - wer
+#   den Lauf beobachtet, erfuhr es sonst erst beim Aufschlagen der Datei.
+#
+# Version: v0.8.706 · Build: 706 · 2026-08-12
 # =============================================================================
 
 import argparse
@@ -115,10 +121,18 @@ def _do_export_html(rows, out_path, con=None, db_path=None,
     if con is not None and db_path is not None:
         from management.export.context_builder import build_export_context
         from management.export.export_envelope import ExportEnvelope
+        from management.export.rahmen_meldung import melde_rahmen_befunde
         ctx = build_export_context(
             con=con, db_path=db_path, behoerde=behoerde,
             aktenzeichen=aktenzeichen or "Ampel-Dashboard (Fall-Uebersicht)",
             actor=actor, now_utc=generated)
+        # BUILD 706 (Vorgang 70641ff9): Konnte eine Angabe des
+        # Erzeugungsvermerks nicht ermittelt werden, steht das seit Build 702
+        # im Dokument - aber bis hierher nicht auf der Fehlerausgabe. Wer den
+        # Lauf beobachtet, erfuhr davon erst beim Aufschlagen der Datei.
+        # VOR dem Schreiben: faellt das Schreiben aus, ist die Auskunft
+        # bereits heraus.
+        melde_rahmen_befunde("[dashboard_admin]", ctx)
         envelope = ExportEnvelope(ctx)
 
     html = build_dashboard_html(overview, css, js, debug=False,

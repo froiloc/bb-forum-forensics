@@ -20,7 +20,13 @@
 #
 # coordinator.db wird AUSSCHLIESSLICH gelesen (Produktivbetrieb-Regel).
 #
-# Version: v0.7.469 · Build: 469 · 2026-07-20
+#
+# BUILD 706 (Vorgang 70641ff9): Konnte eine Angabe des Erzeugungsvermerks
+#   nicht ermittelt werden, steht das seit Build 702 im erzeugten Dokument.
+#   Seit Build 706 wird es zusaetzlich auf der Fehlerausgabe benannt - wer
+#   den Lauf beobachtet, erfuhr es sonst erst beim Aufschlagen der Datei.
+#
+# Version: v0.8.706 · Build: 706 · 2026-08-12
 # =============================================================================
 
 import argparse
@@ -158,10 +164,13 @@ def _do_export_html(con, rows, out_path, db_path=None,
     if db_path is not None:
         from management.export.context_builder import build_export_context
         from management.export.export_envelope import ExportEnvelope
+        from management.export.rahmen_meldung import melde_rahmen_befunde
         ctx = build_export_context(
             con=con, db_path=db_path, behoerde=behoerde,
             aktenzeichen=aktenzeichen or "Support-Sitzungs-Historie",
             actor=actor, now_utc=generated)
+        # BUILD 706 (Vorgang 70641ff9): siehe dashboard_admin.py.
+        melde_rahmen_befunde("[support_overview_admin]", ctx)
         envelope = ExportEnvelope(ctx)
 
     html = build_support_overview_html(records, css, js, debug=False,

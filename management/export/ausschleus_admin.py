@@ -21,7 +21,15 @@
 #          [--coordinator-db PATH] [--behoerde ..] [--aktenzeichen ..] [--actor ..]
 #   python -m management.export.ausschleus_admin verify --dir D
 #
-# Version: v0.7.443 · Build: 443 · 2026-07-19
+# BUILD 706 (Vorgang 70641ff9): 'finalize' OHNE --coordinator-db stempelte
+#   Buildnummer 0 und Ersteller 'unbekannt' in die UEBERGABE.txt - das
+#   Dokument, das mit dem Paket an die Staatsanwaltschaft geht - und sagte
+#   dazu nichts. Die Buildnummer wird jetzt auch ohne Datenbank richtig
+#   gefuellt; Identitaet und Belegkette stehen als Befund im Vermerk und auf
+#   der Fehlerausgabe. Die Angabe bleibt optional (Entscheidung Alex,
+#   12.08.2026), der Ausfall ist aber nicht mehr stumm.
+#
+# Version: v0.8.706 · Build: 706 · 2026-08-12
 # =============================================================================
 
 import argparse
@@ -32,7 +40,10 @@ from datetime import datetime, timezone
 from management.export.staging import (
     StagingArea, StagingError, UnbedenklichkeitError,
 )
-from management.export.export_envelope import ExportContext, DEFAULT_KLASSIFIKATION
+from management.export.export_envelope import DEFAULT_KLASSIFIKATION
+# Build 706 (Vorgang 70641ff9): der DB-lose Rahmen und seine Meldung.
+from management.export.context_builder import build_export_context_ohne_db
+from management.export.rahmen_meldung import melde_rahmen_befunde
 from management.help import cli_epilog  # noqa: E402
 
 
@@ -62,6 +73,7 @@ def _do_finalize(args) -> int:
     area = StagingArea(args.dir)
     generated = _now_utc()
     context = None
+    grund = "keine coordinator.db angegeben (--coordinator-db)"
     if args.coordinator_db:
         # Nur LESEND fuer die Ketten-Spitze; context_builder wirft nie.
         try:
@@ -76,18 +88,24 @@ def _do_finalize(args) -> int:
                     actor=args.actor, now_utc=generated)
             finally:
                 con.close()
-        except Exception as exc:  # pragma: no cover - Randfall
-            print("[ausschleus] coordinator.db nicht lesbar (%s) — "
-                  "Erzeugungsvermerk ohne Ketten-Spitze." % exc, file=sys.stderr)
+        except Exception as exc:  # Randfall: Pfad falsch, Datei kaputt
+            grund = "coordinator.db nicht lesbar: %s" % exc
     if context is None:
-        context = ExportContext(
-            behoerde=args.behoerde or "Polizei NRW",
+        context = build_export_context_ohne_db(
+            grund=grund,
+            behoerde=args.behoerde,
             aktenzeichen=args.aktenzeichen or "StA-Uebergabe",
-            ersteller=args.actor or "unbekannt",
-            build_number=0,
-            generated_at=generated,
-            klassifikation=DEFAULT_KLASSIFIKATION,
-        )
+            actor=args.actor, now_utc=generated,
+            klassifikation=DEFAULT_KLASSIFIKATION)
+
+    # BUILD 706 (Vorgang 70641ff9) — HIER WIEGT ES AM SCHWERSTEN.
+    # Der Erzeugungsvermerk dieses Laufs wird in UEBERGABE.txt gestempelt und
+    # geht mit dem Paket an die Staatsanwaltschaft. Bis Build 702 trug er ohne
+    # '--coordinator-db' Buildnummer 0 und Ersteller 'unbekannt', und der Lauf
+    # sagte dazu nichts (gemessen am 12.08.2026). Die Meldung steht VOR
+    # area.finalize(): faellt das Schreiben aus, ist die Auskunft schon heraus.
+    melde_rahmen_befunde("[ausschleus]", context)
+
     area.finalize(context)
     n = len(area.load()["artifacts"])
     print("[ausschleus] finalisiert: %d Artefakt(e), UEBERGABE.txt + manifest.json"

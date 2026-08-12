@@ -17,7 +17,14 @@
 #   python -m management.stats.glossary_admin export-html --out glossar.html \
 #          [--coordinator-db PATH] [--behoerde ..] [--aktenzeichen ..] [--actor ..]
 #
-# Version: v0.7.444 · Build: 444 · 2026-07-19
+# BUILD 706 (Vorgang 70641ff9): 'export-html' OHNE --coordinator-db erzeugte
+#   ein Dokument mit Buildnummer 0 und Ersteller 'unbekannt', ohne Meldung -
+#   und zwar auf dem Regelweg, nicht im Fehlerfall. Die Buildnummer wird jetzt
+#   auch ohne Datenbank richtig gefuellt; was ohne sie nicht zu ermitteln ist
+#   (Identitaet, Belegkette), steht als Befund im Vermerk und auf der
+#   Fehlerausgabe. Naeheres bei _do_export_html().
+#
+# Version: v0.8.706 · Build: 706 · 2026-08-12
 # =============================================================================
 
 import argparse
@@ -27,7 +34,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from management.stats.glossary import KpiGlossary, GlossaryIncompleteError
-from management.export.export_envelope import ExportContext, DEFAULT_KLASSIFIKATION
+from management.export.export_envelope import DEFAULT_KLASSIFIKATION
+# Build 706 (Vorgang 70641ff9): der DB-lose Rahmen und seine Meldung.
+from management.export.context_builder import build_export_context_ohne_db
+from management.export.rahmen_meldung import melde_rahmen_befunde
 from management.help import cli_epilog  # noqa: E402
 
 
@@ -59,9 +69,31 @@ def _do_check(args) -> int:
 
 
 def _do_export_html(args) -> int:
+    """
+    BUILD 706 (Vorgang 70641ff9) — DER ERSATZRAHMEN STAND HIER AM REGELWEG.
+
+    '--coordinator-db' ist bei diesem Befehl OPTIONAL. Ohne die Angabe wurde
+    bis Build 702 ein von Hand gebauter Ersatzkontext benutzt: Buildnummer 0,
+    Ersteller 'unbekannt', kein Wort dazu. Gemessen am 12.08.2026:
+    'glossary_admin export-html --out x.html' - der dokumentierte Regelweg,
+    Rueckgabewert 0 - erzeugte ein Dokument mit 'Werkzeug-Build: 0'.
+
+    Das ist derselbe Befund wie in Vorgang ff7e80ab, nur schwerer: dort lag er
+    am Fehlerweg, hier am gewoehnlichen. Und die Buildnummer war die ganze
+    Zeit da - sie steht in build.json und braucht keine Datenbank.
+
+    DREI LAGEN, EIN WEG: Datenbank angegeben und lesbar -> voller Rahmen;
+    angegeben und nicht lesbar -> DB-loser Rahmen MIT dem Fehlertext als
+    Grund; nicht angegeben -> DB-loser Rahmen mit eben diesem Grund. In allen
+    dreien meldet melde_rahmen_befunde, was fehlt. Die frueheren
+    Einzelmeldungen dieses Werkzeugs entfallen dafuer: derselbe Sachverhalt
+    soll nicht an zwei Stellen verschieden klingen (Kopf von
+    rahmen_meldung.py).
+    """
     g = KpiGlossary()
     generated = _now_utc()
     context = None
+    grund = "keine coordinator.db angegeben (--coordinator-db)"
     if args.coordinator_db:
         try:
             con = sqlite3.connect(
@@ -75,16 +107,20 @@ def _do_export_html(args) -> int:
                     actor=args.actor, now_utc=generated)
             finally:
                 con.close()
-        except Exception as exc:  # pragma: no cover - Randfall
-            print("[glossary] coordinator.db nicht lesbar (%s) — Rahmen ohne "
-                  "Ketten-Spitze." % exc, file=sys.stderr)
+        except Exception as exc:  # Randfall: Pfad falsch, Datei kaputt
+            grund = "coordinator.db nicht lesbar: %s" % exc
     if context is None:
-        context = ExportContext(
-            behoerde=args.behoerde or "Polizei NRW",
+        context = build_export_context_ohne_db(
+            grund=grund,
+            behoerde=args.behoerde,
             aktenzeichen=args.aktenzeichen or "Kennzahlen-Glossar",
-            ersteller=args.actor or "unbekannt",
-            build_number=0, generated_at=generated,
+            actor=args.actor, now_utc=generated,
             klassifikation=DEFAULT_KLASSIFIKATION)
+
+    # Vor dem Schreiben der Datei — faellt das Schreiben aus, ist die Auskunft
+    # ueber den Rahmen bereits heraus.
+    melde_rahmen_befunde("[glossary]", context)
+
     Path(args.out).write_text(g.to_html(context), encoding="utf-8")
     print("[glossary] %d Definition(en) -> %s (self-contained)"
           % (len(g.all()), args.out))
