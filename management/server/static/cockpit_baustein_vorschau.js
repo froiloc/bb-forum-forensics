@@ -111,17 +111,79 @@
         return fehlt;
     }
 
-    // werkzeuge: die Standardwerkzeuge des Buendels. Ausdruecklich OHNE die
-    // berichtseigenen (evidence, annotation, placeholder-InlineTool): die sind
-    // in report_editor.js definiert und gehoeren nicht in die Management-
-    // Oberflaeche. Ein Baustein enthaelt sie auch nicht.
-    function werkzeuge(w) {
-        var T = (w || window).EditorTools || {};
+    // werkzeuge: die Werkzeugliste des Buendels, in ZWEI Umfaengen.
+    // -------------------------------------------------------------------------
+    // Build 705: Der zweite Umfang ist noetig, weil Bausteine und
+    // Dokumentvorlagen NICHT dieselben Blockarten fuehren duerfen:
+    //
+    //   'baustein' (Vorgabe)  sechs Arten. Das ist keine Gestaltungsfrage,
+    //                         sondern ein SQL-CHECK: templates.db.schema.sql
+    //                         zwingt report_modules.block_type auf
+    //                         paragraph|header|list|table|quote|delimiter.
+    //                         Wuerde die Eingabe eine siebte Art anbieten,
+    //                         liesse sich der Baustein anlegen und NICHT
+    //                         speichern - der Fehler kaeme aus der Datenbank,
+    //                         lange nach der Eingabe. Der Schema-Kommentar
+    //                         (Zeile 16-21) sagt dazu ausdruecklich, dass
+    //                         SQLite diesen CHECK nicht aendern kann.
+    //
+    //   'vorlage'             neun Arten (report_render/report_source.py:59-62,
+    //                         KNOWN_BLOCK_TYPES). report_templates.blocks_json
+    //                         hat keinen CHECK; geprueft wird anwendungsseitig.
+    //
+    // EINE FUNKTION, ZWEI UMFAENGE - und nicht zwei Funktionen: Build 656 hat
+    // die Werkzeugliste bewusst an EINER Stelle zusammengefuehrt ("eine zweite
+    // Liste waere eine zweite Wahrheit"). Diese Begruendung gilt weiter; was
+    // dazukommt, ist nur der Umfang.
+    //
+    // ── ZUM NAMEN 'marker': EIN SCHLUESSEL, ZWEI BEDEUTUNGEN ──────────────
+    //
+    // 'marker' ist im Buendel ein INLINE-Werkzeug (Textstelle hervorheben) und
+    // steht zugleich in KNOWN_BLOCK_TYPES als Blockart. Editor.js kennt je
+    // Namen nur EIN Werkzeug - beides zugleich geht nicht.
+    //
+    // GEMESSEN am 12.08.2026 (Editor.js 2.31.6), beide Wege:
+    //   MIT Inline-Marker   <mark> im Absatztext ueberlebt save().
+    //                       Ein BLOCK vom Typ 'marker' behaelt seine Daten,
+    //                       wird aber mit dem eingebauten Ersatz angezeigt.
+    //   OHNE Inline-Marker  <mark> wird beim save() ENTFERNT - aus
+    //                       "Ein Absatz mit <mark>Hervorhebung</mark> darin."
+    //                       wird "Ein Absatz mit Hervorhebung darin."
+    //
+    // Der Name bleibt deshalb beim Inline-Werkzeug: die Hervorhebung im
+    // Fliesstext ist der haeufige Fall und ihr Verlust waere ein echter, ein
+    // marker-BLOCK ist der seltene und verliert nichts. Der Renderer sieht das
+    // genauso - editor/html_renderer.py:189-203 nennt ihn "Inline-Tool" und
+    // behandelt den eigenstaendigen Block als "falls doch".
+    //
+    // ACHTUNG BEI KUENFTIGEN AENDERUNGEN: 'marker' aus dieser Liste zu
+    // nehmen, kostet lautlos jede Hervorhebung im Bestand. VW07 schlaegt
+    // darauf an.
+    // -------------------------------------------------------------------------
+    function werkzeuge(w, umfang) {
+        var win = w || window;
+        var T = win.EditorTools || {};
         var alle = {
             header: T.Header, paragraph: T.Paragraph, list: T.NestedList,
             table: T.Table, quote: T.Quote, delimiter: T.Delimiter,
             marker: T.Marker
         };
+
+        if (umfang === 'vorlage') {
+            // 'image' liegt als SimpleImage im Buendel und war bisher nur
+            // nicht eingetragen (build_editor_bundle.py:81-86).
+            alle.image = T.SimpleImage;
+
+            // 'evidence' hat im Buendel gar kein Werkzeug - der EvidenceBlock
+            // ist ermittlerseitig (userinfo/report_editor.js:1314) und haengt
+            // an Falldaten, die es hier nicht gibt. Statt des englischen
+            // Ersatzes von Editor.js kommt der benannte deutsche Platzhalter.
+            var UB = win.AIWUnbekannterBlock;
+            if (UB && UB.UnbekannterBlock) {
+                alle.evidence = UB.UnbekannterBlock;
+            }
+        }
+
         var raus = {};
         Object.keys(alle).forEach(function (k) {
             // Nur eintragen, was das Buendel wirklich mitbringt — ein

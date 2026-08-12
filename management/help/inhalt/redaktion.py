@@ -345,11 +345,41 @@ DOCTEMPLATES = Sichthilfe(
             ),
         ),
         Abschnitt(
+            "ansehen", "Die Vorlage ansehen",
+            (
+                "Unter den Blockzeilen steht die Vorschau. Sie zeigt die "
+                "Vorlage als GANZES und läuft beim Bearbeiten mit. Bis dahin "
+                "stand je Block ein Feld mit strukturierten Angaben — wer "
+                "wissen wollte, ob Reihenfolge und Aufbau tragen, musste sie "
+                "im Kopf zusammensetzen.",
+                "SIE IST SCHREIBGESCHÜTZT und hängt an keinem Speicherweg. "
+                "Geändert wird oben in den Blockzeilen; fällt die Vorschau "
+                "aus, lässt sich unverändert weiterarbeiten.",
+                "NICHT JEDE BLOCKART LÄSST SICH DARSTELLEN. Für Belegblöcke "
+                "gibt es in dieser Oberfläche kein Anzeigewerkzeug — sie "
+                "gehören zur Ermittlerseite und hängen an Falldaten, die es "
+                "hier nicht gibt. An ihrer Stelle steht ein grau umrandeter "
+                "Platzhalter, der die Blockart NENNT. Über der Vorschau "
+                "stehen zusätzlich Nummer und Art aller betroffenen Blöcke.",
+                "DER PLATZHALTER IST KEIN SCHADEN. Der Inhalt eines solchen "
+                "Blocks ist vollständig vorhanden, wird mitgespeichert und "
+                "erscheint im geschriebenen Vermerk. Es fehlt allein die "
+                "Anzeige an dieser Stelle. Ändern lässt sich ein solcher "
+                "Block im Feld seiner Blockzeile.",
+                "Ist ein Feld einer Blockzeile gerade unvollständig, zeigt "
+                "die Vorschau dort einen leeren Block und die Meldezeile "
+                "nennt die Blocknummer. Am gespeicherten Stand ändert das "
+                "nichts.",
+            ),
+        ),
+        Abschnitt(
             "grenzen", "Grenzen und Zusicherungen",
             (
                 "Eine Änderung an einer Vorlage wirkt NUR AUF KÜNFTIGE "
                 "Vermerke. Bereits geschriebene bleiben, wie sie sind — sonst "
                 "änderte sich rückwirkend, was jemand unterschrieben hat.",
+                "Die Vorschau ist schreibgeschützt und ändert nichts. Was sie "
+                "nicht darstellen kann, ist deshalb trotzdem gespeichert.",
                 "Platzhalter werden hier NICHT aufgelöst. Sie stehen in der "
                 "Vorlage als Platzhalter und werden erst beim Schreiben "
                 "eingesetzt.",
@@ -440,6 +470,18 @@ DOCTEMPLATES = Sichthilfe(
             "doctemplates.bedienung.block_hinzufuegen", "Block hinzufügen",
             "Hängt einen weiteren Block an das Ende der Vorlage. Verschieben "
             "lässt er sich anschließend mit den Pfeilen in seiner Zeile."),
+        # Build 705 (Ticket b47ce019, Schritt 3 Teil 1).
+        Kontexthilfe(
+            "doctemplates.bedienung.vorschau", "Vorschau (schreibgeschützt)",
+            "Zeigt die Vorlage als GANZES — so, wie der daraus geschriebene "
+            "Vermerk später aussieht. Sie läuft beim Bearbeiten mit und lässt "
+            "sich nicht beschreiben; geändert wird oben in den Blockzeilen. "
+            "UNTERSCHIED ZUR STRUKTURVORSCHAU: Diese hier zeigt das Aussehen, "
+            "jene prüft die Zusammenstellung. Kann eine Blockart hier nicht "
+            "dargestellt werden, steht das darüber — mit Nummer und Art des "
+            "Blocks. Der Inhalt ist dann trotzdem vollständig vorhanden und "
+            "wird gespeichert; es fehlt allein die Anzeige.",
+            verweis="doctemplates#vorschau"),
         Kontexthilfe(
             "doctemplates.bedienung.strukturvorschau", "Strukturvorschau",
             "Prüft die Zusammenstellung: welche Blockarten in welcher Zahl "

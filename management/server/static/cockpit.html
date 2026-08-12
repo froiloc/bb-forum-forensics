@@ -206,6 +206,16 @@
 <script src="/static/shared/editor.bundle.js" defer></script>
 <script src="/static/shared/placeholder_chips.js" defer></script>
 <script src="/static/cockpit_baustein_vorschau.js" defer></script>
+<!-- Build 705 (Ticket b47ce019, Schritt 3 Teil 1): Ersatzwerkzeug fuer
+     Blockarten ohne echtes Werkzeug (evidence) und die schreibgeschuetzte
+     Vorschau einer ganzen Dokumentvorlage.
+     REIHENFOLGE IST HIER NICHT GLEICHGUELTIG: cockpit_unbekannter_block.js
+     steht VOR cockpit_baustein_vorschau.js in der Wirkung - werkzeuge()
+     sucht window.AIWUnbekannterBlock erst BEIM AUFRUF, nicht beim Laden,
+     deshalb genuegt es, dass beide vor dem ersten Rendern da sind. Alle
+     Skripte tragen 'defer' und laufen in Dokumentreihenfolge. -->
+<script src="/static/cockpit_unbekannter_block.js" defer></script>
+<script src="/static/cockpit_vorlage_vorschau.js" defer></script>
 <!-- Build 654 (Ticket 4b032177): Platzhalter-Tabelle der Baustein-Module.
      STEHT VOR cockpit_modules.js, das sie beim Rendern ueber
      window.AIWBausteinPlatzhalter sucht. Sie braucht ausserdem

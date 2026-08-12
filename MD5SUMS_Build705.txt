@@ -1,0 +1,14 @@
+d699f4c299698e1150c808e6ab6f9531  build.json
+e35703c483b39411c815669b37e21f19  issue-tracker/data/issues.json
+d9c837e54c5e973c9ef5c0351ef7a43e  issue-tracker/eintraege_claude_Build705.json
+8de66b375b38464c988d04392dee505a  management/help/inhalt/redaktion.py
+84cfc324b82501acfdd02bfa3e8d2c09  management/server/static/cockpit.css
+b9693bf24a84f2ff13ded1429380abcb  management/server/static/cockpit.html
+daaf550f03fb42453c9bd031c5d77ad3  management/server/static/cockpit_baustein_eingabe.js
+ad978ae543a8ba921c42b9e5990590d7  management/server/static/cockpit_baustein_vorschau.js
+57b5c3c2fa4451365282a523dfdf1754  management/server/static/cockpit_doctemplates.js
+5ca37b726c8f7ac43590bb80870ad300  management/server/static/cockpit_unbekannter_block.js
+78a2653ca1eb10f940f228393464705d  management/server/static/cockpit_vorlage_vorschau.js
+29db7f61900f805bfe6f392906a083e1  tests/unit/test_cockpit_baustein_vorschau.test.js
+3b75c9e8b1c252c4b86a13dd4c1b45f7  tests/unit/test_cockpit_unbekannter_block.test.js
+ead99e9c6853029325f89d360a86495c  tests/unit/test_cockpit_vorlage_vorschau.test.js

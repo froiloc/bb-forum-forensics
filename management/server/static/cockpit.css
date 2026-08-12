@@ -825,6 +825,41 @@ td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
 }
 .aiw-dtpl-bbtn:hover { border-color: var(--muted); }
 
+/* Build 705 (Ticket b47ce019, Schritt 3 Teil 1): Vorschau der ganzen Vorlage.
+ *
+ * Sie ist SCHREIBGESCHUETZT, und das soll man ihr ansehen, bevor man
+ * hineinklickt - derselbe Grund und dieselbe Fuellfarbe wie beim
+ * Klartextspiegel der Bausteinsicht (.aiw-mod-bodytext[readonly]). */
+.aiw-dtpl-vorschau-titel {
+  font-size: 12px; text-transform: uppercase; letter-spacing: .04em;
+  color: #5a6b75; margin: 14px 0 4px; padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.aiw-dtpl-vorschau {
+  border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;
+  background: #f4f6f7;
+}
+.aiw-dtpl-vorschau.ist-warnung { color: #b5730c; font-style: italic; }
+.aiw-dtpl-vorschau-rumpf { background: #fff; border-radius: 4px; }
+.aiw-dtpl-vorschau-rumpf .codex-editor__redactor { padding-bottom: 0 !important; }
+.aiw-dtpl-vorschau-rumpf .ce-block:first-child { margin-top: 0; }
+.aiw-dtpl-vorschau-meldung { margin: 0 0 6px; font-size: 12px; color: var(--muted); }
+.aiw-dtpl-vorschau-meldung:empty { display: none; }
+.aiw-dtpl-vorschau-meldung.ist-warnung { color: #8a5a00; }
+/* 'hinweis' und nicht 'warnung': ein nicht darstellbarer Block ist kein
+ * Fehler und kein Verlust - er ist eine Eigenschaft der Blockart. Rot oder
+ * Orange wuerde genau die Sorge auesloesen, die der Satz ausraeumen soll. */
+.aiw-dtpl-vorschau-meldung.ist-hinweis { color: #5a6b75; }
+
+/* Der Ersatzblock (cockpit_unbekannter_block.js). Bewusst ZURUECKHALTEND:
+ * gestrichelt und grau, nicht rot. Er meldet keinen Schaden, er sagt nur,
+ * dass hier nichts zu sehen ist. */
+.aiw-unbekannter-block {
+  border: 1px dashed var(--line); border-radius: 4px;
+  padding: 6px 8px; margin: 4px 0;
+  font-size: 12px; font-style: italic; color: #5a6b75; background: #f8fafb;
+}
+
 .aiw-dtpl-actions { display: flex; gap: 10px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
 .aiw-dtpl-msg { font-size: 12px; }
 .aiw-dtpl-msg.is-ok  { color: var(--gruen); }

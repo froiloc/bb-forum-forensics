@@ -14,6 +14,10 @@
  * BV04 — fehlendeTeile NENNT die fehlende Datei, statt nur "geht nicht".
  * BV05 — werkzeuge() trägt nur ein, was das Bündel wirklich mitbringt; ein
  *        undefiniertes Werkzeug ließe Editor.js beim Start scheitern.
+ * BV05b — (Build 705) zwei Umfänge: 'baustein' (sechs Arten, SQL-CHECK) und
+ *        'vorlage' (neun). Ohne Angabe gilt der kleine.
+ * BV07m — (Build 705) WÄCHTER: 'marker' bleibt registriert. Ohne das
+ *        Inline-Werkzeug wird <mark> aus jedem Absatztext entfernt.
  * BV06 — fehlt ein Teil, sagt die Fläche das und baut KEINEN Editor.
  * BV07 — die Vorschau baut den Editor auf und übergibt readOnly:true.
  * BV08 — unveränderter Inhalt baut NICHT neu auf (kein Flackern beim Tippen).
@@ -126,6 +130,72 @@ describe("Bausteinvorschau (Build 577)", () => {
     // deshalb steht es gar nicht in der Konfiguration.
     expect(t.header).toBeUndefined();
     expect(api.werkzeuge({})).toEqual({});
+  });
+
+  // BV05b -------------------------------------------------------------------
+  //
+  // BUILD 705: werkzeuge() kennt seither ZWEI Umfaenge. Der Unterschied ist
+  // keine Gestaltungsfrage, sondern ein SQL-CHECK: report_modules.block_type
+  // ist in templates.db auf sechs Arten festgelegt, report_templates hat
+  // keinen solchen CHECK und fuehrt neun (report_source.py KNOWN_BLOCK_TYPES).
+  // Wuerde die Bausteineingabe eine siebte Art anbieten, liesse sich der
+  // Baustein anlegen und NICHT speichern - der Fehler kaeme aus der Datenbank,
+  // lange nach der Eingabe.
+  it("BV05b: 'vorlage' traegt mehr Werkzeuge als 'baustein'", () => {
+    const { api } = _api();
+    const F = function () {};
+    const w = {
+      EditorTools: {
+        Header: F, Paragraph: F, NestedList: F, Table: F, Quote: F,
+        Delimiter: F, Marker: F, SimpleImage: F,
+      },
+      AIWUnbekannterBlock: { UnbekannterBlock: F },
+    };
+
+    // Vorgabe ist der KLEINE Umfang - ein vergessenes Argument darf nicht
+    // versehentlich die neun Arten freischalten.
+    expect(Object.keys(api.werkzeuge(w)).sort())
+      .toEqual(["delimiter", "header", "list", "marker", "paragraph",
+                "quote", "table"]);
+    expect(Object.keys(api.werkzeuge(w, "baustein")).sort())
+      .toEqual(Object.keys(api.werkzeuge(w)).sort());
+
+    // 'image' liegt als SimpleImage im Buendel und war bisher nur nicht
+    // eingetragen; 'evidence' hat gar keines und bekommt das Ersatzwerkzeug.
+    const v = api.werkzeuge(w, "vorlage");
+    expect(v.image.class).toBe(w.EditorTools.SimpleImage);
+    expect(v.evidence.class).toBe(w.AIWUnbekannterBlock.UnbekannterBlock);
+
+    // Fehlt das Ersatzwerkzeug (Datei nicht geladen), wird 'evidence' NICHT
+    // eingetragen - ein undefiniertes Werkzeug liesse Editor.js scheitern,
+    // und dann saehe der Redakteur gar nichts statt eines Platzhalters.
+    const ohne = api.werkzeuge({ EditorTools: w.EditorTools }, "vorlage");
+    expect(ohne.evidence).toBeUndefined();
+    expect(ohne.image).toBeDefined();
+  });
+
+  // BV07m -------------------------------------------------------------------
+  //
+  // EIN WAECHTER, KEINE BESCHREIBUNG. 'marker' steht in beiden Umfaengen und
+  // sieht wie ein Kandidat zum Aufraeumen aus - es ist im Buendel ein
+  // INLINE-Werkzeug, und KNOWN_BLOCK_TYPES fuehrt 'marker' zugleich als
+  // Blockart, die hier ohnehin auf den Ersatz faellt.
+  //
+  // GEMESSEN am 12.08.2026 (Editor.js 2.31.6), beide Wege:
+  //   MIT Inline-Marker   <mark> im Absatztext ueberlebt save().
+  //   OHNE Inline-Marker  <mark> wird beim save() ENTFERNT - aus
+  //                       "Ein Absatz mit <mark>Hervorhebung</mark> darin."
+  //                       wird "Ein Absatz mit Hervorhebung darin."
+  //
+  // Wer 'marker' aus der Liste nimmt, kostet also lautlos jede Hervorhebung
+  // im Bestand. Dieser Fall haelt das fest, damit die Messung nicht noch
+  // einmal gemacht werden muss.
+  it("BV07m: 'marker' bleibt in BEIDEN Umfaengen registriert", () => {
+    const { api } = _api();
+    const F = function () {};
+    const w = { EditorTools: { Paragraph: F, Marker: F, SimpleImage: F } };
+    expect(api.werkzeuge(w, "baustein").marker).toBeDefined();
+    expect(api.werkzeuge(w, "vorlage").marker).toBeDefined();
   });
 
   // BV06 --------------------------------------------------------------------
