@@ -43,7 +43,17 @@
 #   Unterbefehl gemeint ist. Das ist die Hilfe-Anpassung zu dieser Aenderung
 #   (Gebot 'keine Aenderung ohne Anpassung in der Hilfe').
 #
-# Version: v0.8.696 - Build: 696 - 2026-08-11
+#
+# BUILD 702/706 (Vorgaenge ff7e80ab und 70641ff9) - DER ERZEUGUNGSVERMERK.
+#   Die Warnungen zu 'forecast_report_admin' und 'status_report_admin' standen
+#   seit Build 613 als NOTLOESUNG hier ("eine Hilfe ersetzt keine Meldung zur
+#   Laufzeit"); sie beschreiben seit Build 702 das Verfahren.
+#   Bei 'glossary_admin' kam in Build 706 ein eigener Befund dazu: der Text
+#   sicherte eine Meldung auf der Fehlerausgabe zu, die es NICHT gab. Eine
+#   Hilfe, die eine Meldung verspricht, ist schlimmer als gar keine - sie
+#   laesst den Leser darauf vertrauen, dass er es merken wuerde.
+#
+# Version: v0.8.706 - Build: 706 - 2026-08-12
 # =============================================================================
 
 from __future__ import annotations
@@ -521,6 +531,11 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "'export-html' liest zusaetzlich zwei Dateien aus dem Oberflaechenverzeichnis. Fehlen sie, bricht der Aufruf mit einem rohen Programmabbruch ab.",
                 "Die Schwellen kommen aus der Konfiguration (Vorgabe 7 und 21 Tage) - dieselbe Datenbank ergibt mit einer anderen Konfiguration eine andere Ampelverteilung.",
                 "Der Dateikopf nennt das Werkzeug nur-lesend; die Verbindung ist trotzdem schreibfaehig. Geschrieben wird nichts.",
+                # Build 706 (Vorgang 70641ff9): die Kennzeichnung im
+                # Dokument gibt es seit Build 702, die Meldung zur
+                # Laufzeit erst seit 706.
+                "KANN EINE ANGABE DES ERZEUGUNGSVERMERKS NICHT ERMITTELT WERDEN, steht sie seit Build 702 als 'nicht ermittelbar' im Dokument und wird seit Build 706 zusaetzlich auf der Fehlerausgabe benannt. Der Rueckgabewert bleibt 0.",
+                "OHNE '--actor' WIRD DER ANGEMELDETE OS-BENUTZER GENOMMEN. Ist der keinem person-Datensatz zugeordnet, traegt die Ausgabe einen ungeprueften Erstellernamen; das Werkzeug meldet es. Im Stapelbetrieb ist '--actor' anzugeben.",
             ),
         ),
     ),
@@ -1009,6 +1024,11 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "Die Datenquelle ist das PROTOKOLLBUCH - die Historie wird daraus rekonstruiert. Was dort nicht steht, gibt es hier nicht.",
                 "'--out' ueberschreibt eine vorhandene Datei wortlos.",
                 "Der Dateikopf sichert zu, die coordinator.db werde AUSSCHLIESSLICH gelesen - die Verbindung wird trotzdem schreibfaehig geoeffnet. Vorgang eroeffnet (Issue 906ede75).",
+                # Build 706 (Vorgang 70641ff9): die Kennzeichnung im
+                # Dokument gibt es seit Build 702, die Meldung zur
+                # Laufzeit erst seit 706.
+                "KANN EINE ANGABE DES ERZEUGUNGSVERMERKS NICHT ERMITTELT WERDEN, steht sie seit Build 702 als 'nicht ermittelbar' im Dokument und wird seit Build 706 zusaetzlich auf der Fehlerausgabe benannt. Der Rueckgabewert bleibt 0.",
+                "OHNE '--actor' WIRD DER ANGEMELDETE OS-BENUTZER GENOMMEN. Ist der keinem person-Datensatz zugeordnet, traegt die Ausgabe einen ungeprueften Erstellernamen; das Werkzeug meldet es. Im Stapelbetrieb ist '--actor' anzugeben.",
             ),
         ),
     ),
@@ -1071,6 +1091,11 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "DIE AMPELSCHWELLEN KOMMEN AUS DER KONFIGURATION (Vorgabe 7 und 21 Tage). DIESELBE DATENBANK LIEFERT MIT EINER ANDEREN KONFIGURATION ANDERE AMPELZAHLEN. Wer zwei Ausgaben vergleicht, muss dieselbe Konfiguration benutzt haben.",
                 "Die Zeile fuer den Rueckstau (Faelle ohne Zuweisung) ist eine Sammelzeile ohne Rollen und ohne Aktionen - sie steht fuer niemanden.",
                 "Der Dateikopf sichert nur-lesenden Zugriff zu; die Verbindung ist trotzdem schreibfaehig. Vorgang eroeffnet (Issue 906ede75).",
+                # Build 706 (Vorgang 70641ff9): die Kennzeichnung im
+                # Dokument gibt es seit Build 702, die Meldung zur
+                # Laufzeit erst seit 706.
+                "KANN EINE ANGABE DES ERZEUGUNGSVERMERKS NICHT ERMITTELT WERDEN, steht sie seit Build 702 als 'nicht ermittelbar' im Dokument und wird seit Build 706 zusaetzlich auf der Fehlerausgabe benannt. Der Rueckgabewert bleibt 0.",
+                "OHNE '--actor' WIRD DER ANGEMELDETE OS-BENUTZER GENOMMEN. Ist der keinem person-Datensatz zugeordnet, traegt die Ausgabe einen ungeprueften Erstellernamen; das Werkzeug meldet es. Im Stapelbetrieb ist '--actor' anzugeben.",
             ),
         ),
     ),
@@ -1399,10 +1424,25 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "'list' und 'check' oeffnen GAR KEINE Datenbank - sie pruefen "
                 "den Bestand statisch. Sie sind damit in jedem "
                 "Betriebszustand aufrufbar.",
+                # BUILD 706 (Vorgang 70641ff9) - DIESER TEXT WAR FALSCH, UND
+                # ZWAR IN DER ENTSCHEIDENDEN HAELFTE. Er sagte, der Ausfall
+                # stehe "auf der Fehlerausgabe". Gemessen am 12.08.2026 stand
+                # dort NICHTS; ausserdem fehlte nicht nur die Kettenspitze,
+                # sondern auch die Buildnummer (0) und der Ersteller
+                # ('unbekannt'). Eine Hilfe, die eine Meldung zusichert, die es
+                # nicht gibt, ist schlimmer als gar keine: sie laesst den
+                # Leser darauf vertrauen, dass er es merken wuerde.
                 "'export-html' liest die coordinator.db nur, wenn "
-                "--coordinator-db gesetzt ist. Ohne die Angabe entsteht die "
-                "Datei OHNE Kettenspitze; das steht dann auf der "
-                "Fehlerausgabe, aendert den Rueckgabewert aber nicht.",
+                "--coordinator-db gesetzt ist. OHNE die Angabe fehlen dem "
+                "Erzeugungsvermerk die Kettenspitze UND die Identitaet der "
+                "erzeugenden Person; beides steht seit Build 706 als Befund "
+                "im Dokument und auf der Fehlerausgabe. Der Rueckgabewert "
+                "bleibt 0.",
+                "DIE BUILDNUMMER IST DAVON NICHT MEHR BETROFFEN. Bis Build "
+                "702 trug die Datei ohne --coordinator-db 'Werkzeug-Build: "
+                "0', obwohl die Nummer in build.json steht und keine "
+                "Datenbank braucht. Seit Build 706 ist sie in jedem Fall "
+                "richtig.",
             ),
         ),
     ),
@@ -1672,7 +1712,14 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "BEHOBEN IN BUILD 647 (Vorgang d30b3d95), hier festgehalten, weil aeltere Staende im Umlauf sind: Bis Build 646 meldete 'verify' auf einem Verzeichnis OHNE Manifest 'OK' mit Rueckgabewert 0 - ein Leerbefund wurde als Erfolgsmeldung ausgegeben. Seit Build 647 liefert dieser Fall den Rueckgabewert 2 und die Meldung 'KEIN PAKET'. WER EINEN AELTEREN STAND BEDIENT, sieht vor einer Ausschleusung zusaetzlich nach, ob ueberhaupt ein manifest.json da ist.",
                 "'--unbedenklich' ist ein ausdruecklicher Freigabeschalter. Ohne ihn wird nichts aufgenommen, und eine leere Angabe bei '--cleared-by' wird ebenfalls abgewiesen - die Unbedenklichkeit braucht einen Namen.",
                 "KEIN STILLES UEBERSCHREIBEN: ein bereits vorhandener Dateiname fuehrt zum Abbruch.",
-                "Nur 'finalize' liest die coordinator.db, und zwar ausdruecklich nur lesend. Ist sie nicht erreichbar, entsteht das Paket trotzdem - dann ohne Kettenspitze im Erzeugungsvermerk.",
+                # BUILD 706 (Vorgang 70641ff9): Der Satz nannte nur die
+                # Kettenspitze. Tatsaechlich trug die UEBERGABE.txt ohne
+                # --coordinator-db auch Buildnummer 0 und Ersteller
+                # 'unbekannt', und der Lauf sagte dazu nichts (gemessen am
+                # 12.08.2026). Bei dem Dokument, das mit dem Paket an die
+                # Staatsanwaltschaft geht, ist das keine Kleinigkeit.
+                "Nur 'finalize' liest die coordinator.db, und zwar ausdruecklich nur lesend. Ist sie nicht angegeben oder nicht erreichbar, entsteht das Paket trotzdem - dem Erzeugungsvermerk der UEBERGABE.txt fehlen dann die Kettenspitze und die Identitaet der erzeugenden Person. Seit Build 706 steht beides als Befund im Dokument UND auf der Fehlerausgabe, mit dem Grund; der Rueckgabewert bleibt 0.",
+                "DIE UEBERGABE.TXT GEHT AUS DEM HAUS. Wer sie ohne '--coordinator-db' und ohne '--actor' erzeugt, uebergibt ein Abgabedokument, dessen Erzeugungsvermerk niemanden benennt. Die Angaben sind nicht verpflichtend (Entscheidung Alex, 12.08.2026) - der Lauf sagt seit Build 706 aber, was fehlt.",
             ),
         ),
     ),

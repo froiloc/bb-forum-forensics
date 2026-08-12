@@ -41,7 +41,14 @@
 #   nie (RF06 haelt das fest). Ein Export darf nicht am Rahmen scheitern —
 #   er soll nur nicht mehr so tun, als sei nichts gewesen.
 #
-# Version: v0.8.702 · Build: 702 · 2026-08-12
+# BUILD 706 (Vorgang 70641ff9) — EIN RAHMEN AUCH OHNE DATENBANK:
+#   build_export_context_ohne_db() bedient die Werkzeuge, bei denen
+#   '--coordinator-db' optional ist (glossary_admin export-html,
+#   ausschleus_admin finalize). Sie bauten sich diesen Fall bisher von Hand
+#   zusammen — mit Buildnummer 0, obwohl die Buildnummer in build.json steht
+#   und gar keine Datenbank braucht. Naeheres im Kopf jener Funktion.
+#
+# Version: v0.8.706 · Build: 706 · 2026-08-12
 # =============================================================================
 
 from __future__ import annotations
@@ -167,5 +174,73 @@ def build_export_context(
         chain_tip_hash=tip_hash,
         klassifikation=klassifikation or DEFAULT_KLASSIFIKATION,
         anzeigename=anzeigename,
+        rahmen_befunde=tuple(befunde),
+    )
+
+
+def build_export_context_ohne_db(
+    *,
+    grund: str,
+    behoerde: Optional[str] = None,
+    aktenzeichen: Optional[str] = None,
+    actor: Optional[str] = None,
+    klassifikation: Optional[str] = None,
+    now_utc: Optional[str] = None,
+) -> ExportContext:
+    """
+    Der Rahmen fuer einen Export OHNE coordinator.db (Build 706, Vorgang
+    70641ff9). 'grund' benennt, WARUM keine Datenbank da war — er wandert
+    woertlich in die beiden Befunde und von dort in Vermerk und Meldung.
+
+    WOZU DIESE FUNKTION UEBERHAUPT — DER BEFUND, DER DAZU GEFUEHRT HAT:
+      Bei 'glossary_admin export-html' und 'ausschleus_admin finalize' ist
+      '--coordinator-db' OPTIONAL. Beide bauten sich fuer diesen Fall ihren
+      Rahmen bis Build 702 von Hand zusammen — mit build_number=0 und
+      ersteller='unbekannt', ohne ein Wort. Gemessen am 12.08.2026:
+      'glossary_admin export-html --out x.html' (der dokumentierte Regelweg,
+      Rueckgabewert 0) erzeugte ein Dokument mit 'Werkzeug-Build: 0' und
+      'Erstellt von: unbekannt'; 'ausschleus_admin finalize --dir D' ebenso -
+      und das ist die UEBERGABE.txt an die Staatsanwaltschaft.
+      Der stille Ersatzvermerk aus Vorgang ff7e80ab stand dort also nicht am
+      Fehlerweg, sondern am REGELWEG.
+
+    DIE BUILDNUMMER BRAUCHT KEINE DATENBANK. Sie steht in build.json (GR4).
+    Sie auf 0 zu setzen, weil eine Datenbank fehlt, warf eine Angabe weg, die
+    vorlag - das ist der Kern der Behebung und nicht die Meldung.
+
+    IDENTITAET UND KETTE BRAUCHEN SIE SEHR WOHL: der IdentityResolver liest
+    person aus der coordinator.db, die Kettenspitze steht im audit_log
+    derselben Datei. Beide werden deshalb als Befund gefuehrt - nicht als
+    Fehler, sondern als benannte Folge einer Entscheidung der bedienenden
+    Person (Entscheidung Alex, 12.08.2026: warnen und weiterlaufen).
+
+    DER ROHWERT AUS --actor BLEIBT STEHEN, wie im Weg mit Datenbank: er ist
+    nicht falsch, nur ungeprueft. Der ExportEnvelope kennzeichnet ihn.
+
+    REIHENFOLGE DER BEFUNDE wie in build_export_context (Kette, Identitaet,
+    Buildnummer), damit sich zwei Vermerke zeilenweise vergleichen lassen.
+    """
+    build_number, befund_build = _build_number()
+    generated = now_utc or datetime.now(timezone.utc).strftime(
+        "%Y-%m-%d %H:%M UTC")
+
+    befunde: List[RahmenBefund] = [
+        RahmenBefund(FELD_KETTE, grund),
+        RahmenBefund(FELD_ERSTELLER, grund),
+    ]
+    if befund_build is not None:
+        befunde.append(befund_build)
+
+    return ExportContext(
+        behoerde=behoerde or _DEFAULT_BEHOERDE,
+        aktenzeichen=aktenzeichen or "Gesamtuebersicht",
+        ersteller=actor or "unbekannt",
+        build_number=build_number,
+        generated_at=generated,
+        # chain_ok bleibt None — 'nicht geprueft'. Das ist keine Aussage
+        # ueber den Bestand, sondern das Eingestaendnis, keine gemacht zu
+        # haben; der Befund darunter sagt, warum.
+        chain_ok=None,
+        klassifikation=klassifikation or DEFAULT_KLASSIFIKATION,
         rahmen_befunde=tuple(befunde),
     )

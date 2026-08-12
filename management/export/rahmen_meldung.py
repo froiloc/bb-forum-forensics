@@ -37,7 +37,13 @@ from management.export.export_envelope import ExportContext
 # Folge fuer die Person, die das Dokument weitergibt — die einzelnen Befunde
 # benennen nur die Ursache. Ohne diesen Satz muesste der Leser die Folge selbst
 # erschliessen; das ist genau die Zumutung, die der Vorgang beanstandet hat.
-_NACHSATZ = ("%s WARNUNG: Der erzeugte Bericht traegt KEINEN vollstaendigen "
+#
+# BUILD 706: 'Bericht' -> 'Dokument'. Seit diesem Build nutzen auch
+# glossary_admin (Glossar), ausschleus_admin (UEBERGABE.txt) und die drei
+# Sichten-Exporte diese Meldung; keines davon ist ein Bericht. Ein Nachsatz,
+# der die Sache falsch benennt, laesst den Leser zweifeln, ob er ueberhaupt
+# gemeint ist.
+_NACHSATZ = ("%s WARNUNG: Das erzeugte Dokument traegt KEINEN vollstaendigen "
              "Erzeugungsvermerk. Vor einer Weitergabe ist der Vermerk im "
              "Dokument anzusehen; die fehlenden Angaben sind dort ebenfalls "
              "als 'nicht ermittelbar' gekennzeichnet.")
