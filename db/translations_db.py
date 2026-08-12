@@ -83,6 +83,14 @@ class TranslationRecord:
     translated_text: str
     model_used:      Optional[str]
     created_at:      Optional[str]
+    updated_at:      Optional[str] = None
+    # Build 703: updated_at kommt hinzu, WEIL BEI PRIVATEN NACHRICHTEN
+    # created_at LEER IST (Datenprobe Alex, 12.08.2026 — der PM-Lauf setzt nur
+    # updated_at). Ohne dieses Feld traege die Pflichtkopfzeile der Anzeige bei
+    # jeder PM-Uebersetzung KEIN Datum: 'maschinell uebersetzt' ohne Zeitpunkt.
+    # Die beiden Werte werden NICHT vermischt (kein COALESCE): 'erstellt' und
+    # 'zuletzt geaendert' sind verschiedene Aussagen, und die Anzeige benennt,
+    # welche von beiden sie zeigt.
 
 
 @dataclass
@@ -123,6 +131,14 @@ class TranslationsDb:
         # topic_id-Spalte nur pruefen, wenn die Tabelle ueberhaupt da ist.
         self._has_topic_id = (
             self._check_topic_id_column() if self._available else False
+        )
+        # Build 703: updated_at ist in der gelieferten translations.db
+        # vorhanden, in aelteren Bestaenden/Fixtures aber nicht. Die Spalte
+        # wird deshalb wie topic_id einmalig geprueft und im SELECT nur dann
+        # angefordert — sonst scheiterte die Abfrage GANZ, und mit ihr die
+        # Anzeige der Uebersetzung, wegen eines blossen Zusatzdatums.
+        self._has_updated_at = (
+            self._check_column("updated_at") if self._available else False
         )
 
     def _check_available(self) -> bool:
@@ -171,6 +187,27 @@ class TranslationsDb:
         except sqlite3.OperationalError as exc:
             logger.warning(
                 "TranslationsDb: topic_id-Pruefung fehlgeschlagen: %s", exc
+            )
+            return False
+
+    def _check_column(self, name: str) -> bool:
+        """
+        Prueft per PRAGMA, ob trdb.translations die Spalte <name> fuehrt.
+
+        Allgemein gehalten (Build 703), weil dieselbe Frage nun fuer mehr als
+        eine Spalte gestellt wird. Ein fehlgeschlagener PRAGMA-Aufruf gilt als
+        'Spalte nicht vorhanden' — die vorsichtige Annahme, die im
+        Zweifelsfall weniger abfragt statt zu scheitern.
+        """
+        try:
+            rows = self._con.execute(
+                "PRAGMA trdb.table_info(translations)"
+            ).fetchall()
+            return name in {str(r[1]) for r in rows}
+        except sqlite3.OperationalError as exc:
+            logger.warning(
+                "TranslationsDb: Spaltenpruefung '%s' fehlgeschlagen: %s",
+                name, exc,
             )
             return False
 
@@ -243,8 +280,11 @@ class TranslationsDb:
         if not self._available:
             return None
         try:
+            updated_sel = ("updated_at" if self._has_updated_at
+                           else "NULL AS updated_at")
             row = self._con.execute(
-                "SELECT post_id, translated_text, model_used, created_at "
+                "SELECT post_id, translated_text, model_used, created_at, "
+                f"       {updated_sel} "
                 "FROM trdb.translations "
                 "WHERE post_id = ? "
                 "  AND source = ? "
@@ -260,20 +300,92 @@ class TranslationsDb:
             )
             return None
 
+    # ------------------------------------------------------------------
+    # Build 703: Welche AUS EINER VORGEGEBENEN MENGE sind uebersetzt?
+    # ------------------------------------------------------------------
+
+    def filter_translated_post_ids(
+        self, post_ids: "list[int]", source: str = "posts"
+    ) -> "list[int]":
+        """
+        Schneidet eine vorgegebene Menge von IDs gegen die vorhandenen
+        Uebersetzungen (Zeile vorhanden UND nicht-leerer translated_text).
+
+        WOZU ES DIESEN WEG NEBEN list_translated_post_ids() GIBT: Jener fragt
+        ueber trdb.translations.topic_id. Bei privaten Nachrichten ist diese
+        Spalte LEER (Datenprobe Alex, 12.08.2026) — die Frage 'welche
+        Nachrichten dieses Dialogs sind uebersetzt?' ist dort also gar nicht
+        beantwortbar. Sie wird stattdessen zweistufig gestellt: der Dialog
+        liefert seine Nachrichten (fdb.pm_aliases), und diese Methode sagt,
+        welche davon eine Uebersetzung haben.
+
+        Der Umweg ist auch der sicherere: die Zugehoerigkeit einer Nachricht
+        zu einem Dialog steht im forensischen Bestand, nicht in der extern
+        erzeugten Uebersetzungsdatenbank.
+
+        Args:
+            post_ids: Zu pruefende IDs (bei PN: pm_post_ids).
+            source:   'posts' oder 'pms'.
+
+        Returns:
+            Teilmenge von post_ids mit Uebersetzung; Reihenfolge unbestimmt.
+            Leere Liste bei leerer Eingabe oder nicht angebundener trdb.
+        """
+        if not self._available or not post_ids:
+            return []
+        treffer: list[int] = []
+        # SQLite begrenzt die Zahl der Parameter (Standard 999). Ein Dialog
+        # kann mehrere hundert Nachrichten fuehren (gemessen: 283 Container
+        # auf einer PN-Dialogseite, scroll_memory.js) — also in Stapeln.
+        CHUNK = 800
+        try:
+            for i in range(0, len(post_ids), CHUNK):
+                batch = [int(p) for p in post_ids[i:i + CHUNK]]
+                ph = ",".join("?" * len(batch))
+                rows = self._con.execute(
+                    f"SELECT post_id FROM trdb.translations "
+                    f"WHERE post_id IN ({ph}) "
+                    f"  AND source = ? "
+                    f"  AND translated_text IS NOT NULL "
+                    f"  AND translated_text <> ''",
+                    batch + [source],
+                ).fetchall()
+                treffer.extend(int(r[0]) for r in rows)
+        except (sqlite3.OperationalError, ValueError, TypeError) as exc:
+            logger.warning(
+                "TranslationsDb.filter_translated_post_ids(source=%r) "
+                "fehlgeschlagen: %s", source, exc,
+            )
+            return []
+        return treffer
+
     def get_meta(
         self, post_id: int, source: str = "posts"
     ) -> Optional["TranslationMetaRecord"]:
         """Bericht-Metadaten zu einem Post/einer PM: Original-Text + Sprache + Provenienz.
 
-        Read-only aus trdb. Die QUELLTABELLE haengt an 'source':
-          source='posts' -> trdb.posts_cleaned  (Forenbeitraege)
-          source='pms'   -> trdb.pms_cleaned    (private Nachrichten)
+        Read-only aus trdb. Die QUELLE haengt an 'source' — und WIE sie
+        aufgeloest wird, entscheidet der Aufbau der vorgefundenen Datenbank
+        (Build 703, gepruefte Spalten statt angenommener Tabellen):
 
-        Warum getrennte Tabellen (Option B, 2026-07-14): Forenpost- und PM-IDs
-        stammen aus EIGENEN, ueberlappenden ID-Raeumen. In einer gemeinsamen
-        Tabelle mit post_id als alleinigem PK haette eine PM den gleichnamigen
-        Forenpost still ueberschrieben (GR1-Verstoss). Die grosse posts_cleaned
-        bleibt dadurch unveraendert.
+          (A) posts_cleaned MIT Spalte 'source' — so sieht die gelieferte
+              translations.db aus (Schema Alex, 12.08.2026: PK
+              (post_id, source)). Dann traegt EINE Tabelle beide Quellen, und
+              gefiltert wird ueber die Spalte.
+          (B) posts_cleaned OHNE 'source' und daneben pms_cleaned — die
+              Annahme aus Build 398 ('Option B: getrennte Tabellen'). Sie
+              bleibt bedient, damit ein aelterer Bestand weiter lesbar ist.
+
+        WARUM DIE PRUEFUNG UND NICHT EINE FESTE WAHL: Build 398 hat auf eine
+        Tabelle 'pms_cleaned' gebaut, die es in der gelieferten Datenbank NICHT
+        gibt. get_meta(source='pms') haette dort ausnahmslos None geliefert —
+        die PN-Uebersetzung waere im Bericht stillschweigend leer geblieben.
+        Ein PRAGMA je Aufruf ist gegen diesen Fehler ein guenstiger Preis.
+
+        In BEIDEN Faellen bleiben Forenbeitrag und private Nachricht mit
+        gleicher ID getrennt: in (A) ueber die Spalte, in (B) ueber die
+        Tabelle. Diese Trennung ist der Kern (GR1) — Forenpost- und PM-IDs
+        stammen aus eigenen, ueberlappenden ID-Raeumen.
 
         Die Provenienz (model_used/created_at) kommt per LEFT JOIN aus
         trdb.translations — dort ist die Quelle Teil des Schluessels
@@ -292,7 +404,16 @@ class TranslationsDb:
             logger.warning("TranslationsDb.get_meta: unbekannte source %r", source)
             return None
 
-        table = "trdb.posts_cleaned" if source == "posts" else "trdb.pms_cleaned"
+        table, mit_source_spalte = self._quelltabelle_fuer(source)
+        if table is None:
+            return None
+        # Bei Aufbau (A) grenzt die Spalte die Quelle ein, bei (B) tut das
+        # bereits die Tabellenwahl. Der Filter wird deshalb nur dort gesetzt,
+        # wo es die Spalte gibt — ein 'AND pc.source = ?' auf einer Tabelle
+        # ohne diese Spalte waere ein OperationalError.
+        quellfilter = " AND pc.source = ?" if mit_source_spalte else ""
+        parameter = ([source, post_id, source] if mit_source_spalte
+                     else [source, post_id])
         try:
             row = self._con.execute(
                 "SELECT pc.post_id AS post_id, pc.clean_text AS clean_text, "
@@ -301,8 +422,8 @@ class TranslationsDb:
                 f"FROM {table} pc "
                 "LEFT JOIN trdb.translations t "
                 "       ON t.post_id = pc.post_id AND t.source = ? "
-                "WHERE pc.post_id = ?",
-                (source, post_id),
+                f"WHERE pc.post_id = ?{quellfilter}",
+                parameter,
             ).fetchone()
             if not row:
                 return None
@@ -328,11 +449,77 @@ class TranslationsDb:
     # Hilfsmethoden
     # ------------------------------------------------------------------
 
+    def _quelltabelle_fuer(self, source: str) -> "tuple[Optional[str], bool]":
+        """
+        Bestimmt fuer get_meta() die Quelle des Original-Textes (Build 703).
+
+        Returns:
+            (Tabellenname mit trdb-Praefix oder None, ob nach 'source'
+            zu filtern ist). None heisst: fuer diese Quelle liegt in dieser
+            Datenbank keine Tabelle vor — der Aufrufer meldet 'nicht
+            gefunden', er raet nicht.
+
+        Die Entscheidung wird bei JEDEM Aufruf frisch getroffen und nicht im
+        Init zwischengespeichert: der Aufbau der extern befuellten
+        translations.db kann sich zwischen zwei Prepper-Laeufen aendern,
+        waehrend der Server laeuft.
+        """
+        try:
+            rows = self._con.execute(
+                "PRAGMA trdb.table_info(posts_cleaned)"
+            ).fetchall()
+        except sqlite3.OperationalError as exc:
+            logger.warning(
+                "TranslationsDb: posts_cleaned nicht lesbar: %s", exc
+            )
+            rows = []
+        spalten = {str(r[1]) for r in rows}
+
+        if source == "posts":
+            if not spalten:
+                logger.warning(
+                    "TranslationsDb.get_meta: trdb.posts_cleaned fehlt — "
+                    "kein Original-Text abrufbar."
+                )
+                return None, False
+            # Aufbau (A): auch fuer 'posts' auf die Spalte filtern, sonst
+            # koennte eine gleichnamige PN-Zeile zurueckkommen.
+            return "trdb.posts_cleaned", "source" in spalten
+
+        # source == 'pms'
+        if "source" in spalten:
+            return "trdb.posts_cleaned", True
+        # Aufbau (B): getrennte Tabelle, sofern vorhanden.
+        try:
+            pms_rows = self._con.execute(
+                "PRAGMA trdb.table_info(pms_cleaned)"
+            ).fetchall()
+        except sqlite3.OperationalError:
+            pms_rows = []
+        if pms_rows:
+            return "trdb.pms_cleaned", False
+        logger.warning(
+            "TranslationsDb.get_meta(source='pms'): weder eine Spalte "
+            "'source' in posts_cleaned noch eine Tabelle pms_cleaned — der "
+            "Original-Text privater Nachrichten ist in dieser "
+            "translations.db nicht hinterlegt."
+        )
+        return None, False
+
     @staticmethod
     def _row_to_translation(row: sqlite3.Row) -> TranslationRecord:
+        # updated_at defensiv: aeltere Testbestaende/Schemata fuehren die
+        # Spalte nicht. sqlite3.Row wirft bei unbekanntem Schluessel IndexError
+        # — ein fehlendes Datum darf die Anzeige der Uebersetzung nicht
+        # verhindern.
+        try:
+            updated = row["updated_at"]
+        except (IndexError, KeyError):
+            updated = None
         return TranslationRecord(
             post_id=int(row["post_id"]),
             translated_text=str(row["translated_text"]),
             model_used=row["model_used"],
             created_at=row["created_at"],
+            updated_at=updated,
         )

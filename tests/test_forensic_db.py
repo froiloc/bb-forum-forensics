@@ -1051,5 +1051,81 @@ class TestBlobEnthaeltAnker(unittest.TestCase):
         self.assertTrue(blob_enthaelt_anker('<div id="p777">x</div>', 777))
 
 
+
+class TestListPmPostIds(unittest.TestCase):
+    """
+    Build 703 (Vorgang da84f94f): list_pm_post_ids() — Dialog → Nachrichten.
+
+    WOZU: Die Uebersetzungsanzeige braucht je PN-Dialogseite die Menge der
+    Nachrichten, BEVOR das Seiten-DOM steht. Bei Forenbeitraegen liefert
+    trdb.translations.topic_id diese Menge; bei PN steht dort nichts
+    (Datenprobe Alex, 12.08.2026). Die Zuordnung kommt deshalb aus dem
+    forensischen Bestand.
+
+    PM01 — alle Nachrichten eines Dialogs, BEIDE Gespraechsseiten
+    PM02 — fremder Dialog wird nicht mitgeliefert
+    PM03 — unbekannter Dialog -> leere Liste (kein Fehler)
+    PM04 — fehlende Tabelle -> leere Liste, kein Absturz
+    """
+
+    def setUp(self):
+        _setup_test_logging()
+        self.fdb_path = tempfile.mktemp(suffix=".db")
+
+    def tearDown(self):
+        reset_for_testing()
+        try:
+            os.unlink(self.fdb_path)
+        except OSError:
+            pass
+
+    def _fdb(self, mit_tabelle=True):
+        con = sqlite3.connect(self.fdb_path)
+        con.execute("CREATE TABLE forensic_meta (key TEXT PRIMARY KEY, value TEXT)")
+        con.execute(
+            "CREATE TABLE pages (id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "url_canonical TEXT NOT NULL, html BLOB, fetched_at INTEGER NOT NULL, "
+            "http_status INTEGER NOT NULL, scrape_context TEXT DEFAULT 'user', "
+            "method TEXT DEFAULT 'GET')"
+        )
+        con.execute("CREATE TABLE page_aliases (url_raw TEXT PRIMARY KEY, "
+                    "page_id INTEGER NOT NULL)")
+        if mit_tabelle:
+            con.execute("CREATE TABLE pm_aliases (pm_post_id INTEGER PRIMARY KEY, "
+                        "pm_topic_id INTEGER NOT NULL)")
+            con.executemany(
+                "INSERT INTO pm_aliases VALUES (?,?)",
+                # Dialog 85844: drei Nachrichten — im Bestand stehen BEIDE
+                # Gespraechsseiten (Prepper: alle pms_new_posts des Dialogs).
+                [(44573, 85844), (44574, 85844), (44575, 85844),
+                 (51000, 82544)],
+            )
+        con.commit()
+        con.close()
+
+        self.con = sqlite3.connect(":memory:")
+        self.con.row_factory = sqlite3.Row
+        self.con.execute(f"ATTACH DATABASE '{self.fdb_path}' AS fdb")
+        self.addCleanup(self.con.close)
+        return ForensicDb(self.con)
+
+    def test_PM01_alle_nachrichten_des_dialogs(self):
+        fdb = self._fdb()
+        self.assertEqual(sorted(fdb.list_pm_post_ids(85844)),
+                         [44573, 44574, 44575])
+
+    def test_PM02_fremder_dialog_bleibt_draussen(self):
+        fdb = self._fdb()
+        self.assertEqual(fdb.list_pm_post_ids(82544), [51000])
+
+    def test_PM03_unbekannter_dialog_leer(self):
+        fdb = self._fdb()
+        self.assertEqual(fdb.list_pm_post_ids(999999), [])
+
+    def test_PM04_ohne_tabelle_leer(self):
+        fdb = self._fdb(mit_tabelle=False)
+        self.assertEqual(fdb.list_pm_post_ids(85844), [])
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

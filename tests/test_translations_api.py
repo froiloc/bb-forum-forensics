@@ -164,3 +164,140 @@ def test_translate_fehlender_post_id_400(tmp_path):
     _translate_ep(tmp_path).handle(h, {})
     assert h.status == 400
     assert h.json()["status"] == "error"
+
+
+# =============================================================================
+# Build 703 (Vorgang da84f94f): /_forensic/translations fuer PN-Dialoge
+#
+# DER PUNKT: Bei source='pms' ist 'topic_id' die DIALOG-ID (tid aus
+# 'pmsnew.php?mdl=topic&tid='). Der Weg ueber trdb.translations.topic_id
+# steht dort nicht zur Verfuegung — der Uebersetzungslauf laesst die Spalte
+# bei PN leer (Datenprobe Alex, 12.08.2026). Aufgeloest wird ueber
+# fdb.pm_aliases (Dialog -> Nachrichten) und erst dann gegen die
+# Uebersetzungen geschnitten.
+#
+# PA01 — PN-Dialog wird ueber pm_aliases aufgeloest, resolved_via sagt das
+# PA02 — nur Nachrichten DIESES Dialogs, und nur uebersetzte
+# PA03 — Rueckfall auf translations.topic_id, wenn pm_aliases nichts hergibt
+# PA04 — unbekannter Dialog -> leere Liste, resolved_via='keiner'
+# PA05 — 'posts' bleibt unveraendert beim topic_id-Weg (Regression)
+# =============================================================================
+
+class _FakeForensic:
+    """ForensicDb-Doppel: nur die hier gebrauchte Dialog-Aufloesung."""
+    def __init__(self, dialoge):
+        self._dialoge = dialoge          # {pm_topic_id: [pm_post_id, ...]}
+        self.gefragt = []
+
+    def list_pm_post_ids(self, pm_topic_id):
+        self.gefragt.append(pm_topic_id)
+        return list(self._dialoge.get(pm_topic_id, []))
+
+
+class _FakeBundleMitForensic:
+    def __init__(self, translations, forensic):
+        self.translations = translations
+        self.forensic = forensic
+
+
+def _pn_translations_db(tmp_path):
+    """trdb im gelieferten Aufbau: PN OHNE topic_id (wie in der Datenprobe)."""
+    p = tmp_path / "translations_pn.db"
+    if p.exists():
+        p.unlink()
+    con = sqlite3.connect(str(p))
+    con.execute(
+        "CREATE TABLE translations ("
+        "  post_id INTEGER NOT NULL, translated_text TEXT, model_used TEXT, "
+        "  created_at TEXT, updated_at TEXT, source TEXT NOT NULL DEFAULT 'posts', "
+        "  topic_id INTEGER, forum_id INTEGER, PRIMARY KEY(post_id, source))"
+    )
+    con.executemany(
+        "INSERT INTO translations (post_id, translated_text, model_used, "
+        "created_at, updated_at, source, topic_id, forum_id) VALUES (?,?,?,?,?,?,?,?)",
+        [
+            (44573, "PN eins", "llama3", None, "2026-07-14 02:47:37", "pms", None, None),
+            (44574, "PN zwei", "llama3", None, "2026-07-14 02:48:00", "pms", None, None),
+            (51000, "PN eines anderen Dialogs", "llama3", None,
+             "2026-07-14 02:50:00", "pms", None, None),
+            (44573, "Forenbeitrag gleicher ID", "llama3", "2026-07-05", "2026-07-05",
+             "posts", 20, 29),
+        ],
+    )
+    con.commit()
+    con.close()
+    main = sqlite3.connect(":memory:")
+    main.row_factory = sqlite3.Row
+    main.execute("ATTACH DATABASE ? AS trdb", (str(p),))
+    return TranslationsDb(main)
+
+
+def test_PA01_pn_dialog_ueber_pm_aliases(tmp_path):
+    forensic = _FakeForensic({85844: [44573, 44574, 44575]})
+    ep = TranslationsEndpoint(
+        _FakeBundleMitForensic(_pn_translations_db(tmp_path), forensic), None, None
+    )
+    h = _FakeHandler()
+    ep.handle(h, {"topic_id": ["85844"], "source": ["pms"]})
+    assert h.status == 200
+    data = h.json()
+    assert data["source"] == "pms"
+    assert sorted(data["post_ids"]) == [44573, 44574]
+    assert data["resolved_via"] == "pm_aliases"
+    assert forensic.gefragt == [85844]
+
+
+def test_PA02_nur_nachrichten_dieses_dialogs(tmp_path):
+    # 51000 ist uebersetzt, gehoert aber zu einem ANDEREN Dialog.
+    forensic = _FakeForensic({85844: [44573, 44574], 82544: [51000]})
+    ep = TranslationsEndpoint(
+        _FakeBundleMitForensic(_pn_translations_db(tmp_path), forensic), None, None
+    )
+    h = _FakeHandler()
+    ep.handle(h, {"topic_id": ["85844"], "source": ["pms"]})
+    assert 51000 not in h.json()["post_ids"]
+
+
+def test_PA03_rueckfall_auf_topic_id(tmp_path):
+    """PA03: Bestaende, in denen translations.topic_id auch fuer PN gefuellt
+    ist, bleiben bedient — der Weg wird aber benannt (GR1)."""
+    # pm_aliases kennt den Dialog nicht ...
+    forensic = _FakeForensic({})
+    # ... dafuer traegt die Uebersetzungs-DB eine topic_id (Aufbau des
+    # bisherigen Testbestandes).
+    ep = TranslationsEndpoint(
+        _FakeBundleMitForensic(_real_translations_db(tmp_path), forensic), None, None
+    )
+    h = _FakeHandler()
+    ep.handle(h, {"topic_id": ["69192"], "source": ["pms"]})
+    data = h.json()
+    assert data["post_ids"] == [900001]
+    assert data["resolved_via"] == "topic_id"
+
+
+def test_PA04_unbekannter_dialog_ist_leer_und_benannt(tmp_path):
+    forensic = _FakeForensic({})
+    ep = TranslationsEndpoint(
+        _FakeBundleMitForensic(_pn_translations_db(tmp_path), forensic), None, None
+    )
+    h = _FakeHandler()
+    ep.handle(h, {"topic_id": ["999999"], "source": ["pms"]})
+    data = h.json()
+    assert data["post_ids"] == []
+    assert data["count"] == 0
+    assert data["resolved_via"] == "keiner"
+
+
+def test_PA05_posts_bleibt_beim_topic_id_weg(tmp_path):
+    """PA05: Regression — Forenbeitraege laufen unveraendert ueber
+    translations.topic_id und fragen die ForensicDb gar nicht erst."""
+    forensic = _FakeForensic({})
+    ep = TranslationsEndpoint(
+        _FakeBundleMitForensic(_real_translations_db(tmp_path), forensic), None, None
+    )
+    h = _FakeHandler()
+    ep.handle(h, {"topic_id": ["69192"]})
+    data = h.json()
+    assert sorted(data["post_ids"]) == [706037, 706040]
+    assert data["resolved_via"] == "topic_id"
+    assert forensic.gefragt == []

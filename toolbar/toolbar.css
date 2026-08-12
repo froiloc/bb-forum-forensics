@@ -3051,6 +3051,27 @@ body.aiw-view-original .aux-part { display: none !important; }
   );
 }
 
+/* Build 703 (Vorgang da84f94f): Der Flaggen-Eintrag in der Fussleiste.
+ * Er ist seit diesem Build ein <li> (Beleg: Auszug einer PN-Dialogseite,
+ * Alex 12.08.2026 — der Anker ist ein <ul> mit <li>-Kindern). Er uebernimmt
+ * damit die Formatierung, die das Forum den uebrigen Eintraegen dieser Leiste
+ * gibt; hier wird NICHTS nachgestellt, damit die Flagge sich einreiht statt
+ * aus der Reihe zu tanzen. Einzig der Listenpunkt entfaellt — er wuerde vor
+ * einer Schaltflaeche stehen, die keine Aufzaehlung ist. */
+li.aiw-translate-item { list-style: none; }
+
+/* Build 703 (Vorgang da84f94f): Notanker-Leiste fuer Nachrichten-Container
+ * ohne eine der bekannten Aktionslisten (.postfootright / .post-actions /
+ * .rate-buttons). Sie traegt dann die Flagge, damit eine vorhandene
+ * Uebersetzung NIE unsichtbar bleibt (GR1). Bewusst unauffaellig: sie ist ein
+ * Behelf, kein Gestaltungselement — und sie erscheint nur dort, wo der
+ * Aufbau der Seite keinen bekannten Platz bietet. */
+.aiw-flag-fallback {
+  margin: 4px 0 0 0;
+  padding: 0;
+  text-align: right;
+}
+
 /* Inline-Panel unterhalb des .postfoot. */
 .aiw-translation-panel {
   width: 100%;              /* Build 332 (von Alex): volle Breite statt schmalem Streifen */
