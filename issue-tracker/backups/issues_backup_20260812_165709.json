@@ -6833,7 +6833,7 @@
       "description": "Beim Fortschreiben der build.json auf 0.1.129 aufgefallen, zwei getrennte Befunde:\n\n(1) Commit 233d749 traegt den Betreff 'Version 0.1.128' und aendert repack.sh sowie stage2/evidence_db_init.py - die build.json ist dabei NICHT angefasst worden. Sie stand bis Build 129 auf 'build: 127'. Belegt mit 'git log --oneline -5 -- build.json': der letzte Treffer ist 680fef0 (Version 0.1.127). Das verstoesst gegen GR4/GR5.\n\n(2) Das Feld 'version' lautet in Build 126 '0.2.126' und in Build 127 '0.2.127', waehrend die Commit-Betreffs 'Version 0.1.126'/'Version 0.1.127' nennen und Build 125 noch '0.1.125' trug. Die 0.2er-Reihe existiert also nur in der build.json zweier Builds und ist ein Schreibfehler. mc hat am 02.08.2026 '0.1.129' als Zielversion genannt, was die 0.1er-Reihe bestaetigt.",
       "expected_behavior": "Jeder Build schreibt die build.json fort; die Versionsreihe ist durchgaengig 0.1.x.",
       "actual_behavior": "Build 128 ohne build.json-Eintrag; 126/127 mit abweichender Reihe 0.2.x.",
-      "status": "wont_fix",
+      "status": "open",
       "priority": "medium",
       "severity": "minor",
       "assigned_to": "mc",
@@ -6855,14 +6855,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Build661.json"
-        },
-        {
-          "timestamp": "2026-08-12T14:57:09.957971+00:00",
-          "author": "Alex",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "wont_fix",
-          "comment": "Das lag an einer nachlässigen Versionspflege von mir. Es ist kein Fehler im technischen, sondern im persönlich-organisatorischen Sinne."
         }
       ],
       "tags": [
