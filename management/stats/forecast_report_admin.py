@@ -24,7 +24,13 @@
 # SCHREIBT NICHT in die Datenbank (kein CoordinatorWriter, keine Migration).
 #   Der Migrationsvorbehalt ab 01.07.2026 ist nicht beruehrt.
 #
-# Version: v0.8.522 · Build: 522 · 2026-07-25
+# BUILD 702 (Vorgang ff7e80ab): Faellt der Erzeugungsrahmen ganz oder in
+#   Teilen aus, wird das auf der Fehlerausgabe benannt und im Bericht
+#   gekennzeichnet. Der Rueckgabewert bleibt 0 und der Bericht wird
+#   geschrieben (Entscheidung Alex, 12.08.2026) — die Begruendung steht im
+#   Kopf von management/export/rahmen_meldung.py.
+#
+# Version: v0.8.702 · Build: 702 · 2026-08-12
 # =============================================================================
 
 import argparse
@@ -34,6 +40,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from management.export.export_envelope import ExportContext, DEFAULT_KLASSIFIKATION
+# Build 702 (Vorgang ff7e80ab): ein ausgefallener Erzeugungsrahmen wird
+# benannt, statt still durch Ersatzwerte ersetzt zu werden.
+from management.export.rahmen_befund import FELD_RAHMEN, RahmenBefund
+from management.export.rahmen_meldung import melde_rahmen_befunde
 from management.stats.forecast import Forecaster, forecast_to_dict
 from management.stats.forecast_report import (
     ForecastReportUnavailable,
@@ -119,20 +129,46 @@ def main(argv=None) -> int:
         result = Forecaster(con).compute(now_ts=now_ts,
                                         lookback_days=args.lookback_days)
         forecast = forecast_to_dict(result)
+        # BUILD 702 (Vorgang ff7e80ab) — DER ERSATZRAHMEN IST NICHT MEHR STUMM.
+        # Bis Build 698 fing dieser Zweig den Ausfall wortlos ab und setzte
+        # Buildnummer 0 / Ersteller 'unbekannt'; der Bericht entstand danach
+        # wie jeder andere. Das ist bei einem Abgabedokument der Ausfall genau
+        # der Angabe, ueber die sich seine Herkunft belegen laesst.
+        #
+        # DIESER ZWEIG IST ENGER, ALS ER AUSSIEHT: build_export_context faengt
+        # jede eigene Fehlerquelle selbst ab und wirft nie (Kopf jener Datei,
+        # RF06). Was hier ankommen kann, ist praktisch nur ein Fehlschlag des
+        # import in der Zeile darunter. Die haeufigen Ausfaelle — unlesbare
+        # build.json, nicht aufloesbare Identitaet, fehlendes audit_log —
+        # treten INNERHALB des Builders auf und kommen seit Build 702 als
+        # rahmen_befunde im Kontext zurueck. Deshalb genuegt es nicht, nur
+        # diesen Zweig zu bereinigen; die Meldung unten gilt fuer BEIDE Wege.
         try:
             from management.export.context_builder import build_export_context
             context = build_export_context(
                 con=con, db_path=db_path, behoerde=args.behoerde,
                 aktenzeichen=args.aktenzeichen or "Prognosebericht",
                 actor=args.actor, now_utc=generated)
-        except Exception:  # pragma: no cover - Rahmen-Fallback
+        except Exception as exc:  # Rahmen-Fallback
             context = ExportContext(
                 behoerde=args.behoerde or "Polizei NRW",
                 aktenzeichen=args.aktenzeichen or "Prognosebericht",
                 ersteller=args.actor or "unbekannt", build_number=0,
-                generated_at=generated, klassifikation=DEFAULT_KLASSIFIKATION)
+                generated_at=generated, klassifikation=DEFAULT_KLASSIFIKATION,
+                # FELD_RAHMEN statt drei Einzelbefunde: hier ist nicht EINE
+                # Angabe ausgefallen, sondern der Rahmen als Ganzes. Keiner
+                # der Ersatzwerte ist belastbar, auch nicht der plausibel
+                # aussehende --actor.
+                rahmen_befunde=(RahmenBefund(
+                    FELD_RAHMEN,
+                    "Erzeugungsrahmen nicht bildbar: %s" % exc),))
     finally:
         con.close()
+
+    # Die Meldung steht VOR dem Schreiben der Datei und nicht danach: faellt
+    # das Schreiben aus (Pfad, Platte, fehlendes reportlab), ist die Auskunft
+    # ueber den Rahmen bereits heraus. Umgekehrt waere sie mit verloren.
+    melde_rahmen_befunde("[forecast_report]", context)
 
     if args.format == "html":
         Path(args.out).write_text(

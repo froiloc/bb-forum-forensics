@@ -19,7 +19,14 @@
 #   gepruefte Uebergabe mit Unbedenklichkeitsvermerk (Fallregel 3), Manifest,
 #   Pruefsummen je Artefakt und Selbstverifikation.
 #
-# Version: v0.7.443 · Build: 443 · 2026-07-19
+#   Build 702 (Vorgang ff7e80ab) ergaenzt den Rahmen um seine eigene
+#   Fehleranzeige: RahmenBefund haelt fest, welche Angabe des
+#   Erzeugungsvermerks nicht ermittelt werden konnte und warum;
+#   melde_rahmen_befunde gibt das auf der Fehlerausgabe eines Werkzeugs aus.
+#   Vorher entstanden Berichte still mit Buildnummer 0 und Ersteller
+#   'unbekannt' — Werte, die im Dokument wie regulaere Angaben aussehen.
+#
+# Version: v0.8.702 · Build: 702 · 2026-08-12
 # =============================================================================
 
 from management.export.checksum import (
@@ -39,6 +46,14 @@ from management.export.excel_case_status import (
     ExcelUnavailable,
 )
 from management.export.context_builder import build_export_context
+from management.export.rahmen_befund import (
+    FELD_BUILD,
+    FELD_ERSTELLER,
+    FELD_KETTE,
+    FELD_RAHMEN,
+    RahmenBefund,
+)
+from management.export.rahmen_meldung import melde_rahmen_befunde
 from management.export.staging import (
     StagingArea,
     StagingError,
@@ -57,6 +72,12 @@ __all__ = [
     "CASE_STATUS_COLUMNS",
     "ExcelUnavailable",
     "build_export_context",
+    "RahmenBefund",
+    "FELD_BUILD",
+    "FELD_ERSTELLER",
+    "FELD_KETTE",
+    "FELD_RAHMEN",
+    "melde_rahmen_befunde",
     "StagingArea",
     "StagingError",
     "UnbedenklichkeitError",

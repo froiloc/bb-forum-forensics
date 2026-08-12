@@ -23,6 +23,13 @@
 # Build 701 (Ticket 95139d2a): Kapitel "Ausgeschiedene Personen" in
 #   Lastverteilung und Kapazitaet, plus je ein Text fuer den Umschalter.
 # Version: v0.8.701 - Build: 701 - 2026-08-12
+# Build 702 (Vorgang ff7e80ab): Das Kapitel "stats" sichert unter "Grenzen und
+#   Zusicherungen" zu, dass eine nicht ermittelbare Angabe des
+#   Erzeugungsvermerks als solche dasteht. _STAND bleibt 602 - er gilt fuer
+#   ALLE sechs Kapitel dieser Datei, und fuenf davon sind unberuehrt (dieselbe
+#   Handhabung wie in Build 698 bei ueberblick.py).
+#
+# Version: v0.8.602 - Build: 602 - 2026-07-31 (Ergaenzung Build 702)
 # =============================================================================
 
 from __future__ import annotations
@@ -31,7 +38,7 @@ from typing import Tuple
 
 from management.help.modell import Abschnitt, Kontexthilfe, Sichthilfe
 
-_STAND = 701
+_STAND = 702
 
 #: Die Zweckbindung in einem Satz - woertlich gleich in allen betroffenen
 #: Kapiteln. Sie steht dort im Abschnitt "Grenzen und Zusicherungen" UND im
@@ -190,6 +197,18 @@ STATS = Sichthilfe(
                 "Alle Zahlen gelten für den angezeigten Umfang. Wer sie "
                 "weitergibt, gibt den Umfang mit weiter — sonst behauptet die "
                 "Zahl mehr, als sie deckt.",
+                # Build 702 (Vorgang ff7e80ab). Der Satz gehoert in die
+                # ZUSICHERUNGEN und nicht in die Ablaeufe: er sagt nicht, was
+                # zu tun ist, sondern worauf man sich verlassen kann - naemlich
+                # darauf, dass eine fehlende Angabe im Vermerk als fehlend
+                # dasteht und nicht als Wert. Vorher trug ein Bericht in dieser
+                # Lage Buildnummer 0 und den Ersteller "unbekannt", und beides
+                # sah aus wie eine regulaere Angabe.
+                "Kann eine Angabe des Erzeugungsvermerks nicht ermittelt "
+                "werden, steht in der betreffenden Zeile „nicht ermittelbar“ "
+                "und darunter der Grund. Der Bericht entsteht trotzdem, und "
+                "das Werkzeug sagt es beim Erzeugen. Ein Vermerk ohne solche "
+                "Zeile ist vollständig.",
             ),
         ),
         Abschnitt(

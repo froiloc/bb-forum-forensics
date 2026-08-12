@@ -1,0 +1,12 @@
+6253794fb25bec7b3bb582eda74f93e7  build.json
+9b02cda9837f6b0769c87283cb90c98e  issue-tracker/eintraege_claude_Build702.json
+a0eefe4a573cf577de5d7b2f7a9e829c  management/export/__init__.py
+f46a7610fa3d26dd5605313fad011637  management/export/context_builder.py
+ab53f68f0e1c01e6ed27dbdf8e2277d4  management/export/export_envelope.py
+c1c1761003497820fdaf4005e6978ef6  management/export/rahmen_befund.py
+9777d9db104f1801d84fa1b364c20e26  management/export/rahmen_meldung.py
+b9de1b9a25ec66c1e886c591aa36da13  management/help/cli_katalog.py
+dfe91bf0311950b846f2076136ad2afb  management/help/inhalt/kennzahlen.py
+0dec0ccfb6f777b6326fd0cee8cb8fef  management/stats/forecast_report_admin.py
+be6a0e2d15c40fb9955547f757f99181  management/stats/status_report_admin.py
+de44311fdf7bb44c64c4af80e1a4e138  tests/test_erzeugungsvermerk_befunde.py

@@ -1280,11 +1280,28 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "DAS VORGABEFORMAT IST PDF und setzt reportlab voraus. Fuer "
                 "einen Lauf ohne diese Abhaengigkeit '--format html' "
                 "angeben.",
+                # Build 702 (Vorgang ff7e80ab): Diese Warnung stand seit Build
+                # 613 als NOTLOESUNG hier - eine Hilfe kann darauf hinweisen,
+                # dass man etwas nachsehen muss, aber sie ersetzt keine
+                # Meldung zur Laufzeit. Die Meldung gibt es jetzt; der Text
+                # beschreibt daher nicht mehr eine Luecke, sondern das
+                # Verfahren.
                 "FAELLT DER ERZEUGUNGSRAHMEN AUS, ENTSTEHT DER BERICHT "
-                "TROTZDEM - mit Buildnummer 0 und Ersteller 'unbekannt', und "
-                "zwar ohne Meldung. Bei einem Bericht, der aus dem Haus geht, "
-                "ist der Erzeugungsvermerk deshalb vor der Weitergabe "
-                "anzusehen.",
+                "TROTZDEM - und das ist Absicht: ein geschriebenes Dokument "
+                "nachtraeglich zu verwerfen, wuerde die Auskunft mit "
+                "vernichten. Seit Build 702 wird der Ausfall ZWEIFACH "
+                "benannt: auf der Fehlerausgabe mit dem Grund und einem "
+                "Nachsatz zur Folge, und im Bericht selbst - die betroffene "
+                "Zeile des Erzeugungsvermerks lautet dann 'nicht "
+                "ermittelbar' statt Buildnummer 0 bzw. traegt hinter dem "
+                "Kontonamen den Zusatz '[nicht aufgeloest]'. Der "
+                "Rueckgabewert bleibt 0.",
+                "OHNE '--actor' NIMMT DAS WERKZEUG DEN ANGEMELDETEN "
+                "OS-BENUTZER. Ist der keinem person-Datensatz zugeordnet, "
+                "laesst sich die Identitaet nicht aufloesen; der Bericht "
+                "entsteht dann mit einem ungeprueften Erstellernamen und "
+                "meldet das seit Build 702. Im Stapelbetrieb ist '--actor' "
+                "deshalb anzugeben.",
                 "--out ueberschreibt eine vorhandene Datei wortlos.",
             ),
         ),
@@ -1427,9 +1444,17 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                             "(nur bei --format pdf)")),
             warnungen=(
                 "DAS VORGABEFORMAT IST PDF und setzt reportlab voraus.",
+                # Build 702 (Vorgang ff7e80ab): siehe Kommentar beim
+                # Prognosebericht - beide Werkzeuge trugen denselben Fehler.
                 "Wie beim Prognosebericht: FAELLT DER ERZEUGUNGSRAHMEN AUS, "
-                "entsteht der Bericht trotzdem - mit Buildnummer 0 und "
-                "Ersteller 'unbekannt', ohne Meldung.",
+                "entsteht der Bericht trotzdem. Seit Build 702 wird der "
+                "Ausfall auf der Fehlerausgabe benannt und im "
+                "Erzeugungsvermerk des Berichts als 'nicht ermittelbar' "
+                "gekennzeichnet; der Rueckgabewert bleibt 0.",
+                "OHNE '--actor' NIMMT DAS WERKZEUG DEN ANGEMELDETEN "
+                "OS-BENUTZER. Ist der keinem person-Datensatz zugeordnet, "
+                "meldet das Werkzeug seit Build 702 einen ungeprueften "
+                "Erstellernamen. Im Stapelbetrieb ist '--actor' anzugeben.",
                 "FEHLT EINE TABELLE, gibt es hier einen rohen Programmabbruch "
                 "und nicht die handlungsleitende Meldung, die "
                 "'export_admin' in derselben Lage ausgibt. Der Bestand ist "
