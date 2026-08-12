@@ -9334,7 +9334,7 @@
     {
       "id": "95f072e7-c624-4adc-ae30-b24971e82fbc",
       "type": "improvement",
-      "status": "resolved",
+      "status": "open",
       "priority": "low",
       "severity": "minor",
       "title": "Prepper: Testlauf dauert durch die Kopie-Proben dreimal so lang",
@@ -9346,35 +9346,22 @@
         "Laufzeit"
       ],
       "affected_version": "0.1.134",
-      "resolved_in_version": "0.1.135",
       "reported_at": "2026-08-12T18:30:00+00:00",
-      "environment": {
-        "os": "Linux (Baucontainer)",
-        "python_version": "3.13.13 und 3.14.0rc2"
-      },
-      "description": "Die Gegenproben B06 und B11 aus Build 134 kopieren je Test den vollstaendigen Bestand und starten darin einen Unterprozess; die Positivkontrolle B06 fuhr dabei die gesamte Testsuite ein zweites Mal. GEMESSEN am 2026-08-12: 'python run_tests.py' dauerte 26 s statt 9 s.",
-      "expected_behavior": "Die Laufzeit soll nicht mit jeder weiteren Kopie-Probe weiter steigen.",
-      "actual_behavior": "Behoben in Build 135 ueber einen Trockenlauf-Schalter im Runner: 26 s -> rund 20 s.",
+      "description": "Die Gegenproben B06 und B11 aus Build 134 kopieren je Test den vollstaendigen Bestand (2,3 MiB, 149 Dateien) und starten darin einen Unterprozess; die Positivkontrolle B06 faehrt dabei die gesamte Testsuite ein zweites Mal. GEMESSEN am 2026-08-12: 'python run_tests.py' dauert 26 s statt 9 s (Python 3.13, Baucontainer).",
+      "expected_behavior": "Die Laufzeit sollte nicht mit jeder weiteren Kopie-Probe weiter steigen. Denkbar: eine Kopie je Testklasse statt je Testmethode (setUpClass), oder die Positivkontrolle mit einem verkuerzten Testbefehl.",
+      "actual_behavior": "26 s statt 9 s. Fuer den Baucontainer unerheblich, auf der Windows-VM (langsameres Dateisystem) aber spuerbar.",
       "updates": [
         {
-          "timestamp": "2026-08-12T19:10:00+00:00",
+          "timestamp": "2026-08-12T18:30:00+00:00",
           "author": "Claude",
           "action": "comment",
-          "comment": "ZUERST GEMESSEN, DANN ENTSCHIEDEN. Die Laufzeit war sehr ungleich verteilt (pytest --durations, 2026-08-12, Python 3.13): B06-Positivkontrolle 18,3 s; sieben weitere Kopie-Proben je 0,9-1,6 s (zusammen rund 7 s); uebriger Bestand 11,3 s. Der Ausreisser war also EINE Probe - und sie war teurer als noetig: ihr Zweck ist zu belegen, dass die Kopie nicht aus einem ANDEREN Grund abbricht. Dafuer muss die Suite nicht ein zweites Mal komplett laufen."
+          "comment": "BEWUSST IN KAUF GENOMMEN, nicht uebersehen: Die Trennschaerfe der Proben ist mehr wert als die Laufzeit - eine Gegenprobe, die auch ohne den geprueften Grund gruen ist, belegt nichts (genau das war der Befund der Gegenpruefung vom 12.08.2026). Die Verkuerzung ist eine Verbesserung, keine Behebung eines Mangels, und sollte erst angefasst werden, wenn die Laufzeit auf der Prod-VM wirklich stoert. Rueckfall in eine unscharfe Probe waere der falsche Preis."
         },
         {
-          "timestamp": "2026-08-12T19:20:00+00:00",
-          "author": "Claude",
+          "timestamp": "2026-08-12T17:22:47.484739+00:00",
+          "author": "merge-tool",
           "action": "comment",
-          "comment": "EIGENE FEHLSCHAETZUNG, hier festgehalten statt stillschweigend berichtigt: Ich hatte fuer den Trockenlauf rund 13 s Gesamtlaufzeit vorhergesagt und die Alternative 'synthetischer Mini-Baum' mit 'nur rund 3 s Zusatzgewinn' bewertet. GEMESSEN nach dem Einbau: 21 s, nicht 13 s. Der Grund ist, dass jede der zehn Unterprozessproben rund 0,9 s braucht - fast ausschliesslich fuer das Einsammeln, also das Importieren der 26 Testmodule. Am Mini-Baum kostet dieselbe Probe 0,07 s; die verworfene Alternative haette also rund 7 s gebracht und nicht 3 s. Alex hat die Zahlen erhalten und entschieden, bei 21 s zu bleiben: die Naehe der Proben am echten Bestand ist ihm mehr wert."
-        },
-        {
-          "timestamp": "2026-08-12T19:30:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "UMGESETZT IN BUILD 135.\n\n(1) NEUER SCHALTER 'python run_tests.py --nur-vorpruefungen'. Er faehrt die drei Vorpruefungen (-O, Struktur, Soll-Bestand), meldet das Ergebnis und endet mit dem passenden Rueckgabewert, OHNE einen einzigen Test auszufuehren. Dafuer wurden die Vorpruefungen in eine eigene Funktion _vorpruefungen() gezogen; am Ablauf des vollen Laufs aendert sich nichts.\n\n(2) ZWEITER NUTZEN, nicht nur Testkosmetik: Der Schalter ist im BETRIEB eine Schnellpruefung 'ist der Bestand vollstaendig und sammelbar?' - auf der Prod-VM in rund einer Sekunde statt eines vollen Laufs. Er ersetzt den Testlauf NICHT und sagt nichts darueber, ob die Tests gruen sind; das steht so auch im Kopf von run_tests.py.\n\n(3) DIE SELBSTAUFRUF-SPERRE ENTFAELLT ERSATZLOS. Build 134 brauchte eine Umgebungsvariable, damit sich der Testlauf ueber die Kopie-Probe nicht endlos selbst startet. Im Trockenlauf findet im Unterprozess kein Suite-Lauf mehr statt - die Sperre ist damit gegenstandslos und wurde entfernt statt beibehalten.\n\n(4) NEUE TESTS B12 (drei Stueck): der Schalter fuehrt NICHTS aus (kein 'Ran ' in der Ausgabe), ein Tippfehler im Schalter wird abgewiesen (Rueckgabewert 2) statt stillschweigend zu einem vollen Lauf zu fuehren, und der Trockenlauf liefert bei einem Soll-Befund DENSELBEN Rueckgabewert wie der volle Lauf (3). Der dritte ist der wichtige: der Schalter ist eine Verkuerzung des Weges, keine Abschwaechung des Massstabs.\n\n(5) MESSUNG NACHHER: 979 Tests, beide Wege, gruen unter Python 3.13.13 und 3.14.0rc2. Laufzeit run_tests.py rund 20 s (vorher 26 s), Trockenlauf allein 0,7 s.\n\n(6) WAS DIE POSITIVKONTROLLE JETZT BELEGT - und was nicht: Sie belegt, dass in der Kopie kein Struktur-Befund, kein -O und keine Soll-Abweichung vorliegt, der Lauf dort also starten wuerde. Sie belegt NICHT mehr, dass die Tests in der Kopie gruen enden. Das ist der bewusst bezahlte Preis; die Aussage 'die Tests sind gruen' trifft ohnehin der aeussere Lauf, der diese Probe gerade ausfuehrt."
+          "comment": "Importiert aus eintraege_claude_Prepper_Build134.json"
         }
       ]
     },
