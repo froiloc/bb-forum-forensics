@@ -65,6 +65,80 @@
  *
  * Alle Kategoriefarben mit 22% Opacity als Hintergrund erfüllen WCAG AA
  * für UI-Komponenten (Kontrastverhältnis >= 3:1 gegen Toolbar-Hintergrund).
+ *
+ * ---------------------------------------------------------------------------
+ * Änderung Build 700 — Kontrast der Minimap-Spurmarker
+ * (Ticket 602c7557-7639-4f73-8bce-5bfbd0aca3e4, Entscheidung Alex 12.08.2026)
+ *
+ * ERKENNTNIS, DIE HIER FESTGEHALTEN GEHÖRT: Ein Kontrastwert, der aus der
+ * Sollfarbe im Stylesheet gerechnet wird, ist FALSCH, sobald am selben Element
+ * eine `opacity` steht. Die Deckkraft verrechnet die Farbe gegen den Grund,
+ * BEVOR das Auge sie sieht. Genau dieser Fehler steckte in der Bewertung aus
+ * Build 649: dort wurde .forensic-minimap-trace mit "rund 3,0:1" als gerade
+ * noch regelkonform eingestuft. Nachgerechnet gegen #11141e:
+ *
+ *   Sollfarbe #3a5a8a roh ............................ 2,63:1
+ *   dieselbe Farbe mit opacity 0.55 (was man wirklich sieht) .. 1,62:1
+ *
+ * Das ist nicht grenzwertig, sondern verfehlt das Minimum von 3,0:1 für
+ * grafische Objekte (WCAG 2.1, Erfolgskriterium 1.4.11) um mehr als die
+ * Hälfte. Für .forensic-minimap-topic (#3a7a4a, opacity 0.55) galt dasselbe:
+ * 3,56:1 roh, aber 1,91:1 wirksam.
+ *
+ * URSACHE, NICHT NUR SYMPTOM: Die `opacity` trug hier ZWEI Aufgaben zugleich —
+ * sie drückte die Rangfolge aus ("Spur ist gedämpfter als Befund") UND sie
+ * zerstörte den Kontrast. Die Rangfolge steckt aber ohnehin schon in der
+ * Geometrie (Spur 3px/left:2px gegen Annotation 4px/left:4px) und im z-index
+ * (Spur 1, Alias 1, Annotation 2). Die Deckkraft war dafür nie nötig.
+ * Deshalb wird sie an den Spurmarkern ERSATZLOS entfernt: Was im Quelltext
+ * als Farbe steht, ist ab jetzt auch die Farbe, die auf dem Schirm ankommt.
+ * Das schließt die Falle, die diese Fehleinschätzung erst möglich gemacht hat.
+ *
+ * NEUE WERTE (gleicher Farbton, nur heller — die Farbwelt bleibt unberührt):
+ *   .forensic-minimap-trace  #3a5a8a -> #587FB9   4,51:1  ✓ (Ziel 4,5:1)
+ *   .forensic-minimap-topic  #3a7a4a -> #438D55   4,53:1  ✓ (Ziel 4,5:1)
+ * Die Farbwerte selbst stehen in toolbar.js (_makeBar setzt sie inline);
+ * hier steht nur die Begründung und der geprüfte Wert.
+ *
+ * Die Spuren liegen mit 4,5:1 damit INNERHALB der Spanne der Annotations-
+ * marker und überstrahlen sie nicht — die Rangfolge bleibt lesbar. Ein
+ * höherer Zielwert (6:1 war erwogen) hätte die Spuren heller gemacht als
+ * die Hälfte der Befundmarker und die Rangfolge im Helligkeitseindruck
+ * umgekehrt. Deshalb 4,5:1 und nicht mehr.
+ *
+ * DER ALIAS-MARKER IST MITGEZOGEN (Entscheidung Alex, 12.08.2026), obwohl er
+ * nie beanstandet war und das Minimum erfüllte. Grund: dieselbe Konstruktion,
+ * derselbe latente Fehler — Sollfarbe #c8a000 (7,43:1), sichtbar mit
+ * opacity 0.65 nur 3,78:1. Hier war die Farbe ABzusenken, nicht anzuheben:
+ * ohne Deckkraft hätte #c8a000 jeden Befundmarker außer CAT_PERSON
+ * überstrahlt. Neuer Wert #AB8900 -> 5,52:1. Ausführlich an der Regel selbst.
+ *
+ * LEITER NACH DER ÄNDERUNG (alle ohne Deckkraft, also Soll = Ist):
+ *   .forensic-minimap-trace  #587FB9 ............ 4,51:1
+ *   .forensic-minimap-topic  #438D55 ............ 4,53:1
+ *   .forensic-minimap-alias  #AB8900 ............ 5,52:1
+ *   .forensic-minimap-bar    Kategoriefarben @0.8  3,27:1 bis 7,71:1
+ * Die Annotationsmarker behalten ihre `opacity: 0.8` bewusst: dort kodiert
+ * die Helligkeit die KATEGORIE und nicht den Rang, ihr Vorrang steckt in der
+ * Geometrie (4px/left:4px) und im z-index (2). Sie sind geprüft (MK06) und
+ * halten sämtlich die 3,0:1 — ein Eingriff wäre eine Farbentscheidung über
+ * sechs Kategorien hinweg und gehört nicht in dieses Ticket.
+ *
+ * HOVER: Der bisherige Sprung von opacity 0.55 auf 0.85 fällt mit der
+ * Deckkraft weg. Ersatz ist `filter: brightness(1.25)` (-> rund 6,8:1).
+ * Grund für genau dieses Mittel: die Farbe wird von toolbar.js INLINE
+ * gesetzt und schlägt damit jede Klassenregel für `background`. `filter`
+ * ist eine eigene Eigenschaft und greift unabhängig davon — die Hervorhebung
+ * funktioniert also auch dann noch, wenn die Farbe je Markertyp wechselt.
+ * Die Höhenänderung 3px -> 6px bleibt als zweites, farbunabhängiges
+ * Signal bestehen (Zugänglichkeit: nicht allein über Farbe unterscheiden).
+ *
+ * NACHGEPRÜFT DURCH: tests/unit/test_minimap_kontrast.test.js — der Test
+ * liest die Werte aus toolbar.js und toolbar.css und rechnet das Verhältnis
+ * selbst nach, statt es als Konstante zu wiederholen. Er schlägt daher auch
+ * dann an, wenn jemand später wieder eine `opacity` an einem Spurmarker
+ * ergänzt.
+ * ---------------------------------------------------------------------------
  */
 
 /* ===========================================================================
@@ -866,9 +940,18 @@ body {
 }
 
 /* Spur-Marker (Build 030-C): Benutzeraktivität ohne Annotation.
-   Schmaler und gedämpfter als Annotations-Marker — zeigt Relevanz,
-   nicht Befund. Annotations-Marker (forensic-minimap-bar) liegt
-   z-index-höher und überlagert ggf. denselben Ort. */
+   Schmaler als Annotations-Marker — zeigt Relevanz, nicht Befund.
+   Annotations-Marker (forensic-minimap-bar) liegt z-index-höher und
+   überlagert ggf. denselben Ort.
+
+   Build 700 (Ticket 602c7557): KEINE `opacity` mehr an diesem Element.
+   Die Rangfolge gegenüber dem Annotations-Marker trägt allein die Geometrie
+   (3px/left:2px gegen 4px/left:4px) und der z-index. Eine Deckkraft hier
+   hätte den Kontrast der Spur von 4,51:1 wieder auf 1,62:1 gedrückt und
+   damit das Minimum von 3,0:1 für grafische Objekte (WCAG 1.4.11) verfehlt.
+   Ausführliche Begründung und Messwerte im Dateikopf.
+   ACHTUNG BEI KÜNFTIGEN ÄNDERUNGEN: `opacity` hier NICHT wieder einführen —
+   tests/unit/test_minimap_kontrast.test.js schlägt darauf an. */
 .forensic-minimap-trace {
   position: absolute;
   left: 2px;
@@ -876,14 +959,16 @@ body {
   height: 3px;
   border-radius: 2px;
   cursor: pointer;
-  opacity: 0.55;
-  transition: height 0.1s, opacity 0.1s;
+  transition: height 0.1s, filter 0.1s;
   z-index: 1;
 }
 
+/* Hervorhebung ohne Deckkraft: `filter` greift auch gegen den von
+   toolbar.js inline gesetzten `background` (Inline schlägt Klassenregel).
+   Die Höhenänderung bleibt als farbunabhängiges Zweitsignal bestehen. */
 .forensic-minimap-trace:hover {
   height: 6px;
-  opacity: 0.85;
+  filter: brightness(1.25);
 }
 
 .forensic-minimap-trace:focus-visible {
@@ -891,7 +976,9 @@ body {
 }
 
 /* Topic-Spur auf viewforum.php (Build 082) — erbt Layout von minimap-trace,
-   Farbe wird per inline style gesetzt (#3a7a4a gedämpftes Grün) */
+   Farbe wird per inline style gesetzt (Build 700: #438D55 statt #3a7a4a,
+   siehe Dateikopf). Auch hier bewusst OHNE `opacity`, gleiche Begründung
+   wie bei .forensic-minimap-trace. */
 .forensic-minimap-topic {
   position: absolute;
   left: 2px;
@@ -899,14 +986,13 @@ body {
   height: 3px;
   border-radius: 2px;
   cursor: pointer;
-  opacity: 0.55;
-  transition: height 0.1s, opacity 0.1s;
+  transition: height 0.1s, filter 0.1s;
   z-index: 1;
 }
 
 .forensic-minimap-topic:hover {
   height: 6px;
-  opacity: 0.85;
+  filter: brightness(1.25);
 }
 
 .forensic-minimap-topic:focus-visible {
@@ -916,7 +1002,37 @@ body {
 /* Alias-Treffer-Marker (Build 180): zwischen Spur-Marker (z-index:1)
    und Annotations-Marker (z-index:2). Schmaler als Annotations-Marker,
    aber breiter als Spur-Marker — Aliasse sind wichtige Orientierungspunkte
-   die auf keiner Seite fehlen sollten. */
+   die auf keiner Seite fehlen sollten.
+
+   Build 700 (Ticket 602c7557, Entscheidung Alex 12.08.2026): auch hier
+   KEINE `opacity` mehr, und die Farbe ist ABgesenkt statt angehoben.
+
+   WARUM DIESER MARKER MITGEZOGEN WURDE, obwohl er nie beanstandet war und
+   das Minimum erfuellte: Er trug dieselbe Konstruktion, die bei den Spuren
+   der eigentliche Fehler war — die Farbe im Quelltext (#c8a000, 7,43:1) war
+   nicht die sichtbare Farbe (mit opacity 0.65 nur 3,78:1). Ein Wert, der
+   zufaellig ueber der Grenze liegt, ist kein Nachweis, sondern ein Zufall,
+   der beim naechsten Griff in diese Datei kippt.
+
+   WARUM ABSENKEN UND NICHT ANHEBEN — der Punkt, an dem dieser Marker sich
+   von den Spuren unterscheidet: Ohne Deckkraft kaeme #c8a000 auf 7,43:1 und
+   laege damit ueber JEDEM Annotationsmarker ausser CAT_PERSON (7,71:1). Ein
+   Alias-Treffer ist ein Orientierungspunkt, kein Befund; er darf die Marken
+   des Ermittlers nicht ueberstrahlen. Die Rangfolge waere also durch das
+   blosse Entfernen der Deckkraft KAPUTTgegangen, nicht repariert worden.
+
+   #AB8900 -> 5,52:1. Damit steht die Leiter so, wie sie gemeint ist:
+     Spur (Relevanz)            4,51 / 4,53:1
+     Alias (Orientierung)       5,52:1     <- deutlicher als eine blosse Spur
+     Marke (Befund)             3,27 bis 7,71:1, farbabhaengig
+   Bei den Marken traegt die Helligkeit NICHT den Rang — sie kodiert die
+   Kategorie. Deren Vorrang steckt in der Geometrie (4px/left:4px) und im
+   z-index (2). Deshalb ist die Spanne dort breit und der Alias-Wert wird
+   gegen ihre OBERGRENZE geprueft, nicht gegen ihren Mittelwert.
+
+   Der Farbton bleibt unveraendert (dasselbe warme Gelb wie das gelbe
+   Alias-Highlight im Text, Beleg: Projektgespraech 2026-05-12) — geaendert
+   ist allein die Helligkeit. */
 .forensic-minimap-alias {
   position: absolute;
   left: 3px;
@@ -924,15 +1040,17 @@ body {
   height: 3px;
   border-radius: 2px;
   cursor: pointer;
-  opacity: 0.65;
-  transition: height 0.1s, opacity 0.1s;
+  transition: height 0.1s, filter 0.1s;
   z-index: 1;
-  background: #c8a000;
+  background: #AB8900;
 }
 
+/* Hervorhebung wie bei den Spurmarkern ueber `filter`, damit alle vier
+   Markerarten dieselbe Bauart haben und niemand beim naechsten Eingriff
+   raten muss, welche Art hier gilt. */
 .forensic-minimap-alias:hover {
   height: 6px;
-  opacity: 1;
+  filter: brightness(1.25);
 }
 
 .forensic-minimap-alias:focus-visible {

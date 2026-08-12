@@ -1,0 +1,5 @@
+aab0c0cb7874c2a7fdf759c23ed0d25c  build.json
+0bc3bf12ed0d798919bf5215371bd875  issue-tracker/eintraege_claude_Build700.json
+21b0af8cd6feb7d07e42613bc1882bb8  tests/unit/test_minimap_kontrast.test.js
+c3898a60710a57e3b6a84d2fcbba8440  toolbar/toolbar.css
+44569dfaad4d04d09ea1786c7768bcaf  toolbar/toolbar.js
