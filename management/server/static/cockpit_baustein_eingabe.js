@@ -59,19 +59,48 @@
  *   Kommentare; Kapselung; reine Funktionen einzeln exportiert (vitest);
  *   XSS-sicher ueber textContent (multilingual, UTF-8).
  *
+ * =========================================================================
+ * NACHTRAG BUILD 704 — DER VERGLEICH DECKTE NUR EINEN WEG AB
+ * =========================================================================
+ *   Der oben beschriebene Vergleich laeuft beim MODUSWECHSEL Roh -> Komfort.
+ *   Der alltaegliche Weg lief ohne ihn: Datensatz oeffnen, irgendetwas
+ *   aendern, speichern. Auf diesem Weg griff nichts.
+ *
+ *   GEMESSEN am 12.08.2026 am laufenden Bauteil mit dem echten Buendel: Ein
+ *   Zitatblock { text, caption, alignment } kam nach setze() -> lies() -
+ *   also nach blossem Oeffnen und Speichern, OHNE dass jemand etwas
+ *   veraendert haette - zurueck als { text, type }. 'caption' und
+ *   'alignment' waren weg; der body-Spiegel schrumpfte mit.
+ *
+ *   Beide Felder sind belegte Projektdaten: html_renderer.py:127-151 rendert
+ *   'caption' als <cite> und 'alignment' als Klasse, klartextAus() in dieser
+ *   Datei liest 'caption'.
+ *
+ *   ANTWORT: die BLINDPROBE (siehe Abschnitt 'WERKZEUGBLINDE FELDER'). Sie
+ *   misst unmittelbar nach dem Aufbau - vor jeder Eingabe -, was das
+ *   Werkzeug nicht halten kann, und schreibt genau das beim Lesen zurueck.
+ *   Melden allein haette nicht gereicht: das Werkzeug KANN diese Felder
+ *   nicht anzeigen, der Bearbeiter haette also nur die Wahl gehabt, den
+ *   Verlust hinzunehmen oder nicht zu speichern.
+ *
  * OEFFENTLICHE API (window.AIWBausteinEingabe)
  *   -- rein (vitest):
- *   tiefVergleich(alt, neu)     -- [{pfad, art, alt, neu}]
- *   jsonPruefen(text)           -- {ok, wert, zeile, spalte, meldung}
- *   klammerbilanz(text)         -- {ok, meldung, offen}
- *   formatiere(text)            -- {ok, text, fehler}
- *   klartextAus(typ, daten)     -- der body-Spiegel
+ *   tiefVergleich(alt, neu)         -- [{pfad, art, alt, neu}]
+ *   blindeFelderAus(vorher, nachher)-- [{pfad, wert}]  (Build 704)
+ *   setzeNachPfad(ziel, pfad, wert) -- {ok} | {ok:false, grund} (Build 704)
+ *   jsonPruefen(text)               -- {ok, wert, zeile, spalte, meldung}
+ *   klammerbilanz(text)             -- {ok, meldung, offen}
+ *   formatiere(text)                -- {ok, text, fehler}
+ *   klartextAus(typ, daten)         -- der body-Spiegel
  *   -- DOM:
- *   erzeuge(hostEl, opts)       -- {setze, lies, modus, aus}
+ *   erzeuge(hostEl, opts)           -- {setze, lies, modus, aus}
+ *   lies() liefert seit Build 704 zusaetzlich 'bewahrt' und 'nichtBewahrt'.
  *
- * Version: v0.8.656 · Build: 656 · 2026-08-02
- * Beleg: Ticket 8f2b64d9; editor/html_renderer.py:206-226 (UnknownBlock);
- *        management/server/static/cockpit_baustein_vorschau.js:118-132.
+ * Version: v0.8.704 · Build: 704 · 2026-08-12
+ * Beleg: Ticket 8f2b64d9 (Build 656); editor/html_renderer.py:206-226
+ *        (UnknownBlock) und :127-151 (Quote-Datenformat);
+ *        management/server/static/cockpit_baustein_vorschau.js:118-132;
+ *        deployment/build_editor_bundle.py:56 (@cychann/editorjs-quote).
  */
 (function () {
     'use strict';
@@ -161,6 +190,125 @@
                         alt: alt, neu: neu });
         }
         return raus;
+    }
+
+    // =====================================================================
+    // BUILD 704 — WERKZEUGBLINDE FELDER
+    //
+    // DER BEFUND, DER DAZU GEFUEHRT HAT (gemessen am laufenden Bauteil mit
+    // dem echten Buendel, 12.08.2026):
+    //
+    //   Ein Zitatblock aus der Datenbank
+    //     { "text": "...", "caption": "Vernehmung vom 03.04.2026",
+    //       "alignment": "left" }
+    //   kommt nach setze() -> lies() - also nach blossem OEFFNEN UND
+    //   SPEICHERN, ohne dass jemand etwas veraendert haette - zurueck als
+    //     { "text": "...", "type": "quotationMark" }
+    //
+    //   'caption' und 'alignment' sind WEG. Beide sind keine erfundenen
+    //   Felder: editor/html_renderer.py:127-151 rendert 'caption' als
+    //   <cite class="cdx-quote__caption"> und 'alignment' als Klasse. Und
+    //   klartextAus() in dieser Datei liest 'caption' ebenfalls - der
+    //   body-Spiegel schrumpfte im selben Zug mit.
+    //
+    // URSACHE: Das gebuendelte Zitatwerkzeug ist '@cychann/editorjs-quote'
+    // (deployment/build_editor_bundle.py:56, seit 0.6.044b). Dessen
+    // Datenmodell ist {text, type}. Der Renderer dagegen ist auf das
+    // Datenmodell von '@editorjs/quote' geschrieben, {text, caption,
+    // alignment}. Zwei Datenmodelle fuer denselben Block, und keine Seite
+    // weiss von der anderen. DAS ZUSAMMENFUEHREN DER BEIDEN MODELLE IST
+    // EIN EIGENER VORGANG - hier wird der VERLUST behoben, nicht die
+    // Modellfrage entschieden.
+    //
+    // WARUM MELDEN ALLEIN NICHT REICHT: Der Moduswechsel Roh -> Komfort
+    // vergleicht seit Build 656 und fragt nach. Der alltaegliche Weg
+    // - Datensatz oeffnen, etwas ganz anderes aendern, speichern - lief
+    // ohne jeden Vergleich. Eine blosse Meldung an dieser Stelle haette
+    // den Bearbeiter vor die Wahl gestellt "speichern und Inhalt
+    // verlieren" oder "nicht speichern"; beides ist keine Loesung, wenn
+    // das Werkzeug das Feld ueberhaupt nicht anzeigen kann.
+    //
+    // DAS VERFAHREN: Unmittelbar nachdem der Editor aus den geladenen
+    // Daten aufgebaut ist - BEVOR ein Mensch etwas anfassen konnte - wird
+    // er sofort wieder ausgelesen und mit den geladenen Daten verglichen.
+    // Was in dieser Sekunde bereits fehlt, kann das Werkzeug nicht halten;
+    // es ist WERKZEUGBLIND. Nur genau diese Felder werden beim spaeteren
+    // Lesen zurueckgeschrieben.
+    //
+    // WARUM DER ZEITPUNKT ENTSCHEIDET - und warum nicht einfach jedes
+    // spaeter fehlende Feld zurueckgeschrieben wird: Loescht der Bearbeiter
+    // spaeter den zweiten Punkt einer Aufzaehlung, fehlt 'items.1' EBENSO.
+    // Ein pauschales Zurueckschreiben wuerde diesen Punkt wieder
+    // auferstehen lassen - aus einem Datenverlust wuerde eine
+    // Datenfaelschung. Die Messung vor der ersten Eingabe trennt beides
+    // sauber: sie sieht nur, was das WERKZEUG nicht kann, nie das, was
+    // der MENSCH wollte.
+    // =====================================================================
+
+    // blindeFelderAus: was ist zwischen 'vorher' und 'nachher' ERSATZLOS
+    // verschwunden? Ergaenzungen des Werkzeugs (art 'neu', etwa
+    // table.stretched oder delimiter.style) und geaenderte Werte bleiben
+    // ausdruecklich aussen vor - ergaenzt wird nichts weggenommen, und ein
+    // geaenderter Wert ist keine Blindheit, sondern eine Umformung.
+    function blindeFelderAus(vorher, nachher) {
+        return tiefVergleich(vorher, nachher)
+            .filter(function (u) { return u.art === 'entfallen'; })
+            .map(function (u) { return { pfad: u.pfad, wert: u.alt }; });
+    }
+
+    // setzeNachPfad: einen Wert an einem Pfad aus tiefVergleich ablegen.
+    //
+    // Gibt {ok:true} oder {ok:false, grund:'...'} zurueck - NIE still
+    // fehlschlagen (Grundregel 1). Der Aufrufer meldet, was nicht
+    // zurueckgeschrieben werden konnte, statt es zu verschweigen.
+    //
+    // ABSICHTLICH ZURUECKHALTEND: Fehlt ein Zwischenglied des Pfades, wird
+    // es NICHT angelegt. Ein Werkzeug, das ein ganzes Unterobjekt fallen
+    // laesst, hat den Block umgebaut; dort einen Wert einzuhaengen hiesse
+    // raten. Bei Feldern gilt: nur setzen, wenn nicht schon da - was der
+    // Editor liefert, hat Vorrang vor dem Bewahrten.
+    function setzeNachPfad(ziel, pfad, wert) {
+        var teile = _s(pfad).split('.');
+        if (!_s(pfad) || pfad === '(Wurzel)') {
+            return { ok: false, grund: 'kein verwertbarer Pfad' };
+        }
+        var knoten = ziel;
+        for (var i = 0; i < teile.length - 1; i++) {
+            if (knoten === null || typeof knoten !== 'object') {
+                return { ok: false, grund: 'Zwischenglied "' + teile[i]
+                                            + '" ist kein Objekt' };
+            }
+            if (!Object.prototype.hasOwnProperty.call(knoten, teile[i])) {
+                return { ok: false, grund: 'Zwischenglied "' + teile[i]
+                                            + '" fehlt' };
+            }
+            knoten = knoten[teile[i]];
+        }
+        var letzt = teile[teile.length - 1];
+        if (knoten === null || typeof knoten !== 'object') {
+            return { ok: false, grund: 'Ziel ist kein Objekt' };
+        }
+        if (Array.isArray(knoten)) {
+            // In einer Liste ist der Pfad ein Index. Zurueckgeschrieben wird
+            // nur AM ENDE - an einer anderen Stelle einzufuegen wuerde die
+            // Reihenfolge der uebrigen Eintraege verschieben, und in einer
+            // Tabellenzeile ist die Reihenfolge bedeutungstragend.
+            var idx = parseInt(letzt, 10);
+            if (String(idx) !== letzt || idx < 0) {
+                return { ok: false, grund: 'kein Listenindex: "' + letzt + '"' };
+            }
+            if (idx !== knoten.length) {
+                return { ok: false, grund: 'Listenplatz ' + idx
+                                            + ' ist nicht das Ende' };
+            }
+            knoten.push(wert);
+            return { ok: true };
+        }
+        if (Object.prototype.hasOwnProperty.call(knoten, letzt)) {
+            return { ok: false, grund: 'Feld ist bereits belegt' };
+        }
+        knoten[letzt] = wert;
+        return { ok: true };
     }
 
     // jsonPruefen: Syntaxpruefung MIT ZEILE UND SPALTE.
@@ -383,8 +531,13 @@
     function erzeuge(hostEl, opts) {
         opts = opts || {};
         var doc = (hostEl && hostEl.ownerDocument) || document;
+        // blindeFelder / blindTyp / blindProbe (Build 704): Ergebnis und
+        // Laufzustand der Blindprobe. blindTyp haelt fest, FUER WELCHE
+        // Blockart gemessen wurde - nach einem Artwechsel gilt die Messung
+        // nicht mehr.
         var zustand = { modus: 'komfort', typ: 'paragraph', daten: {},
-                        instanz: null };
+                        instanz: null,
+                        blindeFelder: [], blindTyp: null, blindProbe: null };
 
         // --- Aufbau der Flaeche -----------------------------------------
         var kopf = doc.createElement('div');
@@ -491,20 +644,138 @@
                 // und ein Neuladen kostete die Arbeit.
                 onChange: function () { _geaendert(); }
             });
+            _blindprobeStarten(zustand.daten, zustand.typ);
             return zustand.instanz;
+        }
+
+        // _blindSatz: der Hinweis auf werkzeugblinde Felder, an EINER Stelle
+        // formuliert.
+        //
+        // Er wird an zwei Stellen gebraucht - nach dem blossen Aufbau und
+        // nach einem Moduswechsel - und beide schreiben in dasselbe
+        // Meldungsfeld. Bis das hier zusammengefasst war, ueberschrieb die
+        // Erfolgsmeldung des Wechsels ('Der Wechsel ist verlustfrei.')
+        // ausgerechnet den Hinweis, dass Felder nicht angezeigt werden
+        // koennen. Der Bearbeiter sah dann nur noch die Entwarnung.
+        function _blindSatz(felder) {
+            return 'Das Werkzeug dieser Blockart kann ' + felder.length
+                + ' Angabe(n) nicht anzeigen: '
+                + felder.map(function (f) { return f.pfad; }).join(', ')
+                + '. Sie bleiben beim Speichern erhalten; ändern lassen sie '
+                + 'sich im Rohmodus.';
+        }
+
+        // _blindprobeStarten: die Messung aus dem Kopf dieser Datei.
+        //
+        // Sie laeuft EINMAL je Aufbau und VOR jeder Eingabe: Editor fertig
+        // aufgebaut -> sofort wieder auslesen -> gegen die geladenen Daten
+        // halten. Was jetzt schon fehlt, kann das Werkzeug nicht halten.
+        //
+        // Das Ergebnis wird als Versprechen gemerkt, nicht nur als Liste:
+        // _komfortLesen() kann waehrend der laufenden Messung aufgerufen
+        // werden (schnelles Speichern nach dem Oeffnen), und dann muss es
+        // warten - sonst waere ausgerechnet der eilige Fall der ungesicherte.
+        function _blindprobeStarten(alsGebaut, typBeimBau) {
+            zustand.blindeFelder = [];
+            zustand.blindTyp = typBeimBau;
+            zustand.blindProbe = null;
+
+            var inst = zustand.instanz;
+            var hatIsReady = inst && inst.isReady
+                && typeof inst.isReady.then === 'function';
+            if (!hatIsReady) {
+                // Kein echter Editor (fehlendes Buendel, gestellter Ctor im
+                // Test). Dann gibt es auch nichts zu bewahren - und vor
+                // allem nichts zu verschweigen: ohne Editor laeuft der
+                // Rohmodus, und der haelt ohnehin alle Felder.
+                return;
+            }
+            // save() WIRD ERST NACH isReady ANGEHAENGT - gemessen an
+            // Editor.js 2.31.6: unmittelbar nach 'new EditorJS(...)' ist
+            // 'typeof instanz.save' noch 'undefined'. Eine Pruefung auf save
+            // VOR dem Warten haette die Messung genau dann uebersprungen,
+            // wenn sie gebraucht wird, und zwar lautlos. Deshalb steht die
+            // Pruefung hinter isReady und nicht davor.
+            zustand.blindProbe = inst.isReady.then(function () {
+                if (typeof inst.save !== 'function') {
+                    throw new Error('save() fehlt nach isReady');
+                }
+                return inst.save();
+            }).then(function (erg) {
+                if (zustand.instanz !== inst) { return; }   // zwischenzeitlich neu aufgebaut
+                var b = (erg && erg.blocks && erg.blocks[0]) || null;
+                zustand.blindeFelder = b
+                    ? blindeFelderAus(alsGebaut || {}, b.data || {}) : [];
+                if (zustand.blindeFelder.length) {
+                    _melde(_blindSatz(zustand.blindeFelder), 'warnung');
+                }
+            })['catch'](function (e) {
+                // GEMELDET, NICHT VERSCHLUCKT: schlaegt die Messung fehl,
+                // wird NICHTS bewahrt - und das muss man wissen, sonst
+                // haelt man sich faelschlich fuer geschuetzt.
+                log('Blindprobe', e);
+                zustand.blindeFelder = [];
+                _melde('Die Prüfung auf nicht darstellbare Angaben ist '
+                    + 'fehlgeschlagen. Vor dem Speichern bitte im Rohmodus '
+                    + 'nachsehen.', 'fehler');
+            });
         }
 
         // _komfortLesen: was steht gerade im Editor? Gibt ein Versprechen,
         // weil save() eines ist.
+        //
+        // BUILD 704: Vor dem Auslesen wird die Blindprobe abgewartet und
+        // danach werden die werkzeugblinden Felder zurueckgeschrieben. Das
+        // Ergebnis traegt 'bewahrt' und 'nichtBewahrt' - der Aufrufer soll
+        // beides sehen koennen, ohne in dieser Datei nachlesen zu muessen.
         function _komfortLesen() {
-            if (!zustand.instanz || typeof zustand.instanz.save !== 'function') {
+            var inst = zustand.instanz;
+            if (!inst) {
                 return Promise.resolve({ type: zustand.typ,
-                                         data: zustand.daten });
+                                         data: zustand.daten,
+                                         bewahrt: [], nichtBewahrt: [] });
             }
-            return zustand.instanz.save().then(function (erg) {
+            // ERST WARTEN, DANN AUF save() PRUEFEN - aus demselben Grund wie
+            // in _blindprobeStarten: vor isReady gibt es save() noch nicht.
+            // Die Pruefung stand hier bis Build 704 VOR dem Warten; ein
+            // Speichern unmittelbar nach dem Oeffnen lieferte deshalb den
+            // GELADENEN Stand zurueck statt des im Editor stehenden. Das fiel
+            // nicht auf, weil beide meist gleich sind - aber eben nur meist.
+            var warten = zustand.blindProbe
+                || (inst.isReady && typeof inst.isReady.then === 'function'
+                    ? inst.isReady : Promise.resolve());
+            return warten.then(function () {
+                if (typeof inst.save !== 'function') {
+                    return null;
+                }
+                return inst.save();
+            }).then(function (erg) {
+                if (erg === null) {
+                    return { type: zustand.typ, data: zustand.daten,
+                             bewahrt: [], nichtBewahrt: [] };
+                }
                 var b = (erg && erg.blocks && erg.blocks[0]) || null;
-                if (!b) { return { type: zustand.typ, data: {} }; }
-                return { type: b.type, data: b.data || {} };
+                if (!b) {
+                    return { type: zustand.typ, data: {},
+                             bewahrt: [], nichtBewahrt: [] };
+                }
+                var daten = b.data || {};
+                var bewahrt = [], nichtBewahrt = [];
+
+                // NUR bei unveraenderter Blockart. Hat der Bearbeiter die Art
+                // gewechselt, gehoerten die gemessenen Felder zu einem anderen
+                // Werkzeug - sie in den neuen Block zu heben, ergaebe einen
+                // Block, den so nie jemand geschrieben hat.
+                if (b.type === zustand.blindTyp) {
+                    (zustand.blindeFelder || []).forEach(function (f) {
+                        var e = setzeNachPfad(daten, f.pfad, f.wert);
+                        if (e.ok) { bewahrt.push(f); }
+                        else { nichtBewahrt.push({ pfad: f.pfad, wert: f.wert,
+                                                   grund: e.grund }); }
+                    });
+                }
+                return { type: b.type, data: daten,
+                         bewahrt: bewahrt, nichtBewahrt: nichtBewahrt };
             });
         }
 
@@ -616,7 +887,14 @@
             return bereit.then(_komfortLesen).then(function (b) {
                 var unterschiede = tiefVergleich(eingabe, b.data);
                 if (!unterschiede.length) {
-                    _melde('Komfortmodus. Der Wechsel ist verlustfrei.', 'ok');
+                    // Build 704: Der Hinweis auf werkzeugblinde Felder gehoert
+                    // AN diese Erfolgsmeldung und nicht daneben - sonst
+                    // ueberschreibt die Entwarnung genau die Auskunft, die der
+                    // Bearbeiter braucht, um das Feld spaeter wiederzufinden.
+                    var blind = (b.bewahrt && b.bewahrt.length)
+                        ? ' ' + _blindSatz(b.bewahrt) : '';
+                    _melde('Komfortmodus. Der Wechsel ist verlustfrei.' + blind,
+                        blind ? 'warnung' : 'ok');
                     return true;
                 }
                 // NICHT SCHLUCKEN, SONDERN MELDEN - und den Wechsel erst
@@ -695,24 +973,51 @@
                 typWahl.value = zustand.typ;
                 vergleichKasten.hidden = true;
                 if (zustand.modus === 'roh') {
+                    // Im Rohmodus haelt das Textfeld alle Felder ohnehin -
+                    // eine Blindprobe waere gegenstandslos. Der Stand aus
+                    // einem frueheren Komfort-Aufbau darf aber nicht
+                    // stehenbleiben: er gehoerte zu anderen Daten.
+                    zustand.blindeFelder = [];
+                    zustand.blindTyp = null;
+                    zustand.blindProbe = null;
                     rohFeld.value = JSON.stringify(zustand.daten, null, 2);
                 } else {
-                    _komfortAufbauen();
+                    _komfortAufbauen();   // startet die Blindprobe
                 }
                 _melde('');
             },
             // lies: der aktuelle Stand als Versprechen.
+            //
+            // BUILD 704: Das Ergebnis traegt zusaetzlich 'bewahrt' und
+            // 'nichtBewahrt'. Beide sind IMMER da (im Rohmodus leer), damit
+            // der Aufrufer nicht auf Anwesenheit pruefen muss - ein Feld,
+            // das mal fehlt und mal nicht, wird irgendwann vergessen.
             lies: function () {
                 if (zustand.modus === 'roh') {
                     var p = jsonPruefen(rohFeld.value);
                     return Promise.resolve({
                         type: zustand.typ,
                         data: p.ok ? p.wert : zustand.daten,
-                        rohFehler: p.ok ? null : p.meldung
+                        rohFehler: p.ok ? null : p.meldung,
+                        bewahrt: [], nichtBewahrt: []
                     });
                 }
                 return _komfortLesen().then(function (b) {
-                    return { type: b.type, data: b.data, rohFehler: null };
+                    if (b.nichtBewahrt && b.nichtBewahrt.length) {
+                        // GRUNDREGEL 1: Was nicht zurueckgeschrieben werden
+                        // konnte, geht beim Speichern verloren - und genau
+                        // das muss vor dem Speichern auf der Flaeche stehen.
+                        _melde('ACHTUNG: ' + b.nichtBewahrt.length
+                            + ' Angabe(n) lassen sich nicht bewahren und gehen '
+                            + 'beim Speichern verloren: '
+                            + b.nichtBewahrt.map(function (f) {
+                                return f.pfad + ' (' + f.grund + ')';
+                            }).join('; ') + '. Im Rohmodus nachsehen.',
+                            'fehler');
+                    }
+                    return { type: b.type, data: b.data, rohFehler: null,
+                             bewahrt: b.bewahrt || [],
+                             nichtBewahrt: b.nichtBewahrt || [] };
                 });
             },
             modus: function () { return zustand.modus; },
@@ -730,6 +1035,12 @@
     // =====================================================================
     var API = {
         tiefVergleich: tiefVergleich,
+        // Build 704: einzeln nach aussen gegeben, damit die Regression sie
+        // ohne Editor.js pruefen kann - eine Pruefung, die erst am gebauten
+        // Editor greift, prueft zwei Dinge auf einmal und benennt bei einem
+        // Fehlschlag keines davon.
+        blindeFelderAus: blindeFelderAus,
+        setzeNachPfad: setzeNachPfad,
         jsonPruefen: jsonPruefen,
         klammerbilanz: klammerbilanz,
         formatiere: formatiere,

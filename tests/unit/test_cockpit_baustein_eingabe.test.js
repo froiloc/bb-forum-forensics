@@ -19,9 +19,17 @@
  * ED04 — formatiere: rueckt ein, ohne den Inhalt anzutasten.
  * ED05 — klartextAus: der body-Spiegel je Blockart, Platzhalter bleiben.
  * ED06 — Moduswechsel Komfort -> Roh und zurueck, VERLUSTFREI.
- * ED07 — DER KERNFALL: ein Wechsel MIT Verlust wird gemeldet und wartet auf
- *        eine Bestaetigung; 'Im Rohmodus bleiben' aendert nichts.
+ * ED07 — DER KERNFALL: ein Wechsel, der einen Wert UMFORMT, wird gemeldet und
+ *        wartet auf eine Bestaetigung; 'Im Rohmodus bleiben' aendert nichts.
+ *        BIS BUILD 704 fuhr dieser Fall ein WEGGELASSENES Feld; seit der
+ *        Blindprobe wird ein solches bewahrt, der Fall traegt jetzt eine
+ *        Umformung. Begruendung an der Fundstelle.
+ * ED07c — (Build 704) der weggelassene Fall, mit umgekehrtem Ausgang: das
+ *        Feld ueberlebt, und der Bearbeiter erfaehrt davon.
  * ED08 — der Entwurfsrueckruf feuert (die Bruecke zum Entwurfsspeicher).
+ *
+ * Die Blindprobe selbst — Messzeitpunkt, Zurueckschreiben, Grenzen —
+ * pruefen BF01 bis BF10 in tests/unit/test_cockpit_baustein_blindfelder.test.js.
  */
 
 import { describe, it, expect } from "vitest";
@@ -48,7 +56,7 @@ function _api(win) { return (win || _ctx()).AIWBausteinEingabe; }
  * NUR die Felder zurueck, die sein Werkzeug kennt. 'kennt' bildet genau das
  * ab — ohne diese Eigenschaft waere der ganze Vergleich nicht pruefbar.
  */
-function _stubCtor(kennt) {
+function _stubCtor(kennt, wandelt) {
   return function Stub(cfg) {
     this.cfg = cfg;
     const b = (cfg.data && cfg.data.blocks && cfg.data.blocks[0]) || {};
@@ -65,6 +73,12 @@ function _stubCtor(kennt) {
           }
         });
       }
+      // 'wandelt' (Build 704): ein Werkzeug, das einen Wert UMFORMT statt
+      // ihn wegzulassen. Beides kommt in Editor.js wirklich vor, und die
+      // beiden Faelle werden seit Build 704 UNTERSCHIEDLICH behandelt -
+      // Weglassen wird bewahrt, Umformen wird gemeldet. Ohne diese
+      // Stub-Eigenschaft liesse sich der zweite Fall nicht mehr pruefen.
+      if (typeof wandelt === "function") { d = wandelt(d); }
       return Promise.resolve({ blocks: [{ type: this._type, data: d }] });
     };
     this.destroy = () => { this._zerstoert = true; };
@@ -218,11 +232,11 @@ describe("cockpit_baustein_eingabe — reine Funktionen (Build 656)", () => {
 });
 
 describe("cockpit_baustein_eingabe — der Moduswechsel (Build 656)", () => {
-  function _bau(win, kennt, opts) {
+  function _bau(win, kennt, opts, wandelt) {
     const host = win.document.getElementById("host");
     const api = win.AIWBausteinEingabe;
     const steuer = api.erzeuge(host, Object.assign({
-      EditorCtor: _stubCtor(kennt),
+      EditorCtor: _stubCtor(kennt, wandelt),
       tools: {},
     }, opts || {}));
     return { host, api, steuer };
@@ -259,47 +273,100 @@ describe("cockpit_baustein_eingabe — der Moduswechsel (Build 656)", () => {
   });
 
   // ED07 -----------------------------------------------------------------
-  it("ED07: ein Wechsel MIT Verlust wird gemeldet und wartet", async () => {
-    const win = _ctx();
-    // Der Stub kennt NUR 'content' - 'sonderfeld' ueberlebt sein save()
-    // nicht. Genau das tut Editor.js mit einem Feld, das sein Werkzeug
-    // nicht kennt: es verschwindet, OHNE Fehlermeldung.
-    const { host, steuer } = _bau(win, ["content"]);
-    steuer.setze("table", { content: [["A"]] });
+  //
+  // MITGEZOGEN IN BUILD 704 - und zwar nicht, weil der Fall veraltet
+  // waere, sondern weil er BIS BUILD 704 ZWEI DINGE AUF EINMAL PRUEFTE.
+  //
+  // Bis hierher fuhr er ein Werkzeug, das ein Feld WEGLAESST ('sonderfeld'),
+  // und erwartete am Ende, dass das Feld nach dem Uebernehmen verloren ist.
+  // Seit Build 704 wird ein weggelassenes Feld BEWAHRT (Blindprobe), der
+  // Schluss "also ist es weg" gilt also nicht mehr. Die Mechanik, um die es
+  // ED07 eigentlich geht - melden, warten, erst auf Bestaetigung wechseln -
+  // gilt unveraendert weiter; sie greift jetzt bei einem Werkzeug, das einen
+  // Wert UMFORMT. Das ist der Fall, den keine Bewahrung heilen kann: ob eine
+  // Umformung gewollt war, weiss nur ein Mensch.
+  //
+  // Der weggelassene Fall ist nicht ersatzlos entfallen, er steht jetzt in
+  // ED07c - und dort mit der Zusicherung, die seit Build 704 gilt.
+  it("ED07: ein Wechsel, der einen Wert UMFORMT, wird gemeldet und wartet",
+    async () => {
+      const win = _ctx();
+      // Ein Werkzeug, das den Inhalt annimmt, ihn aber anders zurueckgibt -
+      // wie @cychann/editorjs-quote, das aus 'alignment' ein 'type' macht.
+      const { host, steuer } = _bau(win, null, null,
+        (d) => Object.assign({}, d, { stufe: "gross" }));
+      steuer.setze("header", { text: "Titel", stufe: "klein" });
 
-    _modusBtn(host).click();
-    await new Promise((r) => setTimeout(r, 0));
-    // Im Rohmodus ein Feld ergaenzen, das kein Werkzeug kennt.
-    _roh(host).value = JSON.stringify(
-      { content: [["A"]], sonderfeld: "wichtig" });
+      _modusBtn(host).click();
+      await new Promise((r) => setTimeout(r, 0));
+      _roh(host).value = JSON.stringify({ text: "Titel", stufe: "klein" });
 
-    _modusBtn(host).click();
-    await new Promise((r) => setTimeout(r, 0));
+      _modusBtn(host).click();
+      await new Promise((r) => setTimeout(r, 0));
 
-    // NICHT GESCHLUCKT, SONDERN GEMELDET.
-    expect(_kasten(host).hidden).toBe(false);
-    const text = _kasten(host).textContent;
-    expect(text).toContain("sonderfeld");
-    expect(text).toContain("entfällt");
-    expect(text).toContain("wichtig");     // der Wert steht dabei
-    expect(_meldung(host).textContent).toContain("NICHT verlustfrei");
+      // NICHT GESCHLUCKT, SONDERN GEMELDET.
+      expect(_kasten(host).hidden).toBe(false);
+      const text = _kasten(host).textContent;
+      expect(text).toContain("stufe");
+      expect(text).toContain("ändert sich");
+      expect(text).toContain("klein");      // der alte Wert steht dabei
+      expect(text).toContain("gross");      // und der neue auch
+      expect(_meldung(host).textContent).toContain("NICHT verlustfrei");
 
-    // 'Im Rohmodus bleiben' aendert NICHTS.
-    host.querySelector(".aiw-mod-eing-zurueck").click();
-    await new Promise((r) => setTimeout(r, 0));
-    expect(steuer.modus()).toBe("roh");
-    expect(JSON.parse(_roh(host).value).sonderfeld).toBe("wichtig");
-    expect(_meldung(host).textContent).toContain("Nichts ist verändert");
+      // 'Im Rohmodus bleiben' aendert NICHTS.
+      host.querySelector(".aiw-mod-eing-zurueck").click();
+      await new Promise((r) => setTimeout(r, 0));
+      expect(steuer.modus()).toBe("roh");
+      expect(JSON.parse(_roh(host).value).stufe).toBe("klein");
+      expect(_meldung(host).textContent).toContain("Nichts ist verändert");
 
-    // Und der andere Weg: uebernehmen heisst uebernehmen, samt Verlust.
-    _modusBtn(host).click();
-    await new Promise((r) => setTimeout(r, 0));
-    host.querySelector(".aiw-mod-eing-uebernehmen").click();
-    await new Promise((r) => setTimeout(r, 0));
-    const gelesen = await steuer.lies();
-    expect(gelesen.data.sonderfeld).toBeUndefined();
-    expect(gelesen.data.content).toEqual([["A"]]);
-  });
+      // Und der andere Weg: uebernehmen heisst uebernehmen, samt Umformung.
+      _modusBtn(host).click();
+      await new Promise((r) => setTimeout(r, 0));
+      host.querySelector(".aiw-mod-eing-uebernehmen").click();
+      await new Promise((r) => setTimeout(r, 0));
+      const gelesen = await steuer.lies();
+      expect(gelesen.data.stufe).toBe("gross");
+      expect(gelesen.data.text).toBe("Titel");
+    });
+
+  // ED07c ----------------------------------------------------------------
+  //
+  // DER FALL, DEN ED07 BIS BUILD 704 GEFUEHRT HAT - mit umgekehrtem
+  // Ausgang. Ein Feld, das das Werkzeug nicht halten kann, ueberlebt den
+  // Wechsel jetzt. Der Wechsel meldet dafuer auch keinen Verlust mehr, denn
+  // es gibt keinen: die Vergleichsliste bleibt zu.
+  it("ED07c: ein Feld, das das Werkzeug nicht halten kann, ueberlebt "
+    + "den Wechsel", async () => {
+      const win = _ctx();
+      const { host, steuer } = _bau(win, ["content"]);
+      steuer.setze("table", { content: [["A"]] });
+
+      _modusBtn(host).click();
+      await new Promise((r) => setTimeout(r, 0));
+      _roh(host).value = JSON.stringify(
+        { content: [["A"]], sonderfeld: "wichtig" });
+
+      _modusBtn(host).click();
+      await new Promise((r) => setTimeout(r, 0));
+      await new Promise((r) => setTimeout(r, 0));   // Blindprobe abwarten
+
+      // Kein Verlust, also kein Vergleichskasten.
+      expect(_kasten(host).hidden).toBe(true);
+      expect(steuer.modus()).toBe("komfort");
+
+      // Aber der Bearbeiter erfaehrt, dass das Feld hier nicht bearbeitbar
+      // ist - stillschweigend bewahren waere die andere Haelfte desselben
+      // Fehlers.
+      expect(_meldung(host).textContent).toContain("sonderfeld");
+      expect(_meldung(host).textContent).toContain("Rohmodus");
+
+      const gelesen = await steuer.lies();
+      expect(gelesen.data.sonderfeld).toBe("wichtig");
+      expect(gelesen.data.content).toEqual([["A"]]);
+      expect(gelesen.bewahrt.map((f) => f.pfad)).toEqual(["sonderfeld"]);
+      expect(gelesen.nichtBewahrt).toEqual([]);
+    });
 
   // ED07b ----------------------------------------------------------------
   it("ED07b: defektes JSON verhindert den Wechsel und sagt wo", async () => {
