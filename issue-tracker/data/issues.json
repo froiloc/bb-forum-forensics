@@ -16131,6 +16131,144 @@
           "comment": "Importiert aus eintraege_claude_Build695.json"
         }
       ]
+    },
+    {
+      "id": "269fdbca-1a1b-4986-a746-d6ab5df4b1e0",
+      "type": "improvement",
+      "status": "resolved",
+      "priority": "medium",
+      "severity": "minor",
+      "title": "Prepper: Testlauf kennt keinen Soll-Bestand",
+      "reporter": "Claude",
+      "assigned_to": "Alex",
+      "tags": [
+        "Prepper",
+        "Tests",
+        "Grundregel-1",
+        "Grundregel-3"
+      ],
+      "affected_version": "0.1.133",
+      "resolved_in_version": "0.1.134",
+      "reported_at": "2026-08-12T12:30:00+00:00",
+      "environment": {
+        "os": "Linux (Baucontainer)",
+        "python_version": "3.13.13 und 3.14.0rc2",
+        "database": "SQLite3"
+      },
+      "description": "Der Struktur-Waechter aus Build 133 sichert, dass jeder VORHANDENE Test auch gesammelt wird. Er kennt aber keinen Soll-Bestand: verschwindet eine ganze Testdatei, meldet der Lauf unveraendert 'OK', nur mit weniger Tests.",
+      "expected_behavior": "Der Lauf vergleicht die gefundene Testmenge mit einem gepflegten Soll und meldet eine Unterschreitung als Fehler.",
+      "actual_behavior": "Behoben in Build 134 als vollstaendige Test-ID-Liste (Entscheidung Alex 2026-08-12).",
+      "updates": [
+        {
+          "timestamp": "2026-08-12T17:00:00+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "comment": "ENTSCHEIDUNG: vollstaendige Test-ID-Liste (nicht Mindestzahl je Datei, nicht Vergleich gegen den Vorgaenger-Commit). Begruendung fuer die Variante: ein verschwundener Test wird NAMENTLICH sichtbar, und der Git-Diff der Liste macht jede Aenderung des Testbestands belegpflichtig. Der Vergleich gegen den Vorgaenger-Commit schied aus, weil die Windows-Prod-VM kein git hat."
+        },
+        {
+          "timestamp": "2026-08-12T18:30:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "resolved",
+          "comment": "UMGESETZT IN BUILD 134.\n\n(1) NEUE BAUTEILE. tests/testbestand.txt (976 Test-IDs, sortiert, eine je Zeile), tests/bestandsliste.py (Klasse Bestandsliste: lesen, schreiben, abgleichen), tests/laufsammlung.py (Klasse Laufsammlung: die Suite wird EINMAL erhoben und von Lauf, Abgleich und Werkzeug gemeinsam benutzt - zwei verschieden erhobene Mengen zu vergleichen sagt nichts aus), tools/testbestand_schreiben.py (Fortschreiben).\n\n(2) UNGLEICHE BEHANDLUNG DER BEIDEN RICHTUNGEN. Fehlt eine ID: Abbruch mit Rueckgabewert 3 und Namensnennung. Kommt eine hinzu: nur Hinweis - ein Abbruch wuerde den bestrafen, der Tests HINZUFUEGT. Damit die Fortschreibung nicht vergessen wird, faellt Test B03 in BEIDE Richtungen rot; eine Lieferung mit veralteter Liste ist also nicht gruen zu bekommen.\n\n(3) VIER SPERREN AUS DER UNABHAENGIGEN GEGENPRUEFUNG (12.08.2026), ohne die die Einrichtung ihre Wirkung verloren haette:\n  a) DIE LISTE LIESS SICH HEIMLICH SCHRUMPFEN. Was nicht drinsteht, kann nicht fehlen - eine auf den Kopf gekuerzte Liste liess den Lauf durchgehen. Der Kopf fuehrt jetzt 'Eintraege: N'; lesen() rechnet nach und wirft BestandslisteFehler. Das faengt auch eine einzelne auskommentierte Zeile.\n  b) EIN IMPORTFEHLER WURDE ALS BELEGVERLUST GEMELDET. Eine falsche Importzeile liess discover() alle 34 Tests des Moduls durch einen Platzhalter ersetzen; der Runner meldete 'ABBRUCH - 34 TESTS FEHLEN' und fuehrte KEINEN Test aus. Jetzt werden Platzhalter (unittest.loader._FailedTest) aussortiert und Tests nicht importierbarer Module getrennt als 'nicht erhebbar' ausgewiesen - der Lauf startet und faellt ueber den Platzhaltertest rot, das Ergebnis der uebrigen Tests bleibt fuer die Fehlersuche erhalten.\n  c) DAS WERKZEUG KONNTE DEN WEGFALL FESTSCHREIBEN. Nachgestellt: zwei Testdateien entfernt, Werkzeug aufgerufen (Rueckgabewert 0), danach meldete der Lauf 'OK' auf einem um 48 Tests kleineren Bestand. Jetzt verlangt ein Wegfall '--entfallen-bestaetigt N' mit der genauen Anzahl; ohne sie wird nichts geschrieben (Rueckgabewert 3). Ebenso sperrt jeder Struktur- oder Importbefund das Schreiben, sonst wuerde die Luecke zum Soll.\n  d) DIE GEGENPROBE WAR NICHT TRENNSCHARF. Sie lief gegen eine Kopie aus nur run_tests.py und tests/ - dort ist kein Produktivmodul importierbar, der Abbruch waere also auch ohne den geprueften Grund gekommen. Jetzt wird der vollstaendige Bestand kopiert, und eine POSITIVKONTROLLE geht voran: die unveraenderte Kopie muss mit 0 durchlaufen.\n\n(4) NEUE TESTS: 20 in tests/test_bestandsliste.py (B01-B11). Regression: 976 Tests, beide Wege, gruen unter Python 3.13.13 und 3.14.0rc2.\n\n(5) GEGENPROBEN GEFAHREN: ganze Testdatei entfernt -> Abbruch (3) mit 34 namentlich genannten IDs, kein Testlauf; Liste entfernt -> Abbruch (3); Liste gekuerzt -> Abbruch (3); neuer Test -> Lauf laeuft, B03 faellt rot (1); Werkzeug bei Wegfall ohne Bestaetigung -> Rueckgabewert 3, Datei unveraendert.\n\n(6) NICHT GELOEST UND NICHT BEHAUPTET: Wird eine Testdatei entfernt UND der Wegfall bestaetigt fortgeschrieben, ist der Bestand kleiner und alles gruen. Das ist Absicht - eine begruendete Entfernung muss moeglich bleiben. Der Beleg dafuer ist dann der Git-Diff der Liste, nicht mehr das Werkzeug."
+        }
+      ]
+    },
+    {
+      "id": "f2c8abaa-9573-46d3-a75b-6c43e23b6a87",
+      "type": "bug",
+      "status": "resolved",
+      "priority": "medium",
+      "severity": "minor",
+      "title": "Prepper: _assert_col in test_phase_b wird bei leerem Schema vakuum-gruen",
+      "reporter": "Claude",
+      "assigned_to": "Alex",
+      "tags": [
+        "Prepper",
+        "Tests",
+        "Grundregel-1"
+      ],
+      "affected_version": "0.1.133",
+      "resolved_in_version": "0.1.134",
+      "reported_at": "2026-08-12T12:30:00+00:00",
+      "description": "Zwei assertNotIn-Tests der Klasse TestPhaseBSchemaColumnNames prueften gegen self.schema.get(<tabelle>, set()). Lieferte _parse_schema_columns fuer die Tabelle nichts, war die Bezugsmenge leer und der Test gruen, ohne etwas zu belegen.",
+      "expected_behavior": "Ein Test, dessen Bezugsgroesse leer ist, meldet das statt gruen zu melden.",
+      "actual_behavior": "Behoben in Build 134 - und im gleichen Zug sechs weitere Stellen derselben Musterfamilie in dieser Datei.",
+      "updates": [
+        {
+          "timestamp": "2026-08-12T18:30:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "resolved",
+          "comment": "UMGESETZT IN BUILD 134.\n\n(1) DIE GEMELDETEN ZWEI STELLEN: neue Hilfsmethode _spalten_von() liefert die Spaltenmenge oder UEBERSPRINGT mit Begruendung, wenn die Tabelle im geparsten Schema nicht vorkommt. Kein Rueckfall auf die leere Menge mehr - eine Aussage ueber eine leere Bezugsmenge ist keine Aussage. Das ist dieselbe Behandlung, die _assert_col schon vorher hatte; beide Wege sind damit gleich.\n\n(2) SECHS WEITERE STELLEN, gefunden bei der unabhaengigen Gegenpruefung am 12.08.2026: In TestBuild131TimelineMonatszelle liefert _zeilen() bei fehlendem <tbody> die leere Liste; vier Tests bestanden nur aus Schleifen darueber, zwei weitere schnitten mit zip() stillschweigend ab. NACHGESTELLT mit zwei gezielten Mutationen des Renderers ('leerer tbody' und 'nur eine von zwei Zeilen'): in BEIDEN Faellen blieben alle sechs Tests gruen - darunter ausgerechnet der, der den urspruenglichen Spaltenversatz erfassen soll. Neu ist _geprueft(): es macht die erwartete Zeilenzahl zur Vorbedingung, und die zip()-Aufrufe sind auf strict=True umgestellt.\n\n(3) GEGENPROBE NACH DER BEHEBUNG: dieselbe Mutation 'nur eine von zwei Zeilen' faellt jetzt mit 9 roten Tests auf (vorher: alle gruen).\n\n(4) NACHRANGIG UND HIER NICHT MITGEAENDERT: drei weitere assertNotIn-Aufrufe derselben Datei (uid_logs_edit, uid_logins, _SOURCE_TABLE_LABELS) pruefen ebenfalls gegen moeglicherweise leere Mengen, sind aber jeweils durch einen Positivtest in derselben Klasse gedeckt. Sie sind hier ausdruecklich benannt, damit sie nicht als uebersehen gelten."
+        }
+      ]
+    },
+    {
+      "id": "229d1f7a-d2c3-4ce7-b9c1-f278b370c9d4",
+      "type": "improvement",
+      "status": "resolved",
+      "priority": "low",
+      "severity": "trivial",
+      "title": "Prepper: plain assert in Tests ist unter python -O wirkungslos",
+      "reporter": "Claude",
+      "assigned_to": "Alex",
+      "tags": [
+        "Prepper",
+        "Tests"
+      ],
+      "affected_version": "0.1.133",
+      "resolved_in_version": "0.1.134",
+      "reported_at": "2026-08-12T12:30:00+00:00",
+      "description": "tests/test_evidence_db_init.py und tests/test_setup_templates.py benutzen 40 eingebaute assert-Anweisungen. Unter 'python -O' entfernt der Uebersetzer sie ersatzlos; die Tests liefen dann durch, ohne etwas zu pruefen, und meldeten gruen.",
+      "expected_behavior": "Entweder Umstellung auf self.assertX oder eine Pruefung von sys.flags.optimize im Runner.",
+      "actual_behavior": "Behoben in Build 134 ueber die Pruefung im Runner.",
+      "updates": [
+        {
+          "timestamp": "2026-08-12T18:30:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "resolved",
+          "comment": "UMGESETZT IN BUILD 134: run_tests.py prueft sys.flags.optimize als ERSTE der drei Vorpruefungen und bricht mit Rueckgabewert 4 ab. Zuerst deshalb, weil ohne wirksame Assertions alles Weitere gegenstandslos waere.\n\nDIESER WEG STATT DER UMSTELLUNG ALLER 40 STELLEN: die Assertions sind in Build 133 WOERTLICH stehen geblieben, damit nachweisbar bleibt, dass die Umstellung auf unittest.TestCase den Massstab nicht angefasst hat. Sie jetzt anzufassen wuerde diesen Nachweis wieder entwerten, ohne mehr Sicherheit zu bringen als die Pruefung im Runner.\n\nGEGENPROBE: 'python -O run_tests.py' -> Rueckgabewert 4, kein Testlauf (Test B05, zusaetzlich B05b fuer die Funktion selbst). Beachtet ist auch, dass die Pruefung ueber PYTHONOPTIMIZE greift: die Unterprozesse der eigenen Tests bereinigen die Umgebung ausdruecklich, sonst brachen sie mit 4 statt mit dem geprueften Grund ab (gemessen 2026-08-12)."
+        }
+      ]
+    },
+    {
+      "id": "95f072e7-c624-4adc-ae30-b24971e82fbc",
+      "type": "improvement",
+      "status": "open",
+      "priority": "low",
+      "severity": "minor",
+      "title": "Prepper: Testlauf dauert durch die Kopie-Proben dreimal so lang",
+      "reporter": "Claude",
+      "assigned_to": "Alex",
+      "tags": [
+        "Prepper",
+        "Tests",
+        "Laufzeit"
+      ],
+      "affected_version": "0.1.134",
+      "reported_at": "2026-08-12T18:30:00+00:00",
+      "description": "Die Gegenproben B06 und B11 aus Build 134 kopieren je Test den vollstaendigen Bestand (2,3 MiB, 149 Dateien) und starten darin einen Unterprozess; die Positivkontrolle B06 faehrt dabei die gesamte Testsuite ein zweites Mal. GEMESSEN am 2026-08-12: 'python run_tests.py' dauert 26 s statt 9 s (Python 3.13, Baucontainer).",
+      "expected_behavior": "Die Laufzeit sollte nicht mit jeder weiteren Kopie-Probe weiter steigen. Denkbar: eine Kopie je Testklasse statt je Testmethode (setUpClass), oder die Positivkontrolle mit einem verkuerzten Testbefehl.",
+      "actual_behavior": "26 s statt 9 s. Fuer den Baucontainer unerheblich, auf der Windows-VM (langsameres Dateisystem) aber spuerbar.",
+      "updates": [
+        {
+          "timestamp": "2026-08-12T18:30:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "BEWUSST IN KAUF GENOMMEN, nicht uebersehen: Die Trennschaerfe der Proben ist mehr wert als die Laufzeit - eine Gegenprobe, die auch ohne den geprueften Grund gruen ist, belegt nichts (genau das war der Befund der Gegenpruefung vom 12.08.2026). Die Verkuerzung ist eine Verbesserung, keine Behebung eines Mangels, und sollte erst angefasst werden, wenn die Laufzeit auf der Prod-VM wirklich stoert. Rueckfall in eine unscharfe Probe waere der falsche Preis."
+        },
+        {
+          "timestamp": "2026-08-12T17:22:47.484739+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Prepper_Build134.json"
+        }
+      ]
     }
   ]
 }
