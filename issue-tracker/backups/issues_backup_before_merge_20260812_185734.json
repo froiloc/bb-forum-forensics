@@ -7058,13 +7058,13 @@
       "description": "Ermittler scheiden auch aus, sie sollten dann auch auf inaktiv innerhalb der GUI gesetzt werden können.",
       "expected_behavior": "Innerhalb der Personalverwaltung soll es eine Möglichkeit geben eine Person auf inaktiv zu setzen. Sie wird dann per Default in normalen Tabellen nicht mehr angezeigt, sondern ist dann lediglich noch innerhalb der Personalverwaltung zu sehen.",
       "actual_behavior": "Benutzer sind derzeit dauerhaft eingeblendet, sobald sie einmal eingepflegt worden sind.",
-      "status": "resolved",
+      "status": "open",
       "priority": "medium",
       "severity": "minor",
       "assigned_to": "Claude",
       "related_to": [],
-      "resolved_in_version": "0.8.701",
-      "target_version": "0.8.701",
+      "resolved_in_version": null,
+      "target_version": null,
       "environment": {
         "python_version": "3.14",
         "database": "coordinator.db"
@@ -7082,38 +7082,6 @@
           "old_value": "",
           "new_value": "",
           "comment": "Issue erstellt"
-        },
-        {
-          "timestamp": "2026-08-12T14:10:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "UMGESETZT in Build 701.\n\n(1) DER DATENTEIL WAR SCHON DA, DER BEDIENWEG FEHLTE. person.is_active/deactivated_at/deactivated_reason bestehen seit M020 (Build 501), PersonRepo.deactivate/reactivate ebenso. Erreichbar waren sie AUSSCHLIESSLICH ueber den AD-Abgleich (POST /api/adsync/decide, Recht personnel.sync) - und der kann nur Kennungen anfassen, die das Verzeichnis bereits ausgetragen hat. Genau der im Vorgang beschriebene Fall ('ein Ermittler scheidet aus') war damit nicht abbildbar.\n\n(2) NEU: Spalte 'Ruhestand' in der Personalverwaltung mit einem Knopf je Zeile. Er vollzieht nichts, sondern oeffnet unter der Liste eine Rueckfrage: Pflicht-Grund + woertliches Bestaetigungswort ('Entfernen' bzw. 'Reaktivieren', exakter Vergleich, serverseitig geprueft). Dahinter POST /api/personnel/active. Belege PERSON_DEACTIVATED / PERSON_REACTIVATED mit Quelle 'personnel_ui'.\n\n(3) RECHT personnel.edit, KEINE Migration (Entscheidung Alex, 12.08.2026): personnel.edit erlaubt heute schon, is_investigator=0 zu setzen und Rollen zu widerrufen - beides nimmt einer Person faktisch Auswahl und Rechte. Dieselbe Gewichtsklasse, kein eigenes Recht noetig.\n\n(4) SELBSTSCHUTZ: die eigene Person ist unantastbar. Sich selbst inaktiv zu setzen waere der vollstaendige Lockout - identity.py weist inaktive Konten an der Anmeldung ab. Der CLI-Weg bleibt offen.\n\n(5) DIE AUSBLENDUNG ('per Default in normalen Tabellen nicht mehr angezeigt') ist in DREI Klassen umgesetzt, und die Unterscheidung ist der eigentliche Inhalt dieser Lieferung: AUSWAHLLISTEN (Zuweisung, Betreuungsnotizen, Kapazitaetspflege) - vollstaendig raus; GRUNDMENGEN (Lastverteilung, Kapazitaet) - raus per Default, mit Umschalter 'Ausgeschiedene einblenden'; NAMENSAUFLOESUNG (Support-Historie, Uebergabeprotokoll, Eskalationsvermerk, Abwesenheitsbeschriftung, Audit-Akteur) - NIE gefiltert. Ein Beleg, dessen Urheber namenlos wird, hat seinen Beweiswert verloren."
-        },
-        {
-          "timestamp": "2026-08-12T14:15:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "ZWEI ENTSCHEIDUNGEN, DIE UEBER DEN WORTLAUT DES VORGANGS HINAUSGEHEN - beide von Alex am 12.08.2026 getroffen, weil der Vorgang dazu nichts sagte.\n\n(a) EINE AUSGESCHIEDENE PERSON MIT NOCH OFFENEN FAELLEN BLEIBT IN DEN GRUNDMENGEN-TABELLEN STEHEN. Die woertliche Lesart ('lediglich noch innerhalb der Personalverwaltung zu sehen') haette bedeutet, dass mit der Zeile auch die offene Arbeit verschwindet - aus genau der Sicht, in der sie auffallen muss. Die Zeile traegt jetzt is_active=false und wird in der Leiste namentlich genannt ('Trotz Ruhestand aufgefuehrt, weil noch offene Faelle zugewiesen sind: ...').\n\n(b) OFFENE FAELLE BLOCKIEREN DAS INAKTIVSETZEN NICHT. Ausscheiden ist eine Tatsache, kein Antrag; ein Werkzeug, das sie verweigert, wird umgangen. Die Zahl steht statt dessen im Bestaetigungsblock, in der Rueckmeldung UND im Beleg ('offene_faelle_bei_entscheidung') - VOR der Aenderung gelesen, weil sie hinterher nicht mehr rekonstruierbar ist. Die Umverteilung bleibt eine fachliche Handlung und geschieht NICHT automatisch.\n\nEIN STILLER DATENVERLUST, DER FAST ENTSTANDEN WAERE: cockpit_notes.js setzt die Auswahl 'Betroffene:r' beim Oeffnen einer Notiz auf deren subject_person_id (:659). Waere die inaktive Person aus der Auswahl gefallen, faellt das Feld auf '- keiner -' zurueck und das naechste Speichern loescht die Zuordnung, ohne dass jemand sie angefasst haette. Deshalb bleiben referenzierte Personen stehen und werden gesondert gefuehrt ('behalten_referenziert' - ein ANDERER Grund als 'behalten_mit_arbeit', beide werden nicht vermischt)."
-        },
-        {
-          "timestamp": "2026-08-12T14:20:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "NIE STILL, UND BEI UNSICHERHEIT LIEBER ZU VIEL.\n\nJede Antwort mit Ausblendung traegt den Block 'inaktive': Zahl, Kennungen, wer trotz Ruhestand stehengeblieben ist, ob eingeblendet wurde. Die Sicht zeigt ihn als Leiste - und nur dann, wenn es etwas zu sagen gibt; ein Kaestchen ohne Anlass waere Bedienrauschen und wuerde spaeter auch dann nicht gelesen, wenn es etwas meldet.\n\nFehlt M020, gilt jede Person als aktiv und es wird NICHTS ausgeblendet. Ist die Zahl offener Faelle nicht ermittelbar (Tabelle 'cases' nicht lesbar), bleibt die Liste vollstaendig und der Grund erscheint im Klartext - in der Antwort und auf dem Bildschirm. Ein Filter, der im Zweifel ausblendet, verschweigt im Zweifel Belege.\n\n'OFFEN' IST NICHT FREI GEWAEHLT: open+in_progress - die bestehende Definition der aktiven Last aus workload_repo (_LoadAccumulator.active, wo approved und closed als 'done' gelten). Eine zweite Definition an dieser Stelle waere Drift.\n\nHILFE (Pflicht bei jeder Aenderung): neues Kapitel 'Ausscheiden und Rueckkehr' in der Personalverwaltung mit sieben Kontexttexten, neues Kapitel 'Ausgeschiedene Personen' in Lastverteilung und Kapazitaet mit je einem Text fuer den Umschalter. Der Satz, auf den es ankommt: 'Eine inaktive Person ist nicht weg, sondern nur nicht mehr waehlbar. Wer sie in einer anderen Sicht vermisst, findet sie hier.' Ohne ihn meldet jemand einen Datenverlust, den es nicht gibt."
-        },
-        {
-          "timestamp": "2026-08-12T14:25:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "REGRESSION: tests/test_person_sichtbarkeit.py (PSI01-PSI09), tests/test_management_personnel_active.py (PA01-PA08), tests/test_management_grundmengen_inaktive.py (GM01-GM05), tests/unit/test_cockpit_personnel_ruhestand.test.js (RU01-RU10), tests/unit/test_cockpit_inaktive_leiste.test.js (IL01-IL08).\n\nDIE FAELLE ZIELEN AUF DAS, WAS NICHT PASSIEREN DARF: PA01-PA03 und RU07 pruefen, dass ohne Recht, ohne Grund und mit falsch geschriebenem Wort NICHTS vollzogen wird (kein Beleg, keine Datenaenderung). PA08 prueft, dass der FALL der ausgeschiedenen Person unveraendert mit ihrer Zuweisung stehenbleibt, waehrend sie aus der Auswahl verschwindet. GM02 ist der Kernfall der Ausnahme (ohne offene Faelle raus, mit offenen Faellen bleibt stehen und wird benannt). GM04 misst, dass die Ausblendung die Ueberlastwarnung nicht verfaelscht und Tabelle und Banner deckungsgleich bleiben. IL07 ist die Drift-Probe der beiden bewusst doppelt gebauten Umschalter.\n\nMITGEZOGENE TESTS (jeder war eine Gegenprobe): test_cockpit_personnel.test.js fuehrte die Spaltenliste (PS09) und die Zahl der Kopfanker (PS13); test_cockpit_tabellen_ux.test.js verlangt je Spalte einen Kopffilter (UX04). Die neue Spalte 'Ruhestand' traegt Knoepfe, keine Angabe - sie meldet sich mit 'kein_filter' ab und steht als BENANNTE Ausnahme im Register. Die Zusicherung ist damit nicht aufgeweicht, sondern eingegrenzt: eine kuenftige Luecke faellt weiterhin auf. hilfe_bedienung_stand.json: 177 -> 184 Bedienelemente, alle erklaert, Fehlliste leer.\n\nLAUF 701: Python 3470 gruen, JS 132 Dateien / 1891 Faelle gruen. PY08 und PY10 fallen containerbedingt (Python 3.11 kann die PEP-701-f-string in editor/html_renderer.py:349 nicht parsen) - sie fallen ebenso auf unberuehrtem origin/master und sind KEIN Befund dieser Lieferung.\n\nOFFEN UND BENANNT: (a) Die Zuweisungs-Sicht und die Fall-Uebersicht zeigen einen Fall weiterhin mit dem Namen der ausgeschiedenen Person (gewollt - Namensaufloesung wird nie gefiltert). Eine Leitung sieht den Namen also und findet ihn in der Auswahl nicht wieder; die Hilfe sagt, wo er geblieben ist. Eine Markierung 'AUSGESCHIEDEN' an der Fallzeile waere der naechste Schritt, wenn es sich im Betrieb als noetig zeigt. (b) Exporte und Berichte sind NICHT gefiltert - bei einem Beleg ist der volle Bestand richtig."
         }
       ]
     },
