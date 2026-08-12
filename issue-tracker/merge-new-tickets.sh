@@ -77,9 +77,9 @@ else
     py=python3
 fi
 
-dateien=(eintraege_claude_Build*.json)
+dateien=(eintraege_claude_*.json)
 if [ ! -e "${dateien[0]}" ]; then
-    echo "Nichts einzumischen: keine eintraege_claude_Build*.json vorhanden."
+    echo "Nichts einzumischen: keine eintraege_claude_*.json vorhanden."
     exit 0
 fi
 
