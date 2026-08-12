@@ -642,10 +642,55 @@
                 // Formular - Editor.js erzeugt beides NICHT. Ohne diese
                 // Bruecke setzte der Entwurfsspeicher stillschweigend aus,
                 // und ein Neuladen kostete die Arbeit.
-                onChange: function () { _geaendert(); }
+                onChange: function (api) {
+                    // BUILD 705: die Blockzahl LAUFEND im Auge behalten.
+                    //
+                    // Ein Baustein ist GENAU EIN Block - report_modules fuehrt
+                    // ein block_type und ein block_data, mehr hat dort keinen
+                    // Platz. Editor.js weiss davon nichts: eine Eingabetaste
+                    // am Zeilenende legt einen zweiten Block an, und _lies()
+                    // nimmt seit jeher nur blocks[0].
+                    //
+                    // Hier wird es dem Bearbeiter gesagt, WAEHREND es
+                    // passiert - nicht erst beim Speichern. getBlocksCount()
+                    // ist ein Zaehler und kostet nichts; ein save() je
+                    // Tastendruck waere zu teuer.
+                    _blockzahlPruefen(api);
+                    _geaendert();
+                }
             });
             _blindprobeStarten(zustand.daten, zustand.typ);
             return zustand.instanz;
+        }
+
+        // _blockzahlPruefen: sind aus einem Block mehrere geworden?
+        //
+        // GEMESSEN am 12.08.2026: Editor.js haelt beide Bloecke, _komfortLesen
+        // nahm blocks[0] - der zweite verschwand ohne ein Wort, ohne Meldung
+        // und ohne Eintrag. Das ist derselbe Fehler wie beim Zitatfeld, nur
+        // eine Ebene hoeher: dort fehlte ein FELD, hier ein ganzer BLOCK.
+        //
+        // BEWAHREN GEHT HIER NICHT, und das ist der Unterschied zur
+        // Blindprobe: es gibt in report_modules keine Spalte, in die ein
+        // zweiter Block passte. Was bleibt, ist die Meldung - aber die
+        // rechtzeitig und deutlich.
+        function _blockzahlPruefen(api) {
+            var n = 0;
+            try {
+                n = (api && api.blocks && typeof api.blocks.getBlocksCount === 'function')
+                    ? api.blocks.getBlocksCount() : 0;
+            } catch (e) { log('Blockzahl', e); return; }
+            if (n > 1) {
+                _melde('ACHTUNG: Ein Baustein besteht aus GENAU EINEM Block, '
+                    + 'hier stehen ' + n + '. Nur der erste wird gespeichert; '
+                    + 'alles darunter geht verloren. Bitte den Inhalt in den '
+                    + 'ersten Block zusammenführen oder einen zweiten Baustein '
+                    + 'anlegen.', 'fehler');
+            } else if (meldung.textContent.indexOf('GENAU EINEM Block') >= 0) {
+                // Aufgeraeumt, sobald es wieder stimmt - eine stehengebliebene
+                // Warnung wird nach dem zweiten Mal nicht mehr gelesen.
+                _melde('');
+            }
         }
 
         // _blindSatz: der Hinweis auf werkzeugblinde Felder, an EINER Stelle
@@ -733,7 +778,8 @@
             if (!inst) {
                 return Promise.resolve({ type: zustand.typ,
                                          data: zustand.daten,
-                                         bewahrt: [], nichtBewahrt: [] });
+                                         bewahrt: [], nichtBewahrt: [],
+                                         zusatzBloecke: [] });
             }
             // ERST WARTEN, DANN AUF save() PRUEFEN - aus demselben Grund wie
             // in _blindprobeStarten: vor isReady gibt es save() noch nicht.
@@ -754,11 +800,19 @@
                     return { type: zustand.typ, data: zustand.daten,
                              bewahrt: [], nichtBewahrt: [] };
                 }
-                var b = (erg && erg.blocks && erg.blocks[0]) || null;
+                var alleBloecke = (erg && erg.blocks) || [];
+                var b = alleBloecke[0] || null;
                 if (!b) {
                     return { type: zustand.typ, data: {},
-                             bewahrt: [], nichtBewahrt: [] };
+                             bewahrt: [], nichtBewahrt: [], zusatzBloecke: [] };
                 }
+                // BUILD 705: Was ueber den ersten Block hinausgeht, hat in
+                // report_modules keinen Platz und faellt beim Speichern weg.
+                // Es wird BENANNT statt verschwiegen - und mitgegeben, damit
+                // der Aufrufer es ebenfalls sehen kann.
+                var zusatz = alleBloecke.slice(1).map(function (x) {
+                    return { type: x.type, data: x.data || {} };
+                });
                 var daten = b.data || {};
                 var bewahrt = [], nichtBewahrt = [];
 
@@ -775,7 +829,8 @@
                     });
                 }
                 return { type: b.type, data: daten,
-                         bewahrt: bewahrt, nichtBewahrt: nichtBewahrt };
+                         bewahrt: bewahrt, nichtBewahrt: nichtBewahrt,
+                         zusatzBloecke: zusatz };
             });
         }
 
@@ -989,9 +1044,10 @@
             // lies: der aktuelle Stand als Versprechen.
             //
             // BUILD 704: Das Ergebnis traegt zusaetzlich 'bewahrt' und
-            // 'nichtBewahrt'. Beide sind IMMER da (im Rohmodus leer), damit
-            // der Aufrufer nicht auf Anwesenheit pruefen muss - ein Feld,
-            // das mal fehlt und mal nicht, wird irgendwann vergessen.
+            // 'nichtBewahrt'. BUILD 705: dazu 'zusatzBloecke'. Alle drei sind
+            // IMMER da (im Rohmodus leer), damit der Aufrufer nicht auf
+            // Anwesenheit pruefen muss - ein Feld, das mal fehlt und mal
+            // nicht, wird irgendwann vergessen.
             lies: function () {
                 if (zustand.modus === 'roh') {
                     var p = jsonPruefen(rohFeld.value);
@@ -999,11 +1055,22 @@
                         type: zustand.typ,
                         data: p.ok ? p.wert : zustand.daten,
                         rohFehler: p.ok ? null : p.meldung,
-                        bewahrt: [], nichtBewahrt: []
+                        bewahrt: [], nichtBewahrt: [], zusatzBloecke: []
                     });
                 }
                 return _komfortLesen().then(function (b) {
-                    if (b.nichtBewahrt && b.nichtBewahrt.length) {
+                    var zusatz = b.zusatzBloecke || [];
+                    // BUILD 705: Der schwerere Befund zuerst. Ein verlorener
+                    // BLOCK wiegt mehr als ein verlorenes Feld, und zwei
+                    // Meldungen in einer Zeile liest niemand zu Ende.
+                    if (zusatz.length) {
+                        _melde('ACHTUNG: ' + zusatz.length + ' Block/Bloecke '
+                            + 'unterhalb des ersten gehen beim Speichern '
+                            + 'verloren — ein Baustein besteht aus GENAU EINEM '
+                            + 'Block. Betroffen: '
+                            + zusatz.map(function (x) { return x.type; })
+                                .join(', ') + '.', 'fehler');
+                    } else if (b.nichtBewahrt && b.nichtBewahrt.length) {
                         // GRUNDREGEL 1: Was nicht zurueckgeschrieben werden
                         // konnte, geht beim Speichern verloren - und genau
                         // das muss vor dem Speichern auf der Flaeche stehen.
@@ -1017,7 +1084,8 @@
                     }
                     return { type: b.type, data: b.data, rohFehler: null,
                              bewahrt: b.bewahrt || [],
-                             nichtBewahrt: b.nichtBewahrt || [] };
+                             nichtBewahrt: b.nichtBewahrt || [],
+                             zusatzBloecke: zusatz };
                 });
             },
             modus: function () { return zustand.modus; },

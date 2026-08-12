@@ -62,7 +62,13 @@
         msgEl: null,      // Rueckmeldezeile
         dryEl: null,      // Ausgabe der Struktur-Vorschau
         befundEl: null,   // Unverfaenglichkeits-Befund (Build 475, Report->Vorlage)
-        selKey: null      // aktuell geladene template_key (null = Neu-Modus)
+        selKey: null,     // aktuell geladene template_key (null = Neu-Modus)
+        // Build 705 (Ticket b47ce019, Schritt 3 Teil 1): schreibgeschuetzte
+        // Vorschau der ganzen Vorlage. Sie LIEST nur - kein Speicherweg
+        // haengt an ihr, und ein Ausfall der Vorschau darf das Bearbeiten
+        // nicht behindern.
+        vorschauEl: null, // Wirtsknoten der Vorschau
+        vorschau: null    // Steuerobjekt aus AIWVorlagenVorschau.erzeuge()
     };
 
     // Stabiler Schluessel-Zeichenraum (Spiegel der Server-Regel _KEY_RE).
@@ -312,7 +318,9 @@
                 // Nur wenn die block_data noch leer ist, sinnvolle Vorlage setzen.
                 if (!String(_state.blocks[idx].dataText || '').trim()) {
                     _state.blocks[idx].dataText = _DATA_TEMPLATE[sel.value] || '{}';
-                    _renderBlocks();
+                    _renderBlocks();   // zieht die Vorschau mit
+                } else {
+                    _vorschauAktualisieren();   // Build 705
                 }
             });
             row.appendChild(sel);
@@ -325,6 +333,10 @@
             data.value = blk.dataText || '';
             data.addEventListener('input', function () {
                 _state.blocks[idx].dataText = data.value;
+                // Build 705: _renderBlocks() laeuft hier bewusst NICHT (das
+                // zerstoerte die Schreibmarke im Textfeld) - die Vorschau
+                // wird deshalb einzeln nachgezogen.
+                _vorschauAktualisieren();
             });
             row.appendChild(data);
 
@@ -360,6 +372,9 @@
 
             host.appendChild(row);
         });
+        // Build 705: Jede Strukturaenderung geht durch _renderBlocks - hier
+        // ist die eine Stelle, an der die Vorschau zuverlaessig nachzieht.
+        _vorschauAktualisieren();
     }
 
     function _ctrlBtn(label, title, onClick) {
@@ -370,6 +385,66 @@
         b.title = title;
         b.addEventListener('click', onClick);
         return b;
+    }
+
+    // =====================================================================
+    // Build 705 — DIE VORSCHAU DER GANZEN VORLAGE (Ticket b47ce019).
+    //
+    // Sie zeigt, was die Zeilenmaske nicht zeigen kann: wie die Vorlage als
+    // GANZES aussieht. Bis hierher stand je Block ein Feld mit rohem JSON -
+    // wer wissen wollte, ob die Reihenfolge stimmt und der Aufbau traegt,
+    // musste ihn im Kopf zusammensetzen.
+    //
+    // SIE RUEHRT KEINEN SPEICHERWEG AN. _state.blocks bleibt die Wahrheit,
+    // die Vorschau liest daraus und schreibt nichts zurueck. Faellt sie aus,
+    // laesst sich weiterarbeiten - deshalb faengt _vorschauAktualisieren()
+    // jeden Fehler ab, statt die Maske mitzureissen.
+    // =====================================================================
+
+    // _vorschauBloecke: aus dem Zeilenmodell [{type, dataText}] die Gestalt
+    // bauen, die die Vorschau erwartet: [{block_type, block_data}].
+    //
+    // EIN BLOCK MIT UNLESBAREM JSON WIRD NICHT UEBERSPRUNGEN (Grundregel 1).
+    // Er kommt mit leeren Daten und einer Merkliste zurueck; die Vorschau
+    // zeigt an seiner Stelle einen Ersatzblock, und die Meldung darunter
+    // sagt, welche Blocknummer betroffen ist. Ihn wegzulassen hiesse, eine
+    // Luecke im Aufbau der Vorlage zu verstecken - und der Redakteur saehe
+    // eine Vorlage, die es so nicht gibt.
+    function _vorschauBloecke(rows) {
+        var bloecke = [], defekt = [];
+        (rows || []).forEach(function (r, idx) {
+            var pd = parseBlockData(r && r.dataText);
+            if (!pd.ok) { defekt.push(idx + 1); }
+            bloecke.push({
+                block_type: (r && r.type) || '',
+                block_data: pd.ok ? pd.data : {}
+            });
+        });
+        return { bloecke: bloecke, defekt: defekt };
+    }
+
+    // _vorschauAktualisieren: nach jeder Aenderung am Blockmodell aufrufen.
+    function _vorschauAktualisieren() {
+        var st = _state.vorschau;
+        if (!st || typeof st.zeige !== 'function') { return; }
+        try {
+            var erg = _vorschauBloecke(_state.blocks);
+            st.zeige(erg.bloecke);
+            if (erg.defekt.length) {
+                // Die Vorschau kann nicht wissen, dass die Daten aus einem
+                // unlesbaren Textfeld stammen - sie sieht nur einen leeren
+                // Block. Deshalb wird es HIER gesagt, wo es herkommt.
+                _setMsg('Block ' + erg.defekt.join(', ')
+                    + ': block_data ist kein gültiges JSON — die Vorschau '
+                    + 'zeigt dort einen leeren Block. Am gespeicherten Stand '
+                    + 'ändert das nichts.', 'err');
+            }
+        } catch (e) {
+            // Eine ausgefallene Vorschau darf das Bearbeiten nicht
+            // verhindern. Gemeldet wird sie trotzdem - ein leeres Feld
+            // saehe wie eine leere Vorlage aus.
+            log('Vorschau fehlgeschlagen', e);
+        }
     }
 
     // _moveBlock: Block um delta (-1/+1) verschieben (Grenzen beachten).
@@ -775,6 +850,41 @@
         _state.blocksEl = blocksHost;
         form.appendChild(blocksHost);
 
+        // Build 705 (Ticket b47ce019): die schreibgeschuetzte Vorschau der
+        // ganzen Vorlage. Sie steht UNTER der Zeilenmaske und nicht daneben,
+        // weil eine Vorlage in die Hoehe waechst - nebeneinander waeren beide
+        // Spalten schmal, und gerade der Aufbau als Ganzes soll hier
+        // erkennbar werden.
+        var vsKopf = document.createElement('h4');
+        vsKopf.className = 'aiw-dtpl-vorschau-titel';
+        vsKopf.textContent = 'Vorschau (schreibgeschützt)';
+        vsKopf.setAttribute('data-hilfe-id', 'doctemplates.bedienung.vorschau');
+        form.appendChild(vsKopf);
+
+        var vsHost = document.createElement('div');
+        vsHost.className = 'aiw-dtpl-vorschau';
+        _state.vorschauEl = vsHost;
+        form.appendChild(vsHost);
+
+        // KEIN STILLER AUSFALL: fehlt das Bauteil, sagt die Flaeche es und
+        // nennt die Datei. Die Maske bleibt voll benutzbar - die Vorschau
+        // haengt an keinem Speicherweg.
+        var VV = (typeof window !== 'undefined') ? window.AIWVorlagenVorschau : null;
+        if (VV && typeof VV.erzeuge === 'function') {
+            try {
+                _state.vorschau = VV.erzeuge(vsHost, {});
+            } catch (e) {
+                _state.vorschau = null;
+                log('Vorschau nicht aufbaubar', e);
+            }
+        }
+        if (!_state.vorschau) {
+            vsHost.textContent = 'Vorschau nicht verfügbar — '
+                + 'cockpit_vorlage_vorschau.js ist nicht geladen. '
+                + 'Das Bearbeiten und Speichern ist davon nicht betroffen.';
+            vsHost.className = 'aiw-dtpl-vorschau ist-warnung';
+        }
+
         // Aktionen: Vorschau + Speichern + Ausgabe/Rueckmeldung.
         var actions = document.createElement('div');
         actions.className = 'aiw-dtpl-actions';
@@ -880,6 +990,13 @@
     function cleanup() {
         _state.listEl = null;
         _state.fields = null;
+        // Build 705: Editor.js haengt Horcher an das Dokument - ohne
+        // destroy() bliebe bei jedem Sichtwechsel eine Instanz zurueck.
+        if (_state.vorschau && typeof _state.vorschau.aus === 'function') {
+            try { _state.vorschau.aus(); } catch (e) { log('Vorschau-Abbau', e); }
+        }
+        _state.vorschau = null;
+        _state.vorschauEl = null;
         _state.blocksEl = null;
         _state.blocks = null;
         _state.msgEl = null;
