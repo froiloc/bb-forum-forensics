@@ -562,13 +562,30 @@ MODULES = Sichthilfe(
                 "wird laufend geprüft; bei einem Fehler stehen Zeile und "
                 "Spalte darunter, dazu eine Klammerbilanz und ein Knopf zum "
                 "sauberen Einrücken.",
-                "DER WEG ZURÜCK IST DER HEIKLE. Die gestaltete Eingabe gibt "
-                "den Inhalt an das jeweilige Werkzeug weiter, und was dieses "
-                "Werkzeug nicht kennt, überlebt den Weg nicht. Deshalb wird "
-                "beim Wechsel VERGLICHEN: Jede Stelle, die verlorenginge "
-                "oder sich änderte, wird einzeln aufgeführt. Der Wechsel "
-                "geschieht erst, wenn er ausdrücklich bestätigt wird — sonst "
-                "bleibt alles in der Rohansicht stehen.",
+                "DIE GESTALTETE EINGABE ZEIGT NICHT IMMER ALLES. Sie gibt "
+                "den Inhalt an das Werkzeug der jeweiligen Art weiter, und "
+                "manches Werkzeug kennt nicht jede Angabe, die gespeichert "
+                "sein kann. Ein Zitat etwa kann eine Quellenangabe tragen, "
+                "die das Zitat-Werkzeug nicht anzeigt.",
+                "SOLCHE ANGABEN GEHEN SEIT BUILD 704 NICHT MEHR VERLOREN. "
+                "Sobald ein Baustein geöffnet wird, prüft die Fläche — noch "
+                "bevor jemand etwas eingibt —, welche Angaben das Werkzeug "
+                "nicht halten kann. Diese Angaben werden unter der Eingabe "
+                "NAMENTLICH genannt und beim Speichern unverändert wieder "
+                "mitgeschrieben. Ändern lassen sie sich in der Rohansicht.",
+                "WAS DAS WERKZEUG NICHT WEGLÄSST, SONDERN UMFORMT, wird "
+                "weiterhin gemeldet und nicht stillschweigend übernommen: "
+                "beim Wechsel aus der Rohansicht wird VERGLICHEN, jede "
+                "Stelle, die sich änderte, wird einzeln aufgeführt, und der "
+                "Wechsel geschieht erst nach ausdrücklicher Bestätigung. Der "
+                "Unterschied ist beabsichtigt: Ob eine Umformung gewollt "
+                "war, kann nur ein Mensch entscheiden — dass eine Angabe "
+                "gar nicht erst angezeigt werden kann, ist dagegen eine "
+                "Eigenschaft des Werkzeugs und keine Entscheidung.",
+                "Sollte die Prüfung beim Öffnen einmal fehlschlagen, steht "
+                "das unter der Eingabe. Dann ist VOR dem Speichern in der "
+                "Rohansicht nachzusehen — in diesem Fall wird nichts "
+                "bewahrt.",
                 "Unter der Eingabe steht der Klartextspiegel. Er lässt sich "
                 "nicht beschreiben und wird beim Speichern erzeugt.",
             ),
@@ -867,7 +884,10 @@ MODULES = Sichthilfe(
             "modules.bedienung.eingabe", "Bausteininhalt",
             "Hier wird der Baustein geschrieben. Die Fläche zeigt ihn so, wie "
             "er später im Vermerk aussieht. Für Feinarbeit lässt sich auf die "
-            "Rohansicht umschalten.",
+            "Rohansicht umschalten. Kann das Werkzeug der gewählten Art eine "
+            "gespeicherte Angabe nicht anzeigen, steht das darunter — die "
+            "Angabe bleibt beim Speichern erhalten und ist in der Rohansicht "
+            "zu ändern.",
             verweis="modules#eingabe"),
         Kontexthilfe(
             "modules.bedienung.blockart", "Art des Bausteins",
@@ -880,10 +900,11 @@ MODULES = Sichthilfe(
         Kontexthilfe(
             "modules.bedienung.rohmodus", "Rohansicht / Komfortansicht",
             "Wechselt zwischen der gestalteten Eingabe und der reinen "
-            "Datenansicht. BEIM WECHSEL ZURÜCK WIRD VERGLICHEN: Was die "
-            "gestaltete Eingabe nicht kennt, würde sie beim Übernehmen "
-            "verlieren. Solche Stellen werden EINZELN aufgeführt, und der "
-            "Wechsel geschieht erst, wenn er ausdrücklich bestätigt wird.",
+            "Datenansicht. BEIM WECHSEL ZURÜCK WIRD VERGLICHEN. Angaben, die "
+            "die gestaltete Eingabe nicht ANZEIGEN kann, bleiben dabei "
+            "erhalten und werden darunter namentlich genannt. Angaben, die "
+            "sie UMFORMEN würde, werden EINZELN aufgeführt, und der Wechsel "
+            "geschieht erst, wenn er ausdrücklich bestätigt wird.",
             verweis="modules#eingabe"),
         Kontexthilfe(
             "modules.bedienung.rohtext", "Rohansicht",
@@ -899,9 +920,12 @@ MODULES = Sichthilfe(
             "nicht formatiert, sondern der Fehler benannt."),
         Kontexthilfe(
             "modules.bedienung.uebernehmen", "Wechseln und Änderungen übernehmen",
-            "Vollzieht den Wechsel MIT den aufgeführten Verlusten. Danach "
-            "gilt, was oben steht — was in der Liste als entfallen gemeldet "
-            "war, ist dann fort. Gespeichert ist damit noch nichts."),
+            "Vollzieht den Wechsel MIT den aufgeführten Änderungen. Danach "
+            "gilt, was oben steht — was in der Liste stand, ist dann so "
+            "umgeformt, wie es dort angekündigt war. Angaben, die die "
+            "gestaltete Eingabe lediglich nicht anzeigen kann, stehen NICHT "
+            "in dieser Liste; sie bleiben ohnehin erhalten. Gespeichert ist "
+            "damit noch nichts."),
         Kontexthilfe(
             "modules.bedienung.zurueck", "Im Rohmodus bleiben",
             "Bricht den Wechsel ab. Es ist nichts verändert worden; der "

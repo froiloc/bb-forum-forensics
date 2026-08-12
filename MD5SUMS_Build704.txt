@@ -1,0 +1,10 @@
+209ec47bb27cc19722a08942f2762833  build.json
+0bc3bf12ed0d798919bf5215371bd875  issue-tracker/eintraege_claude_Build700.json
+be3ff75d94b23d1834db58853c9db70a  issue-tracker/eintraege_claude_Build704.json
+7639036fbe425351acf1eff9da7a15bd  management/help/inhalt/redaktion.py
+0b49be0d4773f2b8246e03d04670f7ab  management/server/static/cockpit_baustein_eingabe.js
+f9dc9fecb357c686613bbe36445bf354  tests/unit/test_cockpit_baustein_blindfelder.test.js
+102f3fab34dc3c4170a88594f8aef90e  tests/unit/test_cockpit_baustein_eingabe.test.js
+21b0af8cd6feb7d07e42613bc1882bb8  tests/unit/test_minimap_kontrast.test.js
+c3898a60710a57e3b6a84d2fcbba8440  toolbar/toolbar.css
+44569dfaad4d04d09ea1786c7768bcaf  toolbar/toolbar.js
