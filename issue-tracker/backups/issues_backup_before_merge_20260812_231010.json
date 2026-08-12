@@ -9696,57 +9696,6 @@
           "comment": "Importiert aus eintraege_claude_Build705.json"
         }
       ]
-    },
-    {
-      "id": "5001d293-0809-4721-b168-f3a3ac41d717",
-      "type": "improvement",
-      "title": "export_admin baut den Erzeugungsvermerk an context_builder vorbei",
-      "affected_version": "0.8.706",
-      "reporter": "Claude",
-      "reported_at": "2026-08-12T19:39:12+00:00",
-      "prerequisites": "Aufruf von 'export_admin case-status-xlsx', waehrend build.json nicht lesbar ist",
-      "description": "Befund beim Bauen von Build 706 (Vorgang 70641ff9), auf Weisung von Alex als eigener Vorgang eroeffnet.\n\nDER BEFUND: management/export/export_admin.py haelt eigene Kopien von _build_number (Z. 95-99) und _resolve_actor (Z. 118-135) und setzt den ExportContext von Hand zusammen (Z. 172-183). Es ist damit das einzige Werkzeug, das den context_builder nicht benutzt - und das einzige, das von den Rahmenbefunden aus Build 702 nichts mitbekommt.\n\n  * Sein _build_number gibt bei unlesbarer build.json STILL 0 zurueck ('except Exception: return 0', ohne Ausgabe). Die Fallstatus-XLSX traegt dann 'Werkzeug-Build: 0' - genau der Zustand, den Vorgang ff7e80ab fuer die Berichtswerkzeuge beanstandet hat.\n  * Sein _resolve_actor meldet dagegen (Z. 131-134), und die Lage der Belegkette meldet es ebenfalls (Z. 160-167). Der Ausfall der BUILDNUMMER ist also die einzige der drei Angaben, die dort noch stumm ist.\n\nWARUM DAS MEHR IST ALS EINE DOPPELUNG: der context_builder wurde in Build 442 (AP-2B) ausdruecklich gebaut, um genau diese drei Angaben nicht mehr je Werkzeug vorbereiten zu muessen ('Zentralisiert die drei bislang je Admin dupliziert vorbereiteten Angaben', Kopf von context_builder.py). export_admin ist bei der Umstellung zurueckgeblieben. Solange es das tut, wirkt jede kuenftige Verbesserung am Rahmen ueberall - nur dort nicht.\n\nNICHT AM LEBENDEN WERKZEUG NACHGEMESSEN, sondern am Quelltext gelesen: der Fall setzt eine unlesbare build.json voraus, und die haette im Baucontainer den Bundle-Bau selbst zum Abbruch gebracht (tools/bundle_bauen.sh bricht ohne lesbare build.json ab). Die Fundstellen sind oben zeilengenau benannt und nachlesbar.",
-      "expected_behavior": "export_admin bildet den ExportContext ueber build_export_context und meldet die Rahmenbefunde ueber melde_rahmen_befunde - wie alle anderen Werkzeuge seit Build 706. Die beiden eigenen Kopien von _build_number und _resolve_actor entfallen. Die heutigen Meldungen zur Belegkette (Z. 160-167) bleiben erhalten oder gehen im Nachsatz auf; der Rueckgabewert bleibt in allen Faellen 0.",
-      "actual_behavior": "Bei unlesbarer build.json entsteht die Fallstatus-XLSX mit 'Werkzeug-Build: 0' und ohne jede Meldung. Identitaet und Belegkette werden gemeldet, die Buildnummer nicht.",
-      "status": "open",
-      "priority": "medium",
-      "severity": "minor",
-      "assigned_to": "",
-      "related_to": [
-        "ff7e80ab-a934-417f-8482-e750db667984",
-        "70641ff9-10c7-48e5-98e2-a543db88cc1a"
-      ],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "python_version": "3.14"
-      },
-      "tags": [
-        "cli",
-        "export",
-        "erzeugungsvermerk",
-        "nachvollziehbarkeit",
-        "gr1",
-        "export_admin",
-        "build706"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-12T19:39:12+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Eintrag erstellt auf Weisung von Alex, Befund beim Bauen von Build 706 (Vorgang 70641ff9)."
-        },
-        {
-          "timestamp": "2026-08-12T21:10:10.933044+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build706.json"
-        }
-      ]
     }
   ]
 }
