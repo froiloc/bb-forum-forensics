@@ -16332,6 +16332,63 @@
           "comment": "Importiert aus eintraege_claude_Build703.json"
         }
       ]
+    },
+    {
+      "id": "c81a4f37-6b02-4e5d-9a17-24f8e0b3c95a",
+      "type": "bug",
+      "title": "Bausteineingabe verliert alles ab dem zweiten Block",
+      "affected_version": "0.8.656",
+      "reporter": "Claude",
+      "reported_at": "2026-08-12T20:00:01+00:00",
+      "prerequisites": "Bestand ab Build 656. Komfortmodus der Bausteineingabe. Der Fall entsteht durch eine Eingabetaste am Zeilenende - Editor.js legt dann einen neuen Block an.",
+      "description": "GEMESSEN am 12.08.2026, in zwei Schritten:\n\n  (a) Am echten Buendel: Editor.js haelt problemlos mehrere Bloecke. Aus zwei Absaetzen kommen zwei zurueck.\n  (b) Am Bauteil: cockpit_baustein_eingabe.js las in _komfortLesen() nur erg.blocks[0]. Alles darunter verschwand - ohne Meldung, ohne Eintrag, ohne Hinweis auf der Flaeche.\n\nAusgabe der Messung am Bauteil (Stand vor der Behebung):\n  Bauteil liefert : Erster Absatz.\n  verloren        : ZWEITER Absatz - nach Enter.\n  Meldung         : (leer)\n\nDASS NUR EIN BLOCK GESPEICHERT WERDEN KANN, IST RICHTIG: report_modules fuehrt ein block_type und ein block_data, mehr hat dort keinen Platz. Falsch war, das WORTLOS zu tun.\n\nDas ist derselbe Fehler wie beim Zitatfeld (Vorgang 3d7f1c84), nur eine Ebene hoeher: dort fehlte ein FELD, hier ein ganzer BLOCK. Aufgefallen ist er bei der Vorarbeit zu b47ce019 - beim Nachdenken darueber, wie eine Vorlage als Blockliste zu behandeln ist.",
+      "expected_behavior": "Entstehen mehrere Bloecke, wird es gesagt - waehrend es passiert und nicht erst beim Speichern. Der Bearbeiter kann dann zusammenfuehren oder einen zweiten Baustein anlegen.",
+      "actual_behavior": "Alles ab dem zweiten Block verschwindet lautlos beim Speichern.",
+      "status": "testing",
+      "priority": "high",
+      "severity": "major",
+      "assigned_to": "Claude",
+      "related_to": [
+        "3d7f1c84-5a2e-4b19-8c6d-71e0f4a93b52",
+        "b47ce019-6d38-4a02-95f1-8e2064cba735"
+      ],
+      "resolved_in_version": "0.8.705",
+      "target_version": "0.8.705",
+      "environment": {
+        "python_version": "3.14"
+      },
+      "tags": [
+        "Editor.js",
+        "Bausteinmodule",
+        "Datenverlust",
+        "Build705",
+        "gemessen"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-12T20:00:01+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "BEHEBUNG (Build 705), zwei Wege - und BEWAHREN GEHT HIER NICHT.\n\nDas ist der Unterschied zur Blindprobe aus Build 704: dort liess sich das verlorene Feld zurueckschreiben, weil es in dieselbe Spalte gehoerte. Fuer einen zweiten Block gibt es in report_modules keine Spalte. Was bleibt, ist die Meldung - aber rechtzeitig und deutlich.\n\n  (1) WAEHREND DER EINGABE. Der onChange-Rueckruf von Editor.js bekommt die API mitgeliefert; api.blocks.getBlocksCount() ist ein Zaehler und kostet nichts. Steht die Zahl ueber eins, erscheint sofort ein roter Hinweis mit der Zahl und dem Vorschlag, zusammenzufuehren oder einen zweiten Baustein anzulegen. Ein save() je Tastendruck waere zu teuer gewesen - deshalb der Zaehler und nicht der Umweg ueber die Daten.\n  (2) BEIM LESEN. lies() traegt jetzt 'zusatzBloecke' mit Art und Daten jedes betroffenen Blocks, und die Meldung nennt die Zahl und die Blockarten. Sie hat VORRANG vor der Meldung ueber nicht bewahrte Felder: ein verlorener Block wiegt schwerer als ein verlorenes Feld, und zwei Meldungen in einer Zeile liest niemand zu Ende.\n\nDer Hinweis verschwindet wieder, sobald nur noch ein Block da ist - eine stehengebliebene Warnung wird nach dem zweiten Mal nicht mehr gelesen.\n\nOFFEN UND BENANNT: Das Speichern wird dadurch noch nicht VERHINDERT. cockpit_modules.js prueft 'rohFehler' heute nur im Platzhalter-Schreibweg (Zeile 673), nicht im Speicherweg. Den Speicherweg an 'zusatzBloecke' zu haengen, ist ein eigener Eingriff in eine andere Datei und gehoert nicht in einen Build, der die Vorlagensicht umbaut."
+        },
+        {
+          "timestamp": "2026-08-12T20:00:02+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "testing",
+          "comment": "Status auf 'testing': behoben und gemessen, aber noch nicht in der VM unter Python 3.14 gefahren und noch nicht von einem Redakteur an einem echten Baustein gesehen."
+        },
+        {
+          "timestamp": "2026-08-12T20:25:42.098230+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build705.json"
+        }
+      ]
     }
   ]
 }
