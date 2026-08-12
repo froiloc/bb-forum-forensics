@@ -279,7 +279,7 @@ describe("Uebersetzungsflagge auf der PN-Dialogseite (Vorgang da84f94f)", () => 
   it("PU18: der Eintrag ist ein <li>, der Knopf haengt unmittelbar darin", async () => {
     // In ein <ul> gehoert ein <li> — sonst ist die Liste ungueltiges HTML.
     //
-    // MITGEZOGEN IN BUILD 705 (Befund Alex, 12.08.2026): Hier stand zusaetzlich
+    // MITGEZOGEN IN BUILD 707 (Befund Alex, 12.08.2026): Hier stand zusaetzlich
     // ein innerer <span>, der die Eintraege des Forums nachbildete. Genau auf
     // ihn zielt die Fussleisten-Stilvorlage der Seite ('li span'), und sie hat
     // die Flagge in die Breite gezogen. Der Knopf haengt jetzt unmittelbar im

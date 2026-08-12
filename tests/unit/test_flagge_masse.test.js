@@ -1,7 +1,7 @@
 /**
  * test_flagge_masse.test.js
  * Regressionstests: Die Uebersetzungsflagge behaelt ihre Masse
- * Baustelle 3 · Build 705 · 2026-08-12 · Vorgang da84f94f (Nachtrag)
+ * Baustelle 3 · Build 707 · 2026-08-12 · Vorgang da84f94f (Nachtrag)
  *
  * ---------------------------------------------------------------------------
  * DER BEFUND (Alex, 12.08.2026): In der PN-Ansicht war die Flagge "stark in
@@ -22,7 +22,7 @@
  * getComputedStyle-Test waere hier also GRUEN, ohne irgendetwas zu belegen,
  * und ROT, sobald man die Reihenfolge der Stilboegen aendert. Gemessen wurde
  * die Wirkung deshalb im echten Chromium (Ergebnis in der Uebergabe zu Build
- * 705: vorher 590 px breit, danach 20 x 13 px, gleich in beiden Ansichten).
+ * 707: vorher 590 px breit, danach 20 x 13 px, gleich in beiden Ansichten).
  *
  * DIESE DATEI SICHERT DAS, WAS DIE MESSUNG TRAGFAEHIG MACHT: dass die
  * Massangaben unter einem Selektor mit ZWEI Klassen stehen und festgenagelt

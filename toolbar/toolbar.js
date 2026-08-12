@@ -6903,7 +6903,7 @@
         ev.preventDefault();
         _togglePanel(container, postId, btn);
       });
-      // BUILD 705 (Befund Alex, 12.08.2026): HIER STAND EIN INNERER <span>,
+      // BUILD 707 (Befund Alex, 12.08.2026): HIER STAND EIN INNERER <span>,
       // der die Eintraege des Forums nachbildete
       // (<li class="postquote"><span><a …></a></span></li>). Er ist wieder
       // WEG. Grund: die Fussleisten-Stilvorlage der Seite zielt auf genau

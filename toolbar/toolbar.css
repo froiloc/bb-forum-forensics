@@ -2934,7 +2934,7 @@ body.aiw-view-original .aux-part { display: none !important; }
 }
 
 /* ==========================================================================
- * Build 705 (Vorgang da84f94f, Nachtrag): DIE FLAGGE BEHAELT IHRE MASSE.
+ * Build 707 (Vorgang da84f94f, Nachtrag): DIE FLAGGE BEHAELT IHRE MASSE.
  *
  * DER BEFUND (Alex, 12.08.2026): In der PN-Ansicht war die Flagge "stark in
  * die Breite verzerrt", im Forenbeitrag dagegen richtig — bei identischem
@@ -2996,7 +2996,7 @@ body.aiw-view-original .aux-part { display: none !important; }
   box-sizing: content-box;
 }
 
-/* Build 703/705: Der Flaggen-Eintrag in der Fussleiste.
+/* Build 703/707: Der Flaggen-Eintrag in der Fussleiste.
  * Er ist seit Build 703 ein <li> (Beleg: Auszug einer PN-Dialogseite, Alex
  * 12.08.2026 — der Anker ist ein <ul> mit <li>-Kindern); nur so ist die Liste
  * gueltiges HTML. Er soll sich in die Reihe stellen und nicht die ganze
