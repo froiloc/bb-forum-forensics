@@ -276,16 +276,23 @@ describe("Uebersetzungsflagge auf der PN-Dialogseite (Vorgang da84f94f)", () => 
     expect(texte.slice(1)).toEqual(["Block", "Antworten"]);
   });
 
-  it("PU18: der Eintrag ist ein <li> — ein <span> im <ul> waere ungueltig", async () => {
-    // In ein <ul> gehoert ein <li>. Nur so greift auch die Formatierung, die
-    // das Forum den uebrigen Eintraegen dieser Leiste gibt.
+  it("PU18: der Eintrag ist ein <li>, der Knopf haengt unmittelbar darin", async () => {
+    // In ein <ul> gehoert ein <li> — sonst ist die Liste ungueltiges HTML.
+    //
+    // MITGEZOGEN IN BUILD 707 (Befund Alex, 12.08.2026): Hier stand zusaetzlich
+    // ein innerer <span>, der die Eintraege des Forums nachbildete. Genau auf
+    // ihn zielt die Fussleisten-Stilvorlage der Seite ('li span'), und sie hat
+    // die Flagge in die Breite gezogen. Der Knopf haengt jetzt unmittelbar im
+    // <li>: je weniger Elemente in fremden Geruestregeln stehen, desto weniger
+    // koennen sie verformen.
     const { window } = await fensterAufPnDialog();
     const eintrag = window.document.querySelector(
       "#p44573 .postfootright ul > .aiw-translate-item");
     expect(eintrag.tagName).toBe("LI");
     expect(eintrag.classList.contains("aux-part")).toBe(true);
-    // Innerer <span> wie bei 'Block'/'Antworten'.
-    expect(eintrag.querySelector("span > .aiw-translate-flag")).not.toBeNull();
+    expect(eintrag.firstElementChild.classList.contains("aiw-translate-flag"))
+      .toBe(true);
+    expect(eintrag.querySelector("span > .aiw-translate-flag")).toBeNull();
   });
 
   it("PU13: ein zweiter Klick blendet die Uebersetzung wieder aus", async () => {

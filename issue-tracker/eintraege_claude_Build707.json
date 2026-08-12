@@ -1,0 +1,51 @@
+{
+  "issues": [
+    {
+      "id": "b083dfb5-3d60-4938-a923-328535e184be",
+      "type": "improvement",
+      "title": "Eingangsdateien werden nicht auf verlorene Zeilenumbrueche geprueft",
+      "affected_version": "0.8.705",
+      "reporter": "Alex",
+      "reported_at": "2026-08-12T20:10:00+00:00",
+      "prerequisites": "Eine Eingangsdatei 'eintraege_claude_Build<N>.json' enthaelt in einem Textfeld die zwei Zeichen Backslash+n als TEXT statt eines Zeilenumbruchs (beim Erzeugen wurde der Backslash doppelt geschrieben). Sie wird mit merge-new-tickets.sh eingemischt.",
+      "description": "Gemeldet aus dem Regressionslauf zu Build 705 (Alex, 12.08.2026):\n  FAILED tests/test_issue_tracker_umbruchreparatur.py::TestLiveBestand::test_ln09_die_zahl_waechst_nicht\n  AssertionError: 1 not less than or equal to 0\n\nIm Bestand steht also ein verlorener Zeilenumbruch. Der Weg dorthin war offen, weil beide vorhandenen Waechter zu spaet oder zu weich greifen:\n\n(1) LN09 misst den BESTAND. Er schlaegt an, wenn der Fehler bereits drin ist - und dann ist die verursachende Eingangsdatei schon eingemischt UND GELOESCHT (merge-new-tickets.sh loescht nach erfolgreicher Gegenprobe). Die Quelle ist danach nur noch aus dem Bestand zu erschliessen.\n\n(2) merge.py WARNT an genau dieser Stelle seit Build 648, bricht aber bewusst nicht ab: ein Windows-Pfad kann die Zeichenfolge zu Recht tragen. Die Begruendung traegt; die Warnung geht allerdings in einer langen Ausgabe unter, wenn mehrere Dateien auf einmal eingemischt werden.\n\nNIEMAND PRUEFT DIE EINGANGSDATEI, SOLANGE SIE NOCH DA IST - obwohl das der Ort ist, an dem der Fehler entsteht und an dem er ohne jeden Datenverlust zu beheben waere.",
+      "expected_behavior": "Der Testlauf auf der Erstellerseite faellt, solange eine noch offene Eingangsdatei einen verlorenen Zeilenumbruch enthaelt - mit Angabe von Datei, Vorgang und Feld. Woertliche Erwaehnungen bleiben erlaubt (Regel aus literal_newline_repair: Leerzeichen oder Textanfang vor dem Backslash).",
+      "actual_behavior": "IT01-IT07 pruefen Struktur, Schemagrenzen, Historie, Kennungen und Reihenfolge - nicht aber den Inhalt der Textfelder auf diese Zeichenfolge. Der Fehler faellt erst im Bestand auf (LN09).",
+      "status": "resolved",
+      "priority": "medium",
+      "severity": "minor",
+      "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": "0.8.707",
+      "target_version": "0.8.707",
+      "environment": {
+        "python_version": "3.14",
+        "database": "issues.json"
+      },
+      "tags": [
+        "Issue-Tracker",
+        "Regression",
+        "Werkzeug"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-12T20:10:00+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Aus dem Regressionslauf zu Build 705 gemeldet (LN09)."
+        },
+        {
+          "timestamp": "2026-08-12T20:20:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "resolved",
+          "comment": "UMGESETZT in Build 707: IT08 in tests/test_issue_tracker_eintraege.py.\n\nEr prueft JEDE noch offene 'eintraege_claude_Build*.json' mit DERSELBEN Regel, die auch LN09 und die Reparatur benutzen - einschliesslich der Ausnahme fuer woertliche Erwaehnungen (ist_erwaehnung). Gemeldet werden Datei, Vorgang und Feld, damit die Fundstelle ohne Suchen zu finden ist.\n\nMERGE.PY BLEIBT UNANGETASTET. Dort steht die Entscheidung, nur zu warnen und nicht abzubrechen, samt Begruendung (ein Windows-Pfad kann die Zeichenfolge zu Recht tragen). Sie ist richtig fuer eine Stelle, an der auch fremde Eingaben ankommen koennen. Der neue Waechter sitzt dort, wo die Datei ENTSTEHT - da ist die Zeichenfolge nie beabsichtigt, und eine Berichtigung kostet nichts.\n\nGEGENPROBE, ZWEIMAL: (a) Mit einer eigens angelegten Datei, die die Zeichenfolge in einem Kommentar traegt, faellt IT08 und nennt 'update[4].comment' samt zweier Fundstellen; ohne sie ist der Lauf gruen. (b) UNGEPLANT, ABER LEHRREICH: Der erste Entwurf DIESES Vorgangs fiel selbst durch IT08 - er zitierte die Zeichenfolge in Anfuehrungszeichen, und die Regel verlangt fuer eine Erwaehnung ein Leerzeichen davor. Der Text ist daraufhin in Worte gefasst worden ('Backslash+n'), wie es auch der Kopf von literal_newline_repair.py haelt. Wer kuenftig UEBER die Zeichenfolge schreibt, halte es ebenso.\n\nWAS IT08 NICHT KANN: den bereits im Bestand liegenden Fund heilen. Die verursachende Datei ist beim Einmischen geloescht worden. Dafuer gibt es das vorhandene Werkzeug - EINMAL auszufuehren:\n    cd issue-tracker\n    python repair_literal_newlines.py            (nur melden)\n    python repair_literal_newlines.py --apply    (beheben)\nEs legt vor dem Schreiben eine Sicherung in backups/ an und ruehrt ausschliesslich data/issues.json an.\n\nNICHT AUS MEINEN DATEIEN: Beide Eingangsdateien dieser Sitzung (Build699, Build703) wurden auf einer Kopie des Bestandes eingemischt und danach geprueft - 0 Fundstellen, vor wie nach dem Einmischen. Der Fund stammt also aus einer anderen Quelle."
+        }
+      ]
+    }
+  ]
+}

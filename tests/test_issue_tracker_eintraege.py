@@ -346,6 +346,78 @@ class EintraegeTests(unittest.TestCase):
             "sie kostet die naechste Luecke in merge.py wieder Daten statt "
             "nur einen Abbruch.")
 
+    # IT08 -------------------------------------------------------------------
+    def test_it08_keine_verlorenen_zeilenumbrueche_in_der_eingangsdatei(self):
+        """
+        BUILD 707 (Befund Alex, 12.08.2026): In seinem Regressionslauf fiel
+        LN09 - im Bestand stand EIN verlorener Zeilenumbruch, also die zwei
+        Zeichen Backslash+n als TEXT statt eines Umbruchs.
+
+        DIE LUECKE, DIE DAS MOEGLICH GEMACHT HAT: Beide bestehenden Waechter
+        greifen ZU SPAET oder ZU WEICH.
+          - LN09 (tests/test_issue_tracker_umbruchreparatur.py) misst den
+            BESTAND. Er schlaegt an, wenn der Fehler schon drin ist; dann ist
+            die Eingangsdatei bereits eingemischt UND GELOESCHT
+            (merge-new-tickets.sh), und die Quelle ist nur noch aus dem
+            Bestand zu erschliessen.
+          - merge.py WARNT seit Build 648 an genau dieser Stelle, bricht aber
+            bewusst nicht ab (ein Windows-Pfad wie 'C:\\neu' traegt dieselbe
+            Zeichenfolge zu Recht - die Begruendung steht dort und wird hier
+            nicht angetastet). Eine Warnung in einer langen Ausgabe ist beim
+            Einmischen mehrerer Dateien schnell fortgescrollt.
+
+        NIEMAND PRUEFTE DIE EINGANGSDATEI, SOLANGE SIE NOCH DA IST - obwohl
+        genau das der Ort ist, an dem der Fehler entsteht (beim Erzeugen) und
+        an dem er ohne Datenverlust zu beheben waere. IT08 schliesst das:
+        jede noch offene 'eintraege_claude_Build*.json' wird mit DERSELBEN
+        Regel geprueft, die auch LN09 und die Reparatur benutzen - inklusive
+        der Ausnahme fuer woertliche Erwaehnungen (ist_erwaehnung).
+
+        WER UEBER DIE ZEICHENFOLGE SCHREIBT, schreibe sie in Worten
+        ('Backslash+n') oder lasse ein Leerzeichen davor - so haelt es auch
+        der Kopf von literal_newline_repair.py. Der erste Entwurf des
+        Vorgangs, der diesen Fall veranlasst hat, fiel selbst durch IT08,
+        weil er die Zeichenfolge in Anfuehrungszeichen zitierte. Das ist
+        KEIN Fehler der Regel: sie unterscheidet 'klebt am Satz' von 'steht
+        frei im Satz', und ein Zitat in Anfuehrungszeichen klebt.
+
+        DIESER FALL HAELT DIE EIGENE LIEFERUNG SAUBER; er kann den bereits im
+        Bestand liegenden Fund NICHT heilen. Dafuer gibt es das vorhandene
+        Werkzeug:
+            cd issue-tracker
+            python repair_literal_newlines.py            # nur melden
+            python repair_literal_newlines.py --apply    # beheben
+        """
+        import sys
+        sys.path.insert(0, str(TRACKER))
+        from literal_newline_repair import TEXTFELDER, LITERAL, ist_erwaehnung
+
+        for pfad in _eintragsdateien():
+            for e in _lade(pfad)["issues"]:
+                texte = [(f, e.get(f)) for f in TEXTFELDER]
+                texte += [(f"update[{n}].comment", u.get("comment"))
+                          for n, u in enumerate(e.get("updates") or [])]
+                for feld, text in texte:
+                    if not isinstance(text, str):
+                        continue
+                    fundstellen = []
+                    stelle = text.find(LITERAL)
+                    while stelle != -1:
+                        if not ist_erwaehnung(text, stelle):
+                            fundstellen.append(stelle)
+                        stelle = text.find(LITERAL, stelle + len(LITERAL))
+                    with self.subTest(datei=pfad.name, id=e["id"][:8],
+                                      feld=feld):
+                        self.assertEqual(
+                            [], fundstellen,
+                            "In '%s' steht %d mal Backslash+n als TEXT. Beim "
+                            "Erzeugen der Datei wurde '\\\\n' geschrieben, wo "
+                            "'\\n' gemeint war. Im Bestand faellt das erst "
+                            "LN09 auf - dann ist diese Datei schon geloescht. "
+                            "Jetzt beheben: die Zeichenkette hier berichtigen "
+                            "und die Datei neu erzeugen."
+                            % (feld, len(fundstellen)))
+
 
 if __name__ == "__main__":
     unittest.main()
