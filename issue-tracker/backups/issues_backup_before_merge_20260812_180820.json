@@ -1230,13 +1230,13 @@
       "description": "Der Kontrast für die Minimap ist recht schwach. Balken .forensic-minimap-trace hat background: rgb(58, 90, 138); und #forensic-minimap hat background: #11141e; Der Kontrast ist hier zu niedrig. Es ist schwer zu erkennen.",
       "expected_behavior": "Der Kontrast muss stärker sein.",
       "actual_behavior": "Der Balken für trace ist zu schwer zu erkennen.",
-      "status": "testing",
+      "status": "open",
       "priority": "medium",
       "severity": "trivial",
       "assigned_to": "Claude",
       "related_to": [],
-      "resolved_in_version": "0.8.700",
-      "target_version": "0.8.700",
+      "resolved_in_version": null,
+      "target_version": null,
       "environment": {
         "python_version": "3.14"
       },
@@ -1244,9 +1244,7 @@
         "Kontrast",
         "Minimap",
         "Spur",
-        "WCAG",
-        "Build700",
-        "gemessen"
+        "entscheidung-offen"
       ],
       "attachments": [],
       "updates": [
@@ -1263,38 +1261,6 @@
           "author": "Claude",
           "action": "comment",
           "comment": "ENTSCHEIDUNG BENOETIGT (Claude, Build 649). Ich kann das nicht ohne Dich entscheiden, weil es eine Sehbeurteilung ist und ich den Schirm nicht sehe, auf dem gearbeitet wird.\n\nWAS ICH GERECHNET HABE (WCAG 2.1, Kontrastverhaeltnis der relativen Leuchtdichte):\n  Balken  .forensic-minimap-trace  rgb(58, 90, 138)  = #3A5A8A\n  Grund   #forensic-minimap        #11141e\n  Verhaeltnis: rund 3,0:1.\n\nEINORDNUNG: Fuer TEXT verlangt WCAG AA 4,5:1, fuer grosse Schrift und fuer GRAFISCHE BEDIENELEMENTE 3,0:1. Der Balken ist ein grafisches Element, liegt also GERADE EBEN auf der Grenze - formal nicht regelwidrig, praktisch schwer zu sehen, und Deine Meldung sagt genau das. Auf einem Buerobildschirm mit Tageslicht ist der Unterschied zwischen 3,0 und 4,5 der zwischen 'ist da, wenn man weiss, wo' und 'faellt auf'.\n\nDREI WEGE, alle nur am Balken, der Grund bleibt unveraendert:\n\n  A) #4A72AE  -> rund 4,5:1. Derselbe Blauton, nur heller. Die Minimap bleibt in der Farbwelt der Oberflaeche; ein Blick auf den Bildschirm veraendert sich nicht spuerbar, ausser dass man den Balken sieht. MEIN VORSCHLAG, falls Du keine andere Absicht hast.\n\n  B) #5C8FD6  -> rund 6,5:1. Deutlich, auch bei Streiflicht und auf einem schwachen Schirm. Der Balken traegt dann aber optisch mehr Gewicht als die Beitragsliste daneben - das ist eine Gestaltungsentscheidung und keine Kontrastfrage mehr.\n\n  C) Kontrast NICHT ueber die Helligkeit, sondern ueber eine Kante: Balken bei rgb(58,90,138) belassen und eine 1px-Aussenlinie in #8FB4E8 setzen. Vorteil: die Flaechenwirkung bleibt ruhig, der Rand fuehrt das Auge. Nachteil: bei sehr schmalen Balken (wenige Pixel) ueberdeckt die Linie die Flaeche und der Balken wirkt heller, als er ist - die Minimap wird dann fleckig.\n\nWAS ICH BRAUCHE: A, B oder C - oder einen eigenen Farbwert, dann rechne ich das Verhaeltnis nach und trage es mit ein.\n\nZWEI RUECKFRAGEN, die die Antwort veraendern koennten:\n  1. Gibt es in der Minimap MEHRERE Balkenarten (etwa eigene Beitraege gegenueber fremden)? Dann muessen die Werte zueinander passen und ich brauche alle Klassen, nicht nur .forensic-minimap-trace.\n  2. Wird die Minimap ausgedruckt oder in den Bericht uebernommen? Auf Papier verhaelt sich ein dunkler Grund voellig anders, und dann waere die richtige Antwort eine eigene Druckregel statt einer Aenderung am Schirm.\n\nWENN DU ES SELBST BEURTEILEN WILLST: Die Werte lassen sich ohne Aenderung am Bestand ausprobieren - Entwicklerwerkzeuge oeffnen (F12), das Element .forensic-minimap-trace waehlen, im Stil-Bereich 'background' zeitweise ueberschreiben. Die Aenderung ist nach dem Neuladen wieder weg. Melde mir einfach den Wert, der Dir zusagt."
-        },
-        {
-          "timestamp": "2026-08-12T00:00:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "NACHGERECHNET (Build 700) - DIE BEWERTUNG AUS BUILD 649 WAR AN ZWEI STELLEN FALSCH.\n\n(1) Das rohe Verhaeltnis #3a5a8a gegen #11141e betraegt nicht 'rund 3,0:1', sondern 2,63:1. Es lag also schon roh UNTER dem Minimum von 3,0:1 fuer grafische Objekte (WCAG 2.1, Erfolgskriterium 1.4.11) und nicht 'gerade eben auf der Grenze'.\n\n(2) SCHWERER WIEGT: An .forensic-minimap-trace steht in toolbar.css eine 'opacity: 0.55'. Sie wurde uebersehen. Eine Deckkraft verrechnet die Farbe gegen den Grund, BEVOR das Auge sie sieht - massgeblich ist die Mischfarbe 0,55*Balken + 0,45*Grund. Damit:\n      #3a5a8a roh 2,63:1  ->  wirksam nur 1,62:1\n      #3a7a4a roh 3,56:1  ->  wirksam nur 1,91:1  (.forensic-minimap-topic, nicht gemeldet)\n      #c8a000 roh 7,43:1  ->  wirksam nur 3,78:1  (.forensic-minimap-alias, nicht gemeldet)\n      Kategoriefarben @0.8 ...  wirksam 3,27:1 bis 7,71:1  (.forensic-minimap-bar)\n\nDie Meldung von Alex ('Der Balken fuer trace ist zu schwer zu erkennen') war damit praeziser als die Antwort darauf. Der Balken war nicht grenzwertig, er verfehlte das Minimum um mehr als die Haelfte.\n\nDIE BEIDEN RUECKFRAGEN AUS BUILD 649 SIND AM BESTAND BEANTWORTET:\n  Zu 1 (mehrere Balkenarten?): JA, vier. trace, topic, alias und bar. Die Farben von trace und topic setzt toolbar.js inline (_makeBar), alias und bar tragen sie in toolbar.css bzw. in ForensicToolbar.config.CATEGORIES.\n  Zu 2 (Druck/Bericht?): NEIN. Weder management/help/ noch documents/ noch report_render/ beschreiben oder uebernehmen die Minimap-Farben; die einzige Fundstelle ausserhalb der Toolbar ist Bauplan_Build329, und dort geht es um Sichtbarkeitsschaltung, nicht um Farbe. Eine eigene Druckregel ist deshalb nicht noetig."
-        },
-        {
-          "timestamp": "2026-08-12T00:00:01+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "GEWAEHLTE LOESUNG (Build 700, Entscheidung Alex 12.08.2026) UND DIE VERWORFENEN WEGE.\n\nURSACHE STATT SYMPTOM: Die 'opacity' trug an den Spurmarkern ZWEI Aufgaben zugleich - sie drueckte die Rangfolge aus ('Spur ist gedaempfter als Befund') UND sie zerstoerte den Kontrast. Die Rangfolge steckt aber ohnehin in der Geometrie (Spur 3px/left:2px gegen Annotation 4px/left:4px) und im z-index (Spur 1, Annotation 2). Die Deckkraft war dafuer nie noetig. Sie ist deshalb ERSATZLOS entfernt: Was im Quelltext als Farbe steht, ist ab jetzt auch die Farbe auf dem Schirm. Das schliesst die Falle, die die Fehleinschaetzung aus Build 649 erst moeglich gemacht hat.\n\nNEUE WERTE (gleicher Farbton, nur andere Helligkeit - die Farbwelt bleibt unberuehrt):\n      .forensic-minimap-trace  #3a5a8a -> #587FB9   4,51:1\n      .forensic-minimap-topic  #3a7a4a -> #438D55   4,53:1\n      .forensic-minimap-alias  #c8a000 -> #AB8900   5,52:1\n\nWARUM 4,5:1 UND NICHT MEHR: Die Annotationsmarker liegen wirksam zwischen 3,27:1 und 7,71:1. Hellere Spuren (6:1 war erwogen) waeren heller gewesen als die Haelfte der Befundmarker und haetten die Rangfolge 'Spur zeigt Relevanz, Marke zeigt Befund' im Helligkeitseindruck umgekehrt.\n\nWARUM DER ALIAS-MARKER ABGESENKT UND NICHT ANGEHOBEN WURDE - der Punkt, an dem er sich von den Spuren unterscheidet: Ohne Deckkraft kaeme #c8a000 auf 7,43:1 und laege ueber JEDEM Befundmarker ausser CAT_PERSON (7,71:1). Ein Alias-Treffer ist ein Orientierungspunkt, kein Befund. Blosses Entfernen der Deckkraft haette die Rangfolge also KAPUTTgemacht statt sie herzustellen. #AB8900 setzt ihn mit 5,52:1 zwischen Spur und Marke.\n\nHOVER: Der Sprung von opacity 0.55 auf 0.85 faellt mit der Deckkraft weg. Ersatz ist 'filter: brightness(1.25)' (rund 6,8:1). Grund fuer genau dieses Mittel: die Farbe wird bei trace und topic INLINE gesetzt und schlaegt jede Klassenregel fuer 'background'; 'filter' ist eine eigene Eigenschaft und greift unabhaengig davon. Die Hoehenaenderung 3px -> 6px bleibt als farbunabhaengiges Zweitsignal bestehen.\n\nVERWORFEN (a): 'opacity behalten, Farbe kompensierend aufhellen'. Ergaebe #87A3CD bzw. #60B374 - ein Pastellton, der die Farbwelt der Oberflaeche verlaesst, und vor allem: die Sollfarbe im Quelltext entspraeche weiterhin nicht der sichtbaren. Genau diese Falle sollte geschlossen werden.\nVERWORFEN (b): 'Kontrast ueber eine 1px-Aussenlinie statt ueber Helligkeit' (Vorschlag C aus Build 649). Bei 3px hohen Balken ueberdeckt eine 1px-Linie zwei Drittel der Flaeche; der Balken wirkt dann heller, als er ist, und die Minimap wird fleckig.\n\nNICHT ANGEFASST: Die Annotationsmarker behalten ihre 'opacity: 0.8'. Dort kodiert die Helligkeit die KATEGORIE und nicht den Rang; ihr Vorrang steckt in Geometrie und z-index. Sie halten saemtlich die 3,0:1 (MK06). Ein Eingriff waere eine Farbentscheidung ueber sechs Kategorien hinweg und gehoert nicht in dieses Ticket."
-        },
-        {
-          "timestamp": "2026-08-12T00:00:02+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "NACHWEISE (Build 700).\n\n(1) NEUER TEST tests/unit/test_minimap_kontrast.test.js, MK01 bis MK08. Er wiederholt KEINE Konstanten aus dem Bestand, sondern liest Markerfarben aus toolbar.js (TRACE_COLOR_POST, TRACE_COLOR_TOPIC, CATEGORIES) sowie Grundfarbe und Deckkraft aus toolbar.css und rechnet die Verhaeltnisse selbst nach. Eine Pruefung, die nur die Sollfarbe betrachtet, haette den Fehler von Build 649 BESTAETIGT statt ihn zu finden.\n      MK03 ist der eigentliche Waechter: er schlaegt an, sobald an trace, topic oder alias wieder eine 'opacity' auftaucht. Ohne ihn waeren MK01, MK02 und MK05 wertlos, weil sie dann eine Farbe pruefen wuerden, die so nie auf dem Schirm erscheint.\n      MK04 ist die Gegenprobe am ALTEN Zustand - ein Test, der auch den Fehlerzustand bestehen laesst, belegt nichts.\n      MK05 und MK07 pruefen die EINORDNUNG (Spur < Alias < staerkster Befundmarker) statt fester Zahlen; ein Sollwert waere still falsch, sobald eine Kategoriefarbe wechselt.\n      MK06 schuetzt die bewusst unberuehrten Annotationsmarker.\n      MK08 prueft die Rechenfunktion selbst gegen die WCAG-Eckwerte (Weiss/Schwarz 21:1, gleiche Farbe 1:1) - sonst waere jede Zahl oben nur so gut wie eine ungepruefte Hilfsfunktion.\n\n(2) DER TEST HAT SOFORT GEARBEITET: Mein erster Wert fuer die Topic-Spur, #438C55, ergab 4,4818:1 und ist an MK02 gescheitert. #438D55 erreicht 4,5332:1. Der Fehler waere ohne den Test in die Lieferung gegangen.\n\n(3) SICHTPROBE: Ein Nachbau der Minimap mit den Massen aus toolbar.css, vorher gegen nachher bei identischer Spurenlage, wurde Alex vorgelegt und von ihm abgenommen (12.08.2026). Eine Kontrastzahl ersetzt keine Sehbeurteilung.\n\n(4) REGRESSION: JavaScript 131 Dateien / 1874 Faelle gruen (MK01-MK08 neu). Python unter 3.13: 3447 gruen, 103 uebersprungen, 0 fehlgeschlagen. 'node --check toolbar/toolbar.js' sauber.\n      EIN ERSTER LAUF UNTER PYTHON 3.11 meldete PY08, PY10 und einen Sammelfehler in tests/test_editor_renderer.py - alle drei aus derselben Ursache (3.11 parst die PEP-701-f-string in editor/html_renderer.py:349 nicht) und ebenso auf unberuehrtem origin/master. Das waere als 'bekannter Ausfall' vertretbar gewesen, ist aber nicht noetig: der Container hat auch 3.13, und dort laeuft die Suite vollstaendig durch. Die Lieferung ist ganz geprueft, nicht bis auf drei Stellen. Der Lauf unter 3.14 in der VM steht weiterhin aus.\n\n(5) HILFE: keine Anpassung faellig. Die Minimap gehoert zur Ermittler-Oberflaeche, nicht zum Management; weder management/help/ noch documents/ noch report_render/ beschreiben ihre Farben (geprueft, siehe erster Kommentar)."
-        },
-        {
-          "timestamp": "2026-08-12T00:00:03+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "testing",
-          "comment": "Status auf 'testing': behoben, nachgerechnet, unter Python 3.13 und im JS-Testlauf vollstaendig gruen, Sichtprobe durch Alex abgenommen - aber noch nicht in der VM unter Python 3.14 gefahren und noch nicht am laufenden Werkzeug mit echter Spurenlage gesehen."
         }
       ]
     },
