@@ -5280,6 +5280,47 @@
   var MinimapModule = (function () {
     var _minimapEl = null;
 
+    // -------------------------------------------------------------------------
+    // Farben der Spur-Marker
+    //
+    // Build 700 (Ticket 602c7557-7639-4f73-8bce-5bfbd0aca3e4,
+    // Entscheidung Alex 12.08.2026): Kontrast angehoben und als benannte
+    // Konstanten herausgezogen.
+    //
+    // WARUM DIE WERTE SO AUSSEHEN — und warum sie nicht "einfach dunkler
+    // gedämpftes Blau/Grün" sein dürfen:
+    //
+    // Die Marker liegen auf dem Minimap-Grund #11141e (toolbar.css,
+    // #forensic-minimap). WCAG 2.1, Erfolgskriterium 1.4.11, verlangt für
+    // grafische Objekte mindestens 3,0:1. Die bisherigen Werte verfehlten das
+    // deutlich, weil an .forensic-minimap-trace/-topic zusätzlich eine
+    // `opacity: 0.55` stand — die Deckkraft verrechnet die Farbe gegen den
+    // Grund, bevor man sie sieht:
+    //
+    //   #3a5a8a roh 2,63:1  ->  mit opacity 0.55 nur noch 1,62:1
+    //   #3a7a4a roh 3,56:1  ->  mit opacity 0.55 nur noch 1,91:1
+    //
+    // Die `opacity` ist deshalb in toolbar.css ersatzlos entfernt worden
+    // (die Rangfolge gegenüber Annotationsmarkern trägt die Geometrie und der
+    // z-index), und die Farben sind bei gleichem Farbton so weit aufgehellt,
+    // dass sie den Zielwert 4,5:1 erreichen:
+    //
+    //   TRACE_COLOR_POST  #587FB9  4,51:1  gegen #11141e
+    //   TRACE_COLOR_TOPIC #438D55  4,53:1  gegen #11141e
+    //
+    // 4,5:1 und nicht mehr: Die Annotationsmarker (.forensic-minimap-bar,
+    // opacity 0.8) liegen wirksam zwischen 3,27:1 und 7,71:1. Hellere Spuren
+    // hätten mehr als die Hälfte der Befundmarker überstrahlt und die
+    // Rangfolge "Spur zeigt Relevanz, Marke zeigt Befund" im Helligkeits-
+    // eindruck umgekehrt.
+    //
+    // WER DIESE WERTE ÄNDERT, muss den Kontrast gegen #11141e nachrechnen —
+    // tests/unit/test_minimap_kontrast.test.js tut das automatisch und liest
+    // die Konstanten direkt aus dieser Datei.
+    // -------------------------------------------------------------------------
+    var TRACE_COLOR_POST  = "#587FB9";  // Post-Spur auf viewtopic.php
+    var TRACE_COLOR_TOPIC = "#438D55";  // Topic-Spur auf viewforum.php (Build 082)
+
     function init() {
       _minimapEl = document.createElement("div");
       _minimapEl.id = "forensic-minimap";
@@ -5462,7 +5503,7 @@
         _applyTraceProgress(el, elemId);
 
         var isTopic = elemId.startsWith("topic:");
-        var color   = isTopic ? "#3a7a4a" : "#3a5a8a";
+        var color   = isTopic ? TRACE_COLOR_TOPIC : TRACE_COLOR_POST;
 
         // DOM-basierter Tooltip (Bug 2.80)
         var label = _buildTraceTooltip(elemId, el, isTopic);
