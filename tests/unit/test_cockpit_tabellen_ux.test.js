@@ -196,7 +196,16 @@ const REGISTER = [
       ],
       roles_catalog: [{ code: "investigator", label: "Ermittler:in" }],
       actor_person_id: 1, can_edit: true, can_sync: false,
+      // Build 701: die Sicht liefert die Bestaetigungsworte mit (eine
+      // Wahrheitsquelle, Server). Ohne sie greift der Rueckfall in
+      // confirmWords — die Attrappe fuehrt sie deshalb wie der Server,
+      // damit hier geprueft wird, was im Betrieb entsteht.
+      confirm: { deactivate: "Entfernen", reactivate: "Reaktivieren" },
     }),
+    // Build 701: 'ruhestand' traegt Knoepfe, keine Angabe. Ein Filter darauf
+    // waere sinnlos — wonach man filtern wollte (aktiv/inaktiv), steht in
+    // der Spalte 'status' und hat dort seinen Filter.
+    ohneFilter: ["ruhestand"],
   },
   // --- Build 550 ------------------------------------------------------------
   // Support: DREI Abschnitte in EINER Sicht, jeder mit eigener Kennung. Sie

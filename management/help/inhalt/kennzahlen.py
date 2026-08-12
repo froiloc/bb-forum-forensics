@@ -20,7 +20,9 @@
 #
 # REGEL H-1 (Anwendersprache), REGEL H-0 (fallinhaltsfrei).
 #
-# Version: v0.8.602 - Build: 602 - 2026-07-31
+# Build 701 (Ticket 95139d2a): Kapitel "Ausgeschiedene Personen" in
+#   Lastverteilung und Kapazitaet, plus je ein Text fuer den Umschalter.
+# Version: v0.8.701 - Build: 701 - 2026-08-12
 # =============================================================================
 
 from __future__ import annotations
@@ -29,7 +31,7 @@ from typing import Tuple
 
 from management.help.modell import Abschnitt, Kontexthilfe, Sichthilfe
 
-_STAND = 602
+_STAND = 701
 
 #: Die Zweckbindung in einem Satz - woertlich gleich in allen betroffenen
 #: Kapiteln. Sie steht dort im Abschnitt "Grenzen und Zusicherungen" UND im
@@ -597,6 +599,23 @@ WORKLOAD = Sichthilfe(
             ),
         ),
         Abschnitt(
+            "ausgeschieden", "Ausgeschiedene Personen",
+            (
+                "Wer in der Personalverwaltung inaktiv gesetzt wurde, "
+                "erscheint hier nicht mehr. Sonst füllte sich die Verteilung "
+                "über die Jahre mit Zeilen, auf denen nichts mehr passiert.",
+                "MIT EINER AUSNAHME, UND SIE IST DER PUNKT: Trägt eine "
+                "ausgeschiedene Person noch OFFENE Fälle, bleibt ihre Zeile "
+                "stehen und wird benannt. Verschwände sie, verschwände mit "
+                "ihr Arbeit, die niemand mehr macht — aus genau der Sicht, "
+                "in der sie auffallen muss.",
+                "Die Leiste über der Verteilung sagt, wie viele "
+                "Ausgeschiedene ausgeblendet sind und wer es ist. „Nichts "
+                "gesagt“ heißt hier: es gibt keine. Mit dem Kästchen lassen "
+                "sich alle einblenden.",
+            ),
+        ),
+        Abschnitt(
             "verweise", "Querverweise",
             (),
             liste=(
@@ -620,6 +639,14 @@ WORKLOAD = Sichthilfe(
             "„eigene“ ist die Sicht eine Selbstauskunft und keine Verteilsicht "
             "— eine kurze Liste ist dann kein Befund.",
             verweis="workload#rechte"),
+        # Build 701 (Ticket 95139d2a).
+        Kontexthilfe(
+            "workload.bedienung.inaktive", "Ausgeschiedene einblenden",
+            "Zeigt auch die Zeilen der Personen, die inaktiv gesetzt wurden. "
+            "Ohne das Kästchen fehlen sie — außer sie tragen noch offene "
+            "Fälle; die bleiben immer aufgeführt und werden in der Leiste "
+            "genannt.",
+            verweis="workload#ausgeschieden"),
     ),
 )
 
@@ -703,6 +730,22 @@ CAPACITY = Sichthilfe(
             ),
         ),
         Abschnitt(
+            "ausgeschieden", "Ausgeschiedene Personen",
+            (
+                "Wer in der Personalverwaltung inaktiv gesetzt wurde, geht "
+                "hier nicht mehr ein. Für jemanden, der nicht mehr da ist, "
+                "gibt es keine zu planende Arbeitszeit.",
+                "MIT EINER AUSNAHME: Trägt die Person noch offene Fälle, "
+                "bleibt sie aufgeführt — solange Arbeit an ihr hängt, ist "
+                "auch die Frage nach der Zeit noch offen.",
+                "Die Leiste über dem Diagramm sagt, wer ausgeblendet ist; "
+                "das Kästchen blendet alle ein. Wer die Zahlen einer "
+                "einzelnen ausgeschiedenen Person braucht (etwa für eine "
+                "Nachbetrachtung), ruft sie unmittelbar ab — die Ausblendung "
+                "ist eine Frage der Übersicht, keine Zugangssperre.",
+            ),
+        ),
+        Abschnitt(
             "verweise", "Querverweise",
             (),
             liste=(
@@ -744,6 +787,13 @@ CAPACITY = Sichthilfe(
             "capacity.bedienung.aktualisieren", "Aktualisieren",
             "Berechnet die Kapazität für den eingestellten Zeitraum neu. Bis "
             "dahin gilt der Zeitraum, der oben genannt ist."),
+        # Build 701 (Ticket 95139d2a).
+        Kontexthilfe(
+            "capacity.bedienung.inaktive", "Ausgeschiedene einblenden",
+            "Nimmt auch die Personen auf, die inaktiv gesetzt wurden. Ohne "
+            "das Kästchen fehlen sie — außer sie tragen noch offene Fälle; "
+            "die bleiben immer aufgeführt und werden in der Leiste genannt.",
+            verweis="capacity#ausgeschieden"),
     ),
 )
 

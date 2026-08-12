@@ -45,7 +45,26 @@
 // FARB-VERTRAG: Die Ampelfarben spiegeln cockpit.css (--rot/--gelb/--gruen).
 //   ECharts kann keine CSS-Variablen lesen -> hier als Konstanten gespiegelt.
 //
-// Version: v0.8.514 · Build: 514 · 2026-07-24
+// BUILD 701 (Ticket 95139d2a) — AUSGESCHIEDENE.
+//   Diese Sicht fuehrt eine Zeile JE PERSON und ist damit eine
+//   Grundmengen-Tabelle: Ausgeschiedene fallen per Default heraus. Der Server
+//   entscheidet das (PersonSichtbarkeit) und liefert die Rechenschaft im Block
+//   'inaktive'; diese Datei ZEIGT sie nur an und bietet den Umschalter.
+//
+//   DIE LEISTE ERSCHEINT NUR, WENN ES ETWAS ZU SAGEN GIBT. Ein Kaestchen
+//   "Inaktive einblenden" in einer Dienststelle ohne einen einzigen
+//   Ausgeschiedenen waere Bedienrauschen — und Rauschen wird nicht gelesen,
+//   auch dann nicht, wenn es spaeter etwas meldet.
+//
+//   WARUM DIE LEISTE HIER UND NICHT IN EINEM GEMEINSAMEN MODUL: sie ist in
+//   der Kapazitaetssicht fast gleich, und die Versuchung ist gross. Ein
+//   gemeinsames Modul muesste die Hilfe-Kennung aber BERECHNEN
+//   ('<sicht>.bedienung.inaktive') — und eine gerechnete Kennung sieht weder
+//   die Paritaetspruefung SP01/SP02 noch die Erhebung der Bedienelemente.
+//   Genau daran sind in Build 636 sechs Hilfetexte still ins Leere gelaufen.
+//   Zwanzig Zeilen Doppelung sind der guenstigere Preis; die eigentliche
+//   Entscheidung (wer ausgeblendet wird) faellt ohnehin nur EINMAL, am Server.
+// Version: v0.8.701 · Build: 701 · 2026-08-12
 // =============================================================================
 
 (function () {
@@ -283,6 +302,103 @@
     // data = /api/workload-Antwort. opts.ECharts injizierbar (Default
     // window.echarts). Rueckgabe: ECharts-Instanz (oder null) — der Aufrufer
     // entsorgt sie via dispose().
+    // =========================================================================
+    // AUSGESCHIEDENE (Build 701, Ticket 95139d2a)
+    // =========================================================================
+
+    // inaktivBlock: der Rechenschaftsblock aus der Antwort, defensiv. Fehlt er
+    // (aelteres Backend), gibt es nichts zu melden — und NICHT etwa "0
+    // ausgeblendet", denn das waere eine Behauptung ueber einen Server, der
+    // die Frage gar nicht beantwortet hat.
+    function inaktivBlock(data) {
+        var b = (data && data.inaktive) || null;
+        if (!b) { return null; }
+        return {
+            ausgeblendet: b.ausgeblendet || 0,
+            kennungen: b.ausgeblendete_kennungen || [],
+            mit_arbeit: b.behalten_mit_arbeit || [],
+            gezeigt: b.gezeigt === true,
+            hinweis: b.hinweis || null
+        };
+    }
+
+    // inaktivText: was die Leiste sagt. REIN (kein DOM) und damit unter vitest
+    // pruefbar. Drei Lagen, drei Saetze — sie duerfen nicht gleich klingen:
+    //   * eingeblendet   -> die Liste ist vollstaendig, das ist zu sagen.
+    //   * ausgeblendet   -> WIEVIELE und WER. Eine Zahl allein laesst offen,
+    //                       wen es betrifft, und genau das will man wissen.
+    //   * stehengeblieben-> wer trotz Ruhestand noch offene Faelle traegt.
+    //                       Das ist die wichtigste Zeile der Leiste: hier
+    //                       steht Arbeit, die NIEMAND mehr macht.
+    function inaktivText(data) {
+        var b = inaktivBlock(data);
+        if (!b) { return ''; }
+        var teile = [];
+        if (b.hinweis) { teile.push(b.hinweis); }
+        if (b.gezeigt) {
+            teile.push('Ausgeschiedene werden eingeblendet.');
+        } else if (b.ausgeblendet > 0) {
+            teile.push(b.ausgeblendet + ' ausgeschiedene'
+                + (b.ausgeblendet === 1 ? ' Person' : ' Personen')
+                + ' ausgeblendet: ' + b.kennungen.join(', ') + '.');
+        }
+        if (b.mit_arbeit.length) {
+            teile.push('Trotz Ruhestand aufgeführt, weil noch offene Fälle '
+                + 'zugewiesen sind: ' + b.mit_arbeit.join(', ') + '.');
+        }
+        return teile.join(' ');
+    }
+
+    // zeigtLeiste: gibt es ueberhaupt etwas zu sagen? (siehe Modulkopf)
+    function zeigtLeiste(data) {
+        var b = inaktivBlock(data);
+        if (!b) { return false; }
+        return b.gezeigt || b.ausgeblendet > 0
+            || b.mit_arbeit.length > 0 || !!b.hinweis;
+    }
+
+    // renderInaktiveLeiste: Kaestchen + Text. opts.onInaktiveToggle(bool)
+    // laedt die Sicht neu — KEIN Filtern im Browser: der Server entscheidet
+    // die Ausblendung, und eine zweite Entscheidung hier waere eine zweite
+    // Wahrheitsquelle.
+    function renderInaktiveLeiste(mainEl, data, opts) {
+        opts = opts || {};
+        var doc = opts.doc
+            || (typeof document !== 'undefined' ? document : null);
+        if (!mainEl || !doc || !zeigtLeiste(data)) { return null; }
+        var b = inaktivBlock(data);
+
+        var box = doc.createElement('div');
+        box.className = 'aiw-inaktive-leiste'
+            + (b.mit_arbeit.length ? ' warn' : '');
+
+        var label = doc.createElement('label');
+        label.className = 'aiw-inaktive-schalter';
+        var cb = doc.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = b.gezeigt;
+        cb.setAttribute('aria-label', 'Ausgeschiedene einblenden');
+        cb.setAttribute('data-hilfe-id', 'workload.bedienung.inaktive');
+        cb.addEventListener('change', function () {
+            if (typeof opts.onInaktiveToggle === 'function') {
+                opts.onInaktiveToggle(cb.checked === true);
+            }
+        });
+        label.appendChild(cb);
+        var lt = doc.createElement('span');
+        lt.textContent = ' Ausgeschiedene einblenden';
+        label.appendChild(lt);
+        box.appendChild(label);
+
+        var txt = doc.createElement('span');
+        txt.className = 'aiw-inaktive-text';
+        txt.textContent = inaktivText(data);
+        box.appendChild(txt);
+
+        mainEl.appendChild(box);
+        return box;
+    }
+
     function renderWorkload(mainEl, data, opts) {
         opts = opts || {};
         if (!mainEl) { return null; }
@@ -307,6 +423,9 @@
         // Build 514: der Alarm steht VOR dem Diagramm — man soll ihn lesen,
         // bevor man die Balken deutet.
         renderOverloadBanner(mainEl, data);
+
+        // Build 701: Rechenschaft ueber Ausgeschiedene + Umschalter.
+        renderInaktiveLeiste(mainEl, data, opts);
 
         var chartEl = document.createElement('div');
         chartEl.id = 'aiw-workload-chart';
@@ -351,7 +470,12 @@
         assessmentLine: assessmentLine,
         overloadLines: overloadLines,
         renderOverloadBanner: renderOverloadBanner,
-        renderWorkload: renderWorkload
+        renderWorkload: renderWorkload,
+        // Build 701 (Ausgeschiedene) — rein und damit unter vitest pruefbar:
+        inaktivBlock: inaktivBlock,
+        inaktivText: inaktivText,
+        zeigtLeiste: zeigtLeiste,
+        renderInaktiveLeiste: renderInaktiveLeiste
     };
     if (typeof module !== 'undefined' && module.exports) { module.exports = API; }
     if (typeof window !== 'undefined') { window.AIWCockpitWorkload = API; }
