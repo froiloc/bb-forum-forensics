@@ -6903,16 +6903,15 @@
         ev.preventDefault();
         _togglePanel(container, postId, btn);
       });
-      // Innerer <span> wie bei den Eintraegen des Forums
-      // (<li class="postquote"><span><a …></a></span></li>): die Formatierung
-      // der Fussleiste greift dort auf 'li span'.
-      if (wrap.tagName === "LI") {
-        var innen = document.createElement("span");
-        innen.appendChild(btn);
-        wrap.appendChild(innen);
-      } else {
-        wrap.appendChild(btn);
-      }
+      // BUILD 705 (Befund Alex, 12.08.2026): HIER STAND EIN INNERER <span>,
+      // der die Eintraege des Forums nachbildete
+      // (<li class="postquote"><span><a …></a></span></li>). Er ist wieder
+      // WEG. Grund: die Fussleisten-Stilvorlage der Seite zielt auf genau
+      // dieses 'li span' und hat den Eintrag in die Breite gezogen. Je
+      // weniger Elemente wir in fremde Geruestregeln stellen, desto weniger
+      // koennen sie verformen — der Knopf haengt jetzt unmittelbar im <li>.
+      // Die Masse des Flaggenbildes sichert zusaetzlich toolbar.css ab.
+      wrap.appendChild(btn);
       // ERSTES Element der Leiste (Weisung Alex, 12.08.2026): die Flagge steht
       // vor 'Block'/'Antworten'. insertBefore(firstChild) setzt sie auch dann
       // an den Anfang, wenn dort ein Zeilenumbruch als Textknoten steht.

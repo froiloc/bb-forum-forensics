@@ -18,8 +18,8 @@
       "related_to": [
         "40ea85b6-799f-4c23-9e7e-85222f2d9743"
       ],
-      "resolved_in_version": "0.8.703",
-      "target_version": "0.8.703",
+      "resolved_in_version": "0.8.705",
+      "target_version": "0.8.705",
       "environment": {
         "python_version": "3.14",
         "database": "translations.db"
@@ -62,6 +62,14 @@
           "old_value": "",
           "new_value": "",
           "comment": "DER AUFBAU DER PN-DIALOGSEITE IST JETZT BELEGT (Auszug Alex, 12.08.2026, waehrend der Bearbeitung nachgeliefert).\n\nDie Fussleiste einer privaten Nachricht ist gebaut wie die eines Forenbeitrags in der Vollansicht:\n  <div class=\"postfoot clearb\"><div class=\"postfootright\"><ul>\n    <li class=\"postreport\"><span><a …>Block</a></span></li>\n    <li class=\"postquote\"><span><a …>Antworten</a></span></li>\n  </ul></div></div>\n\nFOLGEN, BEIDE UMGESETZT:\n(a) Der bereits vorhandene Anker '.postfootright ul' greift - es braucht keine eigene Aufloesung fuer PN. Die Flagge steht auf Weisung von Alex als ERSTER Eintrag, also vor 'Block' und 'Antworten' (PU17).\n(b) DER EINTRAG IST JETZT EIN <li> UND KEIN <span> MEHR. In ein <ul> gehoert ein <li>; nur so ist die Liste gueltiges HTML, und nur so greift die Formatierung, die das Forum den uebrigen Eintraegen dieser Leiste gibt. Der innere <span> bildet den Aufbau der Nachbareintraege nach. Das gilt ab sofort auch fuer Forenbeitraege - dort stand bis Build 699 ebenfalls ein <span> in der Liste (PU18; alle Faelle aus Build 396 bleiben gruen).\n\nDER NOTANKER BLEIBT TROTZDEM. Er greift jetzt nachweislich nicht mehr auf PN-Dialogseiten, deckt aber jeden kuenftigen oder hier unbekannten Aufbau ab: bis Build 699 unterblieb die Flagge in dieser Lage STILLSCHWEIGEND, und eine vorhandene Uebersetzung waere unsichtbar geblieben (GR1). Er haengt sie dann in eine eigene Leiste am Ende des Containers (.aiw-flag-fallback, .aux-part) und protokolliert die Abweichung.\n\nZU PRUEFEN IN DER VM: (a) Dialog mit fremdsprachigen Nachrichten oeffnen - die Flagge steht links von 'Block'. (b) Klick: Text, Modell und 'Stand' im gelben Kopf. (c) Zweiter Klick blendet aus. (d) Ein Blick auf die Fussleiste eines FORENBEITRAGS, weil der Wechsel von <span> auf <li> auch dort wirkt."
+        },
+        {
+          "timestamp": "2026-08-12T19:30:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "NACHTRAG IN BUILD 705 - DIE FLAGGE WAR IN DER PN-ANSICHT VERZERRT.\n\nBEFUND (Alex, 12.08.2026, woertlich): 'Die Flagge in der Ansicht der privaten Nachrichten ist stark in die Breite verzerrt.' Im Forenbeitrag war sie richtig - bei GLEICHEM Markup.\n\nURSACHE, und sie beginnt bei einer Aenderung aus Build 703: Bis dahin hing die Flagge in einem <span> DIREKT im <ul>; eine Seitenregel der Form 'ul li span' traf sie gar nicht. Mit Build 703 wurde daraus ein <li> (richtig - in ein <ul> gehoert ein <li>) samt innerem <span>. Das Flaggenbild IST ein <span> (.aiw-flag-de) im Knopf, und die Fussleiste des Forums ist genau so gebaut (<li class=\"postquote\"><span><a …></a></span></li>) - ihre Stilvorlage zielt also auf '.postfootright ul li span'. Diese Stilvorlage wird bei jeder Navigation NACH toolbar.css in den Kopf der Schale gezogen (_updateHead); '.aiw-flag-de' fuehrte EINE Klasse und verlor gegen 'eine Klasse + drei Elemente'. Die Themenseite fuehrt diese Regel nicht - daher der Unterschied zwischen beiden Ansichten.\n\nABHILFE: (a) Der innere <span> ist wieder weg, der Knopf haengt unmittelbar im <li>. (b) Die Masse des Flaggenbildes stehen unter '.aiw-translate-flag .aiw-flag-de' - ZWEI Klassen, (0,2,0) schlaegt (0,1,3) unabhaengig von der Reihenfolge - und sind mit '!important' festgenagelt, samt min-/max-Breite und -Hoehe. NICHT festgenagelt ist 'display' bei Knopf und Eintrag: sonst bliebe die Flagge in der Originalansicht stehen (die Ausblendung '.aux-part { display:none !important }' entschiede dann nach Reihenfolge).\n\nGEMESSEN IM ECHTEN CHROMIUM, gegen die ausgelieferte toolbar.css und eine nachgebaute Fussleisten-Stilvorlage:\n  Build 703: Flaggenbild 590 x 15 px, Knopf 600 px, Eintrag 600 px.\n  Build 705: Flaggenbild 20 x 13 px, Knopf 30 x 17 px, Eintrag 34 x 19 px.\n  Forenbeitrag ohne die stoerenden Regeln: zeichengenau dasselbe.\n\nREGRESSION: FM01-FM04 (tests/unit/test_flagge_masse.test.js) sichern die Regelform - zwei Klassen, festgenagelte Masse, kein '!important' auf 'display'. Sie pruefen den Stilbogen und nicht die gerechnete Breite, weil jsdom keine Spezifitaet ausrechnet: ein getComputedStyle-Test waere hier gruen, ohne etwas zu belegen. PU18 ist mitgezogen (kein innerer <span> mehr). Gegenprobe: FM01, FM03, FM04 und PU18 fallen gegen Build 703.\n\nBEIM PRUEFEN IN DER VM den Seiten-Zwischenspeicher leeren (Strg+F5) - sonst laedt der Browser die alte toolbar.css."
         }
       ]
     },
