@@ -2498,19 +2498,17 @@
     {
       "id": "b47ce019-6d38-4a02-95f1-8e2064cba735",
       "type": "feature_request",
-      "status": "in_progress",
+      "status": "open",
       "priority": "medium",
       "title": "Schritt 3: Editor.js-Vorschau und -Eingabe fuer Dokumentvorlagen",
       "reporter": "Alex",
       "assigned_to": "Claude",
       "related_to": [
-        "8f2b64d9-0a51-4c78-93e6-15d07be4a3c2",
-        "c81a4f37-6b02-4e5d-9a17-24f8e0b3c95a"
+        "8f2b64d9-0a51-4c78-93e6-15d07be4a3c2"
       ],
       "tags": [
-        "Build705",
-        "Dokumentvorlagen",
         "Editor.js",
+        "Dokumentvorlagen",
         "Hauptaufgabe"
       ],
       "description": "Wunsch mc: was fuer die Bausteinmodule gebaut wird, soll anschliessend auch in der Sicht 'Dokumentvorlagen' zur Verfuegung stehen. Dort liegen die Bloecke bereits als blocks_json vor - die Vorschau kann sie ohne Umformung anzeigen.",
@@ -2534,19 +2532,10 @@
           "old_value": "",
           "new_value": "",
           "comment": "VORARBEIT GELEISTET, UMSETZUNG ZURUECKGESTELLT (Entscheidung Alex, 12.08.2026). Beim Kartieren des Bestands sind drei Dinge herausgekommen, die vor dem Bau zu klaeren waren:\n\n(1) EDITOR.JS-VERSION IST 2.31.6 - im Bestand war sie nirgends dokumentiert (build_editor_bundle.py:137 installiert 'latest', das Manifest nennt keine Versionen). Gemessen durch Laden des Buendels in jsdom.\n\n(2) UNBEKANNTE BLOCKTYPEN SIND UNGEFAEHRLICHER ALS BEFUERCHTET. Dokumentvorlagen erlauben NEUN Blocktypen (report_source.py:59-62), die Werkzeugliste der Bausteinvorschau registriert SECHS (cockpit_baustein_vorschau.js:118-132). Fuer 'image', 'marker' und 'evidence' gibt es also kein Werkzeug - und die sind real, report_template_extractor.py:192 erzeugt evidence-Bloecke. GEMESSEN: Editor.js 2.31.6 hat ein eingebautes Ersatzwerkzeug. Alle neun Bloecke ueberleben einen Durchlauf, die Daten der drei unbekannten kommen BYTEWEISE IDENTISCH zurueck. Kein stiller Verlust. Angezeigt wird allerdings ein englischer Satz ('The block can not be displayed correctly.'), der den Typ nicht nennt und offenlaesst, ob es ein Defekt ist.\n\n(3) DIE SECHS BEKANNTEN WERKZEUGE WAREN DAS PROBLEM, nicht die drei unbekannten: 'quote' verlor zwei belegte Felder. Daraus ist Vorgang 3d7f1c84 geworden, behoben in Build 704 - VOR diesem Ticket, weil Dokumentvorlagen viele Bloecke je Datensatz fuehren und der Verlust dort eine ganze Vorlage auf einmal getroffen haette.\n\nFESTGELEGTE BAUFORM FUER SCHRITT 3 (Entscheidung Alex, 12.08.2026):\n  - EINE Editor.js-Instanz fuer die GANZE Vorlage, nicht eine je Block. Reihenfolge, Einfuegen und Loeschen macht Editor.js selbst; die heutige Zeilenmaske in cockpit_doctemplates.js:289-363 (Typ-Auswahl, Textarea, Hoch/Runter/Entfernen) entfaellt. DT01 bis DT15 in test_cockpit_doctemplates.test.js pruefen genau diese Maske und sind mitzuziehen; DT15 (Textarea mind. 5 Zeilen) verliert seinen Gegenstand ganz.\n  - EIN EIGENES DEUTSCHES ERSATZWERKZEUG nach dem Vorbild von UnknownBlock (html_renderer.py:206-226), das den Typ NENNT und sagt, dass der Inhalt unversehrt bleibt. Zusaetzlich SimpleImage fuer 'image' registrieren - das Werkzeug liegt bereits im Buendel (build_editor_bundle.py:81-86) und wird nur nicht eingetragen. Damit bleiben 'marker' und 'evidence' als benannte Ersatzbloecke.\n\nOFFEN UND VOR DEM BAU ZU KLAEREN: Der Rohmodus muesste bei einer Vorlage auf die GANZE Blockliste gehen statt auf einen Block - und die Blindprobe aus Build 704 ist heute auf genau einen Block geschrieben (data.blocks[0]). Sie braucht dafuer eine Erweiterung auf die Liste. Das ist Arbeit an derselben Datei und sollte zusammen entschieden werden.\n\nZUR HISTORIE DIESES VORGANGS: Seine beiden Zeilen standen verdreht (23:00 vor 19:04) und haetten die Lieferung an IT05 blockiert. Sie sind chronologisch sortiert, KEINE wurde entfernt. Das ist kein Einzelfall - 68 der 193 Vorgaenge in data/issues.json fuehren ihre Historie unsortiert. IT05 sieht das nicht, weil er nur die Eintragsdateien prueft, nicht den Bestand."
-        },
-        {
-          "timestamp": "2026-08-12T20:00:03+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "in_progress",
-          "comment": "TEIL 1 VON 2 GELIEFERT (Build 705). Aufgeteilt auf Entscheidung Alex vom 12.08.2026: erst der Unterbau, dann die Eingabe. Grundregel 2 verlangt, dass jede Version ein lauffaehiges System ist - Teil 1 ist vollstaendig benutzbar und ruehrt KEINEN Speicherweg an.\n\nWAS IN BUILD 705 DRIN IST:\n  - cockpit_unbekannter_block.js (neu): ein deutsches Ersatzwerkzeug fuer Blockarten ohne echtes Werkzeug. Es NENNT die Blockart und sagt, dass der Inhalt erhalten bleibt. Vorbild ist UnknownBlock in html_renderer.py:206-226.\n  - werkzeuge(w, umfang) in cockpit_baustein_vorschau.js: zwei Umfaenge statt einem. 'baustein' bleibt bei sechs Arten - das ist kein Geschmack, sondern der SQL-CHECK auf report_modules.block_type; eine siebte Art liesse sich eingeben und nicht speichern. 'vorlage' traegt neun, mit SimpleImage fuer 'image' (lag ungenutzt im Buendel) und dem Ersatzwerkzeug fuer 'evidence'.\n  - cockpit_vorlage_vorschau.js (neu): die schreibgeschuetzte Vorschau der GANZEN Vorlage, eingebaut unter der Blockmaske. Sie benennt nur um (block_type -> type) und reicht block_data unveraendert durch.\n  - der Mehrblock-Verlust der Bausteineingabe (Vorgang c81a4f37).\n\nWARUM DER 'marker'-BLOCK WEITERHIN DEN ENGLISCHEN ERSATZ BEKOMMT: Editor.js kennt je Namen nur EIN Werkzeug, und 'marker' ist im Buendel das Inline-Werkzeug. GEMESSEN am 12.08.2026: nimmt man es aus der Liste, um den Namen fuer den Block frei zu machen, wird <mark> beim save() aus JEDEM Absatztext entfernt. Der haeufige Fall waere also fuer den seltenen geopfert worden. Die Vorschau NENNT solche Bloecke stattdessen ueber der Flaeche, mit Nummer und Art.\n\nWAS FUER TEIL 2 BLEIBT: die Listen-Eingabe (eine Editor.js-Instanz fuer die ganze Vorlage) ersetzt die Zeilenmaske; DT01-DT15 in test_cockpit_doctemplates.test.js werden mitgezogen; der Rohmodus geht auf die ganze Blockliste; und die Blindprobe aus Build 704 wird von einem Block auf eine Liste erweitert. Letzteres GEHOERT DORTHIN und nicht hierher: in Teil 1 haette sie keinen Aufrufer, und ungenutzter Code, der Daten bewahren soll, ist eine Zusage ohne Probe."
         }
       ],
       "reported_at": "2026-07-30T23:00:00+00:00",
-      "affected_version": "0.8.587",
-      "target_version": "0.8.705"
+      "affected_version": "0.8.587"
     },
     {
       "id": "9a05fd28-4c61-4b7e-a3d9-62f18e07c5b4",
@@ -9534,14 +9523,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Build704.json"
-        },
-        {
-          "timestamp": "2026-08-12T20:00:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "TEXTKORREKTUR (Build 705), kein neuer Sachverhalt.\n\nIn der Beschreibung stand die Zeichenfolge Backslash-n als ZITAT: der body-Spiegel enthaelt an dieser Stelle wirklich einen Zeilenumbruch, und ich hatte ihn so notiert, um beide Zeilen nebeneinander zeigen zu koennen. Der Waechter LN09 (tests/test_issue_tracker_umbruchreparatur.py) hat das beim naechsten vollstaendigen Lauf als verlorenen Umbruch gemeldet - zu Recht: er kann Zitat und Fehler nicht unterscheiden, und eine Regel, die Ausnahmen nach Absicht macht, ist keine.\n\nDie Stelle ist jetzt ausgeschrieben. Am Befund aendert sich nichts. Der Waechter hat getan, wofuer es ihn gibt - und er hat einen Fehler von mir gefunden, nicht einen des Bestands."
         }
       ]
     },
@@ -9637,63 +9618,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Build704.json"
-        }
-      ]
-    },
-    {
-      "id": "c81a4f37-6b02-4e5d-9a17-24f8e0b3c95a",
-      "type": "bug",
-      "title": "Bausteineingabe verliert alles ab dem zweiten Block",
-      "affected_version": "0.8.656",
-      "reporter": "Claude",
-      "reported_at": "2026-08-12T20:00:01+00:00",
-      "prerequisites": "Bestand ab Build 656. Komfortmodus der Bausteineingabe. Der Fall entsteht durch eine Eingabetaste am Zeilenende - Editor.js legt dann einen neuen Block an.",
-      "description": "GEMESSEN am 12.08.2026, in zwei Schritten:\n\n  (a) Am echten Buendel: Editor.js haelt problemlos mehrere Bloecke. Aus zwei Absaetzen kommen zwei zurueck.\n  (b) Am Bauteil: cockpit_baustein_eingabe.js las in _komfortLesen() nur erg.blocks[0]. Alles darunter verschwand - ohne Meldung, ohne Eintrag, ohne Hinweis auf der Flaeche.\n\nAusgabe der Messung am Bauteil (Stand vor der Behebung):\n  Bauteil liefert : Erster Absatz.\n  verloren        : ZWEITER Absatz - nach Enter.\n  Meldung         : (leer)\n\nDASS NUR EIN BLOCK GESPEICHERT WERDEN KANN, IST RICHTIG: report_modules fuehrt ein block_type und ein block_data, mehr hat dort keinen Platz. Falsch war, das WORTLOS zu tun.\n\nDas ist derselbe Fehler wie beim Zitatfeld (Vorgang 3d7f1c84), nur eine Ebene hoeher: dort fehlte ein FELD, hier ein ganzer BLOCK. Aufgefallen ist er bei der Vorarbeit zu b47ce019 - beim Nachdenken darueber, wie eine Vorlage als Blockliste zu behandeln ist.",
-      "expected_behavior": "Entstehen mehrere Bloecke, wird es gesagt - waehrend es passiert und nicht erst beim Speichern. Der Bearbeiter kann dann zusammenfuehren oder einen zweiten Baustein anlegen.",
-      "actual_behavior": "Alles ab dem zweiten Block verschwindet lautlos beim Speichern.",
-      "status": "testing",
-      "priority": "high",
-      "severity": "major",
-      "assigned_to": "Claude",
-      "related_to": [
-        "3d7f1c84-5a2e-4b19-8c6d-71e0f4a93b52",
-        "b47ce019-6d38-4a02-95f1-8e2064cba735"
-      ],
-      "resolved_in_version": "0.8.705",
-      "target_version": "0.8.705",
-      "environment": {
-        "python_version": "3.14"
-      },
-      "tags": [
-        "Editor.js",
-        "Bausteinmodule",
-        "Datenverlust",
-        "Build705",
-        "gemessen"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-12T20:00:01+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "BEHEBUNG (Build 705), zwei Wege - und BEWAHREN GEHT HIER NICHT.\n\nDas ist der Unterschied zur Blindprobe aus Build 704: dort liess sich das verlorene Feld zurueckschreiben, weil es in dieselbe Spalte gehoerte. Fuer einen zweiten Block gibt es in report_modules keine Spalte. Was bleibt, ist die Meldung - aber rechtzeitig und deutlich.\n\n  (1) WAEHREND DER EINGABE. Der onChange-Rueckruf von Editor.js bekommt die API mitgeliefert; api.blocks.getBlocksCount() ist ein Zaehler und kostet nichts. Steht die Zahl ueber eins, erscheint sofort ein roter Hinweis mit der Zahl und dem Vorschlag, zusammenzufuehren oder einen zweiten Baustein anzulegen. Ein save() je Tastendruck waere zu teuer gewesen - deshalb der Zaehler und nicht der Umweg ueber die Daten.\n  (2) BEIM LESEN. lies() traegt jetzt 'zusatzBloecke' mit Art und Daten jedes betroffenen Blocks, und die Meldung nennt die Zahl und die Blockarten. Sie hat VORRANG vor der Meldung ueber nicht bewahrte Felder: ein verlorener Block wiegt schwerer als ein verlorenes Feld, und zwei Meldungen in einer Zeile liest niemand zu Ende.\n\nDer Hinweis verschwindet wieder, sobald nur noch ein Block da ist - eine stehengebliebene Warnung wird nach dem zweiten Mal nicht mehr gelesen.\n\nOFFEN UND BENANNT: Das Speichern wird dadurch noch nicht VERHINDERT. cockpit_modules.js prueft 'rohFehler' heute nur im Platzhalter-Schreibweg (Zeile 673), nicht im Speicherweg. Den Speicherweg an 'zusatzBloecke' zu haengen, ist ein eigener Eingriff in eine andere Datei und gehoert nicht in einen Build, der die Vorlagensicht umbaut."
-        },
-        {
-          "timestamp": "2026-08-12T20:00:02+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "testing",
-          "comment": "Status auf 'testing': behoben und gemessen, aber noch nicht in der VM unter Python 3.14 gefahren und noch nicht von einem Redakteur an einem echten Baustein gesehen."
-        },
-        {
-          "timestamp": "2026-08-12T20:25:42.098230+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build705.json"
         }
       ]
     }
