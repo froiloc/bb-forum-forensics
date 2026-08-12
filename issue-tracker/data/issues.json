@@ -16269,6 +16269,56 @@
           "comment": "Importiert aus eintraege_claude_Prepper_Build134.json"
         }
       ]
+    },
+    {
+      "id": "40ea85b6-799f-4c23-9e7e-85222f2d9743",
+      "type": "improvement",
+      "title": "page_alias Form 1 zeigt auf Chunk 0 statt auf den gemessenen Chunk",
+      "affected_version": "0.1.131",
+      "reporter": "Claude",
+      "reported_at": "2026-08-12T16:50:00+00:00",
+      "prerequisites": "aiw_sqlite_prepper ab Build 098 (PostPageMeasurer vorhanden, post_aliases.page gefuellt). Ein Thema mit mehr als 500 Beitraegen, also mehreren erfassten Chunks. Ein Beitrag dieses Themas liegt auf Chunk 2..n.",
+      "description": "stage2/forensic_db_writer.py legt in copy_aliases_from_manifest() je Beitrag drei page_aliases an. FORM 2 ('viewtopic.php?pid=<post_id>#p<id>') zeigt seit Build 098 richtig auf den GEMESSENEN Chunk (post_aliases.page). FORM 1 ('viewtopic.php?id=<topic_id>#p<post_id>') und FORM 3 (uid-Variante) zeigen dagegen weiterhin fest auf Chunk 0 - im Quelltext ausdruecklich vermerkt: 'Forms 1 und 3 bleiben per Bauplan-Scope auf Chunk 0'.\n\nForm 1 ist die Verweisform, die das Forum INNERHALB von Beitraegen verwendet. Sie ist damit die haeufigere, und sie zeigt auf die falsche Seite: der Anker steht dort nicht.\n\nSeit Webserver-Build 699 (Vorgang f5956e6b) faellt das dem Ermittler nicht mehr auf die Fuesse - der Webserver prueft nach dem BLOB-Lookup, ob der Anker im gelieferten BLOB wirklich steht, und holt sonst die richtige Seite nach. Die URSACHE sitzt aber eine Stufe frueher, und die Laufzeitkorrektur kostet bei jedem Aufruf eine Pruefung.",
+      "expected_behavior": "Form 1 (und sinngemaess Form 3) zeigt auf dieselbe pages.id wie Form 2, also auf den gemessenen Chunk, sofern post_aliases.page_resolved=1 ist. Ist die Seite nicht gemessen, bleibt es beim Chunk-0-Rueckfall - kein Raten (GR1). Ein erneuter Prepper-Lauf ist danach noetig, damit der Bestand die berichtigten Aliasse enthaelt.",
+      "actual_behavior": "Form 1 und Form 3 zeigen auf den ersten Chunk des Themas, auch wenn der Beitrag nachweislich auf einem Folge-Chunk steht.",
+      "status": "open",
+      "priority": "medium",
+      "severity": "minor",
+      "assigned_to": "",
+      "related_to": [
+        "f5956e6b-6eee-428f-bdcc-ed525ac88399",
+        "da84f94f-1f99-4191-82c3-bb5eaf7e8318"
+      ],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14",
+        "database": "forensic_<uid>.db"
+      },
+      "tags": [
+        "Prepper",
+        "Link",
+        "Topic",
+        "Post",
+        "Anker"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-12T16:50:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Angelegt auf Wunsch von Alex (12.08.2026) im Nachgang zu Vorgang f5956e6b.\n\nFUNDSTELLE: aiw_sqlite_prepper, stage2/forensic_db_writer.py, copy_aliases_from_manifest() - die Schleife 'for url_raw, target_page_id in (...)'. Dort steht 'page_id' (Chunk 0) fuer Form 1 und Form 3, waehrend Form 2 'page_id_form2' (gemessener Chunk) verwendet.\n\nABWAEGUNG, DIE ZUM VORGANG GEHOERT: Die Aenderung ist klein, ihr Nutzen aber nicht gross - der Webserver deckt den Fall seit Build 699 zur Laufzeit ab. Sie waere eine Berichtigung an der Quelle und erspart die Nachmessung; sie verlangt aber einen erneuten Prepper-Lauf auf allen Bestaenden. Bitte vor der Umsetzung entscheiden, ob dieser Lauf ohnehin ansteht."
+        },
+        {
+          "timestamp": "2026-08-12T17:30:54.852328+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build703.json"
+        }
+      ]
     }
   ]
 }
