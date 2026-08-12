@@ -320,6 +320,10 @@ from management.person.person_repo import PersonError, PersonRepo
 # Build 503 (Personalverwaltung): Lesemodell + auditierte Schreibwege der
 # Personal-Seite (Flags via PersonRepo, Rollenzuweisungen via RbacRepo).
 from management.person.person_overview_repo import PersonOverviewRepo
+# Build 701 (Ticket 95139d2a): eine Wahrheitsquelle fuer die Frage, welche
+# Personen in eine Tabelle gehoeren. Siehe Kopf von person_sichtbarkeit.py —
+# Auswahllisten blenden Inaktive vollstaendig aus, Namensaufloesung NIE.
+from management.person.person_sichtbarkeit import PersonSichtbarkeit
 from management.rbac.rbac_repo import RbacError, RbacRepo
 from management.external.case_release_repo import (
     CaseReleaseError,
@@ -900,7 +904,7 @@ class ManagementApp:
         if path == "/api/integrity":
             return self._integrity(person_id)
         if path == "/api/workload":
-            return self._workload(person_id)
+            return self._workload(person_id, query)
         # Build 515 (AP-2G / Idee 23): Eskalationen, auswertend.
         if path == "/api/escalations":
             return self._escalations(person_id)
@@ -1355,7 +1359,7 @@ class ManagementApp:
                            "(%s) — Vorgaben aus Build 451.", exc)
             return OverloadThresholds()
 
-    def _workload(self, person_id: int) -> Response:
+    def _workload(self, person_id: int, query=None) -> Response:
         """
         Lastverteilung je Ermittler (read-only). Nutzt WorkloadRepo; liefert je
         Ermittler eine Last-Zeile plus eine Rueckstau-Zeile (unzugewiesen).
@@ -1387,11 +1391,29 @@ class ManagementApp:
         Bewertungen im dict verschachtelt, stuenden sie im Aktenexport als
         JSON-Klumpen in EINER Zelle — lesbar, aber kein brauchbarer Beleg.
         Es ist bewusst KEINE Doppelablage: jede Angabe steht genau einmal.
+
+        BUILD 701 (Ticket 95139d2a) — AUSGESCHIEDENE. Diese Tabelle fuehrt
+        eine Zeile JE PERSON und ist damit eine GRUNDMENGEN-Sicht (Klasse (2)
+        im Kopf von person_sichtbarkeit.py): Ausgeschiedene fallen per Default
+        heraus, BLEIBEN aber stehen, solange sie noch offene Faelle tragen.
+        Ohne diese Ausnahme verschwaende offene Arbeit aus genau der Sicht,
+        in der sie auffallen muss. '?inaktive=1' zeigt alle.
+
+        DER FILTER LAEUFT VOR build_overload_report — sonst zeigte die Tabelle
+        andere Zeilen als die Warnung darueber, und Punkt (1) waere gebrochen.
+        Er kann die Warnung nicht verfaelschen: ausgeblendet wird nur, wer
+        KEINE offenen Faelle mehr hat, und wer keine hat, ist per Definition
+        nicht ueberlastet (assess_load rechnet mit active_cases).
         """
         policy = self.resolve_policy(person_id)
         if not policy.can(CAP_WORKLOAD):
             return self._forbidden(CAP_WORKLOAD)
         scope = policy.scope(CAP_WORKLOAD)  # 'alle' | 'eigene' | None
+        # Umschalter "Inaktive einblenden". WORTLAUT WIE BEI include_deleted
+        # (Zeile ~2455) — eine zweite Schreibweise fuer denselben Gedanken
+        # waere eine Stolperfalle beim Aufruf von Hand.
+        inaktive_zeigen = self._q1(query, "inaktive") in (
+            "1", "true", "ja", "yes")
 
         # EIN Zeitstempel fuer Messung UND Bewertung (siehe (1) oben).
         now = int(time.time())
@@ -1403,9 +1425,15 @@ class ManagementApp:
             except WorkloadSchemaError as exc:
                 return Response.json(
                     503, {"error": "schema", "detail": str(exc)})
+            # Der Befund entsteht noch AN der Verbindung (er braucht person
+            # und cases); ausgewertet wird er danach.
+            befund = PersonSichtbarkeit(con).fuer_grundmenge(
+                loads, id_feld="investigator_id",
+                inaktive_zeigen=inaktive_zeigen)
         finally:
             con.close()
 
+        loads = befund.zeilen
         if scope != "alle":
             loads = [l for l in loads if l.investigator_id == person_id]
 
@@ -1421,6 +1449,10 @@ class ManagementApp:
 
         return Response.json(200, {"scope": scope, "count": len(items),
                                    "loads": items,
+                                   # Build 701: Rechenschaft ueber die
+                                   # ausgeblendeten Ausgeschiedenen — nie
+                                   # still (Grundregel 1).
+                                   "inaktive": befund.to_dict(),
                                    "overload": overload,
                                    "overload_assessments": assessments})
 
@@ -2208,6 +2240,9 @@ class ManagementApp:
                 "error": "bad_request",
                 "detail": "Query-Parameter start, end erforderlich."})
         target = _one("person_id")
+        # Build 701: Umschalter "Inaktive einblenden" (Wortlaut wie
+        # include_deleted — eine Schreibweise fuer denselben Gedanken).
+        inaktive_zeigen = _one("inaktive") in ("1", "true", "ja", "yes")
 
         con = self._ro_con()
         try:
@@ -2239,6 +2274,22 @@ class ManagementApp:
             if scope != "alle":
                 persons = [p for p in persons if p[0] == person_id]
 
+            # Build 701 (Ticket 95139d2a): eine Zeile JE PERSON — also eine
+            # GRUNDMENGEN-Sicht (Klasse (2), person_sichtbarkeit.py).
+            # Ausgeschiedene fallen per Default heraus, bleiben aber stehen,
+            # solange sie offene Faelle tragen: fuer diese Personen ist die
+            # Kapazitaetsfrage noch offen, denn ihre Arbeit ist es auch.
+            # '?inaktive=1' zeigt alle.
+            #
+            # DER EINZELABRUF OBEN IST BEWUSST NICHT GEFILTERT: wer eine
+            # Person ausdruecklich nennt, will ihre Zahlen sehen — auch die
+            # einer ausgeschiedenen (etwa fuer eine Nachbetrachtung). Die
+            # Ausblendung ist eine Frage der UEBERSICHT, keine Zugangsregel;
+            # Zugang regelt CAP_CAPACITY samt Scope.
+            befund_kap = PersonSichtbarkeit(con).fuer_grundmenge(
+                persons, id_feld="id", inaktive_zeigen=inaktive_zeigen)
+            persons = befund_kap.zeilen
+
             caps = []
             try:
                 for pid, uname, disp in persons:
@@ -2254,7 +2305,10 @@ class ManagementApp:
 
         return Response.json(200, {"scope": scope, "count": len(caps),
                                    "start": start, "end": end,
-                                   "capacities": caps})
+                                   "capacities": caps,
+                                   # Build 701: Rechenschaft ueber die
+                                   # ausgeblendeten Ausgeschiedenen.
+                                   "inaktive": befund_kap.to_dict()})
 
     # ==================================================================
     # Build 558 — KAPAZITAETSPFLEGE (Schreibwege)
@@ -2455,14 +2509,29 @@ class ManagementApp:
             # waere hier falsch: er verlangt 'personnel.view', das eine
             # Person mit 'capacity.edit' nicht haben muss. Die Aufloesung
             # gehoert deshalb an diese Stelle.
-            personen = [
+            alle_personen = [
                 {"id": r[0], "system_username": r[1], "display_name": r[2]}
                 for r in con.execute(
                     "SELECT id, system_username, display_name FROM person "
                     "WHERE is_investigator=1 ORDER BY id ASC").fetchall()]
             if scope != "alle":
-                personen = [p for p in personen if p["id"] == person_id]
-            namen = {p["id"]: p for p in personen}
+                alle_personen = [p for p in alle_personen
+                                 if p["id"] == person_id]
+            # Build 701 (Ticket 95139d2a): DIE BEIDEN VERWENDUNGEN WERDEN HIER
+            # GETRENNT — sie waren bis Build 698 dieselbe Liste, und genau
+            # deshalb waere ein Filter an dieser Stelle ein Beweisverlust
+            # gewesen:
+            #   * 'namen' beschriftet BESTEHENDE Arbeitszeit- und
+            #     Abwesenheitszeilen. Diese Aufloesung wird NIE gefiltert; eine
+            #     Regel des Ausgeschiedenen wuerde sonst als "unbekannt (#7)"
+            #     erscheinen, obwohl die Person bekannt ist (Grundregel 1,
+            #     Klasse (3) im Kopf von person_sichtbarkeit.py).
+            #   * 'personen' ist die AUSWAHL fuer neue Regeln. Dort gehoeren
+            #     Ausgeschiedene nicht hinein.
+            namen = {p["id"]: p for p in alle_personen}
+            befund_personen = PersonSichtbarkeit(con).fuer_auswahl(
+                alle_personen, id_feld="id")
+            personen = befund_personen.zeilen
 
             def _mit_namen(zeilen):
                 """Anzeigename an jede Zeile. FEHLT die Person, wird das
@@ -2499,6 +2568,10 @@ class ManagementApp:
             # gezaehlten Zeilen zugleich die mitgelieferten.
             "entfernt": {"worktimes": ent_wt, "availability": ent_av,
                          "holidays": ent_ho, "reasons": ent_re},
+            # Build 701: Rechenschaft ueber die aus der PERSONENAUSWAHL
+            # ausgeblendeten Ausgeschiedenen. Ihre bestehenden Regeln bleiben
+            # in 'worktimes'/'availability' sichtbar und beschriftet.
+            "inaktive": befund_personen.to_dict(),
             # Die Rechenarten sind SCHEMAGEBUNDEN (m008: CHECK(kind IN ...))
             # und traegt die Arithmetik in capacity_calculator.py:110
             # (netto = max(basis - einschraenkungen, garantie_boden)). Sie
@@ -3381,6 +3454,14 @@ class ManagementApp:
             load = {r[0]: r[1] for r in con.execute(
                 "SELECT assigned_to, COUNT(*) FROM cases "
                 "WHERE assigned_to IS NOT NULL GROUP BY assigned_to")}
+            # Build 701 (Ticket 95139d2a): 'investigators' ist die AUSWAHL der
+            # Zuweisung — hier wird entschieden, wer kuenftig einen Fall
+            # bekommt. Ausgeschiedene gehoeren nicht hinein, auch nicht, wenn
+            # sie noch Faelle tragen: das Zuweisen ist genau der Fehler, den
+            # die Ausblendung verhindern soll. Ihre BESTEHENDEN Zuweisungen
+            # bleiben in 'cases' unangetastet und werden weiter angezeigt.
+            befund = PersonSichtbarkeit(con).fuer_auswahl(rows, id_feld="id")
+            rows = befund.zeilen
         finally:
             con.close()
 
@@ -3391,6 +3472,8 @@ class ManagementApp:
         return Response.json(200, {
             "cases": [_case_overview_item(c) for c in cases],
             "investigators": investigators,
+            # Rechenschaft ueber die Ausblendung (nie still — Grundregel 1).
+            "inaktive": befund.to_dict(),
             "statuses": list(_CASE_STATUSES),
             "priority_min": _PRIORITY_MIN, "priority_max": _PRIORITY_MAX,
         })
@@ -5764,6 +5847,16 @@ class ManagementApp:
         con = self._ro_con()
         try:
             data = PersonOverviewRepo(con).overview()
+            # Build 701 (Ticket 95139d2a): je Person die Anzahl der ihr noch
+            # zugewiesenen OFFENEN Faelle. Sie steht im Bestaetigungsdialog
+            # des Inaktivsetzens (Entscheidung Alex, 12.08.2026: zulassen,
+            # aber die Zahl nennen) und markiert in der Liste die
+            # Ausgeschiedenen, die noch Arbeit tragen.
+            sicht = PersonSichtbarkeit(con)
+            offene = sicht.offene_faelle()
+            offene_hinweis = sicht.offene_hinweis()
+            for p in data.get("persons", []):
+                p["offene_faelle"] = int(offene.get(int(p["id"]), 0))
         except Exception as exc:                       # noqa: BLE001
             logger.exception("Personalliste nicht lesbar")
             return Response.json(500, {"error": "personnel_failed",
@@ -5776,6 +5869,15 @@ class ManagementApp:
             "actor_person_id": actor_person_id,
             "can_edit": policy.can(CAP_PERSONNEL_EDIT),
             "can_sync": policy.can(CAP_PERSONNEL_SYNC),
+            # Die Bestaetigungsworte kommen VOM SERVER — dieselbe eine
+            # Wahrheitsquelle wie im AD-Abschnitt (cockpit_adsync.js:17).
+            # Der Browser prueft nur als Komfort vor; verbindlich prueft
+            # /api/personnel/active.
+            "confirm": {"deactivate": CONFIRM_DEACTIVATE,
+                        "reactivate": CONFIRM_REACTIVATE},
+            # Konnte die Zahl offener Faelle nicht ermittelt werden, sagt die
+            # Sicht das — statt still '0' zu behaupten (Grundregel 1).
+            "offene_faelle_hinweis": offene_hinweis,
         })
 
     def _personnel_self_guard(self, actor_person_id: int,
@@ -5842,6 +5944,120 @@ class ManagementApp:
             con.close()
         return Response.json(200, {"ok": True, "person_id": target_id,
                                    "audit_seq": seq})
+
+    def _personnel_active(self, actor_person_id: int,
+                          payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/personnel/active — RUHESTAND VON HAND (Build 701, Ticket
+        95139d2a):
+          {person_id, active: false, reason, confirmation: "Entfernen"}
+          {person_id, active: true,          confirmation: "Reaktivieren"}
+
+        WARUM ES DIESE ROUTE ZUSAETZLICH ZU /api/adsync/decide GIBT:
+        Der AD-Weg kann nur Kennungen anfassen, die der AD-Plan als Kandidat
+        fuehrt — also erst, wenn das Verzeichnis bereits nachgezogen ist. Ein
+        Ermittler, der heute ausscheidet, hat bis dahin keinen Weg (Ticket:
+        "Ermittler scheiden auch aus"). Diese Route ist der Handweg.
+
+        SIE GEHT NICHT UEBER DEN SyncExecutor, sondern direkt ueber
+        PersonRepo.deactivate/reactivate. Grund: der Executor stempelt
+        meta={"quelle": "ad_sync"} in den Beleg. Das waere hier eine
+        FALSCHANGABE im Beweismittel — es hat kein AD-Abgleich stattgefunden.
+        Der Beleg dieser Route traegt "personnel_ui".
+
+        RECHT: personnel.edit (Entscheidung Alex, 12.08.2026). Dieselbe
+        Gewichtsklasse wie die bereits bestehenden Bedienelemente derselben
+        Sicht: personnel.edit erlaubt heute schon, is_investigator=0 zu setzen
+        und Rollen zu widerrufen — beides nimmt einer Person faktisch Auswahl
+        und Rechte.
+
+        WOERTLICHE BESTAETIGUNG wie im AD-Weg, exakter Vergleich ohne
+        Normalisierung ("entfernen" zaehlt nicht). Sie wird HIER geprueft und
+        nie nur im Browser; das getippte Wort wandert in den Beleg.
+
+        SELBSTSCHUTZ: die eigene Person ist unantastbar — sich selbst inaktiv
+        zu setzen waere der vollstaendige Lockout (identity.py:93 weist
+        inaktive Konten an der Anmeldung ab).
+
+        OFFENE FAELLE BLOCKIEREN NICHT (Entscheidung Alex, 12.08.2026):
+        Ausscheiden ist eine Tatsache, kein Antrag. Ihre Anzahl wandert aber
+        in den Beleg und in die Antwort, damit die Umverteilung nachweislich
+        angestossen wurde und nicht bloss behauptet.
+        """
+        policy = self.resolve_policy(actor_person_id)
+        if not policy.can(CAP_PERSONNEL_EDIT):
+            return self._forbidden(CAP_PERSONNEL_EDIT)
+
+        try:
+            target_id = int(payload.get("person_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "person_id fehlt/ungueltig."})
+        if "active" not in payload or payload.get("active") is None:
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "active fehlt (true = reaktivieren, "
+                          "false = inaktiv setzen)."})
+        aktiv = bool(payload.get("active"))
+
+        guard = self._personnel_self_guard(actor_person_id, target_id)
+        if guard is not None:
+            return guard
+
+        # --- Woertliche Bestaetigung (serverseitig, exakt) -------------------
+        confirmation = str(payload.get("confirmation", "") or "")
+        erwartet = CONFIRM_REACTIVATE if aktiv else CONFIRM_DEACTIVATE
+        if confirmation != erwartet:
+            return Response.json(400, {
+                "error": "confirmation_rejected",
+                "detail": "Nicht vollzogen: Bestaetigungswort %r entspricht "
+                          "nicht dem geforderten Wort %r."
+                          % (confirmation, erwartet),
+                "expected": erwartet})
+
+        # --- Pflichtbegruendung beim Inaktivsetzen ---------------------------
+        # PersonRepo.deactivate verlangt sie ohnehin; hier wird sie VOR dem
+        # Oeffnen der Schreibverbindung abgefangen, damit die Fehlermeldung
+        # das Feld nennt statt den Repo-Wortlaut.
+        reason = str(payload.get("reason", "") or "").strip()
+        if not aktiv and not reason:
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "reason fehlt — das Inaktivsetzen verlangt eine "
+                          "Begruendung (sie steht spaeter im Beleg und in "
+                          "der Personalliste)."})
+
+        con = self._rw_con()
+        try:
+            # Die Zahl offener Faelle wird VOR der Aenderung gelesen und in
+            # den Beleg gelegt: hinterher ist sie nicht mehr rekonstruierbar,
+            # weil die Zuweisungen bestehen bleiben und sich weiterentwickeln.
+            offene = PersonSichtbarkeit(con).offene_faelle_von(target_id)
+            repo = PersonRepo(con, CoordinatorWriter(con, AuditLog(con)))
+            meta = {"quelle": "personnel_ui",
+                    "bestaetigungswort": confirmation,
+                    "offene_faelle_bei_entscheidung": offene}
+            if aktiv:
+                seq = repo.reactivate(id=target_id,
+                                      actor_id=actor_person_id, meta=meta)
+            else:
+                seq = repo.deactivate(id=target_id, reason=reason,
+                                      actor_id=actor_person_id, meta=meta)
+        except PersonError as exc:
+            # Unbekannte Person, bereits (in)aktives Konto oder fehlende
+            # M020 — Klartext, KEINE Datenaenderung.
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Aktiv-Status-Aenderung fehlgeschlagen")
+            return Response.json(500, {"error": "personnel_active_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+        return Response.json(200, {"ok": True, "person_id": target_id,
+                                   "active": aktiv, "audit_seq": seq,
+                                   "offene_faelle": offene})
 
     def _personnel_role_assign(self, actor_person_id: int,
                                payload: Dict[str, Any]) -> Response:
@@ -7158,6 +7374,20 @@ class ManagementApp:
                 for r in con.execute(
                     "SELECT id, display_name FROM person ORDER BY display_name")
             ]
+            # Build 701 (Ticket 95139d2a): Ausgeschiedene verschwinden aus der
+            # Auswahl — MIT EINER AUSNAHME, die hier keine Feinheit, sondern
+            # der Unterschied zwischen Ausblenden und Datenverlust ist:
+            # cockpit_notes.js setzt die Auswahl beim Oeffnen einer Notiz auf
+            # deren subject_person_id (:659). Fehlt der Eintrag in der Liste,
+            # faellt das Feld auf "— keiner —" zurueck und das naechste
+            # Speichern loescht die Zuordnung, ohne dass jemand sie angefasst
+            # haette. Deshalb bleiben genau die Personen stehen, die eine der
+            # GELADENEN Notizen bereits nennt.
+            referenziert = {int(n.subject_person_id) for n in notes
+                            if n.subject_person_id is not None}
+            befund_persons = PersonSichtbarkeit(con).fuer_auswahl(
+                persons, id_feld="id", ausnahmen=referenziert)
+            persons = befund_persons.zeilen
         except MentoringNotesError as exc:
             return Response.json(400, {"error": "bad_request",
                                        "detail": str(exc)})
@@ -7175,6 +7405,9 @@ class ManagementApp:
             "archived": archived,
             "colors": note_colors.catalog(),
             "persons": persons,
+            # Build 701: Rechenschaft ueber die aus der Auswahl ausgeblendeten
+            # Ausgeschiedenen (nie still — Grundregel 1).
+            "inaktive": befund_persons.to_dict(),
             "count": len(items),
             "notes": items,
         })
@@ -7512,6 +7745,9 @@ class ManagementApp:
         # Build 503: Personalverwaltung — auditierte Schreibwege.
         if path == "/api/personnel/flags":
             return self._personnel_flags(person_id, payload)
+        # Build 701 (Ticket 95139d2a): Ruhestand von Hand.
+        if path == "/api/personnel/active":
+            return self._personnel_active(person_id, payload)
         if path == "/api/personnel/role/assign":
             return self._personnel_role_assign(person_id, payload)
         if path == "/api/personnel/role/revoke":

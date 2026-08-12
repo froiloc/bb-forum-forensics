@@ -22,7 +22,8 @@
 #   (Anzahl auditierter Aktionen dieses Akteurs + Zeitpunkt der letzten). Ein
 #   ehrlicher Aktivitaets-Indikator, KEIN Durchsatz-/Qualitaetsmass.
 #
-# Version: v0.7.335 · Build: 335 · 2026-07-07
+# Build 701 (Ticket 95139d2a): additives Feld is_active (Ruhestand).
+# Version: v0.8.701 · Build: 701 · 2026-08-12
 # =============================================================================
 
 from dataclasses import dataclass
@@ -77,3 +78,18 @@ class InvestigatorLoad:
 
     audit_action_count: int
     last_action_at: Optional[int]
+
+    # --- Build 701 (Ticket 95139d2a) ---------------------------------------
+    # is_active — traegt die Person den Ruhestand? DEFAULTWERT True, und das
+    # ist Absicht: auf einem Bestand vor M020 gibt es den Zustand 'inaktiv'
+    # ueberhaupt nicht (dieselbe defensive Annahme wie PersonRepo._as_dict),
+    # und aeltere Aufrufer, die das Feld nicht setzen, sollen nicht
+    # versehentlich jemanden als ausgeschieden ausweisen.
+    #
+    # WARUM DAS FELD HIERHER GEHOERT UND NICHT IN DIE SICHT: Die Zeile eines
+    # Ausgeschiedenen bleibt stehen, solange er offene Faelle traegt. Ohne
+    # dieses Feld waere sie von der eines Aktiven nicht zu unterscheiden -
+    # und genau diese Verwechslung ist gefaehrlich, denn hier steht Arbeit,
+    # die NIEMAND mehr macht.
+    # Die Rueckstau-Zeile (is_backlog) fuehrt True; sie ist keine Person.
+    is_active: bool = True

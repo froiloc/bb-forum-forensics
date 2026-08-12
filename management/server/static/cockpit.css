@@ -3759,3 +3759,96 @@ body.aiw-hilfe-modus [data-hilfe-id]:hover {
 @media print {
     .aiw-hilfe-popup { display: none; }
 }
+
+/* ===========================================================================
+   Build 701 (Ticket 95139d2a) — Ruhestand von Hand in der Personalverwaltung.
+   ---------------------------------------------------------------------------
+   ANHANG ANS DATEIENDE. Es wurde KEINE bestehende Regel geaendert; alle
+   Selektoren sind mit '.aiw-pers-' gescopt und koennen keine andere Sicht
+   beruehren.
+
+   DIE FARBGEBUNG IST ABSICHTLICH ASYMMETRISCH: das Inaktivsetzen traegt die
+   Warnfarbe, das Reaktivieren nicht. Beide Handlungen sind umkehrbar und
+   auditiert, aber nur eine von beiden nimmt jemandem den Zugang zur Anlage
+   (identity.py weist inaktive Konten an der Anmeldung ab). Ein einheitliches
+   Aussehen wuerde diesen Unterschied verwischen.
+   ======================================================================== */
+
+.aiw-pers-ruhe-btn {
+    font: inherit;
+    font-size: 12px;
+    padding: 2px 8px;
+    border: 1px solid #c3ccd4;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+}
+.aiw-pers-ruhe-btn:hover { background: #f2f5f8; }
+.aiw-pers-ruhe-btn.deact { border-color: #d8b3ae; color: #922b21; }
+.aiw-pers-ruhe-btn.abbruch { color: #4a5568; }
+
+/* Der Bestaetigungsblock unter der Tabelle. Er ist abgesetzt und traegt links
+   eine Kante — er ist kein Teil der Liste, sondern eine gestellte Frage. */
+.aiw-pers-ruhehost:empty { display: none; }
+.aiw-pers-ruhestand {
+    margin: 12px 0;
+    padding: 8px 12px;
+    background: #fafbfc;
+    border-left: 4px solid #c3ccd4;
+    border-radius: 3px;
+}
+.aiw-pers-ruhestand.deact { border-left-color: #b0413e; background: #fdf7f6; }
+
+.aiw-pers-cand {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-top: 6px;
+}
+.aiw-pers-grund { font: inherit; font-size: 13px; padding: 3px 6px; min-width: 320px; }
+.aiw-pers-wort  { font: inherit; font-size: 13px; padding: 3px 6px; min-width: 160px; }
+
+/* Ein Hinweis, der eine LUECKE meldet, darf nicht wie ein beilaeufiger
+   Hinweis aussehen (Grundregel 1). */
+.aiw-pers-hint.warn { color: #922b21; font-weight: 600; }
+.aiw-pers-sect.warn { color: #922b21; }
+
+/* ===========================================================================
+   Build 701 (Ticket 95139d2a) — Leiste "Ausgeschiedene" in den
+   Grundmengen-Sichten (Lastverteilung, Kapazitaet).
+   ---------------------------------------------------------------------------
+   ANHANG ANS DATEIENDE, keine bestehende Regel geaendert. Die Leiste erscheint
+   nur, wenn es etwas zu sagen gibt (siehe die Modulkoepfe) — sie darf deshalb
+   auffaellig genug sein, um gelesen zu werden.
+
+   DIE WARNFASSUNG ('.warn') gilt genau einem Fall: eine ausgeschiedene Person
+   ist AUFGEFUEHRT GEBLIEBEN, weil sie noch offene Faelle traegt. Das ist
+   Arbeit, die niemand mehr macht, und der wichtigste Satz der ganzen Leiste.
+   ======================================================================== */
+
+.aiw-inaktive-leiste {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: baseline;
+    margin: 6px 0 12px;
+    padding: 6px 10px;
+    font-size: 13px;
+    background: #f4f6f8;
+    border-left: 4px solid #c3ccd4;
+    border-radius: 3px;
+}
+.aiw-inaktive-leiste.warn {
+    background: #fdf7f6;
+    border-left-color: #b0413e;
+}
+.aiw-inaktive-schalter {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.aiw-inaktive-text { color: #4a5568; }
+.aiw-inaktive-leiste.warn .aiw-inaktive-text { color: #922b21; font-weight: 600; }

@@ -24,7 +24,9 @@
 #   der unzugewiesene Rueckstau wird als eigene, markierte Zeile sichtbar
 #   gemacht (nie still weggelassen).
 #
-# Version: v0.7.335 · Build: 335 · 2026-07-07
+# Build 701 (Ticket 95139d2a): is_active wandert je Zeile mit; GEFILTERT
+#   wird hier NICHT (siehe _load_investigators).
+# Version: v0.8.701 · Build: 701 · 2026-08-12
 # =============================================================================
 
 import logging
@@ -141,11 +143,28 @@ class WorkloadRepo:
         einen CoordinatorWriter (Schreibpfad), den dieses reine Lese-Werkzeug
         nicht braucht. Der SELECT spiegelt PersonRepo.list_persons() 1:1.
         """
+        # Build 701 (Ticket 95139d2a): is_active wandert MIT, wenn die Spalte
+        # da ist. DEFENSIV wie PersonRepo._select_cols: auf einem Bestand vor
+        # M020 gibt es sie nicht, und dieses reine Lesewerkzeug darf daran
+        # nicht brechen — es gilt dann jede Person als aktiv.
+        #
+        # GEFILTERT WIRD HIER NICHT. Das Repo liefert die GRUNDMENGE; wer
+        # ausgeblendet wird, entscheidet die Sicht (PersonSichtbarkeit im
+        # Endpunkt) — sonst haette der Umschalter "Inaktive einblenden" keine
+        # Daten, aus denen er waehlen koennte, und der Aktenexport bekaeme
+        # stillschweigend eine beschnittene Liste.
+        spalten = ("id, system_username, display_name, is_investigator, "
+                   "is_supervisor, is_support")
+        if self._hat_is_active():
+            spalten += ", is_active"
         return self._con.execute(
-            "SELECT id, system_username, display_name, is_investigator, "
-            "       is_supervisor, is_support "
-            "FROM person ORDER BY system_username ASC"
+            "SELECT %s FROM person ORDER BY system_username ASC" % spalten
         ).fetchall()
+
+    def _hat_is_active(self) -> bool:
+        """True, wenn person.is_active existiert (Migration M020)."""
+        return "is_active" in {
+            r[1] for r in self._con.execute("PRAGMA table_info(person)")}
 
     def _audit_activity(self) -> Dict[int, Tuple[int, int]]:
         """
@@ -201,7 +220,8 @@ class WorkloadRepo:
         def _row(inv_id: int, sysname: str, disp: str,
                  is_inv: bool, is_sup: bool, is_supp: bool,
                  is_backlog: bool, acc: Optional[_LoadAccumulator],
-                 act: Tuple[int, Optional[int]]) -> InvestigatorLoad:
+                 act: Tuple[int, Optional[int]],
+                 is_active: bool = True) -> InvestigatorLoad:
             a = acc if acc is not None else _LoadAccumulator()
             count, last = act
             return InvestigatorLoad(
@@ -224,17 +244,23 @@ class WorkloadRepo:
                 done_cases=a.done,
                 audit_action_count=count,
                 last_action_at=last,
+                is_active=is_active,
             )
 
         loads: List[InvestigatorLoad] = []
         for inv in investigators:
             inv_id = int(inv["id"])
             count, last = activity.get(inv_id, (0, None))
+            # Build 701: Altbestand ohne M020 gilt als aktiv (siehe
+            # _load_investigators) — 'in inv.keys()' statt eines try/except,
+            # damit die Annahme im Quelltext sichtbar ist.
+            aktiv = (bool(inv["is_active"])
+                     if "is_active" in inv.keys() else True)
             loads.append(_row(
                 inv_id, inv["system_username"], inv["display_name"],
                 bool(inv["is_investigator"]), bool(inv["is_supervisor"]),
                 bool(inv["is_support"]), False, buckets.get(inv_id),
-                (count, last)))
+                (count, last), aktiv))
 
         # Ermittler nach Dringlichkeit ordnen (ROT desc, aktive Last desc,
         # system_username asc). Der Rueckstau wird NICHT mit einsortiert.

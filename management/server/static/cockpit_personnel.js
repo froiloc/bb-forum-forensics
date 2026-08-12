@@ -33,6 +33,9 @@
 //   onFlags({person_id, <flag>: bool})       — genau EIN Flag je Klick.
 //   onAssign({person_id, role_code})         — Rolle zuweisen.
 //   onRevoke({person_role_id})               — Zuweisung widerrufen.
+//   onSetActive({person_id, active, reason?, confirmation})
+//                                            — Ruhestand setzen/aufheben
+//                                              (Build 701).
 //   onAdsyncLoad(containerEl, setResult)     — AD-Vorschau in den Container
 //                                              laden (cockpit.js haelt die
 //                                              fetch/post-Logik).
@@ -76,7 +79,36 @@
 //
 // Build 636 (Vorgang 17200856, Welle B4): HILFE-MARKEN fuer die
 //   fuenf Bedienelemente mit GERECHNETER Kennung dieser Sicht.
-// Version: v0.8.636 · Build: 636 · 2026-08-01
+//
+// BUILD 701 — RUHESTAND VON HAND (Ticket 95139d2a "Benutzer auf inaktiv
+//   setzen"):
+//   Die Sicht ZEIGTE den Aktiv-Status seit Build 503, konnte ihn aber nicht
+//   SETZEN. Der einzige Weg fuehrte ueber den AD-Abschnitt — und der kann nur
+//   Kennungen anfassen, die das Verzeichnis bereits ausgetragen hat. Ein
+//   Ermittler, der heute ausscheidet, war damit nicht abbildbar.
+//
+//   NEUE SPALTE "Ruhestand" mit EINEM Knopf je Zeile ("Inaktiv setzen" bzw.
+//   "Reaktivieren"). Er vollzieht NICHTS, sondern oeffnet einen
+//   Bestaetigungsblock unter der Tabelle.
+//
+//   WARUM EIN BLOCK UNTER DER TABELLE UND KEIN DIALOGFENSTER: Diese Sicht
+//   fuehrt bereits eine solche Flaeche — die Kandidatenzeilen des
+//   AD-Abgleichs (cockpit_adsync.js:227) mit Wort-Eingabe und Knoepfen. Die
+//   Bedienung ist dieselbe Handlung mit derselben Verantwortung, also bekommt
+//   sie dieselbe Gestalt. Ein zweites Muster (modales Fenster) haette
+//   ausserdem fremdes CSS aus cockpit_notes.css mitbenutzt und dieser Sicht
+//   eine Abhaengigkeit eingetragen, die sie bisher nicht hat.
+//
+//   DER BLOCK NENNT DIE OFFENEN FAELLE. Offene Faelle blockieren das
+//   Inaktivsetzen NICHT (Entscheidung Alex, 12.08.2026: Ausscheiden ist eine
+//   Tatsache, kein Antrag) — aber wer den Knopf drueckt, muss sehen, wieviel
+//   Arbeit gerade unbeaufsichtigt bleibt. Eine stille Deaktivierung waere die
+//   bequeme und die falsche Loesung.
+//
+//   BESTAETIGUNGSWORT: kommt VOM SERVER (data.confirm) wie im AD-Abschnitt —
+//   eine Wahrheitsquelle. Der Browser prueft nur als Komfort vor dem
+//   Absenden; verbindlich prueft /api/personnel/active.
+// Version: v0.8.701 · Build: 701 · 2026-08-12
 //   Build 503: Erstfassung (handgebaute Tabelle).
 // =============================================================================
 
@@ -130,6 +162,84 @@
         return 'aktiv';
     }
 
+    // ---------------------------------------------- Ruhestand (Build 701)
+    // confirmWords: die vom SERVER vorgegebenen Bestaetigungsworte. Der
+    // Rueckfall dient NUR einem Altserver ohne das Feld — er darf nicht dazu
+    // verleiten, die Worte hier zu pflegen; die Wahrheit steht im Server
+    // (management_app._personnel bzw. ad_sync/sync_executor.py).
+    function confirmWords(data) {
+        var c = (data && data.confirm) || {};
+        return {
+            deactivate: c.deactivate || 'Entfernen',
+            reactivate: c.reactivate || 'Reaktivieren'
+        };
+    }
+
+    // validateWort: Komfort-Vorpruefung. EXAKT wie am Server: kein trim,
+    // keine Normalisierung — 'entfernen' zaehlt nicht. Eine grosszuegigere
+    // Pruefung hier waere schlimmer als gar keine: sie liesse etwas durch,
+    // das der Server dann doch abweist, und der Nutzer suchte den Fehler an
+    // der falschen Stelle.
+    function validateWort(erwartet, getippt) {
+        return typeof getippt === 'string' && getippt === erwartet;
+    }
+
+    // ruhestandFrage: welche Handlung bietet diese Zeile an? null = keine
+    // (kein Aenderungsrecht oder eigene Zeile — Selbstschutz).
+    //
+    // SELBSTSCHUTZ IST HIER BESONDERS WICHTIG: wer sich selbst inaktiv setzt,
+    // kommt nicht wieder herein — identity.py weist inaktive Konten an der
+    // Anmeldung ab. Das waere der vollstaendige Lockout mit einem Klick.
+    function ruhestandFrage(row, words) {
+        if (!row || !row.editierbar) { return null; }
+        words = words || { deactivate: 'Entfernen',
+                           reactivate: 'Reaktivieren' };
+        if (row.status === 'inaktiv') {
+            return {
+                aktion: 'reactivate', active: true,
+                knopf: 'Reaktivieren',
+                wort: words.reactivate,
+                braucht_grund: false
+            };
+        }
+        return {
+            aktion: 'deactivate', active: false,
+            knopf: 'Inaktiv setzen',
+            wort: words.deactivate,
+            braucht_grund: true
+        };
+    }
+
+    // offeneFaelleText: der Satz, der im Bestaetigungsblock steht. Er ist
+    // bewusst unterschiedlich formuliert — "keine offenen Faelle" ist eine
+    // Entwarnung und darf nicht wie eine Warnung aussehen, und umgekehrt.
+    function offeneFaelleText(person) {
+        var n = (person && typeof person.offene_faelle === 'number')
+            ? person.offene_faelle : null;
+        if (n === null) {
+            return 'Zahl der offenen Fälle nicht bekannt — bitte vor dem '
+                + 'Vollzug in der Zuweisung nachsehen.';
+        }
+        if (n === 0) {
+            return 'Keine offenen Fälle zugewiesen.';
+        }
+        return 'ACHTUNG: trägt noch ' + n + ' offene'
+            + (n === 1 ? 'n Fall' : ' Fälle')
+            + '. Die Zuweisung bleibt bestehen — sie muss gesondert '
+            + 'umverteilt werden.';
+    }
+
+    // activeBody: Request-Koerper fuer POST /api/personnel/active.
+    // 'reason' wandert nur beim Inaktivsetzen mit (beim Reaktivieren gibt es
+    // nichts zu begruenden — der alte Grund steht im Beleg der Deaktivierung
+    // und wird beim Reaktivieren als alt->neu mitgefuehrt).
+    function activeBody(personId, active, reason, confirmation) {
+        var body = { person_id: personId, active: !!active,
+                     confirmation: confirmation };
+        if (!active) { body.reason = reason || ''; }
+        return body;
+    }
+
     // assignableRoles: Katalogrollen, die die Person noch NICHT aktiv hat
     // (kein No-op-Angebot im Dropdown; der Server prueft verbindlich).
     function assignableRoles(person, catalog) {
@@ -179,6 +289,12 @@
                 }).join(', '),
                 ist_selbst: isSelf(p, d),
                 editierbar: canEditRow(p, d),
+                // Build 701: die Zahl offener Faelle wandert in die Zeile,
+                // damit der Bestaetigungsblock sie nennen kann, ohne ein
+                // zweites Mal nachzufragen. Fehlt sie (Altserver), bleibt
+                // sie null — und der Block sagt "nicht bekannt" statt "0".
+                offene_faelle: (typeof p.offene_faelle === 'number')
+                    ? p.offene_faelle : null,
                 _person: p
             };
             FLAGS.forEach(function (f) {
@@ -384,7 +500,178 @@
                 return wrap;
             }
         });
+
+        // --- Ruhestand: EIN Knopf je Zeile (Build 701) ---------------------
+        // KEIN FILTER auf dieser Spalte (kein_filter): sie traegt keine
+        // Angabe, sondern eine Handlung. Wonach man hier filtern wollte —
+        // aktiv/inaktiv — steht bereits in der Spalte "Status"; ein zweiter
+        // Filter fuer dieselbe Sache waere eine zweite Wahrheitsquelle.
+        var words = confirmWords(data);
+        cols.push({
+            title: 'Ruhestand', field: 'ruhestand', width: 150,
+            kein_filter: true, headerSort: false,
+            titleFormatter: titel('Ruhestand', 'ruhestand',
+                'Eine ausgeschiedene Person inaktiv setzen oder eine '
+                + 'zurückgekehrte wieder in Betrieb nehmen. Gelöscht wird '
+                + 'nie — die Zeile bleibt als Beleg.'),
+            formatter: function (cell) {
+                var d = cell.getData();
+                var frage = ruhestandFrage(d, words);
+                if (!frage) {
+                    // Kein Knopf: eigene Zeile oder kein Aenderungsrecht.
+                    // Der Grund wird BENANNT (Tooltip) — eine leere Zelle
+                    // liesse offen, ob die Funktion fehlt oder das Recht.
+                    var sp = doc.createElement('span');
+                    sp.textContent = EM_DASH;
+                    sp.title = d.ist_selbst
+                        ? 'Eigene Person — nicht änderbar (Lockout-Schutz).'
+                        : 'Kein Änderungsrecht.';
+                    return sp;
+                }
+                var btn = doc.createElement('button');
+                btn.type = 'button';
+                btn.className = 'aiw-pers-ruhe-btn '
+                    + (frage.active ? 'react' : 'deact');
+                btn.textContent = frage.knopf;
+                btn.setAttribute('aria-label',
+                    frage.knopf + ' für ' + d.system_username);
+                // ZWEI literale Zweige statt einer gerechneten Kennung:
+                // Inaktivsetzen und Reaktivieren sind verschiedene
+                // Handlungen mit verschiedenen Folgen und brauchen
+                // verschiedene Erklaerungen. Eine gerechnete Kennung saehe
+                // ausserdem weder SP01/SP02 noch die Erhebung (Befund
+                // Build 636).
+                if (frage.active) {
+                    btn.setAttribute('data-hilfe-id',
+                        'personnel.bedienung.ruhestand_reaktivieren');
+                } else {
+                    btn.setAttribute('data-hilfe-id',
+                        'personnel.bedienung.ruhestand_inaktiv');
+                }
+                btn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    if (typeof opts.onRuhestandFrage === 'function') {
+                        opts.onRuhestandFrage(d, frage);
+                    }
+                });
+                return btn;
+            }
+        });
         return cols;
+    }
+
+    // ------------------------------------------------- Bestaetigungsblock
+    // renderRuhestandBlock: die Flaeche unter der Tabelle, die nach dem Klick
+    // auf "Inaktiv setzen"/"Reaktivieren" erscheint.
+    //
+    // SIE VOLLZIEHT ERST NACH ZWEI EINGABEN (beim Inaktivsetzen): Grund und
+    // woertliches Bestaetigungswort. Der Grund ist Pflicht, weil er im Beleg
+    // steht und spaeter die einzige Auskunft darueber ist, WARUM jemand aus
+    // den Listen verschwunden ist ("ausgeschieden zum 31.08." gegen
+    // "versehentlich"). Das Wort ist der Glitch-Schutz — dieselbe Begruendung
+    // wie im AD-Abgleich (mc 2026-07-24).
+    //
+    // Gibt {el, fokus} zurueck; el ist NICHT angehaengt (der Aufrufer
+    // entscheidet, wohin).
+    function renderRuhestandBlock(doc, row, frage, opts, setResult) {
+        var box = doc.createElement('div');
+        box.className = 'aiw-pers-ruhestand '
+            + (frage.active ? 'react' : 'deact');
+
+        var h = doc.createElement('h3');
+        h.className = 'aiw-pers-sect' + (frage.active ? '' : ' warn');
+        h.textContent = '[' + frage.knopf + '] ' + EM_DASH + ' '
+            + row.system_username + ' · ' + row.display_name;
+        h.setAttribute('data-hilfe-id', 'personnel.abschnitt.ruhestand');
+        box.appendChild(h);
+
+        var hinweis = doc.createElement('p');
+        hinweis.className = 'aiw-pers-hint';
+        hinweis.textContent = frage.active
+            ? ('Die Person erscheint danach wieder in allen Auswahllisten. '
+               + 'Historische Rollenzuweisungen werden wieder wirksam.')
+            : (offeneFaelleText(row) + ' Die Person verschwindet danach aus '
+               + 'den Auswahllisten, NICHT aus den Belegen: Zuweisungen, '
+               + 'Protokolle und Audit-Einträge bleiben unverändert und '
+               + 'weiterhin mit ihrem Namen beschriftet.');
+        box.appendChild(hinweis);
+
+        var zeile = doc.createElement('div');
+        zeile.className = 'aiw-pers-cand';
+
+        var grund = null;
+        if (frage.braucht_grund) {
+            grund = doc.createElement('input');
+            grund.type = 'text';
+            grund.className = 'aiw-pers-grund';
+            grund.placeholder = 'Grund (Pflicht — steht später im Beleg)';
+            grund.setAttribute('autocomplete', 'off');
+            grund.setAttribute('aria-label', 'Grund der Deaktivierung');
+            grund.setAttribute('data-hilfe-id',
+                'personnel.bedienung.ruhestand_grund');
+            zeile.appendChild(grund);
+        }
+
+        var wort = doc.createElement('input');
+        wort.type = 'text';
+        wort.className = 'aiw-pers-wort';
+        wort.placeholder = frage.wort;
+        wort.setAttribute('autocomplete', 'off');
+        wort.setAttribute('aria-label',
+            'Bestätigungswort ' + frage.wort + ' eingeben');
+        wort.setAttribute('data-hilfe-id',
+            'personnel.bedienung.ruhestand_wort');
+        zeile.appendChild(wort);
+
+        var ok = doc.createElement('button');
+        ok.type = 'button';
+        ok.className = 'aiw-pers-ruhe-btn vollzug';
+        ok.textContent = frage.knopf;
+        ok.setAttribute('data-hilfe-id',
+            'personnel.bedienung.ruhestand_vollzug');
+        ok.addEventListener('click', function () {
+            var g = grund ? grund.value : '';
+            // Reihenfolge der Pruefungen: erst der Grund, dann das Wort.
+            // Wer beides falsch hat, soll zuerst vom Pflichtfeld erfahren —
+            // das Wort noch einmal zu tippen, waere sonst umsonst gewesen.
+            if (frage.braucht_grund && !String(g).trim()) {
+                setResult('Nicht vollzogen: der Grund ist Pflicht (er steht '
+                    + 'später im Beleg).', true);
+                return;
+            }
+            if (!validateWort(frage.wort, wort.value)) {
+                setResult('Nicht vollzogen: Bestätigungswort entspricht '
+                    + 'nicht exakt „' + frage.wort + '“.', true);
+                return;
+            }
+            if (typeof opts.onSetActive === 'function') {
+                opts.onSetActive(activeBody(row.id, frage.active, g,
+                                            wort.value));
+            }
+        });
+        zeile.appendChild(ok);
+
+        var weg = doc.createElement('button');
+        weg.type = 'button';
+        weg.className = 'aiw-pers-ruhe-btn abbruch';
+        weg.textContent = 'Abbrechen';
+        weg.setAttribute('data-hilfe-id',
+            'personnel.bedienung.ruhestand_abbruch');
+        weg.addEventListener('click', function () {
+            // ABBRECHEN IST HIER FOLGENLOS und wird BEWUSST NICHT protokolliert
+            // — anders als der Abbruch im AD-Abgleich. Dort ist der Abbruch die
+            // Antwort auf eine vom System GESTELLTE Frage ("diese Kennung ist
+            // nicht mehr im AD — was nun?"), und dass sie unbeantwortet blieb,
+            // ist die Erkenntnis. Hier hat der Bedienende die Frage selbst
+            // aufgeworfen; ein Beleg darueber, dass jemand einen Knopf gedrueckt
+            // und es sich anders ueberlegt hat, waere Rauschen in der Audit-Kette.
+            if (box.parentNode) { box.parentNode.removeChild(box); }
+            setResult('', false);
+        });
+        zeile.appendChild(weg);
+
+        box.appendChild(zeile);
+        return { el: box, fokus: (grund || wort) };
     }
 
     // ---------------------------------------------------------------- Render
@@ -432,9 +719,41 @@
         // 'aiw-pers-tk' gegeben, waehrend alle uebrigen Sichten
         // 'aiw-<sicht>-tk' benutzen. Ausgerechnet die Sicht, die Vorlage sein
         // soll, waere die Ausnahme gewesen.
+        // --- Aufnahmeflaeche des Ruhestands-Blocks (Build 701) ---------------
+        // Sie wird IMMER angelegt (auch ohne Aenderungsrecht) und bleibt leer,
+        // bis jemand einen Knopf der Spalte "Ruhestand" drueckt. Der Block
+        // steht damit an einer festen Stelle — unter der Tabelle, ueber dem
+        // AD-Abschnitt — und springt nicht je nach Zeile umher.
+        var ruheHost = doc.createElement('div');
+        ruheHost.className = 'aiw-pers-ruhehost';
+        var offenerBlock = null;
+
+        function ruhestandFrageOeffnen(row, frage) {
+            // IMMER NUR EINE FRAGE OFFEN. Zwei gleichzeitig geoeffnete Bloecke
+            // mit je einer Wort-Eingabe waeren die perfekte Falle: man tippt
+            // das Wort in den einen und drueckt den Knopf des anderen.
+            if (offenerBlock && offenerBlock.parentNode) {
+                offenerBlock.parentNode.removeChild(offenerBlock);
+            }
+            var b = renderRuhestandBlock(doc, row, frage, opts, setResult);
+            offenerBlock = b.el;
+            ruheHost.appendChild(b.el);
+            setResult('', false);
+            if (b.fokus && typeof b.fokus.focus === 'function') {
+                b.fokus.focus();
+            }
+        }
+
+        // Die Spalten brauchen den Oeffner, der Aufrufer soll ihn nicht
+        // kennen muessen: flache Kopie der opts mit einem Zusatz (ES5, kein
+        // Object.assign — dieselbe Zurueckhaltung wie im uebrigen Bestand).
+        var spaltenOpts = {};
+        Object.keys(opts).forEach(function (k) { spaltenOpts[k] = opts[k]; });
+        spaltenOpts.onRuhestandFrage = ruhestandFrageOeffnen;
+
         var TK = _tk();
         var rows = toRows(data);
-        var cols = spalten(doc, data, opts);
+        var cols = spalten(doc, data, spaltenOpts);
         var table = null;
         var leiste = null;
 
@@ -477,6 +796,18 @@
             table = auf.table;
             leiste = auf.leiste;
             if (auf.host) { auf.host.classList.add('aiw-pers-table'); }
+        }
+        mainEl.appendChild(ruheHost);
+
+        // --- Hinweis, falls die Fallzahlen nicht ermittelt werden konnten ----
+        // Er steht bewusst HIER und nicht erst im Bestaetigungsblock: wer die
+        // Liste ansieht, soll wissen, dass eine Angabe fehlt, bevor er auf
+        // ihrer Grundlage entscheidet (Grundregel 1 — keine stille Luecke).
+        if (data.offene_faelle_hinweis) {
+            var lueck = doc.createElement('p');
+            lueck.className = 'aiw-pers-hint warn';
+            lueck.textContent = 'Hinweis: ' + data.offene_faelle_hinweis;
+            mainEl.appendChild(lueck);
         }
 
         // --- AD-Abgleich (lazy, nur mit personnel.sync) ----------------------
@@ -533,7 +864,14 @@
         toRows: toRows,
         spalten: spalten,
         FLAGS: FLAGS,
-        SICHT: SICHT
+        SICHT: SICHT,
+        // Build 701 (Ruhestand von Hand) — reine Funktionen fuer vitest:
+        confirmWords: confirmWords,
+        validateWort: validateWort,
+        ruhestandFrage: ruhestandFrage,
+        offeneFaelleText: offeneFaelleText,
+        activeBody: activeBody,
+        renderRuhestandBlock: renderRuhestandBlock
     };
     if (typeof window !== 'undefined') {
         window.AIWCockpitPersonnel = api;

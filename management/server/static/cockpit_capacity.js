@@ -23,7 +23,19 @@
 //
 // Build 637 (Vorgang 17200856, Welle B5 - die letzte): HILFE-MARKEN
 //   fuer die drei verbliebenen Bedienelemente dieser Sicht.
-// Version: v0.8.637 · Build: 637 · 2026-08-01
+// BUILD 701 (Ticket 95139d2a) — AUSGESCHIEDENE.
+//   Eine Zeile JE PERSON, also eine Grundmengen-Sicht: Ausgeschiedene fallen
+//   per Default heraus, bleiben aber stehen, solange sie offene Faelle tragen.
+//   Der Server entscheidet das (PersonSichtbarkeit) und liefert die
+//   Rechenschaft im Block 'inaktive'; diese Datei zeigt sie an und bietet den
+//   Umschalter. Die Leiste erscheint nur, wenn es etwas zu sagen gibt.
+//
+//   ZUR DOPPELUNG MIT cockpit_workload.js: sie ist gewollt. Ein gemeinsames
+//   Modul muesste die Hilfe-Kennung berechnen, und eine gerechnete Kennung
+//   sieht weder die Paritaetspruefung noch die Erhebung der Bedienelemente
+//   (Befund Build 636). Die Entscheidung, WER ausgeblendet wird, faellt
+//   ohnehin nur einmal — am Server.
+// Version: v0.8.701 · Build: 701 · 2026-08-12
 // =============================================================================
 
 (function () {
@@ -150,6 +162,94 @@
     // capacity-Aggregat-Antwort. opts.ECharts injizierbar; opts.onPeriodChange
     // (start, end) wird beim Klick auf "Aktualisieren" gerufen (Neuladen).
     // Rueckgabe: ECharts-Instanz (oder null).
+    // =========================================================================
+    // AUSGESCHIEDENE (Build 701, Ticket 95139d2a) — siehe Modulkopf.
+    // =========================================================================
+
+    // inaktivBlock: fehlt der Block (aelteres Backend), gibt es NICHTS zu
+    // melden — und nicht etwa "0 ausgeblendet". Das waere eine Behauptung
+    // ueber einen Server, der die Frage nie beantwortet hat.
+    function inaktivBlock(data) {
+        var b = (data && data.inaktive) || null;
+        if (!b) { return null; }
+        return {
+            ausgeblendet: b.ausgeblendet || 0,
+            kennungen: b.ausgeblendete_kennungen || [],
+            mit_arbeit: b.behalten_mit_arbeit || [],
+            gezeigt: b.gezeigt === true,
+            hinweis: b.hinweis || null
+        };
+    }
+
+    // inaktivText: REIN (kein DOM). Drei Lagen, drei Saetze — sie duerfen
+    // nicht gleich klingen (eingeblendet / ausgeblendet mit Namen / trotz
+    // Ruhestand aufgefuehrt, weil noch Arbeit da ist).
+    function inaktivText(data) {
+        var b = inaktivBlock(data);
+        if (!b) { return ''; }
+        var teile = [];
+        if (b.hinweis) { teile.push(b.hinweis); }
+        if (b.gezeigt) {
+            teile.push('Ausgeschiedene werden eingeblendet.');
+        } else if (b.ausgeblendet > 0) {
+            teile.push(b.ausgeblendet + ' ausgeschiedene'
+                + (b.ausgeblendet === 1 ? ' Person' : ' Personen')
+                + ' ausgeblendet: ' + b.kennungen.join(', ') + '.');
+        }
+        if (b.mit_arbeit.length) {
+            teile.push('Trotz Ruhestand aufgeführt, weil noch offene Fälle '
+                + 'zugewiesen sind: ' + b.mit_arbeit.join(', ') + '.');
+        }
+        return teile.join(' ');
+    }
+
+    function zeigtLeiste(data) {
+        var b = inaktivBlock(data);
+        if (!b) { return false; }
+        return b.gezeigt || b.ausgeblendet > 0
+            || b.mit_arbeit.length > 0 || !!b.hinweis;
+    }
+
+    // renderInaktiveLeiste: Kaestchen + Text. opts.onInaktiveToggle(bool)
+    // laedt die Sicht neu — KEIN Filtern im Browser.
+    function renderInaktiveLeiste(mainEl, data, opts) {
+        opts = opts || {};
+        var doc = opts.doc
+            || (typeof document !== 'undefined' ? document : null);
+        if (!mainEl || !doc || !zeigtLeiste(data)) { return null; }
+        var b = inaktivBlock(data);
+
+        var box = doc.createElement('div');
+        box.className = 'aiw-inaktive-leiste'
+            + (b.mit_arbeit.length ? ' warn' : '');
+
+        var label = doc.createElement('label');
+        label.className = 'aiw-inaktive-schalter';
+        var cb = doc.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = b.gezeigt;
+        cb.setAttribute('aria-label', 'Ausgeschiedene einblenden');
+        cb.setAttribute('data-hilfe-id', 'capacity.bedienung.inaktive');
+        cb.addEventListener('change', function () {
+            if (typeof opts.onInaktiveToggle === 'function') {
+                opts.onInaktiveToggle(cb.checked === true);
+            }
+        });
+        label.appendChild(cb);
+        var lt = doc.createElement('span');
+        lt.textContent = ' Ausgeschiedene einblenden';
+        label.appendChild(lt);
+        box.appendChild(label);
+
+        var txt = doc.createElement('span');
+        txt.className = 'aiw-inaktive-text';
+        txt.textContent = inaktivText(data);
+        box.appendChild(txt);
+
+        mainEl.appendChild(box);
+        return box;
+    }
+
     function renderCapacity(mainEl, data, opts) {
         opts = opts || {};
         if (!mainEl) { return null; }
@@ -219,6 +319,12 @@
         ctrl.appendChild(btn);
         mainEl.appendChild(ctrl);
 
+        // Build 701: Rechenschaft ueber Ausgeschiedene + Umschalter. Sie steht
+        // UNTER der Zeitraumwahl und UEBER dem Diagramm — man soll wissen, wer
+        // fehlt, bevor man die Balken deutet (dieselbe Ordnung wie die
+        // Ueberlastwarnung in der Lastverteilung).
+        renderInaktiveLeiste(mainEl, data, opts);
+
         var chartEl = document.createElement('div');
         chartEl.id = 'aiw-capacity-chart';
         var height = Math.max(220, 40 + caps.length * 34);
@@ -256,7 +362,12 @@
         echartsOption: echartsOption,
         defaultPeriod: defaultPeriod,
         scopeText: scopeText,
-        renderCapacity: renderCapacity
+        renderCapacity: renderCapacity,
+        // Build 701 (Ausgeschiedene) — rein und damit unter vitest pruefbar:
+        inaktivBlock: inaktivBlock,
+        inaktivText: inaktivText,
+        zeigtLeiste: zeigtLeiste,
+        renderInaktiveLeiste: renderInaktiveLeiste
     };
     if (typeof module !== 'undefined' && module.exports) { module.exports = API; }
     if (typeof window !== 'undefined') { window.AIWCockpitCapacity = API; }

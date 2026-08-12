@@ -32,7 +32,10 @@
 # REGEL H-0: kein Falldatum, keine echte Kennung.
 # REGEL H-1: Anwendersprache.
 #
-# Version: v0.8.603 - Build: 603 - 2026-07-31
+# Version: v0.8.701 - Build: 701 - 2026-08-12
+#   Build 603: Erstfassung. Build 701: Kapitel "Ausscheiden und
+#   Rueckkehr" + sieben Texte fuer die Spalte "Ruhestand"
+#   (Ticket 95139d2a).
 # =============================================================================
 
 from __future__ import annotations
@@ -41,7 +44,7 @@ from typing import List, Tuple
 
 from management.help.modell import Abschnitt, Kontexthilfe, Sichthilfe
 
-_STAND = 603
+_STAND = 701
 
 
 # =============================================================================
@@ -98,6 +101,10 @@ PERSONNEL = Sichthilfe(
                 "gekennzeichnet; die Spalte „Status“ nennt beim Überfahren "
                 "Zeitpunkt und Grund. Mit dem Recht für den AD-Abgleich "
                 "folgt unten ein eigener Abschnitt.",
+                "Die letzte Spalte heißt „Ruhestand“. Ein Klick dort öffnet "
+                "unter der Liste eine Rückfrage; solange sie offen ist, "
+                "bleibt die Liste bedienbar. Es ist immer nur EINE Rückfrage "
+                "offen.",
             ),
         ),
         Abschnitt(
@@ -116,6 +123,48 @@ PERSONNEL = Sichthilfe(
                 "AD-Abgleich: „AD-Vorschau laden“ holt den Stand aus dem "
                 "Verzeichnisdienst. Das geschieht erst auf Anforderung, weil "
                 "die Abfrage dauern kann.",
+                "Jemanden ausscheiden lassen: in der Spalte „Ruhestand“ auf "
+                "„Inaktiv setzen“, dann in der Rückfrage den Grund eintragen "
+                "und das Bestätigungswort tippen.",
+                "Jemanden zurückholen: in derselben Spalte auf "
+                "„Reaktivieren“ und das Bestätigungswort tippen.",
+            ),
+        ),
+        Abschnitt(
+            "ruhestand", "Ausscheiden und Rückkehr",
+            (
+                "WENN JEMAND GEHT, WIRD NICHTS GELÖSCHT. Die Person wird "
+                "inaktiv gesetzt. Das hat genau zwei Folgen: sie kann sich "
+                "nicht mehr anmelden, und sie wird nirgends mehr zur Auswahl "
+                "angeboten — nicht bei der Fallzuweisung, nicht in der "
+                "Kapazitätspflege, nicht als betroffene Person einer "
+                "Betreuungsnotiz.",
+                "WAS BLEIBT, IST ALLES ÜBRIGE. Zugewiesene Fälle behalten "
+                "ihre Zuweisung. Protokolle, Übergaben, Vermerke und "
+                "Belegeinträge behalten ihren Namen. Das ist kein "
+                "Versäumnis, sondern der Zweck: ein Beleg, dessen Urheber "
+                "namenlos wird, hat seinen Beweiswert verloren.",
+                "OFFENE FÄLLE HINDERN NICHT AM AUSSCHEIDEN — ein Ausscheiden "
+                "ist eine Tatsache und kein Antrag. Die Rückfrage nennt "
+                "aber, wie viele offene Fälle die Person noch trägt, und die "
+                "Rückmeldung wiederholt die Zahl. Diese Fälle müssen "
+                "gesondert umverteilt werden; die Anlage tut das nicht von "
+                "selbst, weil niemand außer Ihnen weiß, wer sie übernehmen "
+                "soll.",
+                "ZWEI EINGABEN SIND NÖTIG: ein Grund und das wörtliche "
+                "Bestätigungswort. Der Grund steht später im Beleg und in "
+                "der Spalte „Status“. Das Wort ist die Sicherung gegen den "
+                "Fehlklick.",
+                "DIE EIGENE PERSON GEHT NICHT. Sich selbst inaktiv zu "
+                "setzen wäre die vollständige Aussperrung — die Anmeldung "
+                "weist inaktive Konten ab. Für den echten Fall (die letzte "
+                "aufsichtführende Person scheidet aus) gibt es den Weg über "
+                "die Kommandozeile.",
+                "DIE RÜCKKEHR IST DERSELBE WEG RÜCKWÄRTS, mit einem "
+                "Unterschied, der leicht übersehen wird: die früheren Rollen "
+                "werden WIEDER WIRKSAM. Wer nach zwei Jahren zurückkommt, "
+                "hat unter Umständen Rechte, die inzwischen nicht mehr "
+                "passen — die Rollen gehören danach durchgesehen.",
             ),
         ),
         Abschnitt(
@@ -129,6 +178,10 @@ PERSONNEL = Sichthilfe(
                 "erlauben will, weist eine ROLLE zu.",
                 "An der eigenen Person ist nichts änderbar — auch nicht mit "
                 "allen Rechten.",
+                "EINE INAKTIVE PERSON IST NICHT WEG, SONDERN NUR NICHT MEHR "
+                "WÄHLBAR. Sie steht weiterhin in dieser Liste und in jedem "
+                "Beleg, den sie erzeugt hat. Wer sie in einer anderen Sicht "
+                "vermisst, findet sie hier.",
                 "Die Sicht ändert nichts im Verzeichnisdienst. Der "
                 "AD-Abgleich ist eine Vorschau und ein Übernahmeweg in diese "
                 "Anlage, keine Pflege des Verzeichnisses.",
@@ -272,6 +325,67 @@ PERSONNEL = Sichthilfe(
             "früheren Rollen werden dabei WIEDER WIRKSAM — prüfen Sie, ob das "
             "noch passt.",
             verweis="personnel#grenzen"),
+
+        # Build 701 (Ticket 95139d2a) - RUHESTAND VON HAND. Die Sicht konnte
+        # den Aktiv-Status bisher nur ANZEIGEN; setzen liess er sich allein
+        # ueber den AD-Abgleich, und der greift erst, wenn das Verzeichnis
+        # bereits nachgezogen ist.
+        Kontexthilfe(
+            "personnel.spalte.ruhestand", "Spalte „Ruhestand“",
+            "Hier wird eine ausgeschiedene Person inaktiv gesetzt oder eine "
+            "zurückgekehrte wieder in Betrieb genommen. Der Knopf vollzieht "
+            "nichts sofort — er öffnet unter der Liste eine Rückfrage. Bei "
+            "der eigenen Zeile und ohne Änderungsrecht steht hier ein "
+            "Strich; der Hinweis beim Überfahren nennt den Grund.",
+            verweis="personnel#ruhestand"),
+        Kontexthilfe(
+            "personnel.bedienung.ruhestand_inaktiv", "Inaktiv setzen",
+            "Öffnet die Rückfrage zum Ausscheiden. GELÖSCHT WIRD NIE: die "
+            "Person verschwindet aus den Auswahllisten, ihre Zuweisungen, "
+            "Protokolle und Belege bleiben unverändert und weiterhin mit "
+            "ihrem Namen beschriftet.",
+            verweis="personnel#ruhestand"),
+        Kontexthilfe(
+            "personnel.bedienung.ruhestand_reaktivieren", "Reaktivieren",
+            "Öffnet die Rückfrage zur Rückkehr. Die Person erscheint danach "
+            "wieder in allen Auswahllisten, und ihre früheren Rollen werden "
+            "WIEDER WIRKSAM — prüfen Sie, ob das noch passt.",
+            verweis="personnel#ruhestand"),
+        Kontexthilfe(
+            "personnel.abschnitt.ruhestand", "Rückfrage zum Ruhestand",
+            "Die Fläche unter der Liste, die nach einem Klick in der Spalte "
+            "„Ruhestand“ erscheint. Sie nennt beim Ausscheiden, wie viele "
+            "offene Fälle die Person noch trägt — diese Fälle behalten ihre "
+            "Zuweisung und müssen gesondert umverteilt werden.",
+            verweis="personnel#ruhestand"),
+        Kontexthilfe(
+            "personnel.bedienung.ruhestand_grund", "Grund",
+            "Pflichtangabe beim Ausscheiden. Sie geht in den Beleg ein und "
+            "ist später die einzige Auskunft darüber, WARUM jemand aus den "
+            "Listen verschwunden ist — „ausgeschieden zum 31.08.“ ist etwas "
+            "anderes als ein Versehen. Der Text erscheint auch in der Spalte "
+            "„Status“ beim Überfahren.",
+            verweis="personnel#ruhestand"),
+        Kontexthilfe(
+            "personnel.bedienung.ruhestand_wort", "Bestätigungswort",
+            "Das Wort, das genau so eingetippt werden muss, wie es im Feld "
+            "vorgeschlagen steht — Groß- und Kleinschreibung eingeschlossen. "
+            "Dieselbe Sicherung gegen den Fehlklick wie im AD-Abgleich: eine "
+            "Deaktivierung nimmt einem Menschen den Zugang zur Anlage.",
+            verweis="personnel#ruhestand"),
+        Kontexthilfe(
+            "personnel.bedienung.ruhestand_vollzug", "Vollziehen",
+            "Führt die Änderung aus — erst wenn Grund und Bestätigungswort "
+            "stimmen. Sie wird belegt; die Rückmeldung nennt die Belegnummer "
+            "und, falls vorhanden, die Zahl der offen gebliebenen Fälle.",
+            verweis="personnel#ruhestand"),
+        Kontexthilfe(
+            "personnel.bedienung.ruhestand_abbruch", "Abbrechen",
+            "Schließt die Rückfrage, ohne etwas zu ändern. Anders als der "
+            "Abbruch im AD-Abgleich wird das NICHT protokolliert: dort ist "
+            "der Abbruch die Antwort auf eine vom System gestellte Frage, "
+            "hier haben Sie die Frage selbst aufgeworfen."),
+
         Kontexthilfe(
             "personnel.werkzeug.filter_entfernen", "Filter zurücksetzen",
             "Entfernt alle Spaltenfilter dieser Sicht auf einmal."),

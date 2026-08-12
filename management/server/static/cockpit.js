@@ -1467,16 +1467,30 @@
     // loadWorkload: /api/workload holen und als ECharts-Diagramm rendern
     // (cockpit_workload.js). Bindet einen Resize-Handler an die Instanz, damit
     // das Diagramm bei Fensteraenderung mitwaechst (in cleanupView abgemeldet).
-    function loadWorkload(mainEl) {
+    //
+    // BUILD 701 (Ticket 95139d2a): 'inaktiveZeigen' schaltet die Ausblendung
+    // Ausgeschiedener ab. Der Wert wandert als Query-Parameter an den Server
+    // und wird NICHT im Browser gefiltert — der Server entscheidet die
+    // Ausblendung, und eine zweite Entscheidung hier waere eine zweite
+    // Wahrheitsquelle. Er steht bewusst NICHT in 'state': er soll den
+    // Sichtwechsel nicht ueberdauern, damit niemand spaeter eine Liste mit
+    // Ausgeschiedenen fuer die normale Lage haelt.
+    function loadWorkload(mainEl, inaktiveZeigen) {
         mainEl = mainEl || document.getElementById('aiw-main');
         var mod = (typeof window !== 'undefined') ? window.AIWCockpitWorkload : null;
         if (!mod) {
             renderError(mainEl, 'Workload-Modul nicht geladen.');
             return;
         }
-        fetchJson('/api/workload').then(function (data) {
+        var url = '/api/workload' + (inaktiveZeigen === true
+            ? '?inaktive=1' : '');
+        fetchJson(url).then(function (data) {
             cleanupView();  // Tabelle/altes Diagramm vor Neuaufbau abbauen
-            state.chart = mod.renderWorkload(mainEl, data, {});
+            state.chart = mod.renderWorkload(mainEl, data, {
+                onInaktiveToggle: function (zeigen) {
+                    loadWorkload(mainEl, zeigen);
+                }
+            });
             if (state.chart && typeof state.chart.resize === 'function') {
                 state.chartResize = function () {
                     try { state.chart.resize(); } catch (e) { log('resize', e); }
@@ -1909,7 +1923,7 @@
     // wird in state.capacityPeriod gehalten (Default: laufender Monat), damit der
     // SSE-Reload denselben Zeitraum verwendet. Die Zeitraum-Wahl im View ruft
     // loadCapacity mit neuem Zeitraum erneut auf.
-    function loadCapacity(mainEl, period) {
+    function loadCapacity(mainEl, period, inaktiveZeigen) {
         mainEl = mainEl || document.getElementById('aiw-main');
         var mod = (typeof window !== 'undefined')
             ? window.AIWCockpitCapacity : null;
@@ -1922,14 +1936,21 @@
         }
         state.capacityPeriod = period;
         var url = '/api/capacity?start=' + encodeURIComponent(period.start)
-            + '&end=' + encodeURIComponent(period.end);
+            + '&end=' + encodeURIComponent(period.end)
+            // Build 701: siehe loadWorkload — der Umschalter geht an den
+            // Server, gefiltert wird nicht im Browser.
+            + (inaktiveZeigen === true ? '&inaktive=1' : '');
         fetchJson(url).then(function (data) {
             cleanupView();
             state.chart = mod.renderCapacity(mainEl, data, {
                 onPeriodChange: function (start, end) {
                     if (start && end) {
-                        loadCapacity(mainEl, { start: start, end: end });
+                        loadCapacity(mainEl, { start: start, end: end },
+                                     inaktiveZeigen);
                     }
+                },
+                onInaktiveToggle: function (zeigen) {
+                    loadCapacity(mainEl, period, zeigen);
                 }
             });
             if (state.chart && typeof state.chart.resize === 'function') {
@@ -3043,6 +3064,9 @@
     //   POST /api/personnel/flags         — Rollen-Flag setzen (personnel.edit).
     //   POST /api/personnel/role/assign   — Rolle zuweisen (personnel.edit).
     //   POST /api/personnel/role/revoke   — Zuweisung widerrufen (Soft-Revoke).
+    //   POST /api/personnel/active        — Ruhestand setzen/aufheben
+    //                                       (personnel.edit, Build 701;
+    //                                       woertliche Bestaetigung).
     //   AD-Abschnitt (personnel.sync): LAZY via _adsyncInto — /api/adsync wird
     //   erst auf Nutzerhandlung geholt (Live-LDAP). Nach einer AD-Aktion wird
     //   die Sicht MIT offenem Abschnitt neu geladen (genau EIN frischer
@@ -3091,6 +3115,30 @@
                 _post('/api/personnel/role/revoke', body, function (res) {
                     return 'Zuweisung widerrufen (Soft-Revoke, Beleg #'
                         + res.audit_seq + ').';
+                });
+            },
+            // Build 701 (Ticket 95139d2a): Ruhestand von Hand.
+            // Die Rueckmeldung NENNT die offenen Faelle, die die Person beim
+            // Inaktivsetzen noch trug. Nur so wird aus der Zahl im
+            // Bestaetigungsblock eine Verpflichtung zur Umverteilung — und
+            // nicht bloss eine Anzeige, die man weggeklickt hat.
+            onSetActive: function (body) {
+                _post('/api/personnel/active', body, function (res) {
+                    if (res.active) {
+                        return 'Person reaktiviert (Beleg #' + res.audit_seq
+                            + ').';
+                    }
+                    var offen = (typeof res.offene_faelle === 'number')
+                        ? res.offene_faelle : null;
+                    return 'Person inaktiv gesetzt (Beleg #' + res.audit_seq
+                        + ').'
+                        + ((offen !== null && offen > 0)
+                            ? ' ACHTUNG: ' + offen + ' offene'
+                              + (offen === 1 ? 'r Fall bleibt' : ' Fälle bleiben')
+                              + ' zugewiesen und muss'
+                              + (offen === 1 ? '' : 'en')
+                              + ' umverteilt werden.'
+                            : '');
                 });
             },
             onAdsyncLoad: function (box, setResult) {

@@ -380,15 +380,28 @@ describe("cockpit_personnel", () => {
       "f_is_supervisor",
       "f_is_support",
       "rollen_text",
+      // Build 701 (Ticket 95139d2a): die Handlungsspalte "Ruhestand".
+      "ruhestand",
     ]);
     // Ohne Feld gaebe es weder Filter noch Sortierung.
     expect(cols.every((c) => !!c.field)).toBe(true);
 
     // Und das gemeinsame Werkzeug haengt an jede Spalte einen Filter — das
     // ist der eigentliche Gewinn des Umbaus.
+    //
+    // MIT EINER AUSNAHME SEIT BUILD 701, und sie ist ausdruecklich: die
+    // Spalte "Ruhestand" traegt Knoepfe, keine Angabe. Sie meldet sich mit
+    // 'kein_filter' selbst ab; wonach man dort filtern wollte
+    // (aktiv/inaktiv), steht in der Spalte "Status" und hat DORT ihren
+    // Filter. Ein zweiter Filter fuer dieselbe Sache waere eine zweite
+    // Wahrheitsquelle. Die Zusicherung wird deshalb NICHT aufgeweicht,
+    // sondern auf die Spalten mit Angabe eingegrenzt — mit benannter
+    // Ausnahme, damit eine kuenftige Luecke weiterhin auffaellt.
     const rows = w.AIWCockpitPersonnel.toRows(_data());
     const mitFilter = w.AIWTableKit.spaltenMitFilter(rows, cols);
-    expect(mitFilter.every((c) => !!c.headerFilter)).toBe(true);
+    expect(
+      mitFilter.filter((c) => !c.headerFilter).map((c) => c.field)
+    ).toEqual(["ruhestand"]);
     // Die Filterart folgt der ANZAHL VERSCHIEDENER WERTE, nicht der Spalte:
     // wenige -> Auswahlliste, viele -> Eingabefeld (tablekit,
     // SCHWELLE_AUSWAHL). Das ist der Grund, warum die Entscheidung nicht je
@@ -496,8 +509,10 @@ describe("cockpit_personnel", () => {
     const kopfIds = cols
       .filter((c) => typeof c.titleFormatter === "function")
       .map((c) => c.titleFormatter().getAttribute("data-hilfe-id"));
-    expect(kopfIds.length).toBe(7);
+    // Build 701: acht statt sieben — die Spalte "Ruhestand" ist dazugekommen.
+    expect(kopfIds.length).toBe(8);
     expect(kopfIds).toContain("personnel.spalte.rollen");
+    expect(kopfIds).toContain("personnel.spalte.ruhestand");
 
     // JEDE Kennung folgt dem Muster — eine krumme waere ein toter Link,
     // sobald es die Schnellhilfe gibt.
