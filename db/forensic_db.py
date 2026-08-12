@@ -19,6 +19,7 @@
 #
 # Alias-Auflösungen:
 #   post_aliases:   post_id  → (topic_id, forum_id)
+#   post_aliases:   post_id  → SEITE, die den Beitrag traegt (Build 699)
 #   pm_aliases:     pm_post_id → pm_topic_id
 #   notify_aliases: notify_id  → post_id
 #
@@ -35,7 +36,18 @@
 #   hier INSERT/UPDATE/DELETE-Statements.
 #
 # Abhängigkeiten: sqlite3 — ausschließlich Stdlib
-# Version: v0.1.0 · Build: 042 · 2026-04-19
+# Version: v0.1.1 · Build: 699 · 2026-08-12
+# Änderungen Build 699 (Vorgang f5956e6b):
+#   - resolve_post_page(): loest EINEN Beitrag auf die erfasste Seite auf,
+#     die seinen Anker traegt. Zwei Quellen: die Messung des Preppers
+#     (fdb.post_aliases.page) und, wo diese fehlt, eine Nachmessung im BLOB.
+#     Liefert None statt einer geratenen Seite (Grundregel 1).
+#   - blob_enthaelt_anker(): die Ankerprobe als eigenstaendig pruefbare
+#     Funktion — auch vom BlobHandler genutzt.
+#   - PostPageRecord: Ergebnis der Auflösung samt HERKUNFT.
+#   - Kein Schreibzugriff, keine Schemaänderung: die gelesenen Spalten
+#     bestehen seit Prepper-Build 098 (forensic_db-Schema v2) und werden
+#     defensiv geprueft; v1-Datenbanken laufen ueber die Nachmessung weiter.
 # Änderungen Build 042:
 #   - blob_lookup VIEW: method-Spalte aus fdb.pages einbezogen.
 #   - get_page(): neuer optionaler Parameter method (Default 'GET').
@@ -247,6 +259,78 @@ class PostAliasRecord:
     post_id:  int
     topic_id: int
     forum_id: int
+
+
+@dataclass(frozen=True)
+class PostPageRecord:
+    """
+    Ergebnis der Auflösung EINES Beitrags auf die erfasste Seite, die ihn
+    TATSAECHLICH enthaelt (resolve_post_page, Build 699).
+
+    Felder:
+        post_id — der aufgeloeste Beitrag
+        page_id — fdb.pages.id des Chunk-BLOBs, in dem der Anker steht
+        url     — url_canonical dieser Seite OHNE Basis-URL. Genau die Form,
+                  die get_page() erwartet (blob_lookup.url ist ebenso
+                  basisbereinigt) — der Wert ist damit unmittelbar als
+                  Lookup-Schluessel verwendbar und nicht bloss Anzeigetext.
+        quelle  — WOHER die Zuordnung stammt. Sie steht mit im Ergebnis, weil
+                  eine Zuordnung ohne ihre Herkunft nicht ueberpruefbar ist:
+                  'gemessen' — fdb.post_aliases.page, vom PostPageMeasurer des
+                               Preppers (Build 098/101) per direkter
+                               Ankermitgliedschaft gemessen;
+                  'blob'     — hier und jetzt im BLOB nachgemessen, weil die
+                               gemessene Spalte fehlte oder unaufgeloest war.
+    """
+    post_id: int
+    page_id: int
+    url:     str
+    quelle:  str
+
+
+def _anker_muster(post_id: int) -> tuple[bytes, bytes]:
+    """
+    Liefert die beiden Byte-Muster, an denen ein Beitrag in einem Seiten-BLOB
+    erkannt wird: der aeussere Container id="p<id>" und der verschachtelte
+    innere id="pp<id>".
+
+    Gleiche Marker wie im PostPageMeasurer des Preppers
+    (stage2/post_page_measurer.py, POST_ID_RE = rb'id="p+(\\d+)"'). Die
+    Uebereinstimmung ist Absicht: eine Nachmessung, die andere Marker
+    benutzte als die Vormessung, koennte zu einem anderen Ergebnis kommen,
+    ohne dass eine der beiden falsch waere.
+
+    Gesucht wird auf BYTES und nicht auf decodiertem Text — pages.html ist ein
+    BLOB, und das Forum ist mehrsprachig; ein Dekodierschritt vor der Suche
+    waere Aufwand und Fehlerquelle ohne Nutzen (die Marker sind reines ASCII).
+    """
+    return (b'id="p%d"' % post_id, b'id="pp%d"' % post_id)
+
+
+def blob_enthaelt_anker(html: "bytes | None", post_id: int) -> bool:
+    """
+    True, wenn der BLOB den Anker des Beitrags traegt.
+
+    Auf Modulebene und nicht als Methode, weil die Frage ('steht dieser
+    Beitrag in diesem BLOB?') fuer sich pruefbar ist und sowohl die
+    Datenbankschicht als auch der BlobHandler sie stellen.
+
+    html=None (fehlgeschlagener Abruf) ergibt False: ein nicht vorhandener
+    Inhalt belegt nichts — weder Anwesenheit noch Abwesenheit des Beitrags.
+    Der Aufrufer darf daraus deshalb NICHT schliessen, der Beitrag stehe
+    woanders; er behandelt den Fall als unaufgeloest.
+    """
+    if not html:
+        return False
+    # Defensive: sqlite liefert TEXT-Spalten als str. pages.html ist als BLOB
+    # deklariert, aber eine mit sqlite3-Textbindung geschriebene Zeile kaeme
+    # als str zurueck — dann scheiterte die Byte-Suche mit TypeError statt
+    # ein Ergebnis zu liefern. Beleg fuer die Moeglichkeit: derselbe Fall ist
+    # in get_userinfo_blob() bereits behandelt (Test T32).
+    if isinstance(html, str):
+        html = html.encode("utf-8", errors="replace")
+    aussen, innen = _anker_muster(post_id)
+    return aussen in html or innen in html
 
 
 @dataclass(frozen=True)
@@ -466,6 +550,207 @@ class ForensicDb:
             topic_id=int(row["topic_id"]),
             forum_id=int(row["forum_id"]),
         )
+
+    # ------------------------------------------------------------------
+    # Build 699 (Vorgang f5956e6b): Beitrag → die Seite, die ihn TRAEGT
+    # ------------------------------------------------------------------
+
+    def resolve_post_page(self, post_id: int) -> Optional[PostPageRecord]:
+        """
+        Loest EINEN Beitrag auf die erfasste Seite auf, die seinen Anker
+        tatsaechlich enthaelt, und liefert deren Lookup-Adresse.
+
+        WARUM ES DIESE METHODE GIBT (Vorgang f5956e6b, Fehler kritisch):
+        Ein Thema mit mehr als 500 Beitraegen liegt in mehreren erfassten
+        Chunks vor (Seite 1 ohne '&p=', Folgeseiten mit '&p=k'). Die
+        Aufloesung ueber resolve_post_alias() liefert nur die topic_id; die
+        daraus gebaute Adresse '…viewtopic.php?id=<topic>' bezeichnet IMMER
+        den ersten Chunk. Liegt der Beitrag auf Chunk 2..n, wird eine Seite
+        ausgeliefert, die den gesuchten Beitrag NICHT enthaelt — der Anker
+        laeuft ins Leere und die Ermittlerin sieht fremde Beitraege an der
+        Stelle, an der der belastende stehen soll.
+
+        ZWEI QUELLEN, IN DIESER REIHENFOLGE:
+        (1) fdb.post_aliases.page (quelle='gemessen'). Diese Spalte IST die
+            pages.id des Chunks, in dem der Anker steht; gemessen hat sie der
+            PostPageMeasurer des Preppers per direkter Ankermitgliedschaft
+            (aiw_sqlite_prepper Build 098/101, stage2/post_page_measurer.py).
+            Sie ist damit genau die Antwort auf die Frage dieser Methode —
+            der Webserver hat sie bislang nur nicht gestellt.
+        (2) Nachmessung im BLOB (quelle='blob'). Greift, wenn die Spalte
+            fehlt (forensic_db-Schema v1) oder page_resolved=0 ist. Die
+            Chunks des Themas werden nach aufsteigender Seitennummer
+            durchgesehen, bis einer den Anker traegt.
+
+        WARUM DIE NACHMESSUNG TROTZ (1) NOETIG IST: page_resolved=0 heisst
+        'zum Zeitpunkt des Prepper-Laufs nicht belegbar' — etwa weil der
+        Chunk-BLOB damals fehlte. Ohne (2) fiele der Verweis in genau diesen
+        Faellen still auf Seite 1 zurueck, also auf die falsche Seite.
+
+        WARUM DER NIEDRIGSTE CHUNK GEWINNT: Bei angehefteten Erstbeitraegen
+        (StickFP) und bei Umfragen wiederholt das Forum den ersten Beitrag
+        oben auf jedem Folge-Chunk. Derselbe Anker steht dann mehrfach im
+        Bestand. Der niedrigste Chunk ist die Heimat des Beitrags — dieselbe
+        Regel wie im PostPageMeasurer, damit Vor- und Nachmessung nicht
+        auseinanderlaufen.
+
+        Args:
+            post_id: ID des Beitrags (aus fdb.post_aliases).
+
+        Returns:
+            PostPageRecord, oder None wenn der Beitrag nicht belegbar einer
+            erfassten Seite zuzuordnen ist. None ist eine Aussage und kein
+            Fehler: KEIN Raten (Grundregel 1). Der Aufrufer hat den Fall
+            sichtbar zu machen, nicht zu ueberdecken.
+        """
+        # --- Schritt 1: Zeile aus post_aliases lesen (defensiv, Schema v1) ---
+        try:
+            cols = {r["name"] for r in
+                    self._con.execute("PRAGMA fdb.table_info(post_aliases)")}
+        except sqlite3.OperationalError as exc:
+            logger.error("resolve_post_page(%d): post_aliases nicht lesbar: %s",
+                         post_id, exc)
+            return None
+
+        has_page = "page" in cols and "page_resolved" in cols
+        page_sel = ("page, page_resolved" if has_page
+                    else "NULL AS page, 0 AS page_resolved")
+        try:
+            row = self._con.execute(
+                f"SELECT post_id, topic_id, {page_sel} "
+                f"FROM fdb.post_aliases WHERE post_id = ?",
+                (post_id,),
+            ).fetchone()
+        except sqlite3.OperationalError as exc:
+            logger.error("resolve_post_page(%d) fehlgeschlagen: %s", post_id, exc)
+            return None
+
+        if row is None:
+            logger.debug("resolve_post_page(%d): kein post_aliases-Eintrag.", post_id)
+            return None
+
+        topic_id = int(row["topic_id"])
+
+        # --- Schritt 2: gemessene Seite (Prepper) ---
+        if has_page and row["page_resolved"] and row["page"]:
+            page_id = int(row["page"])
+            url = self._page_lookup_url(page_id)
+            if url is not None:
+                logger.debug(
+                    "resolve_post_page(%d): gemessen → page_id=%d, url='%s'",
+                    post_id, page_id, url,
+                )
+                return PostPageRecord(post_id=post_id, page_id=page_id,
+                                      url=url, quelle="gemessen")
+            # page zeigt auf eine pages.id, die es nicht (mehr) gibt.
+            # Nicht still weiterlaufen — die Nachmessung uebernimmt, aber der
+            # Widerspruch gehoert protokolliert.
+            logger.warning(
+                "resolve_post_page(%d): post_aliases.page=%d hat keinen "
+                "pages-Eintrag — Nachmessung im BLOB.", post_id, page_id,
+            )
+        elif not has_page:
+            logger.warning(
+                "resolve_post_page(%d): post_aliases ohne page/page_resolved "
+                "(forensic_db-Schema v1) — Nachmessung im BLOB. Ein erneuter "
+                "Prepper-Lauf (Build 101+) erspart sie.", post_id,
+            )
+
+        # --- Schritt 3: Nachmessung im BLOB ---
+        return self._messe_post_seite(post_id, topic_id)
+
+    def _page_lookup_url(self, page_id: int) -> Optional[str]:
+        """
+        Liefert zu einer pages.id die basisbereinigte Adresse, unter der
+        get_page() die Seite findet (blob_lookup.url).
+
+        Die Bereinigung entspricht Zeichen fuer Zeichen der des
+        blob_lookup-Views (_make_blob_lookup_sql): dort REPLACE(url_canonical,
+        basis, ''), hier derselbe REPLACE in SQL statt in Python — damit beide
+        auch bei ungewoehnlichen Basis-URLs dasselbe Ergebnis liefern.
+        """
+        base_url = self.get_forum_base_url() or ""
+        try:
+            row = self._con.execute(
+                "SELECT REPLACE(url_canonical, ?, '') AS url "
+                "FROM fdb.pages WHERE id = ?",
+                (base_url, page_id),
+            ).fetchone()
+        except sqlite3.OperationalError as exc:
+            logger.error("_page_lookup_url(%d) fehlgeschlagen: %s", page_id, exc)
+            return None
+        return str(row["url"]) if row is not None else None
+
+    def _messe_post_seite(
+        self, post_id: int, topic_id: int
+    ) -> Optional[PostPageRecord]:
+        """
+        Nachmessung: sucht unter den erfassten Chunks eines Themas denjenigen,
+        dessen BLOB den Anker des Beitrags traegt.
+
+        Ablauf und warum in dieser Reihenfolge:
+          1. Chunk-Liste OHNE BLOB holen (id + url_canonical). Ein Thema hat
+             im Regelfall einen, im Ausnahmefall wenige Chunks — aber der
+             BLOB ist gross. Er wird erst geholt, wenn er geprueft wird.
+          2. Nach Seitennummer aufsteigend ordnen (Seite 1 = 0).
+          3. Chunk fuer Chunk den BLOB EINZELN nachladen und pruefen; der
+             erste Treffer gewinnt und beendet die Suche.
+
+        Der Filter auf das Thema laeuft in zwei Stufen: SQL LIKE grenzt grob
+        ein (indexlos, aber auf wenige Zeilen), ein Ausdruck auf der Adresse
+        entscheidet genau. Das LIKE allein genuegt NICHT: '%viewtopic.php?id=5%'
+        trifft auch id=50 und id=512.
+        """
+        base_url = self.get_forum_base_url() or ""
+        try:
+            kandidaten = self._con.execute(
+                "SELECT id, REPLACE(url_canonical, ?, '') AS url "
+                "FROM fdb.pages "
+                "WHERE url_canonical LIKE ? ",
+                (base_url, f"%viewtopic.php?id={topic_id}%"),
+            ).fetchall()
+        except sqlite3.OperationalError as exc:
+            logger.error("_messe_post_seite(%d, topic=%d) fehlgeschlagen: %s",
+                         post_id, topic_id, exc)
+            return None
+
+        genau = re.compile(r"viewtopic\.php\?id=%d(?:[^0-9]|$)" % topic_id)
+        gefiltert = [(int(r["id"]), str(r["url"]))
+                     for r in kandidaten if genau.search(str(r["url"]))]
+        if not gefiltert:
+            logger.debug(
+                "_messe_post_seite(%d): keine erfasste Seite fuer topic_id=%d.",
+                post_id, topic_id,
+            )
+            return None
+
+        gefiltert.sort(key=lambda paar: (_seitennummer(paar[1]), paar[0]))
+
+        for page_id, url in gefiltert:
+            try:
+                row = self._con.execute(
+                    "SELECT html FROM fdb.pages WHERE id = ?", (page_id,)
+                ).fetchone()
+            except sqlite3.OperationalError as exc:
+                logger.error("_messe_post_seite: BLOB %d nicht lesbar: %s",
+                             page_id, exc)
+                continue
+            if row is None:
+                continue
+            if blob_enthaelt_anker(row["html"], post_id):
+                logger.debug(
+                    "_messe_post_seite(%d): Anker in page_id=%d ('%s') gefunden.",
+                    post_id, page_id, url,
+                )
+                return PostPageRecord(post_id=post_id, page_id=page_id,
+                                      url=url, quelle="blob")
+
+        logger.warning(
+            "_messe_post_seite(%d): Anker in keinem der %d erfassten Chunks "
+            "von topic_id=%d gefunden — Beitrag bleibt unaufgeloest.",
+            post_id, len(gefiltert), topic_id,
+        )
+        return None
 
     # ------------------------------------------------------------------
     # Build 430 (B4 Welle 3): Inhaltszeit (Post-Zeitstempel) fuer den Zeitstrahl

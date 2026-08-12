@@ -1,0 +1,8 @@
+85a1a70cfae7fafa9b02efb6124bf294  build.json
+65eac6671504a0fb4b8c9f3e0671def4  db/forensic_db.py
+626229249c8101baa48d65b0c233138e  issue-tracker/eintraege_claude_Build699.json
+d38aa854df6dedcd4e9a8202c9c7354b  server/blob_handler.py
+c290b06ff2f5bcdcc1c8616e6fb87e73  tests/test_blob_handler.py
+9c493ba095a89abe00bbbedb541d6639  tests/test_forensic_db.py
+737822cf3867d0e1aaa835f8462053a8  tests/unit/test_anker_meldung.test.js
+8ced480d2c2d49a7c7fdbffeddd333bf  toolbar/toolbar.js

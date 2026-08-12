@@ -17,7 +17,20 @@
 # T11 — _extract_body(): HTML ohne <body>-Tag wird vollständig zurückgegeben
 # T12 — JSON-Envelope ist valides JSON
 #
-# Version: v0.1.0 · Build: 025 · 2026-04-15
+# Build 699 (Vorgang f5956e6b) — Beitragsanker in mehrseitigen Themen:
+# T23 — ?pid=<id> liefert die GEMESSENE Seite (post_aliases.page), nicht Seite 1
+# T24 — ?pid=<id> ohne belegbare Seite → Rueckfall Seite 1, fragment_source
+#       'unaufgeloest' (kein stiller Rueckfall, Grundregel 1)
+# T25 — ?id=<topic>#p<id>: Anker steht NICHT im ersten Chunk → es wird die
+#       Seite ausgeliefert, die ihn traegt
+# T26 — ?id=<topic>#p<id>: Anker steht im BLOB → keine Umleitung,
+#       fragment_source 'bestaetigt'
+# T27 — Anker auf einer Nicht-Themenseite loest KEINE Umleitung aus
+# T28 — fehlender BLOB (fetch_failed) → 'unpruefbar', keine Umleitung
+# T29 — Envelope ohne Beitragsanker traegt fragment_source=None
+# T30 — ?notify=<id> nutzt ebenfalls die Seite des Beitrags
+#
+# Version: v0.1.1 · Build: 699 · 2026-08-12
 # =============================================================================
 
 import sys
@@ -91,11 +104,16 @@ def _make_page(
     )
 
 
-def _make_bundle(page=None, post_alias=None, notify_alias=None):
+def _make_bundle(page=None, post_alias=None, notify_alias=None,
+                 post_page=None):
     bundle = MagicMock()
     bundle.forensic.get_page.return_value = page
     bundle.forensic.resolve_post_alias.return_value = post_alias
     bundle.forensic.resolve_notify_alias.return_value = notify_alias
+    # Build 699: MUSS gesetzt werden. Ein MagicMock liefert sonst fuer JEDEN
+    # Aufruf ein Mock-Objekt statt None — die Ankerprobe hielte das fuer eine
+    # gefundene Seite und der Test pruefte eine Lage, die es nicht gibt.
+    bundle.forensic.resolve_post_page.return_value = post_page
     bundle.forensic.get_trace_elements_for_page.return_value = []
     bundle.evidence.log_page_visit.return_value = 1
     return bundle
@@ -182,40 +200,52 @@ class TestBlobHandlerAliases(unittest.TestCase):
         reset_for_testing()
 
     def test_T05_pid_aufloesen(self):
-        """T05: ?pid=12345 wird über post_aliases auf topic aufgelöst."""
-        from db.forensic_db import PostAliasRecord
-        post_alias = PostAliasRecord(post_id=12345, topic_id=100, forum_id=5)
-        page       = _make_page(url="/forum/viewtopic.php?id=100")
+        """T05: ?pid=12345 wird auf die Seite aufgelöst, die den Beitrag traegt.
 
-        bundle = MagicMock()
-        bundle.forensic.resolve_post_alias.return_value = post_alias
-        bundle.forensic.get_page.return_value = page
-        bundle.forensic.get_trace_elements_for_page.return_value = []
-        bundle.evidence.log_page_visit.return_value = 1
+        MITGEZOGEN IN BUILD 699 (Vorgang f5956e6b): Bis Build 698 pruefte
+        dieser Fall, dass '?pid=' auf '<pfad>?id=<topic_id>' abgebildet wird —
+        also auf den ERSTEN Chunk des Themas. Genau das war der gemeldete
+        Fehler. Der Fall pruefet weiterhin die pid-Aufloesung, jetzt aber
+        gegen die Seite, die den Beitrag traegt. Der einseitige Fall ist
+        unveraendert: dort IST die Seite des Beitrags die erste.
+        """
+        from db.forensic_db import PostPageRecord
+        post_page = PostPageRecord(post_id=12345, page_id=1,
+                                   url="/forum/viewtopic.php?id=100",
+                                   quelle="gemessen")
+        page = _make_page(
+            url="/forum/viewtopic.php?id=100",
+            html=b'<html><body><div id="p12345">Beitrag</div></body></html>',
+        )
+        bundle = _make_bundle(page=page, post_page=post_page)
 
         bh      = BlobHandler(bundle, self.ctx, self.cfg)
         handler = _make_handler()
         bh.handle(handler, "/forum/viewtopic.php?pid=12345")
         env = json.loads(handler._captured["body"])
 
-        # get_page sollte mit der aufgelösten Topic-URL und method='GET' aufgerufen worden sein
-        # Beleg: Projektgespräch 2026-04-19 — get_page() hat neuen method-Parameter.
-        bundle.forensic.get_page.assert_called_with("/forum/viewtopic.php?id=100", method="GET")
+        # get_page mit der Seite des Beitrags und method='GET'.
+        # Beleg: Projektgespräch 2026-04-19 — get_page() hat method-Parameter.
+        bundle.forensic.get_page.assert_called_with(
+            "/forum/viewtopic.php?id=100", method="GET"
+        )
+        bundle.forensic.resolve_post_page.assert_called_with(12345)
         self.assertEqual(env["fragment"], "p12345")
+        self.assertEqual(env["fragment_source"], "gemessen")
 
     def test_T06_notify_aufloesen(self):
         """T06: ?notify=9001 wird über notify_aliases aufgelöst."""
-        from db.forensic_db import NotifyAliasRecord, PostAliasRecord
+        from db.forensic_db import NotifyAliasRecord, PostPageRecord
         notify_alias = NotifyAliasRecord(notify_id=9001, post_id=12345)
-        post_alias   = PostAliasRecord(post_id=12345, topic_id=100, forum_id=5)
-        page         = _make_page(url="/forum/viewtopic.php?id=100")
-
-        bundle = MagicMock()
-        bundle.forensic.resolve_notify_alias.return_value = notify_alias
-        bundle.forensic.resolve_post_alias.return_value   = post_alias
-        bundle.forensic.get_page.return_value = page
-        bundle.forensic.get_trace_elements_for_page.return_value = []
-        bundle.evidence.log_page_visit.return_value = 1
+        post_page    = PostPageRecord(post_id=12345, page_id=1,
+                                      url="/forum/viewtopic.php?id=100",
+                                      quelle="gemessen")
+        page = _make_page(
+            url="/forum/viewtopic.php?id=100",
+            html=b'<html><body><div id="p12345">Beitrag</div></body></html>',
+        )
+        bundle = _make_bundle(page=page, notify_alias=notify_alias,
+                              post_page=post_page)
 
         bh      = BlobHandler(bundle, self.ctx, self.cfg)
         handler = _make_handler()
@@ -452,3 +482,164 @@ class TestBlobHandlerOriginalMethod(unittest.TestCase):
             bundle, "/forum/viewtopic.php?id=42", method="POST"
         )
         self.assertFalse(env["in_scope"])
+
+
+# ===========================================================================
+# Tests: BlobHandler — Beitragsanker in mehrseitigen Themen (T23–T30)
+# Build 699 · Vorgang f5956e6b
+#
+# DER GEMELDETE FEHLER: Ein Verweis auf einen Beitrag, der auf Seite 2..n
+# eines Themas steht, lieferte stets die erste Seite. Sie enthaelt den
+# Beitrag nicht — der Anker lief ins Leere, und die Ermittlerin sah fremde
+# Beitraege an der Stelle, an der der belastende stehen sollte.
+#
+# ZWEI VERWEISFORMEN, BEIDE HIER GEPRUEFT:
+#   Form A '?pid=<post_id>'          — Benachrichtigungen, Trefferlisten
+#   Form B '?id=<topic>#p<post_id>'  — Verweise innerhalb des Forums
+# Form B loest KEINE Aliasaufloesung aus; sie wird allein von der Ankerprobe
+# nach dem BLOB-Lookup erfasst. Ohne eigenen Fall waere sie ungeprueft.
+# ===========================================================================
+
+class TestBlobHandlerAnkerSeite(unittest.TestCase):
+    """T23–T30: Auslieferung der Seite, die den Beitragsanker traegt."""
+
+    # Zwei Chunks EINES Themas. Der gesuchte Beitrag p777 steht nur im
+    # zweiten — genau die Lage aus der Fehlermeldung.
+    CHUNK1 = b'<html><body><div id="p100">erster</div></body></html>'
+    CHUNK2 = b'<html><body><div id="p777">gesuchter Beitrag</div></body></html>'
+
+    def setUp(self):
+        self.cfg = _setup_logging_and_config()
+        self.ctx = _make_context()
+
+    def tearDown(self):
+        reset_for_testing()
+
+    def _bundle_zwei_chunks(self, post_page=None):
+        """Bundle, dessen get_page() beide Chunks nach URL unterscheidet."""
+        seiten = {
+            "/forum/viewtopic.php?id=500":
+                _make_page(url="/forum/viewtopic.php?id=500", html=self.CHUNK1),
+            "/forum/viewtopic.php?id=500&p=2":
+                _make_page(url="/forum/viewtopic.php?id=500&p=2",
+                           html=self.CHUNK2),
+        }
+        bundle = _make_bundle(post_page=post_page)
+        bundle.forensic.get_page.side_effect = (
+            lambda url, method="GET": seiten.get(url)
+        )
+        return bundle
+
+    def _call(self, bundle, url, fragment=None):
+        bh = BlobHandler(bundle, self.ctx, self.cfg)
+        handler = _make_handler()
+        if fragment is None:
+            bh.handle(handler, url)
+        else:
+            bh.handle_with_fragment(handler, url, fragment=fragment)
+        return json.loads(handler._captured["body"])
+
+    def test_T23_pid_liefert_gemessene_seite(self):
+        """T23: '?pid=777' liefert Chunk 2 — die Seite, die den Beitrag traegt.
+
+        Quelle ist fdb.post_aliases.page, vom PostPageMeasurer des Preppers
+        per direkter Ankermitgliedschaft gemessen (aiw_sqlite_prepper Build
+        098/101). Der Webserver hat diese Messung bis Build 698 nicht gelesen.
+        """
+        from db.forensic_db import PostPageRecord
+        post_page = PostPageRecord(post_id=777, page_id=2,
+                                   url="/forum/viewtopic.php?id=500&p=2",
+                                   quelle="gemessen")
+        bundle = self._bundle_zwei_chunks(post_page=post_page)
+        env = self._call(bundle, "/forum/viewtopic.php?pid=777")
+
+        self.assertEqual(env["url_canonical"], "/forum/viewtopic.php?id=500&p=2")
+        self.assertIn('id="p777"', env["html"])
+        self.assertEqual(env["fragment"], "p777")
+        self.assertEqual(env["fragment_source"], "gemessen")
+
+    def test_T24_pid_ohne_belegbare_seite_wird_ausgewiesen(self):
+        """T24: Keine erfasste Seite traegt den Beitrag → Rueckfall auf die
+        erste Seite, aber AUSGEWIESEN als 'unaufgeloest' (Grundregel 1)."""
+        from db.forensic_db import PostAliasRecord
+        bundle = self._bundle_zwei_chunks(post_page=None)
+        bundle.forensic.resolve_post_alias.return_value = PostAliasRecord(
+            post_id=999, topic_id=500, forum_id=5
+        )
+        env = self._call(bundle, "/forum/viewtopic.php?pid=999")
+
+        self.assertEqual(env["url_canonical"], "/forum/viewtopic.php?id=500")
+        self.assertEqual(env["fragment_source"], "unaufgeloest")
+
+    def test_T25_topicanker_wird_auf_richtige_seite_umgeleitet(self):
+        """T25: '?id=500#p777' — der erste Chunk traegt den Anker nicht, also
+        wird die Seite ausgeliefert, die ihn traegt (Verweisform B)."""
+        from db.forensic_db import PostPageRecord
+        post_page = PostPageRecord(post_id=777, page_id=2,
+                                   url="/forum/viewtopic.php?id=500&p=2",
+                                   quelle="blob")
+        bundle = self._bundle_zwei_chunks(post_page=post_page)
+        env = self._call(bundle, "/forum/viewtopic.php?id=500", fragment="p777")
+
+        self.assertEqual(env["url_canonical"], "/forum/viewtopic.php?id=500&p=2")
+        self.assertIn('id="p777"', env["html"])
+        # 'blob' = hier nachgemessen, weil die Prepper-Messung fehlte.
+        self.assertEqual(env["fragment_source"], "nachgemessen")
+
+    def test_T26_vorhandener_anker_wird_nicht_umgeleitet(self):
+        """T26: Steht der Anker im BLOB, bleibt die Seite stehen — und es wird
+        gar nicht erst nach einer anderen gesucht."""
+        bundle = self._bundle_zwei_chunks(post_page=None)
+        env = self._call(bundle, "/forum/viewtopic.php?id=500", fragment="p100")
+
+        self.assertEqual(env["url_canonical"], "/forum/viewtopic.php?id=500")
+        self.assertEqual(env["fragment_source"], "bestaetigt")
+        bundle.forensic.resolve_post_page.assert_not_called()
+
+    def test_T27_keine_umleitung_ausserhalb_von_themenseiten(self):
+        """T27: Ein Anker '#p777' auf einer Nicht-Themenseite meint nicht
+        denselben Beitragscontainer — es wird nicht umgeleitet."""
+        page = _make_page(url="/forum/search.php?action=show_user_posts",
+                          html=b"<html><body>Trefferliste</body></html>")
+        bundle = _make_bundle(page=page, post_page=None)
+        env = self._call(bundle, "/forum/search.php?action=show_user_posts",
+                         fragment="p777")
+
+        self.assertEqual(env["url_canonical"],
+                         "/forum/search.php?action=show_user_posts")
+        self.assertIsNone(env["fragment_source"])
+        bundle.forensic.resolve_post_page.assert_not_called()
+
+    def test_T28_fehlender_blob_ist_unpruefbar(self):
+        """T28: html IS NULL (fetch_failed) belegt NICHT, dass der Beitrag
+        woanders steht — keine Umleitung, Ausweis 'unpruefbar'."""
+        page   = _make_page(url="/forum/viewtopic.php?id=500", html=None,
+                            http_status=0)
+        bundle = _make_bundle(page=page, post_page=None)
+        env = self._call(bundle, "/forum/viewtopic.php?id=500", fragment="p777")
+
+        self.assertTrue(env["fetch_failed"])
+        self.assertEqual(env["fragment_source"], "unpruefbar")
+        bundle.forensic.resolve_post_page.assert_not_called()
+
+    def test_T29_ohne_beitragsanker_kein_ausweis(self):
+        """T29: Seite ohne Beitragsanker → fragment_source ist None."""
+        bundle = self._bundle_zwei_chunks(post_page=None)
+        env = self._call(bundle, "/forum/viewtopic.php?id=500")
+        self.assertIsNone(env["fragment_source"])
+
+    def test_T30_notify_nutzt_seite_des_beitrags(self):
+        """T30: '?notify=' fuehrt ueber die post_id auf dieselbe Seitenwahl."""
+        from db.forensic_db import NotifyAliasRecord, PostPageRecord
+        post_page = PostPageRecord(post_id=777, page_id=2,
+                                   url="/forum/viewtopic.php?id=500&p=2",
+                                   quelle="gemessen")
+        bundle = self._bundle_zwei_chunks(post_page=post_page)
+        bundle.forensic.resolve_notify_alias.return_value = NotifyAliasRecord(
+            notify_id=9001, post_id=777
+        )
+        env = self._call(bundle, "/forum/viewtopic.php?notify=9001")
+
+        self.assertEqual(env["url_canonical"], "/forum/viewtopic.php?id=500&p=2")
+        self.assertEqual(env["fragment"], "p777")
+        self.assertEqual(env["fragment_source"], "gemessen")
