@@ -13,7 +13,15 @@
 #          [--person-id N] [--period "KW 29/2026"]
 #          [--behoerde ..] [--aktenzeichen ..] [--actor ..]
 #
-# Version: v0.7.445 · Build: 445 · 2026-07-19
+# BUILD 702 (Vorgang ff7e80ab): Faellt der Erzeugungsrahmen ganz oder in
+#   Teilen aus, wird das auf der Fehlerausgabe benannt und im Bericht
+#   gekennzeichnet. Der Rueckgabewert bleibt 0 und der Bericht wird
+#   geschrieben (Entscheidung Alex, 12.08.2026) — die Begruendung steht im
+#   Kopf von management/export/rahmen_meldung.py. Die ausfuehrliche
+#   Herleitung steht im Kopf von forecast_report_admin.py; beide Werkzeuge
+#   trugen denselben Fehler und sind deshalb gleich behandelt.
+#
+# Version: v0.8.702 · Build: 702 · 2026-08-12
 # =============================================================================
 
 import argparse
@@ -27,6 +35,10 @@ from management.stats.status_report import (
     build_status_report_html, build_status_report_pdf, StatusReportUnavailable,
 )
 from management.export.export_envelope import ExportContext, DEFAULT_KLASSIFIKATION
+# Build 702 (Vorgang ff7e80ab): ein ausgefallener Erzeugungsrahmen wird
+# benannt, statt still durch Ersatzwerte ersetzt zu werden.
+from management.export.rahmen_befund import FELD_RAHMEN, RahmenBefund
+from management.export.rahmen_meldung import melde_rahmen_befunde
 from management.help import cli_epilog  # noqa: E402
 # Build 644: die Vorrangregel Argument > config.yaml > Vorgabewert
 # steht seit Build 643 an EINER Stelle (Ticket 15429c75).
@@ -99,20 +111,34 @@ def main(argv=None) -> int:
     con.row_factory = sqlite3.Row
     try:
         stats = StatsRepo(con).compute(person_id=args.person_id)
+        # BUILD 702 (Vorgang ff7e80ab) — DER ERSATZRAHMEN IST NICHT MEHR STUMM.
+        # Wortgleich zu forecast_report_admin.py, weil beide Werkzeuge
+        # denselben Fehler trugen; die ausfuehrliche Begruendung steht dort.
+        # Kurz: dieser Zweig fasst praktisch nur einen Fehlschlag des import
+        # darunter — build_export_context wirft nie (RF06). Die haeufigen
+        # Ausfaelle treten INNERHALB des Builders auf und kommen als
+        # rahmen_befunde zurueck; die Meldung unten deckt beide Wege ab.
         try:
             from management.export.context_builder import build_export_context
             context = build_export_context(
                 con=con, db_path=db_path, behoerde=args.behoerde,
                 aktenzeichen=args.aktenzeichen or "StA-Statusbericht",
                 actor=args.actor, now_utc=generated)
-        except Exception:  # pragma: no cover - Rahmen-Fallback
+        except Exception as exc:  # Rahmen-Fallback
             context = ExportContext(
                 behoerde=args.behoerde or "Polizei NRW",
                 aktenzeichen=args.aktenzeichen or "StA-Statusbericht",
                 ersteller=args.actor or "unbekannt", build_number=0,
-                generated_at=generated, klassifikation=DEFAULT_KLASSIFIKATION)
+                generated_at=generated, klassifikation=DEFAULT_KLASSIFIKATION,
+                rahmen_befunde=(RahmenBefund(
+                    FELD_RAHMEN,
+                    "Erzeugungsrahmen nicht bildbar: %s" % exc),))
     finally:
         con.close()
+
+    # Vor dem Schreiben der Datei — faellt das Schreiben aus, ist die Auskunft
+    # ueber den Rahmen bereits heraus.
+    melde_rahmen_befunde("[status_report]", context)
 
     if args.format == "html":
         Path(args.out).write_text(

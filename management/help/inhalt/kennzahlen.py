@@ -20,7 +20,13 @@
 #
 # REGEL H-1 (Anwendersprache), REGEL H-0 (fallinhaltsfrei).
 #
-# Version: v0.8.602 - Build: 602 - 2026-07-31
+# Build 702 (Vorgang ff7e80ab): Das Kapitel "stats" sichert unter "Grenzen und
+#   Zusicherungen" zu, dass eine nicht ermittelbare Angabe des
+#   Erzeugungsvermerks als solche dasteht. _STAND bleibt 602 - er gilt fuer
+#   ALLE sechs Kapitel dieser Datei, und fuenf davon sind unberuehrt (dieselbe
+#   Handhabung wie in Build 698 bei ueberblick.py).
+#
+# Version: v0.8.602 - Build: 602 - 2026-07-31 (Ergaenzung Build 702)
 # =============================================================================
 
 from __future__ import annotations
@@ -188,6 +194,18 @@ STATS = Sichthilfe(
                 "Alle Zahlen gelten für den angezeigten Umfang. Wer sie "
                 "weitergibt, gibt den Umfang mit weiter — sonst behauptet die "
                 "Zahl mehr, als sie deckt.",
+                # Build 702 (Vorgang ff7e80ab). Der Satz gehoert in die
+                # ZUSICHERUNGEN und nicht in die Ablaeufe: er sagt nicht, was
+                # zu tun ist, sondern worauf man sich verlassen kann - naemlich
+                # darauf, dass eine fehlende Angabe im Vermerk als fehlend
+                # dasteht und nicht als Wert. Vorher trug ein Bericht in dieser
+                # Lage Buildnummer 0 und den Ersteller "unbekannt", und beides
+                # sah aus wie eine regulaere Angabe.
+                "Kann eine Angabe des Erzeugungsvermerks nicht ermittelt "
+                "werden, steht in der betreffenden Zeile „nicht ermittelbar“ "
+                "und darunter der Grund. Der Bericht entsteht trotzdem, und "
+                "das Werkzeug sagt es beim Erzeugen. Ein Vermerk ohne solche "
+                "Zeile ist vollständig.",
             ),
         ),
         Abschnitt(

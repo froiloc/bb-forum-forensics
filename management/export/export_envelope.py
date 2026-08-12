@@ -26,16 +26,36 @@
 #   beliebiger UTF-8-Text aus multilingualen Quellen) werden mit html.escape()
 #   entschaerft. UTF-8 bleibt erhalten (escape kodiert nur < > & " ').
 #
-# Version: v0.7.469 · Build: 469 · 2026-07-20
+# BUILD 702 (Vorgang ff7e80ab) — DER VERMERK SAGT JETZT AUCH, WAS IHM FEHLT:
+#   Der Erzeugungsvermerk fuehrt seit diesem Build die 'rahmen_befunde' mit
+#   (management/export/rahmen_befund.py). Konnte eine Angabe beim Zusammenbau
+#   nicht ermittelt werden, steht das in der betroffenen ZEILE ('Werkzeug-Build:
+#   nicht ermittelbar' statt 'Werkzeug-Build: 0') und der Grund darunter.
+#   Vorher trug der Vermerk in dieser Lage die Ausfallwerte 0 und 'unbekannt',
+#   die im fertigen Dokument wie regulaere Angaben aussehen — ein still
+#   uebersprungener Beleg (GR1) an der Stelle, die die Herkunft eines
+#   Abgabedokuments belegen soll.
+#
+#   OHNE BEFUND AENDERT SICH NICHTS. Das ist Absicht und nicht nur Ruecksicht
+#   auf bestehende Tests: der Regelfall ist der haeufige Fall, und ein Vermerk,
+#   der auch dann ueber sich selbst spricht, wenn nichts fehlt, stumpft ab.
+#
+# Version: v0.8.702 · Build: 702 · 2026-08-12
 # =============================================================================
 
 from __future__ import annotations
 
 import html
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Optional, Tuple
 
 from management.export.checksum import content_sha256_bytes, content_sha256_text
+from management.export.rahmen_befund import (
+    FELD_BUILD,
+    FELD_ERSTELLER,
+    FELD_RAHMEN,
+    RahmenBefund,
+)
 
 
 # Standard-Klassifikation des Projekts (aus den Bauplan-Koepfen uebernommen).
@@ -64,6 +84,19 @@ class ExportContext:
       klassifikation  — Vertraulichkeitsvermerk (Default s. o.).
       anzeigename     — optionaler AD-Anzeigename, nur zur Anzeige neben dem
                         SAMAccountName (Beleg identity.py: display_name).
+      rahmen_befunde  — (Build 702, Vorgang ff7e80ab) die Ausfaelle, die beim
+                        Zusammenbau dieses Rahmens aufgetreten sind. LEER =
+                        alle Angaben sind ermittelt. Nicht leer = mindestens
+                        eine Angabe ist ein Ersatzwert; welche und warum, sagt
+                        der jeweilige RahmenBefund. Das Feld traegt die
+                        Auskunft mit dem Rahmen mit, statt sie am Ort des
+                        Ausfalls auszugeben — nur der Aufrufer weiss, wohin
+                        eine Meldung gehoert (Fehlerausgabe, Protokoll,
+                        HTTP-Antwort).
+
+                        TUPEL, nicht Liste: der ExportContext ist frozen, und
+                        eine veraenderliche Vorgabe waere es nur dem Namen
+                        nach.
     """
     behoerde: str
     aktenzeichen: str
@@ -75,6 +108,21 @@ class ExportContext:
     chain_tip_hash: Optional[str] = None
     klassifikation: str = DEFAULT_KLASSIFIKATION
     anzeigename: Optional[str] = None
+    rahmen_befunde: Tuple[RahmenBefund, ...] = field(default_factory=tuple)
+
+    def hat_befund(self, feld: str) -> bool:
+        """
+        True, wenn die Angabe 'feld' nicht ermittelt werden konnte.
+
+        FELD_RAHMEN schlaegt auf JEDE Angabe durch: konnte der Rahmen als
+        Ganzes nicht gebildet werden, ist keine einzelne Angabe belastbar —
+        auch dann nicht, wenn zufaellig ein plausibler Wert dasteht.
+        """
+        return any(b.feld in (feld, FELD_RAHMEN) for b in self.rahmen_befunde)
+
+    def rahmen_vollstaendig(self) -> bool:
+        """True, wenn der Erzeugungsvermerk ohne Ersatzwerte zustande kam."""
+        return not self.rahmen_befunde
 
 
 class ExportEnvelope:
@@ -119,17 +167,48 @@ class ExportEnvelope:
         """
         Der Erzeugungsvermerk als Liste von Klartext-Zeilen (Reihenfolge stabil).
         Basis fuer header/footer in beiden Ausgabeformen.
+
+        BUILD 702 (Vorgang ff7e80ab) — ZWEI AENDERUNGEN, BEIDE NUR IM AUSFALL:
+        (1) Eine nicht ermittelte Angabe wird IN IHRER ZEILE als solche
+            benannt. Vorher stand dort der Ersatzwert (Buildnummer 0,
+            Ersteller 'unbekannt'), der sich von einer echten Angabe nicht
+            unterscheiden laesst. Wer den Vermerk liest, um die Herkunft eines
+            Abgabedokuments zu pruefen, bekaeme so eine Falschauskunft.
+        (2) Unter den Angaben folgt je Ausfall EINE Befundzeile mit dem Grund.
+            Die Zeilen stehen am ENDE und in der Reihenfolge ihres Auftretens:
+            der Vermerk behaelt seinen gewohnten Aufbau, und das Zusaetzliche
+            steht dort, wo es niemanden ueberliest.
+
+        Bei vollstaendigem Rahmen ist die Ausgabe Zeichen fuer Zeichen die aus
+        Build 469.
+
+        Der ERSTELLER wird anders behandelt als die Buildnummer, und das ist
+        kein Versehen: scheitert die Aufloesung, steht dort immer noch der
+        Rohwert aus --actor bzw. der OS-Identitaet (Beleg context_builder.
+        _resolve_actor). Dieser Name ist nicht falsch, er ist nur UNGEPRUEFT.
+        Ihn durch 'nicht ermittelbar' zu ersetzen, wuerde eine vorhandene Spur
+        vernichten; der Zusatz kennzeichnet sie stattdessen.
         """
         c = self._ctx
         ersteller = c.ersteller
         if c.anzeigename:
             ersteller = "%s (%s)" % (c.anzeigename, c.ersteller)
-        return [
+        if c.hat_befund(FELD_ERSTELLER):
+            ersteller = "%s [nicht aufgeloest]" % ersteller
+
+        if c.hat_befund(FELD_BUILD):
+            build_zeile = "Werkzeug-Build: nicht ermittelbar"
+        else:
+            build_zeile = "Werkzeug-Build: %d" % c.build_number
+
+        lines = [
             "Erstellt von: %s" % ersteller,
             "Erstellt am: %s" % c.generated_at,
-            "Werkzeug-Build: %d" % c.build_number,
+            build_zeile,
             self.integrity_line(),
         ]
+        lines.extend(b.als_zeile() for b in c.rahmen_befunde)
+        return lines
 
     # -- Aktenkopf -----------------------------------------------------------
 
