@@ -3269,27 +3269,21 @@
       "description": "Befund aus der Ausarbeitung der CLI-Hilfe (Baustelle H, H18, Build 613), auf Nachfrage von mc als eigener Vorgang eroeffnet.\n\nDER BEFUND: Beide Berichtswerkzeuge fangen einen Ausfall des Erzeugungsrahmens mit einem breiten 'except Exception' ab und setzen einen ERSATZKONTEXT ein - Buildnummer 0, Ersteller 'unbekannt'. Der Bericht wird danach ganz normal geschrieben, der Rueckgabewert ist 0, und es erscheint KEINE Meldung, auch nicht auf der Fehlerausgabe.\n\n  * management/stats/forecast_report_admin.py, Z. 110-115\n  * management/stats/status_report_admin.py, Z. 89-94\n\nWARUM DAS IN DIESEM PROJEKT WIEGT: Diese Berichte sind Abgabedokumente. Der Erzeugungsvermerk ist der Teil, ueber den sich spaeter nachvollziehen laesst, WER den Bericht mit WELCHEM Stand erzeugt hat. Faellt er aus, entsteht ein Dokument, das aussieht wie jedes andere, dessen Herkunftsangabe aber leer ist - und niemand wird darauf hingewiesen. Wer den Bericht weitergibt, muesste von sich aus auf die Idee kommen, den Vermerk zu lesen.\n\nZUM VERGLEICH: management/export/export_admin.py macht es an der entsprechenden Stelle richtig - eine gebrochene Belegkette und eine nicht aufloesbare Identitaet werden dort ausdruecklich auf der Fehlerausgabe vermerkt (Z. 116-119, 145-152). Der Rueckgabewert bleibt dort zwar ebenfalls 0, aber die Auskunft ist da.\n\nIn den Katalogeintraegen beider Werkzeuge steht der Sachverhalt seit Build 613 als Warnung. Das ist eine Notloesung: eine Hilfe kann darauf hinweisen, dass man etwas nachsehen muss, aber sie ersetzt keine Meldung zur Laufzeit.",
       "expected_behavior": "Faellt der Erzeugungsrahmen aus, wird das auf der Fehlerausgabe benannt - mit dem Grund und mit dem Hinweis, dass der erzeugte Bericht keinen belastbaren Erzeugungsvermerk traegt. Zusaetzlich waere zu erwaegen, den Ersatzvermerk IM BERICHT als solchen zu kennzeichnen ('Erzeugungsvermerk nicht ermittelbar') statt Buildnummer 0 und 'unbekannt' einzutragen, die wie ein regulaerer Wert aussehen.",
       "actual_behavior": "Der Bericht entsteht mit Buildnummer 0 und Ersteller 'unbekannt'; Rueckgabewert 0, keine Meldung.",
-      "status": "resolved",
+      "status": "open",
       "priority": "medium",
       "severity": "major",
-      "assigned_to": "Claude",
-      "related_to": [
-        "70641ff9-10c7-48e5-98e2-a543db88cc1a"
-      ],
-      "resolved_in_version": "0.8.702",
-      "target_version": "0.8.702",
+      "assigned_to": "",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
       "environment": {
         "python_version": "3.14"
       },
       "tags": [
-        "bericht",
-        "build702",
         "cli",
-        "erzeugungsvermerk",
-        "export",
-        "forecast_report_admin",
-        "gr1",
+        "bericht",
         "nachvollziehbarkeit",
+        "forecast_report_admin",
         "status_report_admin"
       ],
       "attachments": [],
@@ -3307,14 +3301,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eingang_claude_Build614.json"
-        },
-        {
-          "timestamp": "2026-08-12T16:34:47+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "BEHOBEN IN BUILD 702.\n\n(1) DER BEFUND WAR RICHTIG, ABER DIE FUNDSTELLE FUEHRT IN DIE IRRE. Die beiden benannten except-Zweige (forecast_report_admin Z. 110-115, status_report_admin Z. 89-94) sind praktisch unerreichbar: build_export_context faengt JEDE eigene Fehlerquelle selbst ab und wirft nie - das steht so in seinem Kopf und wird von RF06 festgehalten. Was in diesen Zweigen ankommen kann, ist der Fehlschlag des import in der Zeile darueber. Buildnummer 0 und Ersteller 'unbekannt' entstehen dagegen INNERHALB des Builders (_build_number Z. 41-46, _resolve_actor Z. 63-71) - und zwar fuer ALLE NEUN Aufrufer, einschliesslich der drei Endpunkte in management_app.py. Eine Korrektur nur an den zwei Zweigen haette den Vorgang geschlossen, ohne den Fehler zu beheben.\n\n(2) DER GRUND WIRD NICHT MEHR VERWORFEN. Neu: management/export/rahmen_befund.py - RahmenBefund(feld, grund) haelt fest, WELCHE Angabe fehlt und WARUM. Feldschluessel statt Freitext, weil der Vermerk die betroffene ZEILE kennzeichnen muss und 'unbekannt' als --actor auch legitim uebergeben werden kann; aus einem Text laesst sich das nur durch Beschnueffeln der Werte ableiten. Die drei Absicherungen im context_builder geben ihren Befund jetzt zurueck; der Builder wirft weiterhin nie (EV09).\n\n(3) DER BUILDER GIBT SELBST NICHTS AUS. Er ist die gemeinsame Quelle fuer die CLIs UND fuer den Management-Server; ein print() dort schriebe im Serverbetrieb in einen Datenstrom, der ihm nicht gehoert. Er stellt die Auskunft bereit, ueber ihren Weg entscheidet der Aufrufer. Neu dafuer: management/export/rahmen_meldung.py (melde_rahmen_befunde) - EINE Stelle, damit dieselbe Lage nicht weiter je Werkzeug verschieden klingt (export_admin meldete, glossary/ausschleus meldeten nur die Verbindung, die beiden Berichtswerkzeuge gar nichts).\n\n(4) IM BERICHT WIRD DER ERSATZWERT GEKENNZEICHNET (zweiter Teil des erwarteten Verhaltens). ExportEnvelope.erzeugungsvermerk_lines schreibt 'Werkzeug-Build: nicht ermittelbar' statt 'Werkzeug-Build: 0' und haengt je Befund den Grund an. Das ist die gemeinsame Engstelle aller Exporte (HTML-Fuss, Textfuss, beide PDF-Berichte, XLSX, Staging-Manifest) - die Kennzeichnung wirkt damit fuer alle neun Aufrufer, nicht nur fuer die beiden Werkzeuge.\n\n(5) DER ERSTELLER WIRD ANDERS BEHANDELT ALS DIE BUILDNUMMER. Scheitert die Aufloesung, steht dort weiterhin der Rohwert (--actor bzw. OS-Identitaet); er ist nicht falsch, nur UNGEPRUEFT. Ihn durch 'nicht ermittelbar' zu ersetzen wuerde eine vorhandene Spur vernichten. Er bekommt deshalb den Zusatz '[nicht aufgeloest]'.\n\n(6) DER RUECKGABEWERT BLEIBT 0 und der Bericht wird geschrieben (Entscheidung Alex, 12.08.2026) - derselbe Weg wie bei export_admin. Ein geschriebenes Dokument nachtraeglich zu verwerfen, weil sein Vermerk unvollstaendig ist, wuerde die Auskunft mitvernichten.\n\n(7) OHNE BEFUND AENDERT SICH NICHTS. Der Vermerk ist im Regelfall Zeichen fuer Zeichen der aus Build 469 (EV02, EV14). Ein Vermerk, der auch dann ueber sich selbst spricht, wenn nichts fehlt, stumpft ab - und jede Aenderung dort haette alle bestehenden Abgabedokumente von den kuenftigen unterscheidbar gemacht, ohne dass sich an der Sache etwas geaendert haette.\n\n(8) DIE HILFE IST NACHGEZOGEN. Die Warnung in den Katalogeintraegen beider Werkzeuge stand seit Build 613 ausdruecklich als NOTLOESUNG dort ('eine Hilfe ersetzt keine Meldung zur Laufzeit'). Sie beschreibt jetzt das Verfahren statt einer Luecke; EV16 verhindert, dass die alte Behauptung stehenbleibt. Dazu eine Zusicherung im Kapitel 'stats' unter 'Grenzen und Zusicherungen'.\n\n(9) EIN BISHER STILLER ZUSTAND WIRD SICHTBAR, und das ist zu wissen: wer die Werkzeuge OHNE --actor unter einem OS-Konto faehrt, das keinen person-Datensatz hat, bekommt jetzt eine Warnung. Der Vermerk sagte in dieser Lage schon immer 'unbekannt' - nur eben stumm. Der Hinweis auf --actor steht jetzt im CLI-Katalog beider Werkzeuge.\n\n(10) GEGENPROBE AM LEBENDEN WERKZEUG (Demo-Bestand mit allen Migrationen): Regelfall mit --actor -> keine Meldung, 'Werkzeug-Build: 698'. Identitaet nicht aufloesbar -> zwei Zeilen auf der Fehlerausgabe, 'Erstellt von: unbekannt [nicht aufgeloest]' plus Grundzeile im Bericht, rc 0. build.json unlesbar -> zwei Zeilen, 'Werkzeug-Build: nicht ermittelbar' plus Grundzeile, rc 0.\n\n(11) NEUE TESTS: tests/test_erzeugungsvermerk_befunde.py, 22 Faelle (EV01-EV16). Gegen den Stand aus Build 698 gefahren: 15 fallen, 5 bestehen - und die 5 sind genau die, die den unveraenderten Regelfall festhalten. EV12/EV13/EV15 fahren die Werkzeuge als GANZES ueber main(), weil der beanstandete Weg (rc 0, Datei da, keine Meldung) auf der Ebene einzelner Funktionen nicht sichtbar waere.\n\n(12) REGRESSION 702: Python 3.11 im Baucontainer 3470 gruen, 2 rot (PY08/PY10 - containerbedingt, siehe Build 698: Python 3.11 kann die PEP-701-f-string in editor/html_renderer.py:349 nicht lesen; sie fallen ebenso auf unberuehrtem origin/master). Zusaetzlich gegen ein echtes Python 3.14 gefahren: dort sind PY08/PY10 gruen, und der Fehlerbestand ist Zeile fuer Zeile derselbe wie VOR der Aenderung. JavaScript 130 Dateien / 1866 Faelle gruen.\n\n(13) MIGRATIONSVORBEHALT (ab 01.07.2026): NICHT BERUEHRT. Kein Schema, keine Migration, kein Schreibzugriff. Alle geaenderten Werkzeuge oeffnen coordinator.db weiterhin read-only (mode=ro).\n\n(14) OFFEN UND BENANNT: fuenf weitere CLIs (glossary_admin, ausschleus_admin, workload_admin, dashboard_admin, support_overview_admin) bekommen die Kennzeichnung IM DOKUMENT ueber den Envelope automatisch, melden die Befunde aber noch nicht auf ihrer Fehlerausgabe. Als eigener Vorgang aufgenommen (70641ff9-10c7-48e5-98e2-a543db88cc1a) statt hier mitgemacht, weil parallel an anderen Vorgaengen gearbeitet wird und jede zusaetzlich beruehrte Datei die Kollisionsflaeche vergroessert."
         }
       ]
     },
@@ -9116,55 +9102,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Build697.json"
-        }
-      ]
-    },
-    {
-      "id": "70641ff9-10c7-48e5-98e2-a543db88cc1a",
-      "type": "improvement",
-      "title": "Fuenf Export-CLIs melden Rahmenbefunde noch nicht zur Laufzeit",
-      "affected_version": "0.8.702",
-      "reporter": "Claude",
-      "reported_at": "2026-08-12T16:34:47+00:00",
-      "prerequisites": "Aufruf von glossary_admin, ausschleus_admin, workload_admin, dashboard_admin oder support_overview_admin, waehrend eine Angabe des Erzeugungsvermerks nicht ermittelbar ist (unlesbare build.json, nicht aufloesbare Identitaet, fehlendes audit_log)",
-      "description": "Abgeleitet aus Vorgang ff7e80ab (Build 702), auf Weisung von Alex als eigener Vorgang eroeffnet.\n\nDER STAND NACH BUILD 702: build_export_context haelt einen ausgefallenen Teil des Erzeugungsrahmens als RahmenBefund fest, und der ExportEnvelope weist ihn IM DOKUMENT aus. Das wirkt fuer alle neun Aufrufer - auch fuer die fuenf unten. Ein von ihnen erzeugtes Dokument traegt also bereits 'Werkzeug-Build: nicht ermittelbar' statt 'Werkzeug-Build: 0'.\n\nWAS FEHLT: die Meldung ZUR LAUFZEIT. melde_rahmen_befunde (management/export/rahmen_meldung.py) ist gebaut und in Betrieb, aber nur in den beiden Berichtswerkzeugen aufgerufen. Die folgenden fuenf rufen es nicht:\n\n  * management/stats/glossary_admin.py, Z. 71-90\n  * management/export/ausschleus_admin.py, Z. 72-91\n  * management/workload/workload_admin.py, Z. 119-125\n  * management/dashboard/dashboard_admin.py, Z. 116-122\n  * management/support_overview/support_overview_admin.py, Z. 159-165\n\nZWEI VERSCHIEDENE LAGEN: glossary_admin und ausschleus_admin melden bereits, wenn die DATENBANK nicht lesbar ist - aber nicht, wenn der Rahmen aus einem der drei anderen Gruende unvollstaendig bleibt. workload_admin, dashboard_admin und support_overview_admin melden in dieser Lage gar nichts.\n\nWARUM ES NICHT IN BUILD 702 MITGEMACHT WURDE: an anderen Vorgaengen wird parallel gearbeitet. Der Umfang von Build 702 war mit Alex auf export_envelope.py, context_builder.py und die beiden Berichtswerkzeuge festgelegt; fuenf zusaetzlich beruehrte Dateien haetten die Kollisionsflaeche ohne Not vergroessert.\n\nAUFWAND: je Datei eine Zeile (Aufruf) plus ein Import. Die Praefixe stehen in den Werkzeugen bereits fest ('[glossary]', '[ausschleus]', '[workload_admin]', '[dashboard_admin]', '[support_overview_admin]').",
-      "expected_behavior": "Alle fuenf Werkzeuge rufen melde_rahmen_befunde mit ihrem Werkzeug-Praefix auf, bevor sie die Ausgabedatei schreiben - derselbe Wortlaut und derselbe Umfang wie bei den beiden Berichtswerkzeugen. Der Rueckgabewert bleibt in allen Faellen unveraendert.",
-      "actual_behavior": "Das Dokument kennzeichnet den Ersatzwert bereits; auf der Fehlerausgabe erscheint dazu nichts. Wer den Lauf beobachtet, erfaehrt vom unvollstaendigen Vermerk erst, wenn er das fertige Dokument aufschlaegt.",
-      "status": "open",
-      "priority": "low",
-      "severity": "minor",
-      "assigned_to": "",
-      "related_to": [
-        "ff7e80ab-a934-417f-8482-e750db667984"
-      ],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "python_version": "3.14"
-      },
-      "tags": [
-        "cli",
-        "export",
-        "erzeugungsvermerk",
-        "nachvollziehbarkeit",
-        "gr1",
-        "build702"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-12T16:34:47+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Eintrag erstellt auf Weisung von Alex, abgeleitet aus Vorgang ff7e80ab (Build 702)."
-        },
-        {
-          "timestamp": "2026-08-12T17:12:01.172772+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build702.json"
         }
       ]
     }
