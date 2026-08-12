@@ -809,5 +809,247 @@ class TestResolvePostsProgress(unittest.TestCase):
                 pass
 
 
+class TestResolvePostPage(unittest.TestCase):
+    """
+    Build 699 (Vorgang f5956e6b): resolve_post_page() — der Beitrag und die
+    Seite, die ihn TRAEGT.
+
+    R01 — gemessene Seite (post_aliases.page) wird geliefert
+    R02 — die Basis-URL wird abgeschnitten (Lookup-Form von get_page)
+    R03 — page_resolved=0 → Nachmessung im BLOB findet den richtigen Chunk
+    R04 — Nachmessung erkennt auch den inneren Anker id="pp<id>"
+    R05 — Nachmessung: bei Mehrfachvorkommen gewinnt der niedrigste Chunk
+    R06 — kein Chunk traegt den Anker → None (kein Raten, Grundregel 1)
+    R07 — unbekannte post_id → None
+    R08 — post_aliases ohne page-Spalten (Schema v1) → Nachmessung greift
+    R09 — die Nachmessung verwechselt topic_id=5 nicht mit 50 oder 512
+    R10 — post_aliases.page zeigt ins Leere → Nachmessung uebernimmt
+    R11 — Chunk mit html IS NULL gilt nicht als Treffer
+    """
+
+    # p777 steht NUR im zweiten Chunk — die Lage aus der Fehlermeldung.
+    CHUNK1 = b'<html><body><div id="p100">erster</div></body></html>'
+    CHUNK2 = b'<html><body><div id="p777">gesuchter Beitrag</div></body></html>'
+
+    def setUp(self):
+        _setup_test_logging()
+        self.fdb_path = tempfile.mktemp(suffix=".db")
+
+    def tearDown(self):
+        reset_for_testing()
+        try:
+            os.unlink(self.fdb_path)
+        except OSError:
+            pass
+
+    # -- Aufbau ------------------------------------------------------------
+    def _baue(self, seiten, post_aliases, meta=None, mit_page_spalten=True):
+        """
+        Legt eine fdb an und liefert eine ForensicDb darauf.
+
+        seiten:        Liste (url_canonical, html|None)
+        post_aliases:  Liste (post_id, topic_id, forum_id, page|None, resolved)
+                       bzw. ohne die letzten beiden bei mit_page_spalten=False
+        meta:          dict fuer forensic_meta (z. B. protocol/domainname)
+        """
+        con = sqlite3.connect(self.fdb_path)
+        pa_schema = (
+            "CREATE TABLE post_aliases (post_id INTEGER PRIMARY KEY, "
+            "topic_id INTEGER NOT NULL, forum_id INTEGER NOT NULL, "
+            "page INTEGER, page_resolved INTEGER NOT NULL DEFAULT 0);"
+            if mit_page_spalten else
+            "CREATE TABLE post_aliases (post_id INTEGER PRIMARY KEY, "
+            "topic_id INTEGER NOT NULL, forum_id INTEGER NOT NULL);"
+        )
+        con.executescript(
+            "CREATE TABLE forensic_meta (key TEXT PRIMARY KEY, value TEXT);"
+            "CREATE TABLE pages (id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "url_canonical TEXT NOT NULL, html BLOB, "
+            "fetched_at INTEGER NOT NULL, http_status INTEGER NOT NULL, "
+            "scrape_context TEXT NOT NULL DEFAULT 'user', "
+            "method TEXT NOT NULL DEFAULT 'GET');"
+            "CREATE TABLE page_aliases (url_raw TEXT PRIMARY KEY, "
+            "page_id INTEGER NOT NULL);"
+            + pa_schema
+        )
+        for key, value in (meta or {}).items():
+            con.execute("INSERT INTO forensic_meta VALUES (?, ?)", (key, value))
+        for url, html in seiten:
+            con.execute(
+                "INSERT INTO pages (url_canonical, html, fetched_at, http_status) "
+                "VALUES (?, ?, 1700000000, 200)", (url, html),
+            )
+        for zeile in post_aliases:
+            platzhalter = ",".join("?" * len(zeile))
+            con.execute(
+                f"INSERT INTO post_aliases VALUES ({platzhalter})", zeile
+            )
+        con.commit()
+        con.close()
+
+        self.con = sqlite3.connect(":memory:")
+        self.con.row_factory = sqlite3.Row
+        self.con.execute(f"ATTACH DATABASE '{self.fdb_path}' AS fdb")
+        self.addCleanup(self.con.close)
+        return ForensicDb(self.con)
+
+    def _zwei_chunks(self, post_aliases, meta=None, mit_page_spalten=True):
+        return self._baue(
+            [("/forum/viewtopic.php?id=500",     self.CHUNK1),
+             ("/forum/viewtopic.php?id=500&p=2", self.CHUNK2)],
+            post_aliases, meta=meta, mit_page_spalten=mit_page_spalten,
+        )
+
+    # -- Faelle ------------------------------------------------------------
+    def test_R01_gemessene_seite(self):
+        fdb = self._zwei_chunks([(777, 500, 5, 2, 1)])
+        treffer = fdb.resolve_post_page(777)
+        self.assertIsNotNone(treffer)
+        self.assertEqual(treffer.page_id, 2)
+        self.assertEqual(treffer.url, "/forum/viewtopic.php?id=500&p=2")
+        self.assertEqual(treffer.quelle, "gemessen")
+
+    def test_R02_basis_url_wird_abgeschnitten(self):
+        """R02: get_page() sucht auf der basisbereinigten Adresse — die
+        gelieferte url muss genau diese Form haben, sonst faende der
+        anschliessende Lookup die Seite nicht."""
+        basis = "http://alice4nonion.onion"
+        fdb = self._baue(
+            [(f"{basis}/forum/viewtopic.php?id=500",     self.CHUNK1),
+             (f"{basis}/forum/viewtopic.php?id=500&p=2", self.CHUNK2)],
+            [(777, 500, 5, 2, 1)],
+            meta={"protocol": "http", "domainname": "alice4nonion.onion"},
+        )
+        treffer = fdb.resolve_post_page(777)
+        self.assertEqual(treffer.url, "/forum/viewtopic.php?id=500&p=2")
+        # Gegenprobe: unter genau dieser Adresse findet get_page() den BLOB.
+        self.assertIsNotNone(fdb.get_page(treffer.url))
+
+    def test_R03_nachmessung_bei_unaufgeloester_spalte(self):
+        fdb = self._zwei_chunks([(777, 500, 5, None, 0)])
+        treffer = fdb.resolve_post_page(777)
+        self.assertIsNotNone(treffer)
+        self.assertEqual(treffer.url, "/forum/viewtopic.php?id=500&p=2")
+        self.assertEqual(treffer.quelle, "blob")
+
+    def test_R04_innerer_anker_zaehlt(self):
+        """R04: Der Renderpfad viewtopic0 Z.975 setzt id="pp<id>" — derselbe
+        Beitrag, andere Schreibweise. Beleg: post_page_measurer.py."""
+        fdb = self._baue(
+            [("/forum/viewtopic.php?id=500",     self.CHUNK1),
+             ("/forum/viewtopic.php?id=500&p=2",
+              b'<html><body><div id="pp777">x</div></body></html>')],
+            [(777, 500, 5, None, 0)],
+        )
+        treffer = fdb.resolve_post_page(777)
+        self.assertEqual(treffer.url, "/forum/viewtopic.php?id=500&p=2")
+
+    def test_R05_niedrigster_chunk_gewinnt(self):
+        """R05: StickFP/Umfragen wiederholen den ersten Beitrag oben auf jedem
+        Folge-Chunk. Heimat ist der niedrigste — dieselbe Regel wie im
+        PostPageMeasurer, damit Vor- und Nachmessung uebereinstimmen."""
+        wiederholt = b'<html><body><div id="p100">erster</div></body></html>'
+        fdb = self._baue(
+            [("/forum/viewtopic.php?id=500&p=3", wiederholt),
+             ("/forum/viewtopic.php?id=500",     wiederholt),
+             ("/forum/viewtopic.php?id=500&p=2", wiederholt)],
+            [(100, 500, 5, None, 0)],
+        )
+        treffer = fdb.resolve_post_page(100)
+        self.assertEqual(treffer.url, "/forum/viewtopic.php?id=500")
+
+    def test_R06_kein_chunk_traegt_den_anker(self):
+        fdb = self._zwei_chunks([(999, 500, 5, None, 0)])
+        self.assertIsNone(fdb.resolve_post_page(999))
+
+    def test_R07_unbekannte_post_id(self):
+        fdb = self._zwei_chunks([(777, 500, 5, 2, 1)])
+        self.assertIsNone(fdb.resolve_post_page(4242))
+
+    def test_R08_schema_v1_ohne_page_spalten(self):
+        """R08: forensic_db-Schema v1 kennt post_aliases.page nicht. Die
+        Nachmessung ersetzt die fehlende Vormessung — die Weiterverwendung
+        einer v1-Datenbank bleibt damit moeglich (SUPPORTED_..._VERSIONS)."""
+        fdb = self._zwei_chunks([(777, 500, 5)], mit_page_spalten=False)
+        treffer = fdb.resolve_post_page(777)
+        self.assertIsNotNone(treffer)
+        self.assertEqual(treffer.url, "/forum/viewtopic.php?id=500&p=2")
+        self.assertEqual(treffer.quelle, "blob")
+
+    def test_R09_aehnliche_topic_ids_werden_nicht_verwechselt(self):
+        """R09: Die Vorauswahl per LIKE trifft auch id=50 und id=512. Erst der
+        Ausdruck auf der Adresse entscheidet. Ohne ihn lieferte die
+        Nachmessung eine Seite eines FREMDEN Themas."""
+        fdb = self._baue(
+            [("/forum/viewtopic.php?id=5",      self.CHUNK1),
+             ("/forum/viewtopic.php?id=50",     self.CHUNK2),
+             ("/forum/viewtopic.php?id=512&p=2", self.CHUNK2)],
+            [(777, 5, 5, None, 0)],
+        )
+        # Der Anker p777 steht nur in den Seiten der FREMDEN Themen.
+        self.assertIsNone(fdb.resolve_post_page(777))
+
+    def test_R10_page_zeigt_ins_leere(self):
+        """R10: post_aliases.page nennt eine pages.id, die es nicht gibt.
+        Statt eines Absturzes oder eines stillen Seite-1-Rueckfalls uebernimmt
+        die Nachmessung."""
+        fdb = self._zwei_chunks([(777, 500, 5, 4242, 1)])
+        treffer = fdb.resolve_post_page(777)
+        self.assertIsNotNone(treffer)
+        self.assertEqual(treffer.url, "/forum/viewtopic.php?id=500&p=2")
+        self.assertEqual(treffer.quelle, "blob")
+
+    def test_R11_fehlgeschlagener_abruf_ist_kein_treffer(self):
+        """R11: html IS NULL heisst 'Abruf fehlgeschlagen'. Ein fehlender
+        Inhalt belegt weder Anwesenheit noch Abwesenheit des Beitrags."""
+        fdb = self._baue(
+            [("/forum/viewtopic.php?id=500",     self.CHUNK1),
+             ("/forum/viewtopic.php?id=500&p=2", None)],
+            [(777, 500, 5, None, 0)],
+        )
+        self.assertIsNone(fdb.resolve_post_page(777))
+
+
+class TestBlobEnthaeltAnker(unittest.TestCase):
+    """
+    Build 699: blob_enthaelt_anker() — die Ankerprobe fuer sich.
+
+    A01 — aeusserer Anker id="p<id>" wird erkannt
+    A02 — innerer Anker id="pp<id>" wird erkannt
+    A03 — Praefixverwechslung: id="p7770" ist NICHT der Beitrag 777
+    A04 — html=None ergibt False (kein Beleg, keine Behauptung)
+    A05 — str statt bytes wird behandelt
+    """
+
+    def setUp(self):
+        _setup_test_logging()
+
+    def tearDown(self):
+        reset_for_testing()
+
+    def test_A01_aeusserer_anker(self):
+        from db.forensic_db import blob_enthaelt_anker
+        self.assertTrue(blob_enthaelt_anker(b'<div id="p777">x</div>', 777))
+
+    def test_A02_innerer_anker(self):
+        from db.forensic_db import blob_enthaelt_anker
+        self.assertTrue(blob_enthaelt_anker(b'<div id="pp777">x</div>', 777))
+
+    def test_A03_keine_praefixverwechslung(self):
+        """A03: Ohne das abschliessende Anfuehrungszeichen im Muster wuerde
+        id="p7770" als Beitrag 777 gelten — und der Sprung landete auf einem
+        fremden Beitrag."""
+        from db.forensic_db import blob_enthaelt_anker
+        self.assertFalse(blob_enthaelt_anker(b'<div id="p7770">x</div>', 777))
+
+    def test_A04_none(self):
+        from db.forensic_db import blob_enthaelt_anker
+        self.assertFalse(blob_enthaelt_anker(None, 777))
+
+    def test_A05_str_statt_bytes(self):
+        from db.forensic_db import blob_enthaelt_anker
+        self.assertTrue(blob_enthaelt_anker('<div id="p777">x</div>', 777))
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

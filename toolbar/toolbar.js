@@ -746,6 +746,84 @@
     return i === -1 ? s : s.slice(0, i);
   }
 
+  /**
+   * Build 699 (Vorgang f5956e6b): Sprung auf den Beitragsanker — und Meldung,
+   * wenn er sein Ziel NICHT findet.
+   *
+   * WARUM DAS EINE EIGENE FUNKTION IST UND NICHT WEITER EINE ZEILE:
+   * Bis Build 698 stand hier 'if (target) target.scrollIntoView(...)'. Ein
+   * fehlendes Ziel war damit vom geglueckten Sprung nicht zu unterscheiden:
+   * die Seite blieb einfach oben stehen. Wer einem Verweis auf einen
+   * belastenden Beitrag folgt und oben auf der Seite landet, liest dort
+   * FREMDE Beitraege — und hat keinen Anhaltspunkt, dass er nicht das sieht,
+   * wonach er gesucht hat. Ein nicht angezeigter Befund ist von einem nicht
+   * erhobenen nicht zu unterscheiden (Grundregel 1).
+   *
+   * DIE QUELLE ('quelle', envelope.fragment_source) SAGT, WAS ZU MELDEN IST:
+   *   'unaufgeloest' — der Server hat gesucht und KEINE erfasste Seite
+   *                    gefunden, die den Beitrag traegt. Das ist eine Aussage
+   *                    ueber den ERFASSUNGSUMFANG, nicht ueber die Anzeige:
+   *                    der Beitrag ist im Bestand nicht vorhanden. Diese
+   *                    Meldung bleibt stehen, bis sie gelesen und geschlossen
+   *                    wird — wie die Meldung zu 'nicht im Umfang'.
+   *   'unpruefbar'   — der BLOB fehlt (fehlgeschlagener Abruf). Erreicht
+   *                    diese Funktion im Regelfall nicht, weil
+   *                    _handleEnvelope bei fetch_failed vorher abbricht;
+   *                    hier nur der Vollstaendigkeit halber behandelt.
+   *   sonst          — die Seite ist die richtige, das Element fehlt
+   *                    trotzdem. Das ist ein Darstellungsbefund (z. B. ein
+   *                    Renderpfad ohne den erwarteten Container) und wird
+   *                    als solcher gemeldet.
+   *
+   * @param {string} fragment — Ankername ohne '#', z. B. 'p12345'
+   * @param {string|null} quelle — envelope.fragment_source (s. blob_handler.py)
+   * @returns {boolean} true, wenn das Ziel gefunden und angesprungen wurde
+   */
+  function _ankerSprung(fragment, quelle) {
+    var ziel = document.getElementById(fragment) ||
+               document.getElementsByName(fragment)[0];
+
+    _dbg("_ankerSprung", {
+      fragment: fragment,
+      quelle:   quelle || null,
+      gefunden: !!ziel,
+    });
+
+    if (ziel) {
+      ziel.scrollIntoView({ behavior: "smooth", block: "start" });
+      return true;
+    }
+
+    if (quelle === "unaufgeloest") {
+      ToastModule.show(
+        "⚠ Der verlinkte Beitrag (#" + fragment + ") steht auf keiner " +
+        "erfassten Seite dieses Themas. Angezeigt wird die erste Seite — " +
+        "sie enthaelt diesen Beitrag NICHT.",
+        "warning",
+        0                    // bleibt bis manuelles Schliessen
+      );
+      AccessibilityModule.announce(
+        "Der verlinkte Beitrag ist im erfassten Bestand nicht enthalten."
+      );
+    } else if (quelle === "unpruefbar") {
+      ToastModule.show(
+        "⚠ Sprungziel #" + fragment + " nicht pruefbar: der Seiteninhalt " +
+        "fehlt im Bestand (fehlgeschlagener Abruf).",
+        "warning",
+        0
+      );
+      AccessibilityModule.announce("Sprungziel nicht pruefbar.");
+    } else {
+      ToastModule.show(
+        "⚠ Sprungziel #" + fragment + " auf dieser Seite nicht gefunden.",
+        "warning",
+        10000
+      );
+      AccessibilityModule.announce("Sprungziel nicht gefunden.");
+    }
+    return false;
+  }
+
   /** UUID v4 generieren (Browser-seitig) */
   function _uuid() {
     if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -2028,10 +2106,11 @@
       _updateHead(envelope.head);
 
       // Fragment-Scroll
+      // Build 699 (Vorgang f5956e6b): Ein Sprung, der sein Ziel verfehlt,
+      // wird jetzt gemeldet statt stillschweigend uebergangen. Die Auswertung
+      // von envelope.fragment_source steckt in _ankerSprung().
       if (envelope.fragment) {
-        var target = document.getElementById(envelope.fragment) ||
-                     document.getElementsByName(envelope.fragment)[0];
-        if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+        _ankerSprung(envelope.fragment, envelope.fragment_source || null);
       }
 
       // Browser-History

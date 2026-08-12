@@ -23,14 +23,28 @@
 #     "in_scope":       true,
 #     "url_canonical":  "/forum/viewtopic.php?id=42",
 #     "fragment":       "p12345"   (oder null),
-#     "trace_elements": ["p1891354", "p1903927"]   (Build 030-C)
+#     "trace_elements": ["p1891354", "p1903927"],  (Build 030-C)
+#     "fragment_source": "gemessen"                (Build 699, s.u.)
 #   }
 #
 # URL-Auflösung (Reihenfolge):
 #   1. Fragment-Anker extrahieren und entfernen
-#   2. ?pid=<post_id>   → post_aliases → topic-URL aufbauen
-#   3. ?notify=<id>     → notify_aliases → post_id → topic-URL aufbauen
+#   2. ?pid=<post_id>   → Seite, die den Beitrag TRAEGT (Build 699)
+#   3. ?notify=<id>     → notify_aliases → post_id → wie 2.
 #   4. Direkt in blob_lookup suchen
+#   5. Ankerprobe: traegt der gefundene BLOB den Anker '#p<post_id>'
+#      wirklich? Wenn nein, wird die Seite gesucht, die ihn traegt (Build 699)
+#
+# fragment_source — Herkunft der ausgelieferten Seite bei Beitragsankern:
+#   null           kein Beitragsanker im Spiel (kein '#p<id>')
+#   "bestaetigt"   der ausgelieferte BLOB traegt den Anker (Regelfall)
+#   "gemessen"     Seite ueber fdb.post_aliases.page bestimmt (Prepper-Messung)
+#   "nachgemessen" Seite hier im BLOB nachgemessen (Prepper-Messung fehlte)
+#   "unaufgeloest" KEINE erfasste Seite traegt den Anker — ausgeliefert wird
+#                  die erste Seite des Themas, der Anker laeuft ins Leere
+#   "unpruefbar"   der BLOB fehlt (fetch_failed) — die Probe ist nicht moeglich
+#   Das Feld ist Beleg, nicht Zierde: ohne es waere ein Sprung, der sein Ziel
+#   verfehlt, von einem, der es trifft, nicht zu unterscheiden (Grundregel 1).
 #
 # page_visit-Protokollierung:
 #   Erfolgt hier nach erfolgreichem BLOB-Lookup (in_scope=True).
@@ -44,7 +58,19 @@
 #   Alle drei Zustände sind für toolbar.js sichtbar und werden angezeigt.
 #
 # Abhängigkeiten: json, urllib.parse — Stdlib + interne Module
-# Version: v0.1.0 · Build: 270 · 2026-05-31
+# Version: v0.1.0 · Build: 699 · 2026-08-12
+#
+# Changelog Build 699 (2026-08-12) — Vorgang f5956e6b:
+#   - Beitragsverweise in mehrseitigen Themen landeten stets auf Seite 1.
+#     '?pid=<id>' wird nicht mehr auf '?id=<topic>' (= erster Chunk)
+#     abgebildet, sondern ueber ForensicDb.resolve_post_page() auf die Seite,
+#     die den Beitrag TRAEGT.
+#   - Neue Ankerprobe nach dem BLOB-Lookup: traegt der gefundene BLOB den
+#     Anker '#p<post_id>' nicht, wird die Seite gesucht, die ihn traegt.
+#     Damit ist auch die zweite Verweisform '?id=<topic>#p<post_id>'
+#     (Verweise INNERHALB des Forums) abgedeckt.
+#   - Neues Envelope-Feld 'fragment_source' (s.o.).
+#     Beleg: Vorgang f5956e6b; aiw_sqlite_prepper stage2/post_page_measurer.py.
 #
 # Changelog Build 270 (2026-05-31):
 #   - _rewrite_asset_urls(): ersetzt vollständige URLs die in assets_<uid>.db
@@ -203,7 +229,7 @@ class BlobHandler:
         )
 
         # Schritt 2: Alias-Auflösung
-        resolved_url, fragment = self._resolve_aliases(
+        resolved_url, fragment, fragment_source = self._resolve_aliases(
             url_no_fragment, url_path, params, fragment
         )
 
@@ -211,6 +237,16 @@ class BlobHandler:
         # Bei GET: Abstimmungsformular. Bei POST: Abstimmungsergebnis.
         # Beleg: Projektgespräch 2026-04-19.
         page = self._bundle.forensic.get_page(resolved_url, method=original_method)
+
+        # Schritt 3b (Build 699, Vorgang f5956e6b): Ankerprobe.
+        # Erst hier, weil sie den BLOB braucht — und nach dem Lookup, damit sie
+        # BEIDE Verweisformen erfasst: '?pid=<id>' (oben aufgeloest) und
+        # '?id=<topic>#p<id>' (Verweise innerhalb des Forums, die gar keine
+        # Aufloesung ausloesen und deshalb bis Build 698 ungeprueft auf dem
+        # ersten Chunk landeten).
+        page, resolved_url, fragment_source = self._anker_seite_sichern(
+            page, resolved_url, fragment, fragment_source, original_method
+        )
 
         # Schritt 4: Envelope zusammenbauen
         if page is None:
@@ -225,6 +261,7 @@ class BlobHandler:
                 "url_canonical":  resolved_url,
                 "fragment":       fragment,
                 "trace_elements": [],
+                "fragment_source": fragment_source,
             }
 
         # <head>-Elemente aus BLOB extrahieren
@@ -286,6 +323,7 @@ class BlobHandler:
             "url_canonical":   page.url,
             "fragment":        fragment,
             "trace_elements":  trace_elements,  # z.B. ["p1891354", "p1903927"]
+            "fragment_source": fragment_source,  # Build 699, s. Kopf
         }
 
     def _resolve_aliases(
@@ -294,14 +332,26 @@ class BlobHandler:
         url_path: str,
         params: dict,
         fragment: Optional[str],
-    ) -> tuple[str, Optional[str]]:
+    ) -> tuple[str, Optional[str], Optional[str]]:
         """
-        Löst URL-Aliasse auf und gibt (aufgelöste_url, fragment) zurück.
+        Löst URL-Aliasse auf und gibt (aufgelöste_url, fragment,
+        fragment_source) zurück.
 
         Auflösungsreihenfolge:
-          1. ?pid=<post_id>    → post_aliases → topic-URL
-          2. ?notify=<notify>  → notify_aliases → post_id → post_aliases
+          1. ?pid=<post_id>    → Seite, die den Beitrag traegt (Build 699)
+          2. ?notify=<notify>  → notify_aliases → post_id → wie 1.
           3. Direkt (keine Auflösung nötig)
+
+        Build 699 (Vorgang f5956e6b): Stufe 1 und 2 bauten bis Build 698 die
+        Adresse '<pfad>?id=<topic_id>'. Diese Adresse bezeichnet bei einem
+        Thema mit mehreren erfassten Seiten IMMER die erste — der verlinkte
+        Beitrag steht dort nur, wenn er zufaellig auf Seite 1 liegt. Jetzt
+        wird die Seite gefragt, die den Beitrag traegt; der alte Weg bleibt
+        als Rueckfall und wird dann als 'unaufgeloest' ausgewiesen, NICHT
+        stillschweigend gegangen (Grundregel 1).
+
+        Der dritte Rueckgabewert ist die Herkunft dieser Entscheidung; die
+        Bedeutungen stehen im Dateikopf.
         """
         fdb = self._bundle.forensic
 
@@ -317,16 +367,28 @@ class BlobHandler:
         if pid_str:
             try:
                 post_id = int(pid_str)
+            except (ValueError, TypeError):
+                post_id = None
+            if post_id is not None:
+                aufloesung = self._seite_des_beitrags(post_id)
+                if aufloesung is not None:
+                    resolved, quelle = aufloesung
+                    logger.debug(
+                        "pid=%d → '%s' (%s)", post_id, resolved, quelle,
+                    )
+                    return resolved, fragment, quelle
+
+                # Rueckfall: Thema bekannt, Seite nicht belegbar.
                 alias = fdb.resolve_post_alias(post_id)
                 if alias:
                     resolved = f"{url_path}?id={alias.topic_id}"
-                    logger.debug(
-                        "pid=%d → topic_id=%d → '%s'",
-                        post_id, alias.topic_id, resolved,
+                    logger.warning(
+                        "pid=%d: keine erfasste Seite traegt den Beitrag — "
+                        "Rueckfall auf die erste Seite von topic_id=%d ('%s'). "
+                        "Der Anker '#p%d' wird dort ins Leere laufen.",
+                        post_id, alias.topic_id, resolved, post_id,
                     )
-                    return resolved, fragment
-            except (ValueError, TypeError):
-                pass
+                    return resolved, fragment, "unaufgeloest"
 
         # Auflösung 2: ?notify=<notify_id>
         notify_str = self._get_single_param(params, self._notify_param)
@@ -335,20 +397,194 @@ class BlobHandler:
                 notify_id = int(notify_str)
                 notify_alias = fdb.resolve_notify_alias(notify_id)
                 if notify_alias:
-                    post_alias = fdb.resolve_post_alias(notify_alias.post_id)
+                    post_id  = notify_alias.post_id
+                    fragment = f"{self._fragment_post}{post_id}"
+                    aufloesung = self._seite_des_beitrags(post_id)
+                    if aufloesung is not None:
+                        resolved, quelle = aufloesung
+                        logger.debug(
+                            "notify=%d → post_id=%d → '%s' (%s)",
+                            notify_id, post_id, resolved, quelle,
+                        )
+                        return resolved, fragment, quelle
+
+                    post_alias = fdb.resolve_post_alias(post_id)
                     if post_alias:
                         resolved = f"{url_path}?id={post_alias.topic_id}"
-                        fragment = f"{self._fragment_post}{notify_alias.post_id}"
-                        logger.debug(
-                            "notify=%d → post_id=%d → topic_id=%d",
-                            notify_id, notify_alias.post_id, post_alias.topic_id,
+                        logger.warning(
+                            "notify=%d → post_id=%d: keine erfasste Seite "
+                            "traegt den Beitrag — Rueckfall auf die erste "
+                            "Seite von topic_id=%d ('%s').",
+                            notify_id, post_id, post_alias.topic_id, resolved,
                         )
-                        return resolved, fragment
+                        return resolved, fragment, "unaufgeloest"
             except (ValueError, TypeError):
                 pass
 
         # Keine Auflösung — URL direkt verwenden
-        return url, fragment
+        return url, fragment, None
+
+    def _seite_des_beitrags(self, post_id: int) -> Optional[tuple[str, str]]:
+        """
+        Fragt die Datenbankschicht nach der Seite, die den Beitrag traegt.
+
+        Rueckgabe: (lookup_url, fragment_source) oder None.
+
+        Eigene kleine Methode, weil dieselbe Frage an drei Stellen gestellt
+        wird (pid, notify, Ankerprobe) und die Uebersetzung der internen
+        Quellenbezeichnung in die des Envelopes ('blob' → 'nachgemessen')
+        genau einmal geschrieben gehoert. Sie faengt zudem den Fall ab, dass
+        die Datenbankschicht die Methode nicht kennt (aeltere ForensicDb in
+        einem Test-Doppel): dann gilt der Beitrag als nicht aufloesbar — das
+        alte Verhalten, aber nicht still.
+        """
+        fdb = self._bundle.forensic
+        aufloeser = getattr(fdb, "resolve_post_page", None)
+        if aufloeser is None:
+            logger.warning(
+                "ForensicDb ohne resolve_post_page() — Seitenbestimmung fuer "
+                "post_id=%d nicht moeglich.", post_id,
+            )
+            return None
+        treffer = aufloeser(post_id)
+        if treffer is None:
+            return None
+        quelle = "nachgemessen" if treffer.quelle == "blob" else "gemessen"
+        return treffer.url, quelle
+
+    # ------------------------------------------------------------------
+    # Ankerprobe (Build 699, Vorgang f5956e6b)
+    # ------------------------------------------------------------------
+
+    def _anker_seite_sichern(
+        self,
+        page,
+        resolved_url: str,
+        fragment: Optional[str],
+        fragment_source: Optional[str],
+        original_method: str,
+    ):
+        """
+        Prueft, ob der gefundene BLOB den Beitragsanker '#p<post_id>' wirklich
+        traegt — und holt andernfalls die Seite, die ihn traegt.
+
+        Rueckgabe: (page, resolved_url, fragment_source).
+
+        WARUM DIESE PROBE ZUSAETZLICH ZUR AUFLOESUNG NOETIG IST: Verweise
+        INNERHALB des Forums haben die Form '?id=<topic>#p<post_id>' und
+        loesen keinerlei Aufloesung aus — sie zeigen von sich aus auf den
+        ersten Chunk des Themas. Der Anker gehoert aber zu einem Beitrag, der
+        auf Chunk 2..n stehen kann. Ohne diese Probe bliebe genau diese
+        Verweisform falsch, obwohl der pid-Weg richtiggestellt ist.
+
+        WAS SIE NICHT TUT: Sie greift nur bei Themenseiten (viewtopic). Ein
+        Anker '#p<n>' auf einer anderen Seite (z. B. einer Trefferliste) meint
+        nicht denselben Beitragscontainer; ihn dorthin aufzuloesen wuerde die
+        Ermittlerin von der angeforderten Seite wegfuehren.
+
+        WAS BEI FEHLENDEM BLOB GILT: html IS NULL heisst 'Abruf fehlgeschlagen'
+        (fetch_failed). Ein fehlender Inhalt belegt NICHT, dass der Beitrag
+        woanders steht. Es wird deshalb nicht umgeleitet, sondern
+        'unpruefbar' ausgewiesen.
+        """
+        post_id = self._post_id_aus_fragment(fragment)
+        if post_id is None:
+            # Kein Beitragsanker im Spiel — nichts zu belegen.
+            return page, resolved_url, None
+        if page is None:
+            # NOT_IN_SCOPE: die Aussage der Aufloesung bleibt stehen.
+            return page, resolved_url, fragment_source
+        if not self._ist_themenseite(resolved_url) and \
+           not self._ist_themenseite(page.url):
+            return page, resolved_url, None
+
+        from db.forensic_db import blob_enthaelt_anker
+
+        if page.html is None:
+            logger.warning(
+                "Ankerprobe fuer '#p%d' auf '%s' nicht moeglich: BLOB fehlt "
+                "(fetch_failed).", post_id, resolved_url,
+            )
+            return page, resolved_url, "unpruefbar"
+
+        if blob_enthaelt_anker(page.html, post_id):
+            # Der Regelfall. 'gemessen'/'nachgemessen' bleiben stehen, weil
+            # sie mehr sagen als 'bestaetigt': sie nennen, WIE die Seite
+            # gefunden wurde. Ohne Vorgeschichte gilt 'bestaetigt'.
+            return page, resolved_url, fragment_source or "bestaetigt"
+
+        # Der Anker fehlt — die bislang ausgelieferte Seite ist die falsche.
+        logger.info(
+            "Ankerprobe: '%s' traegt '#p%d' NICHT — Seite des Beitrags wird "
+            "gesucht.", resolved_url, post_id,
+        )
+        aufloesung = self._seite_des_beitrags(post_id)
+        if aufloesung is None:
+            logger.warning(
+                "Ankerprobe: keine erfasste Seite traegt '#p%d'. Ausgeliefert "
+                "wird '%s'; der Sprung wird dort ins Leere laufen.",
+                post_id, resolved_url,
+            )
+            return page, resolved_url, "unaufgeloest"
+
+        neue_url, quelle = aufloesung
+        if neue_url == resolved_url:
+            # Die Datenbank benennt dieselbe Seite, in der der Anker gerade
+            # nicht gefunden wurde. Das ist ein Widerspruch im Bestand und
+            # wird als solcher gemeldet statt geraten.
+            logger.warning(
+                "Ankerprobe: Bestand nennt '%s' als Seite von '#p%d', der "
+                "Anker steht dort aber nicht. Quelle: %s.",
+                neue_url, post_id, quelle,
+            )
+            return page, resolved_url, "unaufgeloest"
+
+        neue_page = self._bundle.forensic.get_page(
+            neue_url, method=original_method
+        )
+        if neue_page is None:
+            # Die richtige Seite ist unter dieser Methode nicht abrufbar
+            # (z. B. POST-Sonderfall). Lieber die alte Seite mit ehrlichem
+            # Vermerk als gar keine.
+            logger.warning(
+                "Ankerprobe: '%s' (Seite von '#p%d') ist unter method=%s "
+                "nicht abrufbar — es bleibt bei '%s'.",
+                neue_url, post_id, original_method, resolved_url,
+            )
+            return page, resolved_url, "unaufgeloest"
+
+        logger.info(
+            "Ankerprobe: '#p%d' steht auf '%s' (%s) — statt '%s' wird diese "
+            "Seite ausgeliefert.", post_id, neue_url, quelle, resolved_url,
+        )
+        return neue_page, neue_url, quelle
+
+    @staticmethod
+    def _post_id_aus_fragment(fragment: Optional[str]) -> Optional[int]:
+        """
+        Liest die post_id aus einem Anker der Form 'p<ziffern>'.
+        Alles andere (leer, 'top', 'p' ohne Ziffern) ergibt None.
+        """
+        if not fragment:
+            return None
+        treffer = _FRAGMENT_POST_RE.match(fragment)
+        if not treffer:
+            return None
+        try:
+            return int(treffer.group(1))
+        except (ValueError, TypeError):     # pragma: no cover — Regex liefert Ziffern
+            return None
+
+    @staticmethod
+    def _ist_themenseite(url: Optional[str]) -> bool:
+        """
+        True, wenn die Adresse eine Themenseite (viewtopic) bezeichnet.
+
+        Absichtlich eine Teilzeichenkettenpruefung: die Adressen liegen hier
+        teils mit, teils ohne Basis-URL und mit unterschiedlichen Pfaden
+        ('/forum/viewtopic.php', '/forum/beginner/viewtopic.php') vor.
+        """
+        return bool(url) and "viewtopic.php" in url
 
     @staticmethod
     def _get_single_param(params: dict, key: str) -> Optional[str]:
