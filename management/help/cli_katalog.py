@@ -53,7 +53,12 @@
 #   Hilfe, die eine Meldung verspricht, ist schlimmer als gar keine - sie
 #   laesst den Leser darauf vertrauen, dass er es merken wuerde.
 #
-# Version: v0.8.706 - Build: 706 - 2026-08-12
+#   Bei 'export_admin' kam in Build 708 der letzte dieser Faelle dazu: der
+#   Eintrag fuehrte seit Build 640 den Merkposten "Wird das Werkzeug
+#   ausserhalb der Struktur aufgerufen, steht dort 0." - richtig beschrieben,
+#   nie behoben. Jetzt berichtigt.
+#
+# Version: v0.8.708 - Build: 708 - 2026-08-12
 # =============================================================================
 
 from __future__ import annotations
@@ -1559,13 +1564,29 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "Fehlerausgabe gelesen haben - der Rueckgabewert allein sagt "
                 "es nicht.",
                 "OHNE --actor und ohne passenden Personendatensatz steht "
-                "'unbekannt' im Erzeugungsvermerk der Mappe. Der Export "
-                "laeuft trotzdem.",
+                "'unbekannt [nicht aufgeloest]' im Erzeugungsvermerk der "
+                "Mappe, darunter der Grund; das Werkzeug meldet es. Der "
+                "Export laeuft trotzdem.",
                 "openpyxl ist Voraussetzung. Fehlt es, bricht der Lauf mit 1 "
                 "ab - die Mappe entsteht dann gar nicht.",
-                "Die Buildnummer im Vermerk kommt aus der build.json der "
-                "Bestandswurzel. Wird das Werkzeug ausserhalb der Struktur "
-                "aufgerufen, steht dort 0.",
+                # BUILD 708 (Vorgang 5001d293) - DIESER SATZ WAR RICHTIG UND
+                # BESCHRIEB EINEN MANGEL. Er stand seit Build 640 als
+                # Merkposten hier: die Mappe konnte 'Werkzeug-Build: 0'
+                # tragen, und niemand erfuhr es. Genau derselbe Zustand wie
+                # bei den Berichtswerkzeugen (ff7e80ab), nur ist export_admin
+                # zusaetzlich am context_builder vorbeigelaufen.
+                "DIE BUILDNUMMER IM VERMERK KOMMT AUS DER build.json DER "
+                "BESTANDSWURZEL. Ist sie nicht lesbar - etwa weil das "
+                "Werkzeug ausserhalb der Struktur aufgerufen wird - stand "
+                "dort bis Build 706 eine '0', ohne jede Meldung. Seit Build "
+                "708 lautet die Zeile 'Werkzeug-Build: nicht ermittelbar', "
+                "der Grund steht darunter, und das Werkzeug sagt es auf der "
+                "Fehlerausgabe. Der Rueckgabewert bleibt 0.",
+                "ZU UNTERSCHEIDEN: eine GEBROCHENE Belegkette ist eine "
+                "Aussage ueber den Bestand und erscheint als eigene Warnung "
+                "mit der Fundstelle; ein unvollstaendiger Erzeugungsvermerk "
+                "ist eine Aussage ueber die Mappe. Beides kann zugleich "
+                "auftreten und wird getrennt gemeldet.",
                 "--out ueberschreibt eine vorhandene Datei wortlos.",
             ),
         ),

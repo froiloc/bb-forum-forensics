@@ -48,7 +48,15 @@
 #   zusammen — mit Buildnummer 0, obwohl die Buildnummer in build.json steht
 #   und gar keine Datenbank braucht. Naeheres im Kopf jener Funktion.
 #
-# Version: v0.8.706 · Build: 706 · 2026-08-12
+# BUILD 708 (Vorgang 5001d293) — DER KLARTEXT ZUR KETTE WIRD MITGEFUEHRT:
+#   Der Rueckgabewert 'detail' aus der Kettenpruefung wurde bis hierher
+#   verworfen. 'export_admin' brauchte ihn, um eine GEBROCHENE Kette samt
+#   Fundstelle zu melden - und hielt sich deshalb als einziges Werkzeug eine
+#   eigene Kopie der Pruefung. Er steht jetzt als ExportContext.chain_detail
+#   zur Verfuegung; im Vermerk erscheint er NICHT (Begruendung an der
+#   Feldbeschreibung in export_envelope.py).
+#
+# Version: v0.8.708 · Build: 708 · 2026-08-12
 # =============================================================================
 
 from __future__ import annotations
@@ -153,7 +161,7 @@ def build_export_context(
     ein Vermerk, dessen Zeilen bei jedem Lauf anders stehen, laesst sich
     zwischen zwei Abgaben nicht vergleichen.
     """
-    chain_ok, tip_seq, tip_hash, _detail, befund_kette = _verify_tip(con)
+    chain_ok, tip_seq, tip_hash, detail, befund_kette = _verify_tip(con)
     ersteller, anzeigename, befund_actor = _resolve_actor(db_path, actor)
     build_number, befund_build = _build_number()
     generated = now_utc or datetime.now(timezone.utc).strftime(
@@ -172,6 +180,13 @@ def build_export_context(
         chain_ok=chain_ok,
         chain_tip_seq=tip_seq,
         chain_tip_hash=tip_hash,
+        # Build 708 (Vorgang 5001d293): der Klartext zur Kettenpruefung wurde
+        # bis hierher verworfen. 'export_admin' hat ihn gebraucht, um eine
+        # GEBROCHENE Kette samt Fundstelle zu melden - und musste sich die
+        # Pruefung deshalb selbst nachbauen. Er wird jetzt mitgefuehrt; im
+        # Vermerk erscheint er NICHT (siehe Feldbeschreibung in
+        # export_envelope.py).
+        chain_detail=detail,
         klassifikation=klassifikation or DEFAULT_KLASSIFIKATION,
         anzeigename=anzeigename,
         rahmen_befunde=tuple(befunde),
