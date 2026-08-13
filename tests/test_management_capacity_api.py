@@ -65,10 +65,16 @@
 # KP29 - gemessen wird am ENDE: was im Vormonat begann und noch laeuft,
 #        bleibt sichtbar.
 # KP30 - der Monatserste selbst bleibt sichtbar, der Tag davor nicht.
-# KP31 - Arbeitszeiten und Gruende sind ausgenommen - mit Begruendung.
+# KP31 - die GELTENDE Arbeitszeitregel bleibt stehen; Gruende ausgenommen.
+#        (Build 714 mitgezogen: aus 'Arbeitszeiten unberuehrt' wurde 'nur
+#        Abgeloestes faellt weg' - die Zusicherung selbst bleibt.)
 # KP32 - entfernt und historisch sind ZWEI Gruende: eine entfernte
 #        historische Zeile braucht beide Schalter.
 # KP33 - auch der zweite Schalter haengelt Rechte und Scope nicht aus.
+# KP34 - Build 714: eine ABGELOESTE Arbeitszeitregel faellt weg und wird
+#        gezaehlt; mit Schalter ist sie wieder da.
+# KP35 - Build 714: eine ENTFERNTE Nachfolgerin verdraengt ihre Vorgaengerin
+#        NICHT - sonst verschwaende die einzige wirksame Regel der Person.
 #
 # Version: v0.8.709 . Build: 709 . 2026-08-13
 # =============================================================================
@@ -967,13 +973,23 @@ class CapacityApiTests(unittest.TestCase):
         self.assertEqual(b["historisch"]["holidays"], 1)
 
     # KP31 ---------------------------------------------------------------
-    def test_kp31_arbeitszeiten_und_gruende_bleiben_unberuehrt(self):
-        """Der Zeitfilter greift NUR dort, wo ein Datum steht, und das ist
-        keine Auslassung: Die Regel-Arbeitszeiten sind die Belegkette (ihre
-        derzeit gueltige Zeile traegt fast immer einen Stichtag aus der
-        Vergangenheit), und der Gruendekatalog hat ueberhaupt keinen
-        Zeitbezug - ohne ihn waeren bestehende Abwesenheitszeilen nicht
-        lesbar."""
+    def test_kp31_geltende_arbeitszeit_bleibt_gruende_unberuehrt(self):
+        """
+        MITGEZOGEN IN BUILD 714 (Vorgang 75f84fee, zweiter Teil).
+
+        Bis Build 713 war die Zusicherung: der Zeitfilter laesst die
+        Arbeitszeiten VOLLSTAENDIG in Ruhe. Der Grund dafuer bleibt gueltig
+        und wird hier weiter gemessen - die derzeit GUELTIGE Regel traegt
+        fast immer einen Stichtag aus der Vergangenheit und darf nicht
+        verschwinden. Nur die Schlussfolgerung war zu eng: eine Regel, die
+        durch eine JUENGERE abgeloest ist, kann ab dem Monatsersten nie
+        wieder gelten - sie ist erledigt wie ein abgelaufener Zeitraum, nur
+        dass der Nachweis anders aussieht (append-only, kein effective_to).
+
+        Der Gruendekatalog bleibt UNVERAENDERT ausgenommen: er hat
+        ueberhaupt keinen Zeitbezug, und ohne ihn waeren bestehende
+        Abwesenheitszeilen nicht lesbar.
+        """
         self._grant("supervisor", "alle", 1)
         app = self._app()
         app.dispatch_write(1, "/api/capacity/worktime", {
@@ -982,10 +998,67 @@ class CapacityApiTests(unittest.TestCase):
                            {"code": "urlaub", "label": "Urlaub"})
 
         b = self._body(self._app().dispatch(1, "/api/capacity/stammdaten", {}))
+        # DIE GELTENDE REGEL STEHT DA - die Zusicherung aus Build 709.
         self.assertEqual(b["counts"]["worktimes"], 1)
         self.assertEqual(b["counts"]["reasons"], 1)
-        self.assertNotIn("worktimes", b["historisch"])
+        self.assertEqual(b["historisch"]["worktimes"], 0)
         self.assertNotIn("reasons", b["historisch"])
+
+    # KP34 ---------------------------------------------------------------
+    def test_kp34_abgeloeste_arbeitszeit_faellt_weg(self):
+        """
+        BUILD 714: Eine Regel, fuer die es eine juengere gibt, die schon vor
+        dem Monatsersten begann, ist ab dann unerreichbar - sie faellt aus
+        der Liste und wird GEZAEHLT. Ohne diesen Fall bliebe die Zusicherung
+        aus KP31 ein Freibrief fuer eine Liste, die nie kuerzer wird.
+        """
+        self._grant("supervisor", "alle", 1)
+        app = self._app()
+        app.dispatch_write(1, "/api/capacity/worktime", {
+            "person_id": 2, "effective_from": "2020-01-01", "mon_min": 480})
+        app.dispatch_write(1, "/api/capacity/worktime", {
+            "person_id": 2, "effective_from": "2021-01-01", "mon_min": 240})
+
+        ohne = self._body(self._app().dispatch(
+            1, "/api/capacity/stammdaten", {}))
+        self.assertEqual(ohne["counts"]["worktimes"], 1)
+        self.assertEqual(ohne["historisch"]["worktimes"], 1)
+        self.assertEqual([z["effective_from"] for z in ohne["worktimes"]],
+                         ["2021-01-01"])
+
+        # MIT Schalter sind beide da - und die Zahl geht weiter mit.
+        mit = self._body(self._app().dispatch(
+            1, "/api/capacity/stammdaten", {"include_historic": ["1"]}))
+        self.assertEqual(mit["counts"]["worktimes"], 2)
+        self.assertEqual(mit["historisch"]["worktimes"], 1)
+
+    # KP35 ---------------------------------------------------------------
+    def test_kp35_entfernte_nachfolgerin_verdraengt_nicht(self):
+        """
+        BUILD 714, DER GEFAEHRLICHE FALL: Wird die juengere Regel
+        zurueckgenommen, gilt wieder die aeltere. Wuerde die entfernte
+        Nachfolgerin ihre Vorgaengerin trotzdem verdraengen, verschwaende die
+        EINZIGE wirksame Regel der Person aus der Liste - und die
+        Kapazitaetsrechnung rechnete mit einer Zeile, die niemand mehr sieht.
+        """
+        self._grant("supervisor", "alle", 1)
+        app = self._app()
+        app.dispatch_write(1, "/api/capacity/worktime", {
+            "person_id": 2, "effective_from": "2020-01-01", "mon_min": 480})
+        app.dispatch_write(1, "/api/capacity/worktime", {
+            "person_id": 2, "effective_from": "2021-01-01", "mon_min": 240})
+        self._reload()
+        wid = self.con.execute(
+            "SELECT id FROM person_worktime WHERE effective_from='2021-01-01'"
+        ).fetchone()["id"]
+        self._app().dispatch_write(1, "/api/capacity/worktime/remove",
+                                   {"worktime_id": wid})
+
+        b = self._body(self._app().dispatch(1, "/api/capacity/stammdaten", {}))
+        self.assertEqual([z["effective_from"] for z in b["worktimes"]],
+                         ["2020-01-01"])
+        self.assertEqual(b["historisch"]["worktimes"], 0)
+        self.assertEqual(b["entfernt"]["worktimes"], 1)
 
     # KP32 ---------------------------------------------------------------
     def test_kp32_beide_schalter_wirken_unabhaengig(self):

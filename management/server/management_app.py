@@ -250,7 +250,12 @@ from management.capacity.reason_repo import ReasonRepo
 # Build 709 (Vorgang 75f84fee): die Regel, ab wann eine Zeile 'historisch'
 # ist. Eigenes Modul, weil sie ohne Datenbank und ohne den heutigen Tag
 # pruefbar sein muss - sonst waere sie nur an einem Tag im Monat zu messen.
-from management.capacity.zeitfilter import monatsbeginn, teile_historisch
+# Build 714 (Vorgang 75f84fee, zweiter Teil): die Arbeitszeiten folgen
+# derselben Grenze, aber einem anderen Nachweis des Ablaufs - siehe Nachtrag
+# im Kopf von zeitfilter.py (append-only, kein effective_to).
+from management.capacity.zeitfilter import (
+    monatsbeginn, teile_abgeloeste_worktime, teile_historisch,
+)
 from management.workload.workload_repo import (
     WorkloadRepo,
     WorkloadSchemaError,
@@ -2546,12 +2551,28 @@ class ManagementApp:
             #     Vergangenheit und ein leeres Ende - sie bliebe zwar
             #     sichtbar, aber ihre Vorgaenger bilden den Nachweis, seit
             #     wann was galt. Der Vorgang nennt sie auch nicht.
-            hist_av = hist_ho = 0
+            #
+            # BUILD 714 - DIE ARBEITSZEITEN KOMMEN DAZU (Entscheidung Alex,
+            # 13.08.2026). Die Ausnahme oben blieb richtig, SOWEIT sie die
+            # Ende-Regel meint: person_worktime traegt praktisch nie ein
+            # effective_to, 'teile_historisch' waere dort wirkungslos. Das
+            # Ende einer Arbeitszeitregel entsteht aber nicht durch ein
+            # Datum, sondern durch ihre ABLOESUNG - und die laesst sich
+            # gegen dieselbe Grenze messen. Die GELTENDE Regel bleibt dabei
+            # immer stehen, auch wenn sie Jahre alt ist.
+            #
+            # Die Nachfolgermenge sind die NICHT entfernten Zeilen: eine
+            # soft-geloeschte Nachfolgeregel gilt fuer niemanden und darf
+            # ihre Vorgaengerin nicht verdraengen.
+            aktive_wt = [z for z in alle_wt if not z.get("deleted_at")]
+            hist_av = hist_ho = hist_wt = 0
             if not include_historic:
                 availability, hist_av = teile_historisch(
                     availability, "period_end", historisch_ab)
                 holidays, hist_ho = teile_historisch(
                     holidays, "day", historisch_ab)
+                worktimes, hist_wt = teile_abgeloeste_worktime(
+                    worktimes, historisch_ab, aktive_wt)
             else:
                 # Auch beim Einblenden wird gezaehlt: die Oberflaeche sagt
                 # dann, WIE VIELE der angezeigten Zeilen historisch sind.
@@ -2559,6 +2580,8 @@ class ManagementApp:
                     availability, "period_end", historisch_ab)
                 _, hist_ho = teile_historisch(
                     holidays, "day", historisch_ab)
+                _, hist_wt = teile_abgeloeste_worktime(
+                    worktimes, historisch_ab, aktive_wt)
 
             # NAMEN GEHOEREN DAZU (Nachtrag Build 559). Die Repos liefern
             # ausschliesslich person_id - fachlich richtig, denn sie kennen
@@ -2633,7 +2656,11 @@ class ManagementApp:
             # steht, gegen welchen Tag gefiltert wurde.
             "include_historic": include_historic,
             "historisch_ab": historisch_ab,
-            "historisch": {"availability": hist_av, "holidays": hist_ho},
+            # Build 714: 'worktimes' kommt dazu. Der Gruendekatalog bleibt
+            # ausgenommen - er traegt ueberhaupt keinen Zeitbezug, und ohne
+            # ihn waeren bestehende Abwesenheitszeilen nicht lesbar.
+            "historisch": {"availability": hist_av, "holidays": hist_ho,
+                           "worktimes": hist_wt},
             # Build 701: Rechenschaft ueber die aus der PERSONENAUSWAHL
             # ausgeblendeten Ausgeschiedenen. Ihre bestehenden Regeln bleiben
             # in 'worktimes'/'availability' sichtbar und beschriftet.

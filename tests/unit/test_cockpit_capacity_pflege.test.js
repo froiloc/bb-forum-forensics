@@ -76,6 +76,11 @@
  * CP36 — liegt nichts vor dem Monat, steht kein Hinweis ueber null Zeilen.
  * CP37 — historischText nennt Zahl, Einheit und Grenze; ohne Zahl null.
  *
+ * BUILD 714 (Vorgang 75f84fee, zweiter Teil):
+ * CP38 — die Arbeitszeit-Regeln zaehlen mit: eigener Abschnittshinweis, in
+ *        der Kopfsumme enthalten, und der Kopf erklaert die zweite Lesart
+ *        von "abgelaufen" (Abloesung statt Enddatum).
+ *
  * Version: v0.8.709 · Build: 709 · 2026-08-13
  */
 
@@ -883,5 +888,35 @@ describe("Kapazitaetspflege — historische Daten (Vorgang 75f84fee)", () => {
     // ein Satzbruch.
     expect(api.historischText(2, "Feiertage", "")).toBe(
       "2 historische Zeilen sind ausgeblendet (Feiertage, abgelaufen).");
+  });
+
+  // CP38 ----------------------------------------------------------------
+  it("CP38: die Arbeitszeit-Regeln zaehlen mit (Build 714)", () => {
+    // Bis Build 713 waren sie ausgenommen. Sie folgen jetzt derselben
+    // Grenze, aber einem anderen Nachweis des Ablaufs - der Ablösung durch
+    // eine juengere Regel (siehe Kopf von zeitfilter.py).
+    const win = _win();
+    const { main } = _mitHistorie(win, {
+      include_historic: false, historisch_ab: "2026-08-01",
+      historisch: { availability: 1, holidays: 0, worktimes: 2 },
+      entfernt: { worktimes: 0, availability: 0, holidays: 0, reasons: 0 },
+    });
+    const hinweise = Array.prototype.map.call(
+      main.querySelectorAll(".aiw-capp-historisch"), (e) => e.textContent);
+    // JE ABSCHNITT die eigene Zahl - eine Gesamtzahl im Kopf sagt nicht,
+    // WO etwas fehlt.
+    expect(hinweise.some(
+      (t) => /2 historische Zeilen.*Arbeitszeit-Regeln/.test(t))).toBe(true);
+
+    // DIE KOPFSUMME NIMMT SIE AUF. Eine Summe, die einen Abschnitt
+    // auslaesst, waere kleiner als die Summe der Hinweise darunter - und
+    // niemand wuesste, welche der beiden Zahlen gilt.
+    const kopf = main.querySelector(".aiw-capp-historie").textContent;
+    expect(kopf).toMatch(/3 historische Zeile\(n\) sind derzeit ausgeblendet/);
+
+    // UND DER KOPF ERKLAERT DIE ZWEITE LESART: an den Arbeitszeiten gibt es
+    // kein Enddatum zu suchen, dort zaehlt die Abloesung.
+    expect(kopf).toContain("abgelöst");
+    expect(kopf).toContain("geltende Regel bleibt immer stehen");
   });
 });
