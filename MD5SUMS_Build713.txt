@@ -1,0 +1,6 @@
+4f639bfdd24b17842fc14f678436fe16  build.json
+bba95e4c0adf48677c04a9879ac1b1a1  issue-tracker/eintraege_claude_Build713.json
+03e2abd43b4b8cadc86bce1d0b25a982  management/help/cli_katalog.py
+9c4fa14b0c4301d34496cd945b97cb95  management/help/inhalt/administration.py
+3b4d740e1539f25ae5f349b73abf5418  tests/test_rbac_waisen.py
+edfff93e081fe8223a29e64152e77f3f  tools/pruefe_rbac_waisen.py

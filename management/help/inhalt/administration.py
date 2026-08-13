@@ -131,6 +131,14 @@ POLICY = Sichthilfe(
                 "Mit dem Umfang „eigene“ ist die Liste unvollständig — das "
                 "ist kein Fehler, sondern die Rechtelage. Die Zeile unter der "
                 "Überschrift sagt es.",
+                "DIE SICHT PRÜFT NICHT, OB DIE EINTRÄGE ZUSAMMENPASSEN. Ein "
+                "Grant kann auf ein Recht zeigen, das der „Katalog“ weiter "
+                "unten gar nicht führt — dann steht es oben und fehlt unten, "
+                "und niemand fällt darüber. Dass es so etwas gibt, ist am "
+                "13.08.2026 aufgefallen. Wer das nachsehen will, fährt auf "
+                "der Kommandozeile „Rechte-Matrix auf Verweise ins Leere "
+                "prüfen“; das Werkzeug liest nur und nennt zu jedem Fund den "
+                "Beleg.",
             ),
         ),
         Abschnitt(
@@ -141,6 +149,9 @@ POLICY = Sichthilfe(
                 "werden.",
                 "Protokollbuch — wann eine Rechteänderung eingetragen wurde.",
                 "Unversehrtheit — ob das Protokollbuch lückenlos ist.",
+                "Rechte-Matrix auf Verweise ins Leere prüfen "
+                "(Kommandozeile) — ob ein Grant auf eine Rolle, ein Recht "
+                "oder einen Beleg zeigt, den es nicht gibt.",
             ),
         ),
     ),
