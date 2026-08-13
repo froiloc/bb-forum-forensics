@@ -8940,7 +8940,7 @@
     {
       "id": "3f7ae4c1-2b98-4d57-9e16-c4f83a0b5d61",
       "type": "bug",
-      "status": "testing",
+      "status": "in_progress",
       "priority": "medium",
       "severity": "major",
       "title": "Timeline-Summe zaehlt entschluesselte PN moeglicherweise doppelt",
@@ -8950,50 +8950,37 @@
         "Prepper",
         "Timeline",
         "Beweiswert",
-        "uid_timeline_agg",
-        "Migration"
+        "uid_timeline_agg"
       ],
       "affected_version": "0.8.689",
-      "resolved_in_version": "0.1.137",
+      "resolved_in_version": null,
       "target_version": "0.1.137",
       "reported_at": "2026-08-11T14:00:00+00:00",
       "environment": {
-        "python_version": "3.14.0rc2 und 3.13.13",
-        "database": "MariaDB (username_attestations) / forensic_<uid>.db"
+        "python_version": "3.13.13 und 3.14.0rc2",
+        "database": "MariaDB (username_attestations) / forensic_<uid>.db (uid_timeline_agg)"
       },
-      "description": "Die Summenspalte der Aktivitaets-Timeline addierte alle Quellspalten einer Zeile. Die drei PN-Tabellen beschreiben aber teilweise DIESELBE Nachricht (Beitrag, Absenderkopie, Entschluesselung) - ein Ereignis wurde dadurch mehrfach gezaehlt. Build 136 hat das an der Quelle behoben, Build 137 ruestet den Bestand nach.",
-      "expected_behavior": "Die Summenspalte zaehlt jedes Ereignis genau einmal, ihre Bedeutung ist aus der Ansicht ersichtlich, und bestehende Faelle tragen dieselben Zahlen wie neu abgezogene.",
-      "actual_behavior": "Quellteil in Build 136, Nachruestung des Bestands in Build 137. Bereit zur Abnahme durch Alex: Trockenuebung, dann ein Fall (Benutzer 1488), dann Vieraugen-Pruefung nach Phase 3.",
-      "related_to": [
-        "d4216c4c-38b9-4292-b199-78ac0a3f15b4",
-        "2dc0b8f0-26e6-4d78-88ae-4849ae217d56"
-      ],
+      "description": "Die Summenspalte der Aktivitaets-Timeline addierte alle Quellspalten einer Zeile. Die drei PN-Tabellen beschreiben aber teilweise DIESELBE Nachricht (Beitrag, Absenderkopie, Entschluesselung) - ein Ereignis wurde dadurch mehrfach gezaehlt.",
+      "expected_behavior": "Die Summenspalte zaehlt jedes Ereignis genau einmal, und ihre Bedeutung ist aus der Ansicht ersichtlich.",
+      "actual_behavior": "Quellteil in Build 136 umgesetzt. Die Nachruestung des Bestands folgt als Build 137 - erst danach ist der Vorgang erledigt.",
       "updates": [
         {
-          "timestamp": "2026-08-13T09:30:00+00:00",
+          "timestamp": "2026-08-12T20:10:00+00:00",
           "author": "Claude",
           "action": "comment",
-          "comment": "EIN BEFUND ZUR EIGENEN VORGAENGERLIEFERUNG, bevor es um die Nachruestung geht. Die zweite Summenspalte aus Build 136 hat die Ansicht NIE erreicht. stage1/phase_b_exporter.py las die Timeline mit 'SELECT year, month, source_table, event_count' - ohne dubletten_count. Der Renderer holt die Zahl ueber r.get mit Ersatzwert 0 und bekam deshalb immer 0. Die Spalte 'Summe Ereignisse' war seit Build 136 IMMER gleich 'Summe Belege', und der Zell-Tooltip zu den Zweitbelegen entstand nie.\n\nGEMESSEN am 2026-08-13 unter Python 3.14.0rc2: eine forensic-Datei mit 4 Belegen, davon 2 Zweitbelege, ergab im gerenderten BLOB 4 und 4 statt 4 und 2.\n\nWARUM ES NICHT AUFFIEL: D09 prueft die SQL-Aggregation, D10/D11 rufen den Renderer mit von Hand gebauten Zeilen auf. Beides gruen - dazwischen lag die Ladeschicht, durch die kein Test lief. Der Fehler lag zwischen zwei gruenen Tests.\n\nFUER DIE NACHRUESTUNG WAR DAS ENTSCHEIDEND: Das im Migrationskonzept vorgesehene Sicherheitsnetz haette gegriffen, obwohl sich keine Zahl aendert - wir haetten fuer jede Bestandsdatei das Siegel gebrochen, ohne Gegenwert. Das Netz prueft jetzt die ZAHLEN gegen die Datenbank."
+          "comment": "AUS DER FRAGE IST EIN BEFUND GEWORDEN. Alex hat am 2026-08-12 fuer Benutzer 1488 gemessen: 235 Eintraege in pms_cracked_bundles, 4652 in pms_new_posts, davon 213 ueberlappend. Die Doppelzaehlung ist damit belegt und nicht mehr nur plausibel.\n\nZWEI ANMERKUNGEN VON ALEX, die den Entwurf gepraegt haben:\n(1) 'Nicht jede ID, die es in pms_cracked_bundles gibt, muss es auch in pms_new_posts geben' - hat der Empfaenger geloescht, steht die Nachricht nur noch beim Absender in pms_my_posts, oder gar nirgends. Ein Bundle kann in einer der beiden oder in beiden Tabellen vorhanden sein.\n(2) 'pms_new_posts.id = pms_my_posts.post_id = pms_cracked_bundles.post_id. Ursprünglich ist der zentrale Knoten in pms_new_posts.id. ABER wenn dort der Eintrag geloescht wird, besteht die ID fort.'\n\nDAMIT IST DIE ZUORDNUNG EINDEUTIG UND MUSS NICHT GERATEN WERDEN. Dasselbe steht uebrigens seit Build 058 im eigenen Bestand: phase_b_exporter.py haelt fuer pm_posts_sent/pm_posts_received ausdruecklich fest, dass 'die drei PN-Tabellen sich denselben post_id-Raum teilen', und entdoppelt dort bereits ueber COUNT(DISTINCT pm_post_id). Die Timeline tat es als einzige nicht."
         },
         {
-          "timestamp": "2026-08-13T10:15:00+00:00",
+          "timestamp": "2026-08-12T20:20:00+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "comment": "ENTSCHEIDUNG zur zweiten, unabhaengigen Frage des Vorgangs (Belege oder Aktivitaeten): 'Timeline bleibt belegbasiert, PN nur entdoppeln'. Die Timeline zaehlt weiterhin BELEGE je Quelle; die Summe weist die Ereignisse aus. Die Kennzahl 'ausgetauschte Nachrichten' bleibt, wo sie schon ist - in uid_stats (pm_posts_sent + pm_posts_received, Build 058), sie wird NICHT in die Timeline gezogen. Bestehende Faelle sollen nachgeruestet werden."
+        },
+        {
+          "timestamp": "2026-08-12T20:40:00+00:00",
           "author": "Claude",
           "action": "comment",
-          "comment": "NACHRUESTUNG DES BESTANDS GEBAUT (Build 137).\n\n(1) migration/forensic_pn_dubletten_migration.py mit CLI migrate_forensic_pn_dubletten.py und Runbook migration/README_forensic_pn_dubletten_migration.md. Vier-Phasen-Ablauf nach Datenmigrationsleitfaden; Phase 3 und 4 bleiben Operator-Arbeit.\n\n(2) ADDITIV in uid_attestations: pn_post_id und pn_dublette. Keine Bestandsspalte wird angefasst, keine Zeile entfernt - ein Hash ueber alle Bestandsspalten weist das nach (Test PD05). Das Original bleibt bitidentisch, gemessen mit SHA-512 vorher und nachher (PD03).\n\n(3) EINE ABFRAGE, EINE RECHNUNG, ZWEI AUFRUFER. stage1/pn_zuordnung.py traegt die MariaDB-Abfrage, stage1/aktivitaets_aggregate.py die Rechnung fuer Timeline und Heatmap; Exporter und Nachruestung benutzen beide. Zwei Fassungen waeren zwei Wahrheiten - dann traege ein nachgeruesteter Fall andere Zahlen als ein frisch abgezogener.\n\n(4) DIE GLEICHSTANDSPROBE ist der wichtigste Pruefschritt: event_count je Jahr, Monat und Quelle muss vor und nach der Neuberechnung identisch sein. Weicht eine Zeile ab, bricht die Migration ab - eine Abweichung waere der Hinweis, dass die Datei mit einer anderen Logik erzeugt wurde als der heutige Exporter sie hat.\n\n(5) DIE MIGRATION BRAUCHT DIE MariaDB. Die Zuordnung Bundle zu Beitrag steht ausschliesslich in forum.pms_cracked_bundles. Fehlt die Verbindung, bricht das Werkzeug ab statt eine unvollstaendige Zuordnung festzuschreiben.\n\n(6) Vorgabe ist die Trockenuebung; ohne --apply wird nichts geschrieben."
-        },
-        {
-          "timestamp": "2026-08-13T11:00:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "DREI UNABHAENGIGE GEGENPRUEFUNGEN DER FERTIGEN ARBEIT - und sie haben sich gelohnt. Runde 1 fand elf Luecken, Runde 2 sieben weitere, Runde 3 noch drei. Alle behoben, jede mit eigener Gegenprobe.\n\nDIE SCHWERSTE: Der Aequivalenzbericht klammerte pn_post_id und pn_dublette vom Vergleich aus - sie sollen sich ja aendern. Damit sah er ausgerechnet die beiden Spalten nicht an, die diese Migration als einziges schreibt. Und weil die Heatmap aus denselben Markierungen gerechnet wird, war die Mengenprobe algebraisch immer erfuellt. Ein Kandidat, in dem alle Belege als Zweitbeleg markiert waren - Heatmap auf null, das gesamte Aktivitaetsprofil weg -, kam als nachweisbar unschaedlich durch. Der Bericht prueft jetzt vier innere Gesetzmaessigkeiten der Markierungen einschliesslich der Vorrangregel, und die Migration gleicht das Geschriebene zusaetzlich gegen die aus der Quelle ermittelte Zuordnung ab.\n\nEINE REGRESSION HABE ICH MIR BEIM BEHEBEN SELBST EINGEBAUT: Die Zustandspruefung verlangte die Ereignisspalte auch im BLOB von Dateien ohne PN-Belege - deren BLOB wird aber bewusst nicht ausgetauscht. Solche Dateien waeren nie als aktuell erkannt worden und haetten bei jedem Lauf ein neues Siegel bekommen, ohne dass sich eine Zahl aendert. Behoben durch eine gemeinsame Funktion, die beide Verwender teilen.\n\nGEGENPROBEN: 28 Mutationen in vier Runden, je ein Waechter entschaerft; jede faellt mit dem thematisch zustaendigen Test auf. __pycache__ wurde vor jedem Lauf geleert."
-        },
-        {
-          "timestamp": "2026-08-13T11:10:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "comment": "BUILD 137 AUSGELIEFERT. 1071 Tests gruen unter Python 3.14.0rc2 und 3.13.13 (Build 136: 998). Der Vorgang bleibt auf 'testing', bis Alex die Nachruestung an einem echten Fall gefahren und die Vieraugen-Pruefung der Phase 3 abgeschlossen hat. ERWARTUNGSWERT fuer Benutzer 1488 aus der Messung vom 2026-08-12: rund 213 Zweitbelege. Weicht der Lauf deutlich ab, ist das vor Phase 4 zu klaeren.",
-          "old_value": "in_progress",
-          "new_value": "testing"
+          "comment": "QUELLTEIL UMGESETZT IN BUILD 136 (wirkt auf KUENFTIGE Abzuege - der Bestand ist unberuehrt).\n\n(1) NEUE KLASSE stage1/pn_dubletten.py. Sie ordnet jede PN-Attestierung ueber post_id ihrer Nachricht zu und bestimmt je Nachricht GENAU EINEN zaehlenden Beleg. Vorrang: pms_new_posts vor pms_my_posts vor pms_cracked_bundles, bei Gleichstand die kleinere Attestierungs-ID. BEGRUENDUNG DER REIHENFOLGE: die Zeitachse soll den Zeitpunkt der NACHRICHT tragen (posted), nicht den der Entschluesselung (cracked_at) - zaehlte das Bundle, ruecke das Ereignis in den Monat der Entschluesselung.\n\n(2) ES WIRD NICHTS GELOESCHT. uid_attestations bekommt zwei zusaetzliche Spalten: pn_post_id (welche Nachricht) und pn_dublette (ist dieser Beleg der zweite fuer dieselbe Nachricht). Jeder Beleg bleibt vollstaendig erhalten und in seiner Quellspalte sichtbar (Grundregel 1).\n\n(3) NICHT AUFLOESBARE BUNDLES zaehlen als eigenes Ereignis und werden protokolliert. Im Zweifel eine Nachricht zu viel statt ein stillschweigend verworfener Beleg - genau der Fall, den Alex' Anmerkung (1) beschreibt.\n\n(4) DIE ANSICHT WEIST BEIDE ZAHLEN AUS. Statt einer Summenspalte gibt es '∑ Belege' (die Addition der sichtbaren Zellen) und '∑ Ereignisse' (abzueglich Zweitbelege). ABWEICHUNG VON DER URSPRUENGLICHEN VORGABE, offengelegt und von Alex am 2026-08-12 bestaetigt: eine Summe, die sich nicht aus den sichtbaren Spalten nachrechnen laesst, ist fuer einen Bericht an die Staatsanwaltschaft schwer verwendbar. Mit beiden Zahlen ist die Differenz selbst der Beleg. Jede Quellzelle mit Zweitbelegen nennt deren Zahl im Titel; im Zellinhalt steht weiterhin nur die Belegzahl (sonst Scheintreffer beim Filtern, siehe Vorgang E4/8f2c19aa).\n\n(5) 19 NEUE TESTS (D01-D11), darunter D08: die gemessenen Zahlen von Benutzer 1488 sind als Regressionstest hinterlegt (4887 Belege, 213 Zweitbelege, 4674 Ereignisse). Vier Mutationsproben gefahren - Entdopplung ausgeschaltet, Vorrang entwertet, nicht aufloesbare Bundles zusammengelegt, Ereignissumme ohne Abzug: jede faellt mit mindestens einem roten Test auf.\n\n(6) OFFEN BIS BUILD 137: die Nachruestung bestehender forensic_<uid>.db. Sie braucht die MariaDB (die Zuordnung Bundle -> Beitrag steht nur dort) UND muss den vorgerenderten Nutzerinfo-BLOB neu erzeugen. Bis dahin zeigen bestehende Faelle die alten Zahlen - in der Ansicht faellt das nicht auf, weil ein Aggregat ohne dubletten_count zu zwei gleichen Summen fuehrt (Test D10d)."
         }
       ]
     },
@@ -10132,7 +10119,7 @@
     {
       "id": "d4216c4c-38b9-4292-b199-78ac0a3f15b4",
       "type": "bug",
-      "status": "testing",
+      "status": "open",
       "priority": "medium",
       "severity": "minor",
       "title": "Aktivitaets-Heatmap zaehlt entschluesselte PN ebenfalls doppelt",
@@ -10145,87 +10132,23 @@
         "uid_heatmap"
       ],
       "affected_version": "0.1.136",
-      "resolved_in_version": "0.1.137",
-      "target_version": "0.1.137",
       "reported_at": "2026-08-12T20:40:00+00:00",
       "prerequisites": "Ein Fall mit entschluesselten PN, dessen Beitraege ebenfalls attestiert sind (Beispiel Benutzer 1488).",
-      "environment": {
-        "python_version": "3.14.0rc2 und 3.13.13",
-        "database": "forensic_<uid>.db (uid_heatmap)"
-      },
-      "description": "uid_heatmap wird in demselben Schritt 6 des Exporters aus denselben uid_attestations gezaehlt wie uid_timeline_agg. Der Befund aus Vorgang 3f7ae4c1 trifft sie deshalb genauso: eine Privatnachricht, die als Beitrag UND als Entschluesselung bezeugt ist, erhoeht die Zelle zweimal. Die Heatmap hat keine Summenspalte, an der es auffiele - sie faerbt nur staerker.",
-      "expected_behavior": "Eine Zaehlgrundlage, die zur Timeline passt, und eine Ansicht, die sagt, welche es ist.",
-      "actual_behavior": "In Build 137 umgesetzt. Bereit zur Abnahme durch Alex.",
-      "related_to": [
-        "3f7ae4c1-2b98-4d57-9e16-c4f83a0b5d61"
-      ],
+      "description": "uid_heatmap wird in demselben Schritt 6 des Exporters aus denselben uid_attestations gezaehlt wie uid_timeline_agg (phase_b_exporter.py, Schritt 6, unmittelbar unter der Timeline-Aggregation). Der Befund aus Vorgang 3f7ae4c1 trifft sie deshalb genauso: eine Privatnachricht, die als Beitrag UND als Entschluesselung bezeugt ist, erhoeht die Zelle (Wochentag x Stunde) zweimal.\n\nDIE HEATMAP HAT KEINE SUMMENSPALTE, an der es auffiele - sie faerbt nur staerker. Die Verzerrung ist damit unauffaelliger als bei der Timeline und trifft ausgerechnet die Darstellung, aus der auf Tagesrhythmen geschlossen wird.\n\nDER BAUSTEIN IST SEIT BUILD 136 VORHANDEN: uid_attestations.pn_dublette. Es waere ein 'WHERE pn_dublette = 0' in der Heatmap-Abfrage.",
+      "expected_behavior": "Zu klaeren und zu entscheiden: Soll die Heatmap Ereignisse zaehlen (dann Zweitbelege ausschliessen) oder Belege (dann bleibt sie wie sie ist und die Ueberschrift muss es sagen)? Beides ist vertretbar - aber es sollte dieselbe Entscheidung sein wie bei der Timeline, sonst zeigen zwei Abschnitte derselben Ansicht Zahlen nach verschiedenen Massstaeben.",
+      "actual_behavior": "Zaehlt Belege, heisst aber 'Aktivitaets-Heatmap'. Unveraendert gegenueber Build 135.",
       "updates": [
         {
-          "timestamp": "2026-08-13T08:45:00+00:00",
-          "author": "Alex",
-          "action": "comment",
-          "comment": "ENTSCHEIDUNG 2026-08-13: Die Heatmap wird auf EREIGNISSE umgestellt. Damit gilt in Timeline und Heatmap derselbe Massstab.",
-          "old_value": "",
-          "new_value": ""
-        },
-        {
-          "timestamp": "2026-08-13T10:20:00+00:00",
+          "timestamp": "2026-08-12T20:40:00+00:00",
           "author": "Claude",
           "action": "comment",
-          "comment": "UMGESETZT IN BUILD 137, und zwar fuer BEIDE Ansichten.\n\n(1) Die gespeicherte UTC-Heatmap entsteht mit 'pn_dublette = 0'. Die Ortszeit-Heatmap wird erst beim Rendern aus best_ts gerechnet und musste deshalb an einer zweiten Stelle dieselbe Zaehlgrundlage bekommen. Nur eine von beiden zu filtern hiesse, zwei Panels derselben Ansicht widersprechen sich - Test D15b haelt sie gegeneinander.\n\n(2) DIE UEBERSCHRIFT SAGT JETZT, WAS GEZAEHLT WURDE. Bestandsdateien ohne die Spalte pn_dublette koennen nicht entdoppelt werden; sie werden als 'Belege (PN nicht entdoppelt)' beschriftet statt als 'Ereignisse'. Eine als Ereignisse beschriftete Heatmap, die Belege zeigt, waere eine falsche Aussage in einem Beweismittel (Test D13b).\n\n(3) DIE NACHRUESTUNG PRUEFT DIE HERKUNFT: Die gespeicherte Heatmap einer Bestandsdatei muss der Belege- ODER der Ereigniszaehlung ihrer eigenen Attestierungen entsprechen. Entspricht sie keiner von beiden, ist die Datei mit einer dritten, unbekannten Logik entstanden - dann bricht die Migration ab, statt eine unverstandene Zahl durch eine verstandene zu ersetzen und damit den Hinweis zu vernichten.\n\n(4) UND DIE VERTEILUNG WIRD ZELLGENAU GEPRUEFT, nicht nur die Summe. Aus der Heatmap wird auf Tagesrhythmen geschlossen; eine Heatmap mit richtiger Summe und verschobenen Zellen waere ein frei erfundener Tagesrhythmus (Test PD27). Ausserdem muss das Raster vollstaendig sein - eine fehlende Zelle ist in der Ansicht nicht von Ruhe zu unterscheiden."
+          "comment": "AUFGEFALLEN beim Umbau der Timeline in Build 136. BEWUSST NICHT MITERLEDIGT: Die Entscheidung zur Timeline (Alex, 2026-08-12) betraf ausdruecklich die Timeline. Die Heatmap ungefragt mitzuaendern hiesse, eine Ansicht zu veraendern, ueber die niemand entschieden hat - und die Zahlen bestehender Faelle wuerden sich still verschieben. Der Punkt gehoert entschieden, nicht nebenbei erledigt."
         },
         {
-          "timestamp": "2026-08-13T11:10:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "comment": "Bleibt auf 'testing', bis die Heatmap eines nachgeruesteten Falls gesichtet ist. Erwartet: die Faerbung wird an den Zellen schwaecher, in denen entschluesselte PN liegen, und die Ueberschrift nennt 'Ereignisse'.",
-          "old_value": "open",
-          "new_value": "testing"
-        }
-      ]
-    },
-    {
-      "id": "9c2f5b71-4e08-4a3d-b6c1-7d5a8e2f40b9",
-      "type": "improvement",
-      "status": "open",
-      "priority": "low",
-      "severity": "minor",
-      "title": "forensic_<uid>.db fuehrt weiterhin kein schema_migrations",
-      "reporter": "Claude",
-      "assigned_to": "Alex",
-      "tags": [
-        "Prepper",
-        "forensic",
-        "Migration",
-        "Selbstbeschreibung",
-        "Belegpflicht"
-      ],
-      "affected_version": "0.1.137",
-      "reported_at": "2026-08-13T11:15:00+00:00",
-      "prerequisites": "Zugriff auf den Prepper-Bestand.",
-      "environment": {
-        "python_version": "3.14.0rc2",
-        "database": "forensic_<uid>.db"
-      },
-      "description": "BEIM BAU VON BUILD 137 AUFGEFALLEN, und es ist ein Widerspruch in der eigenen Dokumentation.\n\nVorgang 2dc0b8f0 steht im Issue-Tracker auf 'testing' mit resolved_in_version 0.1.132 und der Beschreibung, schema_migrations werde in seal() eingezogen - 'der EINZIGEN Stelle, durch die jede forensic_<uid>.db hindurchmuss'.\n\nGEPRUEFT IM BESTAND 0.1.136: stage2/forensic_db_writer.py seal() schreibt KEIN schema_migrations. Die Klasse SchemaRegistry wird im ganzen Bestand nur von asset_importer.py und stage2/evidence_db_init.py benutzt, nicht vom forensic-Pfad. Auch das Migrationskonzept zu Build 137 haelt fest: 'forensic_<uid>.db fuehrt bis heute kein schema_migrations (Vorgang 2dc0b8f0, von Alex am 11.08.2026 mit Ja entschieden, aber nicht gebaut)'.\n\nEntweder ist die Aenderung nie eingespielt worden, oder der Vorgang wurde zu frueh auf 'testing' gesetzt. Beides gehoert geklaert - ein Vorgang, der als erledigt gefuehrt wird, wird nicht mehr gesucht.",
-      "expected_behavior": "Entweder traegt jede forensic_<uid>.db die Registry und 2dc0b8f0 ist zu Recht auf 'testing', oder der Vorgang geht auf 'open' zurueck.",
-      "actual_behavior": "Die Registry fehlt. Die Nachruestung aus Build 137 erkennt ihren Zustand deshalb am Vorhandensein der Spalte pn_dublette - belastbar, aber kein Ersatz fuer ein Register.",
-      "related_to": [
-        "2dc0b8f0-26e6-4d78-88ae-4849ae217d56",
-        "3f7ae4c1-2b98-4d57-9e16-c4f83a0b5d61"
-      ],
-      "updates": [
-        {
-          "timestamp": "2026-08-13T11:15:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "BEWUSST NICHT MITERLEDIGT. Die Registry geht in den inhaltsbasierten Siegel-Hash ein; sie einzuziehen aendert das Siegel JEDER kuenftig erzeugten Datei. Das ist keine Nebensache, die man in einer Lieferung zu einem anderen Vorgang mitnimmt - und zwei Sitzungen, die gleichzeitig am Siegel arbeiten, waeren genau die Lage, die wir vermeiden wollen."
-        },
-        {
-          "timestamp": "2026-08-13T14:06:42.469284+00:00",
+          "timestamp": "2026-08-13T14:05:35.595651+00:00",
           "author": "merge-tool",
           "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Prepper_Build137.json"
+          "comment": "Importiert aus eintraege_claude_Prepper_Build136.json"
         }
       ]
     }
