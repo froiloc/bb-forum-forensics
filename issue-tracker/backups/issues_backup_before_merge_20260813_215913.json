@@ -10136,27 +10136,23 @@
       "description": "RbacRepo._validate_capability (rbac_repo.py:274) prueft capability_code gegen catalog.CAPABILITY_CODES, also gegen den Katalog im CODE. Ob die Faehigkeit in rbac_capability der DATENBANK steht, prueft niemand; die Fremdschluessel greifen bei foreign_keys=OFF nicht. Ein Grant auf eine in der Datenbank unbekannte Faehigkeit entsteht deshalb klaglos.\n\nGenau daraus entstand Vorgang 9c4e17b2 (Grant #62 vom 12.08.2026). Die Vorbeugung sitzt seit Build 711 im CLI-Werkzeug 'migrate-grants' - also an dem Weg, auf dem es damals geschah. Sie sitzt NICHT im Repository selbst. Jeder andere Schreibpfad kann dieselbe Waise erzeugen: 'rbac_admin grant', demo_seed und jede kuenftige Stelle, die RbacRepo.grant aufruft.\n\nOFFENE FRAGE, die vor der Umsetzung zu klaeren ist: soll die Pruefung abweisen oder nur warnen? Ein Abweisen ist die strengere und vermutlich richtige Antwort, verhaelt sich aber anders als heute in einem Pfad, der bei jeder Rechtevergabe laeuft. Die Bestandsaufnahme, welche Aufrufer betroffen waeren, steht noch aus - sie gehoert vor die Aenderung, nicht danach.",
       "expected_behavior": "Ein Grant auf eine Faehigkeit, die die Datenbank nicht kennt, entsteht gar nicht erst - unabhaengig davon, ueber welchen Weg er geschrieben wird.",
       "actual_behavior": "Nur 'migrate-grants' prueft das (seit Build 711). Alle anderen Wege ueber RbacRepo.grant erzeugen die Waise weiterhin stillschweigend.",
-      "status": "resolved",
+      "status": "open",
       "priority": "medium",
       "severity": "major",
-      "assigned_to": "Claude",
+      "assigned_to": "",
       "related_to": [
-        "4f2a8c31-9b60-4d17-a8e5-71c3ff02b94d",
-        "9783552e-897e-4697-a9fc-3d99acd91027",
         "9c4e17b2-7f31-4a06-b58d-2e0c5a41d6f4"
       ],
-      "resolved_in_version": "0.8.716",
-      "target_version": "0.8.716",
+      "resolved_in_version": null,
+      "target_version": null,
       "environment": {
         "python_version": "3.14",
         "database": "coordinator.db"
       },
       "tags": [
-        "Build711",
-        "Build716",
         "RBAC",
-        "RbacRepo",
         "Vorbeugung",
+        "Build711",
         "Wurzelursache"
       ],
       "attachments": [],
@@ -10182,14 +10178,6 @@
           "old_value": "",
           "new_value": "4f2a8c31-9b60-4d17-a8e5-71c3ff02b94d",
           "comment": "Build 713 liefert tools/pruefe_rbac_waisen.py. Es FINDET den Zustand, den dieser Vorgang verhindern soll - es ersetzt ihn nicht. Dieser Vorgang bleibt offen; die zu klaerende Frage ist unveraendert, ob die Pruefung in RbacRepo.grant abweisen oder warnen soll."
-        },
-        {
-          "timestamp": "2026-08-13T19:24:07+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "BEHOBEN IN BUILD 716. Die im Vorgang verlangte Bestandsaufnahme wurde VOR der Aenderung gefahren und ist der Grund, warum die Abhilfe so aussieht, wie sie aussieht.\n\n(1) GEMESSEN, NICHT GESCHAETZT. Eine Sonde an genau der Stelle des kuenftigen Waechters (in _w, innerhalb der Schreibsperre) hat die volle Testsuite mitgeschrieben und fuer jeden Grant festgehalten, ob die Faehigkeit in rbac_capability der DATENBANK steht. Ergebnis am Stand 0.8.712: 1958 Grant-Aufrufe, davon 2 mit einer der Datenbank unbekannten Faehigkeit, 0 ohne die Tabelle rbac_capability. Die Sonde wurde danach rueckstandslos entfernt.\n\n(2) DIE BETROFFENEN AUFRUFER SIND DREI, nicht mehr: 'rbac_admin grant' (rbac_admin.py:242, ohne eigene Pruefung), 'rbac_admin migrate-grants' (rbac_admin.py:372, prueft seit Build 711 selbst und vorgelagert) und demo_seed (demo_seed.py:154, ohne eigene Pruefung). Das Management ist NICHT betroffen: management_app.py ruft nur assign_role (Z. 6157/6206), die Grant-Matrix ist ausdruecklich CLI-only (Kommentare Z. 118 und 484). Gleiches gilt fuer sync_executor.py.\n\n(3) DIE OFFENE FRAGE hat Alex am 13.08.2026 entschieden: ABWEISEN, nicht warnen. Steht die Faehigkeit nicht im Katalog der Datenbank, wirft RbacRepo.grant jetzt RbacError; die Meldung nennt den fehlenden Schritt ('python -m management.migrate') und den Grund. Die Pruefung sitzt in _w und damit INNERHALB der Schreibsperre - an derselben Stelle und aus demselben Grund wie der Duplikat-Guard (kein TOCTOU). In _validate_capability konnte sie nicht sitzen: der statische Validierer hat keine Verbindung.\n\n(4) FEHLT DIE TABELLE rbac_capability GANZ, wird nur gewarnt und durchgelassen (ebenfalls Weisung Alex). 'Nicht pruefbar' ist eine andere Lage als 'nachweislich falsch' - dieselbe Unterscheidung, die _nicht_in_db in rbac_admin bereits trifft (None gegen leere Liste). Ein Abbruch traefe hier Altbestaende vor M006, ueber die wir keinen Befund haben, und der Vorgang 9c4e17b2 entstand nicht so.\n\n(5) VIER TESTFAELLE BRAUCHEN JETZT EINEN NOTAUSGANG, und alle vier stellen den Vorfall NACH: RB11/RB11b in tests/test_rechtetrennung_falluebersicht.py (M038 haengt an der Waise nicht mehr) und RW02/RW02b in tests/test_rbac_waisen.py (das Pruefwerkzeug aus 4f2a8c31 findet sie). Alle vier halten die Migrationskette vor M038 an und BRAUCHEN die Waise als Ausgangslage. Rohes SQL schied aus: RB11 und RW02 loesen die Beleg-seq des Grants auf, der Grant muss also ein ordentlich belegter sein. Sie setzen deshalb das neue Schluesselwort db_katalog_pruefen=False - und nur sie. Die Voreinstellung ist streng.\n\nANMERKUNG ZUM ZWEITEN LAUF: die ersten beiden waren gemessen, die zweiten beiden nicht - tests/test_rbac_waisen.py entstand mit Build 713, also NACH der Baubasis 0.8.712, gegen die die Sonde lief. Der Regressionslauf von Alex hat sie gefunden. Die Messung war zum Zeitpunkt der Messung vollstaendig; sie war es nicht mehr, als geliefert wurde. Lehre: eine Bestandsaufnahme altert, solange parallel gearbeitet wird, und ist vor der Auslieferung gegen origin/master zu wiederholen - nicht nur gegen die eigene Baubasis.\n\n(6) DER UEBERGANGENE WAECHTER BLEIBT NICHT STILL (Grundregel 1): sowohl der Notausgang als auch die nicht pruefbare Lage schreiben einen Vermerk in die audit_log-Nutzlast des Grants (Schluessel 'db_katalog' mit den Werten 'unbekannt_uebergangen' bzw. 'nicht_pruefbar_tabelle_fehlt') und eine Zeile ins Protokoll. Im REGELFALL bleibt die Nutzlast Zeichen fuer Zeichen die von vorher - der Schluessel entsteht nur in der Ausnahme. Das war Absicht: die Nutzlast geht in den Zeilen-Hash der Belegkette ein.\n\n(7) DAS PRUEFWERKZEUG AUS 4f2a8c31 WIRD NICHT UEBERFLUESSIG. Die Vorbeugung wirkt ab jetzt; BESTEHENDE Waisen findet weiterhin nur jener Lauf. Und die Richtungen [2] und [3] jenes Werkzeugs (rbac_grant -> rbac_role, person_role -> rbac_role) bleiben unbewacht - siehe Vorgang 9783552e.\n\n(8) KEINE ZEILE IN rbac_admin.py NOETIG. Der CLI-Weg erbt den Waechter, weil main() RbacError zentral ausgibt und mit 1 endet. DK07 prueft genau das Ende-zu-Ende.\n\n(9) NEUE REGRESSION: tests/test_rbac_grant_db_katalog.py, DK01-DK07 (6 Testfaelle). DK03 misst ausdruecklich, dass nach dem Abweisen WEDER eine rbac_grant-Zeile NOCH ein audit_log-Eintrag zurueckbleibt.\n\n(10) MIGRATIONSVORBEHALT (ab 01.07.2026): NICHT BERUEHRT. Es aendert sich kein Schema und keine bestehende Zeile. Bestehende audit_log-Nutzlasten bleiben unveraendert, weil der neue Schluessel nur in der Ausnahme entsteht."
         }
       ]
     },
@@ -10592,57 +10580,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Build713.json"
-        }
-      ]
-    },
-    {
-      "id": "9783552e-897e-4697-a9fc-3d99acd91027",
-      "type": "improvement",
-      "title": "RbacRepo prueft auch role_code nur gegen den Katalog des Codes",
-      "affected_version": "0.8.716",
-      "reporter": "Claude",
-      "reported_at": "2026-08-13T19:24:07+00:00",
-      "prerequisites": "Eine coordinator.db, deren Migrationsstand hinter dem Code zurueckliegt - also jeder Zeitpunkt zwischen dem Einspielen einer Lieferung und dem Migrationslauf. Nachgestellt mit einer Kette, die vor M014 anhaelt (M014 legt die Rolle 'maintenance' an).",
-      "description": "Bei der Bearbeitung von 1b7d55ae aufgefallen und bewusst NICHT mitbehoben. Das Verhaeltnis zu 4f2a8c31 ist dasselbe wie das von 1b7d55ae: tools/pruefe_rbac_waisen.py FINDET diese Verweise ins Leere bereits (Richtungen [2] rbac_grant -> rbac_role und [3] person_role -> rbac_role) - VERHINDERT werden sie von niemandem.\n\nDER BEFUND: 1b7d55ae betraf capability_code, und Build 716 hat nur den behoben. RbacRepo._validate_role prueft gegen catalog.ROLE_CODES, also gegen den Katalog im CODE. Ob die Rolle in rbac_role der DATENBANK steht, prueft weder grant() noch assign_role().\n\nGEMESSEN AM 13.08.2026 (Kette bis Version 13 angehalten, also vor M014, foreign_keys=OFF wie im Betrieb):\n  * 'maintenance' steht im Katalog des Codes: ja\n  * 'maintenance' steht in rbac_role der Datenbank: nein\n  * repo.assign_role(1, 'maintenance') -> laeuft durch, Beleg-seq 15, person_role-Zeile entsteht\n  * repo.grant('maintenance', 'dashboard.view') -> laeuft durch, Beleg-seq 16 (die Faehigkeit ist der Datenbank bekannt, der Waechter aus Build 716 greift hier also nicht)\n\nUND DIE WAISE WIRKT - das ist der Teil, der ueber die Befunde des Pruefwerkzeugs hinausgeht. Gegenprobe an derselben Lage: RbacResolver(con).can(1, 'dashboard.view') antwortet True. Ueber eine Rolle, die die Datenbank nicht kennt, wird also ein Recht WIRKSAM; der Resolver verbindet nicht gegen rbac_role. Damit kann ein Zugang entstehen, bevor die Migration gelaufen ist, die die Rolle einfuehrt.\n\nWAS ANDERS IST ALS BEI 1b7d55ae, und es mildert den Befund: die Migrationskette bricht danach NICHT ab. Gegenprobe gefahren - nach beiden Waisen laeuft die restliche Kette bis Version 38 durch. Der Sperrriegel-Effekt aus 9c4e17b2 entsteht hier also nicht; es bleibt der wirksame Zugang ohne Grundlage in der Datenbank.\n\nOFFENE FRAGEN, die vor der Umsetzung zu klaeren sind: (a) Soll die Pruefung nur in grant()/assign_role() sitzen oder zusaetzlich im Resolver? Das sind zwei verschiedene Antworten - die eine verhindert die Entstehung, die andere die Wirkung bereits entstandener Zeilen, und die zweite aendert das Verhalten auf jedem Lesepfad. (b) Die Bestandsaufnahme der betroffenen Aufrufer steht noch aus; sie ist bei assign_role groesser als bei grant, weil hier auch das Management schreibt (management_app.py Z. 6157/6206) und der AD-Abgleich (sync_executor.py Z. 126). Sie gehoert vor die Aenderung, nicht danach - und sie ist unmittelbar vor der Auslieferung gegen origin/master zu wiederholen (Lehre aus Build 716: die dortige Messung lief gegen die eigene Baubasis und war beim Ausliefern bereits ueberholt).",
-      "expected_behavior": "Eine Rollenzuweisung oder ein Grant auf eine Rolle, die die Datenbank nicht kennt, entsteht gar nicht erst - unabhaengig davon, ueber welchen Weg sie geschrieben wird.",
-      "actual_behavior": "Beide entstehen klaglos, und der Resolver macht das daraus folgende Recht wirksam. tools/pruefe_rbac_waisen.py findet sie hinterher.",
-      "status": "open",
-      "priority": "medium",
-      "severity": "major",
-      "assigned_to": "",
-      "related_to": [
-        "1b7d55ae-04c9-4f2a-9d63-8a0f21c7e5b0",
-        "4f2a8c31-9b60-4d17-a8e5-71c3ff02b94d",
-        "9c4e17b2-7f31-4a06-b58d-2e0c5a41d6f4"
-      ],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "python_version": "3.14",
-        "database": "coordinator.db"
-      },
-      "tags": [
-        "Build716",
-        "RBAC",
-        "RbacRepo",
-        "Vorbeugung",
-        "Wurzelursache"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-13T19:24:07+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Bei der Bearbeitung von 1b7d55ae gemessen und bewusst nicht mitbehoben: 1b7d55ae verlangte ausdruecklich eine Bestandsaufnahme VOR der Aenderung, und die liegt fuer role_code noch nicht vor. Getrennt gefuehrt, damit der Befund nicht mit 1b7d55ae abgehakt wird."
-        },
-        {
-          "timestamp": "2026-08-13T19:59:13.759106+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build716.json"
         }
       ]
     }
