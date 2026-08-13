@@ -32,7 +32,23 @@
 #   RW08 - Die Unterscheidung 'steht wenigstens im Code' wird gemacht - sie
 #          trennt den Reihenfolgefall vom unerklaerlichen Fall.
 #
+# NACHTRAG BUILD 716 (Vorgang 1b7d55ae) - WARUM ZWEI FAELLE JETZT EINEN
+# NOTAUSGANG BRAUCHEN:
+#   Seit Build 716 weist RbacRepo.grant einen Grant auf eine Faehigkeit ab,
+#   die die DATENBANK nicht kennt. Damit laesst sich die Waise ueber den
+#   auditierten Weg nicht mehr erzeugen - was der Zweck jener Aenderung ist.
+#   RW02 und RW02b brauchen sie aber als AUSGANGSLAGE und setzen deshalb
+#   'db_katalog_pruefen=False'. Rohes SQL schied aus: RW02 loest die Beleg-seq
+#   des Grants auf, der Grant muss also ein ordentlich belegter sein.
+#
+#   DAS WERKZEUG WIRD DADURCH NICHT UEBERFLUESSIG, und das ist der Grund,
+#   warum hier nichts weiter geaendert wurde: die Vorbeugung wirkt ab jetzt,
+#   BESTEHENDE Waisen findet weiterhin nur dieser Lauf. Und fuer role_code
+#   besteht der Spalt unveraendert fort (Vorgang 9783552e) - 'rollen_ohne_...'
+#   bleibt also auch fuer kuenftige Faelle zustaendig.
+#
 # Version: v0.8.713 - Build: 713 - 2026-08-13
+#   ergaenzt v0.8.716 - Build: 716 - 2026-08-13 (Notausgang in RW02/RW02b)
 # =============================================================================
 
 from __future__ import annotations
@@ -172,8 +188,15 @@ class WaisenTests(_MitBestand):
     # -- RW02 / RW08 ----------------------------------------------------------
     def test_rw02_findet_den_grant_und_loest_den_beleg_auf(self):
         self.repo.assign_role(1, "supervisor", actor_id=1)
+        # db_katalog_pruefen=False (Build 716, Vorgang 1b7d55ae): seit dem
+        # zweiten Waechter in RbacRepo.grant weist der auditierte Weg genau
+        # diesen Grant ab - das ist der Zweck des Waechters, und er ergaenzt
+        # dieses Werkzeug, statt es zu ersetzen (Bestandsfaelle bleiben zu
+        # finden). Dieser Test BRAUCHT die Waise aber als Ausgangslage.
+        # Rohes SQL scheidet aus: unten wird die Beleg-seq aufgeloest, der
+        # Grant muss also ein ordentlich belegter sein.
         seq = self.repo.grant("supervisor", _NEUES_RECHT, scope="alle",
-                              actor_id=1)
+                              actor_id=1, db_katalog_pruefen=False)
 
         ergebnis, rueckgabe = self._pruefe()
         self.assertEqual(2, rueckgabe)
@@ -220,7 +243,9 @@ class WaisenTests(_MitBestand):
     def test_rw02b_waise_hat_vorrang_vor_versatz(self):
         """Beides zugleich: der schwerere Befund entscheidet."""
         self.repo.assign_role(1, "supervisor", actor_id=1)
-        self.repo.grant("supervisor", _NEUES_RECHT, scope="alle", actor_id=1)
+        # Notausgang wie in RW02 - dieselbe Ausgangslage, dieselbe Begruendung.
+        self.repo.grant("supervisor", _NEUES_RECHT, scope="alle", actor_id=1,
+                        db_katalog_pruefen=False)
         ergebnis, rueckgabe = self._pruefe()
         self.assertTrue(any(ergebnis["katalogversatz"].values()))
         self.assertEqual(2, rueckgabe, "Der Versatz hat die Waise verdeckt.")

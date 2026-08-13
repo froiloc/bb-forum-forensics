@@ -1,0 +1,7 @@
+3c94531609aafce6e3f4e6f47e687f02  build.json
+52bb47ace0eceeab8649de549a168bf3  issue-tracker/eintraege_claude_Build716.json
+001c90eb5bb9bef5f479ce028ad6cff0  management/help/cli_katalog.py
+7a36c544fcfd6d3dfe4cdbddafbdefba  management/rbac/rbac_repo.py
+3456ba11b74c51a675f0186c2ca68b73  tests/test_rbac_grant_db_katalog.py
+b1a7ab95a1ea1fed5b2570bf25249588  tests/test_rbac_waisen.py
+ee1a7ccb999c09cf9fdb1ab8ab996062  tests/test_rechtetrennung_falluebersicht.py
