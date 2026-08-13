@@ -3823,6 +3823,79 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
     ),
     CliEintrag(
+        schluessel="pruefe_rbac_waisen",
+        pfad="tools/pruefe_rbac_waisen.py",
+        aufruf="python tools/pruefe_rbac_waisen.py --db data/coordinator.db "
+               "[--json]",
+        titel="Rechte-Matrix auf Verweise ins Leere pruefen",
+        gruppe="Personal und Rechte",
+        zweck="Sichtbar machen, ob rbac_grant oder person_role auf Rollen, "
+              "Faehigkeiten, Personen oder Belege zeigen, die es in dieser "
+              "Datenbank nicht (mehr) gibt.",
+        art="lesend",
+        datenbanken=("coordinator.db (lesend, mode=ro)",),
+        betrieb="Der Betrieb darf weiterlaufen. Die Datenbank wird "
+                "schreibgeschuetzt geoeffnet; kein Wartungsfenster noetig, "
+                "auch auf einer Produktivdatenbank unbedenklich.",
+        beleg=False,
+        hinweis="ANLASS ist Vorgang 9c4e17b2 (13.08.2026): ein Grant auf ein "
+                "Recht, das die Datenbank nicht kannte, brachte die Migration "
+                "zum Abbruch und das Management zum Stillstand. Moeglich ist "
+                "das, weil ZWEI Kataloge existieren - der im Code "
+                "(management/rbac/catalog.py, gegen den RbacRepo prueft) und "
+                "der in der Datenbank (rbac_capability, gegen den niemand "
+                "prueft) -, und die Fremdschluessel bei foreign_keys=OFF "
+                "nicht greifen. Das Werkzeug schliesst diese Luecke NICHT, es "
+                "macht sie sichtbar; die Pruefung im Schreibpfad selbst ist "
+                "Vorgang 1b7d55ae und steht aus. Zu jedem Fund wird der Beleg "
+                "aus audit_log aufgeloest - dort steht, wer ihn wann erzeugt "
+                "hat.",
+        # Build 713: geprueft am Quelltext. Kein ConfigLoader, kein
+        # '--config'; der Pfad kommt ausschliesslich aus '--db'. Bewusst wie
+        # bei pruefe_migrationskette: ein Diagnosewerkzeug soll die Datei
+        # nennen, die es liest, statt sie zu erraten.
+        konfiguration=KONFIG_KEINE,
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/pruefe_rbac_waisen.py --db "
+                     "./data/coordinator.db",
+                     "Prueft die fuenf Richtungen und nennt zu jedem Fund den "
+                     "Beleg. Im Versuch an einem Bestand mit Migrationsstand "
+                     "M037 und einem zu frueh vergebenen Recht: Grant #2 auf "
+                     "'caseoverview.view' gefunden, Beleg seq 41 aufgeloest "
+                     "auf demo_chef, dazu eine gebrochene Beleg-Kopplung - "
+                     "Rueckgabewert 2.",
+                     "Build 713, 2026-08-13, gegen einen Wegwerf-Bestand"),
+                _bsp("python tools/pruefe_rbac_waisen.py --db "
+                     "./data/coordinator.db --json",
+                     "Dieselbe Pruefung als JSON fuer das Betriebsskript. Im "
+                     "Versuch am selben Bestand: Schluessel 'anzahl_waisen' "
+                     "mit dem Wert 2, die MD5-Summe der Datei vor und nach "
+                     "dem Lauf unveraendert.",
+                     "Build 713, 2026-08-13, gegen einen Wegwerf-Bestand"),
+            ),
+            exit_codes=((0, "kein Befund"),
+                        (1, "Aufruffehler - Datei fehlt, nicht lesbar oder "
+                            "ohne Rechte-Matrix"),
+                        (2, "Waisen oder gebrochene Beleg-Kopplungen "
+                            "gefunden; hat Vorrang vor 3"),
+                        (3, "NUR Katalogversatz zwischen Code und Datenbank "
+                            "- meist eine ausstehende Migration, kein "
+                            "Schaden")),
+            warnungen=(
+                "EIN LEERER BEFUND IST KEINE UNBEDENKLICHKEITS"
+                "BESCHEINIGUNG, wenn Tabellen fehlten. Fehlt person_role, "
+                "person oder audit_log, entfallen die zugehoerigen "
+                "Pruefungen - das Werkzeug nennt sie dann in der ersten "
+                "Zeile. Wer nur auf 'keine' schaut, uebersieht das.",
+                "Rueckgabewert 3 ist der Normalfall zwischen dem Einspielen "
+                "einer Lieferung und dem Migrationslauf: der Code kennt dann "
+                "Rechte, die die Datenbank noch nicht hat. Ein Betriebsskript "
+                "sollte 3 deshalb nicht wie 2 behandeln.",
+            ),
+        ),
+    ),
+    CliEintrag(
         schluessel="pruefe_sort_index",
         pfad="tools/pruefe_sort_index.py",
         aufruf="python tools/pruefe_sort_index.py [--dir data/evidence] [--json]",
