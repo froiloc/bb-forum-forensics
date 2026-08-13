@@ -266,6 +266,19 @@ _GEPRUEFT_694 = ("Build 694, 2026-08-11, gegen Wegwerf-default.db unter "
                  "/tmp, Python 3.13")
 
 
+#: Build 717. Vorgang 77757536 - 'backup_admin versatz'. Gefahren gegen
+#: HANDGEBAUTE Manifeste unter /tmp und nicht gegen einen produktiven
+#: Sicherungssatz. Das ist eine Einschraenkung und keine Nachlaessigkeit: ein
+#: Versatz von Minuten laesst sich mit Wegwerf-Datenbanken nicht herstellen,
+#: die sind in Sekundenbruchteilen kopiert. Die FORM der Manifeste ist
+#: trotzdem belegt - der Testfall VZ18 wertet ein von BackupExecutor
+#: WIRKLICH geschriebenes Manifest aus. Die Zahlen der Beispiele sind damit
+#: nachgebaut, die Lesart ist gemessen.
+_GEPRUEFT_717 = ("Build 717, 2026-08-13, gegen handgebaute "
+                       "Manifeste unter /tmp, Python 3.14 - NICHT gegen "
+                       "einen produktiven Sicherungssatz")
+
+
 def _bsp(aufruf: str, wirkung: str, geprueft: str = _GEPRUEFT) -> CliBeispiel:
     """Kurzform fuer einen GEFAHRENEN Beispielaufruf."""
     return CliBeispiel(aufruf=aufruf, wirkung=wirkung, geprueft=geprueft)
@@ -2056,11 +2069,12 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         schluessel="backup_admin",
         pfad="management/backup/backup_admin.py",
         aufruf="python -m management.backup.backup_admin "
-               "plan|run|list|pruefen|restore",
+               "plan|run|list|pruefen|versatz|restore",
         titel="Datensicherung",
         gruppe="Betrieb und Sicherung",
         zweck="Die auditierte Datensicherung planen, ausfuehren, die "
-              "vergangenen Laeufe auflisten - und eine Sicherung geprueft "
+              "vergangenen Laeufe auflisten, den Versatz im Sicherungssatz "
+              "nachrechnen (Build 717) - und eine Sicherung geprueft "
               "zurueckspielen (Build 680).",
         art="gemischt",
         datenbanken=("coordinator.db (run schreibend; plan/list/pruefen "
@@ -2075,7 +2089,9 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "WAL hinweg"),
         betrieb="TEILWEISE betriebsvertraeglich - die Einstufung ist am "
                 "2026-07-31 nachgeprueft und RICHTIGGESTELLT worden (Build "
-                "616). 'plan' ist rein lesend und jederzeit unbedenklich. "
+                "616). 'plan' und 'versatz' sind rein lesend und jederzeit "
+                "unbedenklich; 'versatz' oeffnet nicht einmal eine Datenbank, "
+                "es liest allein die Manifest-Dateien. "
                 "'run' veraendert die Quellen NICHT (es kopiert mit 'VACUUM "
                 "INTO'), aber die frueher hier stehende Zusage 'blockiert "
                 "den Zugriff nicht' traegt so nicht: unter dem Rollback-"
@@ -2116,6 +2132,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Mit '--pruefsummen' werden die beim Sichern erhobenen "
                "SHA512 gegengerechnet; dass es NICHT geschehen ist, steht "
                "im Befund."),
+            _b("versatz", "lesend", "DIE NACHRECHNUNG (Build 717, "
+               "Vorgang 77757536). Sie beantwortet aus den Manifesten die "
+               "Frage, die seit Build 617 ablesbar, aber nie gemessen war: "
+               "wie weit liegen erste und letzte Kopie eines Laufs "
+               "auseinander? Ausgegeben werden kleinste/mittlere/groesste "
+               "Spanne, welche Datenbank die Spanne bestimmt und in welchen "
+               "Laeufen eine Fall-Datenbank waehrend des Laufs entstand. "
+               "REIN LESEND - es wird keine Datenbank geoeffnet, nur die "
+               "Manifeste gelesen. ES BEURTEILT DIE SPANNE NICHT VON SELBST: "
+               "eine Grenze, ab der der Versatz zu gross ist, ist nicht "
+               "entschieden, und eine fest verdrahtete waere eine "
+               "Entscheidung im Gewand einer Messung. Wer eine pruefen will, "
+               "nennt sie mit '--schwelle-minuten'; dass NICHT beurteilt "
+               "wurde, steht sonst im Bericht."),
             _b("restore", "schreibend", "DER RUECKWEG (Build 680, Vorgang "
                "2785556a). Er prueft die Sicherung gegen die beim Sichern "
                "erhobene Pruefsumme, sieht sie innen an, probt die "
@@ -2261,11 +2291,34 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "Gegengelesen: 200 Zeilen, user_version 7, "
                      "integrity_check ok. Rueckgabewert 0.",
                      _GEPRUEFT_680),
+                # --- Die Nachrechnung (Vorgang 77757536).
+                _bsp("python -m management.backup.backup_admin versatz "
+                     "--verzeichnis /tmp/vzdemo --ortszeit-versatz 120 "
+                     "--arbeitszeit 07:00-18:00",
+                     "Sechs handgebaute Laeufe und ein Manifest aus der Zeit "
+                     "vor Build 617. Ausgegeben: Spanne kleinste 1:55 min / "
+                     "Median 2:17 min / groesste 11:59 min; 'default' war in "
+                     "allen sechs Laeufen die laengste Kopie und machte im "
+                     "Median 78 % der Spanne aus; ein Lauf hatte eine "
+                     "waehrend der Sicherung entstandene evidence_4711.db. "
+                     "Das alte Manifest stand namentlich unter 'NICHT "
+                     "AUSGEWERTET' und ging in keine Zahl ein. "
+                     "Rueckgabewert 1. DIE ZAHLEN SIND NACHGEBAUT - sie "
+                     "belegen die Lesart, nicht den Betrieb.",
+                     _GEPRUEFT_717),
+                _bsp("python -m management.backup.backup_admin versatz "
+                     "--verzeichnis /tmp/vzdemo --arbeitszeit 07:00-18:00",
+                     "ABBRUCH ohne Auswertung: '--arbeitszeit verlangt "
+                     "zusaetzlich --ortszeit-versatz', mit der Begruendung "
+                     "auf der Fehlerausgabe. Rueckgabewert 3. Es wurde "
+                     "NICHTS ausgegeben, was wie ein Ergebnis aussieht.",
+                     _GEPRUEFT_717),
             ),
             exit_codes=((0, "'plan': Vorabpruefung bestanden. 'run': ALLE "
                             "Datenbanken gesichert UND integer. 'list': "
                             "ausgegeben, keine als defekt vermerkt. "
-                            "'pruefen': nichts zu beanstanden. 'restore': "
+                            "'pruefen': nichts zu beanstanden. 'versatz': "
+                            "ausgewertet, nichts zu beanstanden. 'restore': "
                             "die gegengelesene Kopie liegt bereit und am "
                             "Ziel steht nichts entgegen"),
                         (1, "'run': mindestens eine Sicherung ist "
@@ -2273,7 +2326,13 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                             "mindestens eine registrierte Sicherung ist als "
                             "nicht integer vermerkt. 'pruefen': Befunde im "
                             "Ordner, aber jede Datenbank hat noch mindestens "
-                            "eine brauchbare Generation. 'restore': DIE "
+                            "eine brauchbare Generation. 'versatz': BEFUND - "
+                            "zu wenige auswertbare Laeufe fuer die vom "
+                            "Vorgang verlangte Grundlage, oder waehrend "
+                            "eines Laufs ist eine Fall-Datenbank entstanden, "
+                            "oder eine mit '--schwelle-minuten' GENANNTE "
+                            "Grenze ist ueberschritten, oder ein Manifest "
+                            "konnte nicht ausgewertet werden. 'restore': DIE "
                             "KOPIE LIEGT BEREIT, ABER AM ZIEL STEHT ETWAS "
                             "ENTGEGEN - im haeufigsten Fall ist das genau "
                             "die Nachricht 'deine Zieldatenbank ist "
@@ -2282,12 +2341,24 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                             "fehlgeschlagen (etwa zu wenig Platz); bei "
                             "'run' wurde dann NICHTS gesichert. 'pruefen': "
                             "DER ERNSTFALL - mindestens eine Datenbank hat "
-                            "KEINE brauchbare Sicherung. 'restore': es "
+                            "KEINE brauchbare Sicherung. 'versatz': OHNE "
+                            "GRUNDLAGE - es liegt kein einziges Manifest aus "
+                            "Build 617 oder neuer vor, der Versatz ist also "
+                            "nicht einmal ablesbar. Das wiegt SCHWERER als "
+                            "der Befund 1: ein Befund ist Wissen, dies ist "
+                            "die Abwesenheit von Wissen. 'restore': es "
                             "liegt KEINE Kopie bereit, obwohl die Sicherung "
                             "taugt (Platz, Schreibfehler, Gegenprobe "
                             "gescheitert)"),
                         (3, "'pruefen': das Sicherungsverzeichnis ist nicht "
                             "lesbar - es ist gar nichts festgestellt. "
+                            "'versatz': dasselbe - oder die Angaben zur "
+                            "Uhrzeit sind unvollstaendig ('--arbeitszeit' "
+                            "ohne '--ortszeit-versatz'); auch dann ist "
+                            "nichts festgestellt, und das ist gewollt: eine "
+                            "Arbeitszeit in Ortszeit gegen UTC-Stempel zu "
+                            "halten waere im Sommer um zwei Stunden daneben, "
+                            "ohne dass man es der Ausgabe ansieht. "
                             "'restore': DIE SICHERUNG SELBST TAUGT NICHT - "
                             "falsche oder fehlende Pruefsumme, nicht "
                             "integer, leer, gar nicht gefunden. Der "
@@ -2360,28 +2431,64 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "traegt 'punktgleich: false' samt Klartext, je Datenbank "
                 "stehen Beginn und Ende der Kopie darin, und der Vermerk "
                 "erscheint bei JEDEM Lauf auch auf der Konsole. Behoben ist "
-                "die Ungleichzeitigkeit damit nicht - sie ist sichtbar.",
+                "die Ungleichzeitigkeit damit nicht - sie ist sichtbar. SEIT "
+                "BUILD 717 IST SIE AUCH AUSRECHENBAR: 'backup_admin "
+                "versatz' bildet aus den Manifesten die Zahl, auf der die "
+                "Entscheidung von mc bisher nur als Annahme ruht (Vorgang "
+                "77757536). SOLANGE DIESE ZAHL NICHT AUS PRODUKTIVEN "
+                "LAEUFEN GEBILDET IST, bleibt die Entscheidung gegen ein "
+                "Wartungsfenster unbelegt - sie ist damit nicht falsch, aber "
+                "sie ist ungeprueft.",
                 "WAS WAEHREND DES LAUFS ENTSTEHT, WIRD NICHT GESICHERT - "
                 "aber seit Build 617 GENANNT: eine Fall-Datenbank, die es "
                 "beim Planen noch nicht gab, steht danach im Manifest unter "
                 "'nicht_gesichert_weil_neu' und auf der Konsole. Sie fehlt "
                 "im Satz und ist beim naechsten Lauf dabei.",
-                "'list' LIEFERT IMMER 0 - auch dann, wenn jede aufgefuehrte "
-                "Sicherung 'integrity=FEHLER' traegt. Eine Ueberwachung, die "
-                "nur den Rueckgabewert auswertet, sieht dauerhaft gruen. Die "
-                "Spalte 'integrity' ist zu LESEN.",
-                "FUER DIE HIER ERZEUGTEN SICHERUNGEN GIBT ES KEINEN "
-                "RUECKWEG. Das Werkzeug kennt kein 'restore', und im Bestand "
-                "ist keiner vorgesehen und keiner erprobt. Eine Sicherung, "
-                "deren Rueckweg nie gefahren wurde, ist eine Vermutung.",
-                "Die Pruefsumme jeder Kopie wird ERHOBEN und im Register "
-                "abgelegt, aber nie wieder GEPRUEFT. Die vorhandene "
-                "Pruefroutine hat keinen produktiven Aufrufer. Eine "
-                "Sicherung altert damit unbeobachtet.",
-                "Eine Fall-Datenbank, die WAEHREND des Laufs neu entsteht, "
-                "wird nicht gesichert und erscheint auch nicht unter den "
-                "fehlenden - das Verzeichnis wird einmal vor dem Lauf "
-                "gelesen.",
+                # BUILD 717 - VIER UEBERHOLTE WARNUNGEN BERICHTIGT
+                # (Vorgang siehe eintraege_claude_Build717.json, Weisung
+                # Alex 13.08.2026). Sie standen unveraendert hier, waehrend
+                # derselbe Eintrag weiter oben bereits das Gegenteil
+                # beschrieb. EINE HILFE, DIE SICH SELBST WIDERSPRICHT, IST
+                # SCHLIMMER ALS EINE LUECKE: der Leser kann nicht wissen,
+                # welche Haelfte gilt, und wird im Zweifel der Warnung
+                # glauben - hier also dem aelteren, falschen Stand.
+                #
+                # (1) "'list' LIEFERT IMMER 0" - falsch seit Build 626.
+                #     cmd_list gibt 1 zurueck, sobald eine registrierte
+                #     Sicherung als nicht integer vermerkt ist
+                #     (backup_admin.py, cmd_list, Zaehler 'defekt'). Der
+                #     Unterbefehlstext sagt das seit Build 626; die Warnung
+                #     sagte weiter das Gegenteil. GESTRICHEN - der noch
+                #     gueltige Teil (list liest die Registrierung, nicht die
+                #     Platte) steht beim Unterbefehl.
+                # (2) "KEIN RUECKWEG" - falsch seit Build 680. Ersetzt durch
+                #     die Einschraenkung, die WIRKLICH noch gilt.
+                # (3) "Pruefsumme nie wieder GEPRUEFT" - falsch seit Build
+                #     626/680 (backup_pruefer.py Z. 359 und
+                #     backup_wiederhersteller.py). Ersetzt durch das, was
+                #     davon uebrig ist: sie wird nur auf VERLANGEN geprueft.
+                # (4) "erscheint auch nicht unter den fehlenden" - falsch
+                #     seit Build 617 (backup_executor._nachzuegler, Z. 682,
+                #     aufgerufen Z. 278). GESTRICHEN, weil die Warnung zwei
+                #     Zeilen darueber denselben Sachverhalt richtig darstellt.
+                "DER RUECKWEG IST ERPROBT, ABER NICHT AM ERNSTFALL. "
+                "'restore' ist seit Build 680 da und gefahren - gegen einen "
+                "gebauten Wegwerf-Bestand unter /tmp, nicht gegen eine "
+                "Fall-Datenbank aus dem Verfahren und nicht von einem "
+                "Sicherungsmedium. UND ER TAUSCHT NICHT: die letzte Strecke, "
+                "das Ersetzen der Datenbank, ist Handarbeit nach der "
+                "ausgegebenen Anleitung und war damit noch nie Gegenstand "
+                "eines Laufs. Wer sich auf den Rueckweg verlaesst, verlaesst "
+                "sich auf einen Weg, dessen letztes Stueck ein Mensch geht.",
+                "DIE PRUEFSUMME WIRD NUR AUF VERLANGEN GEGENGERECHNET. Sie "
+                "wird bei jeder Sicherung erhoben (Build 354) und seit Build "
+                "626 von 'pruefen --pruefsummen' und seit Build 680 von "
+                "'restore' geprueft - aber in keinem der beiden Faelle von "
+                "selbst: 'pruefen' ohne die Option liest die Dateien nicht "
+                "ganz, und 'restore' faehrt nur, wenn jemand ihn faehrt. "
+                "OHNE EINEN REGELMAESSIGEN LAUF MIT '--pruefsummen' altert "
+                "eine Sicherung weiterhin unbeobachtet; ein Bitfehler auf "
+                "dem Sicherungsmedium faellt dann erst im Ernstfall auf.",
                 "Es ist keine Wartezeit auf belegte Datenbanken gesetzt. Es "
                 "gilt der Vorgabewert der Python-Anbindung von fuenf "
                 "Sekunden; danach meldet die betroffene Datenbank "
