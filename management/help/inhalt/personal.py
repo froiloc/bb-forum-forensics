@@ -492,10 +492,23 @@ CAPACITY_PFLEGE = Sichthilfe(
             "aufbau", "Aufbau der Sicht",
             (
                 "Überschrift mit der Umfangszeile, darunter die Zeile für "
-                "Rückmeldungen und die Umschaltung „Auch entfernte Zeilen "
-                "anzeigen“. Dann vier Abschnitte, jeder mit einem "
-                "Erfassungsformular und einer Liste: Regel-Arbeitszeiten, "
-                "Abwesenheiten und Garantien, Feiertage, Abwesenheitsgründe.",
+                "Rückmeldungen und ZWEI Umschaltungen: „Auch entfernte "
+                "Zeilen anzeigen“ und „Auch historische Daten anzeigen“. "
+                "Dann vier Abschnitte, jeder mit einem Erfassungsformular "
+                "und einer Liste: Regel-Arbeitszeiten, Abwesenheiten und "
+                "Garantien, Feiertage, Abwesenheitsgründe.",
+                "DIE LISTE BEGINNT MIT DEM LAUFENDEN MONAT. Abwesenheiten "
+                "und Feiertage, die vor dem Ersten des laufenden Monats "
+                "abgelaufen sind, stehen nicht darin; die Umschaltung "
+                "„Auch historische Daten anzeigen“ holt sie zurück. Über "
+                "jeder betroffenen Liste steht, wie viele Zeilen dadurch "
+                "fehlen und ab welchem Tag angezeigt wird.",
+                "Gemessen wird am ENDE eines Zeitraums, nicht an seinem "
+                "Anfang: eine Abwesenheit, die im Vormonat begann und noch "
+                "läuft, bleibt sichtbar — sie bestimmt die Rechnung des "
+                "laufenden Monats. Die Regel-Arbeitszeiten sind von der "
+                "Umschaltung nicht betroffen, denn ihre Liste ist die "
+                "Belegkette, und der Gründekatalog hat keinen Zeitbezug.",
                 "Neben der Überschrift sitzt der Minutenrechner. Er trägt "
                 "sein Ergebnis in das Minutenfeld ein, das zuletzt "
                 "angeklickt wurde.",
@@ -584,6 +597,17 @@ CAPACITY_PFLEGE = Sichthilfe(
             "ausgeschalteter Umschaltung steht daneben, wie viele Zeilen "
             "ausgeblendet sind.",
             verweis="capacity_pflege#grenzen"),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.historisch",
+            "Auch historische Daten anzeigen",
+            "Blendet Abwesenheiten und Feiertage ein, die VOR dem laufenden "
+            "Monat abgelaufen sind. Ohne den Haken beginnt die Liste mit dem "
+            "Ersten des laufenden Monats — die Zahl der ausgeblendeten "
+            "Zeilen steht trotzdem über der jeweiligen Liste, zusammen mit "
+            "dem Stichtag. Gemessen wird am ENDE eines Zeitraums: eine "
+            "Abwesenheit, die im Vormonat begann und noch läuft, bleibt "
+            "sichtbar.",
+            verweis="capacity_pflege#aufbau"),
         Kontexthilfe(
             "capacity_pflege.bedienung.rechner", "Minutenrechner",
             "Öffnet eine kleine Rechenhilfe für Minutenangaben. Ihr Ergebnis "

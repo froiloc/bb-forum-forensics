@@ -65,7 +65,18 @@
  *        Feld bleibt LEER und wird nicht zu einer 0.
  * CP31 — der Abwesenheitsteil ueberlebt das Neuzeichnen (formularLesen).
  *
- * Version: v0.8.664 · Build: 664 · 2026-08-04
+ * BUILD 709 (Vorgang 75f84fee, historische Daten ausblenden):
+ * CP32 — die Umschaltung 'Auch historische Daten anzeigen' steht da, ist
+ *        standardmaessig AUS und nennt die Grenze.
+ * CP33 — die Zahl der historisch ausgeblendeten Zeilen steht je Abschnitt —
+ *        getrennt von der Zahl der entfernten, denn es sind zwei Gruende.
+ * CP34 — eingeschaltet: der Haken steht, und die Abschnittshinweise
+ *        entfallen (die Zeilen stehen ja da).
+ * CP35 — Umschalten ruft den Rueckruf mit dem neuen Zustand.
+ * CP36 — liegt nichts vor dem Monat, steht kein Hinweis ueber null Zeilen.
+ * CP37 — historischText nennt Zahl, Einheit und Grenze; ohne Zahl null.
+ *
+ * Version: v0.8.709 · Build: 709 · 2026-08-13
  */
 
 import { describe, it, expect } from "vitest";
@@ -749,5 +760,128 @@ describe("Kapazitaetspflege (Build 559)", () => {
     expect(zustand.availability.note).toBe("Nachtrag");
     expect(zustand.availability.period_start).toBe("2026-07-06");
     expect(zustand.worktime).toBeTruthy();
+  });
+});
+
+// ===========================================================================
+// Build 709 (Vorgang 75f84fee): historische Daten standardmaessig ausblenden
+//
+// Der Vorgang verlangt eine Checkbox 'auch historische Daten anzeigen', die
+// standardmaessig NICHT gesetzt ist. Gemessen wird hier die Sicht; die REGEL
+// (was gilt als historisch) liegt auf dem Server und ist dort mit festen
+// Datumsangaben geprueft - im Frontend wird nicht gefiltert, sonst gaebe es
+// zwei Wahrheiten ueber Sichtbarkeit.
+// ===========================================================================
+describe("Kapazitaetspflege — historische Daten (Vorgang 75f84fee)", () => {
+
+  function _mitHistorie(win, feld) {
+    const daten = _daten("alle");
+    Object.assign(daten, feld || {});
+    return _zeichne(win, { _daten: daten });
+  }
+
+  // CP32 ----------------------------------------------------------------
+  it("CP32: die Umschaltung steht da, ist aus und nennt die Grenze", () => {
+    const win = _win();
+    const { main } = _mitHistorie(win, {
+      include_historic: false, historisch_ab: "2026-08-01",
+      historisch: { availability: 0, holidays: 0 },
+    });
+    const schalter = main.querySelector("#aiw-capp-historisch");
+    expect(schalter).not.toBeNull();
+    expect(schalter.checked).toBe(false);
+    // Die Beschriftung ist die aus dem Vorgang.
+    expect(main.querySelector('label[for="aiw-capp-historisch"]').textContent)
+      .toBe("Auch historische Daten anzeigen");
+    // Die GRENZE steht immer da - sonst ist 'historisch' eine Behauptung
+    // ohne Massstab.
+    expect(main.querySelector(".aiw-capp-historie").textContent)
+      .toContain("2026-08-01");
+    // Und sie traegt eine Hilfe-Marke (Pflicht fuer Bedienelemente).
+    expect(schalter.getAttribute("data-hilfe-id"))
+      .toBe("capacity_pflege.bedienung.historisch");
+  });
+
+  // CP33 ----------------------------------------------------------------
+  it("CP33: je Abschnitt steht, wie viele historische Zeilen fehlen", () => {
+    const win = _win();
+    const { main } = _mitHistorie(win, {
+      include_historic: false, historisch_ab: "2026-08-01",
+      historisch: { availability: 3, holidays: 1 },
+      entfernt: { worktimes: 0, availability: 0, holidays: 0, reasons: 0 },
+    });
+    const hinweise = Array.prototype.map.call(
+      main.querySelectorAll(".aiw-capp-historisch"), (e) => e.textContent);
+    expect(hinweise.length).toBe(2);
+    expect(hinweise.some((t) => /3 historische Zeilen.*Abwesenheiten/.test(t)))
+      .toBe(true);
+    expect(hinweise.some((t) => /1 historische Zeile .*Feiertage/.test(t)))
+      .toBe(true);
+    // GETRENNT von den entfernten: zwei Gruende, zwei Hinweise, zwei
+    // Schalter. Ein gemeinsamer Satz liesse offen, welcher Schalter die
+    // Zeile zurueckholt.
+    expect(main.querySelectorAll(".aiw-capp-ausgeblendet").length).toBe(0);
+    // Im Kopf die Gesamtzahl.
+    expect(main.querySelector(".aiw-capp-historie").textContent)
+      .toMatch(/4 historische Zeile\(n\) sind derzeit ausgeblendet/);
+  });
+
+  // CP34 ----------------------------------------------------------------
+  it("CP34: eingeschaltet entfallen die Abschnittshinweise", () => {
+    const win = _win();
+    const { main } = _mitHistorie(win, {
+      include_historic: true, historisch_ab: "2026-08-01",
+      historisch: { availability: 3, holidays: 1 },
+    });
+    expect(main.querySelector("#aiw-capp-historisch").checked).toBe(true);
+    expect(main.querySelectorAll(".aiw-capp-historisch").length).toBe(0);
+    // Die Zahl bleibt trotzdem im Kopf - sie sagt jetzt, wie viele der
+    // ANGEZEIGTEN Zeilen historisch sind.
+    expect(main.querySelector(".aiw-capp-historie").textContent)
+      .toMatch(/4 historische Zeile\(n\) sind eingeblendet/);
+  });
+
+  // CP35 ----------------------------------------------------------------
+  it("CP35: Umschalten ruft den Rueckruf mit dem neuen Zustand", () => {
+    const win = _win();
+    let gesehen = null;
+    const daten = _daten("alle");
+    daten.include_historic = false;
+    daten.historisch = { availability: 1, holidays: 0 };
+    const { main } = _zeichne(win, {
+      _daten: daten,
+      onHistorieUmschalten: (an) => { gesehen = an; },
+    });
+    const schalter = main.querySelector("#aiw-capp-historisch");
+    schalter.checked = true;
+    schalter.dispatchEvent(new win.Event("change"));
+    expect(gesehen).toBe(true);
+  });
+
+  // CP36 ----------------------------------------------------------------
+  it("CP36: liegt nichts davor, steht kein Hinweis ueber null Zeilen", () => {
+    const win = _win();
+    const { main } = _mitHistorie(win, {
+      include_historic: false, historisch_ab: "2026-08-01",
+      historisch: { availability: 0, holidays: 0 },
+    });
+    expect(main.querySelectorAll(".aiw-capp-historisch").length).toBe(0);
+    expect(main.querySelector(".aiw-capp-historie").textContent)
+      .toContain("Es liegt nichts vor dem laufenden Monat.");
+  });
+
+  // CP37 ----------------------------------------------------------------
+  it("CP37: historischText nennt Zahl, Einheit und Grenze", () => {
+    const api = _win().AIWCockpitCapacityPflege;
+    expect(api.historischText(0, "Feiertage", "2026-08-01")).toBeNull();
+    expect(api.historischText(1, "Feiertage", "2026-08-01"))
+      .toBe("1 historische Zeile ist ausgeblendet (Feiertage, abgelaufen vor "
+            + "dem 2026-08-01).");
+    expect(api.historischText(5, "Abwesenheiten", "2026-08-01"))
+      .toContain("5 historische Zeilen");
+    // Ohne Grenze bleibt der Satz lesbar - eine halbe Angabe ist besser als
+    // ein Satzbruch.
+    expect(api.historischText(2, "Feiertage", "")).toBe(
+      "2 historische Zeilen sind ausgeblendet (Feiertage, abgelaufen).");
   });
 });

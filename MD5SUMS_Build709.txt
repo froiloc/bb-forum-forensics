@@ -1,0 +1,12 @@
+15fa30ee6d418a2a2c91ba3b633a1b9a  build.json
+089ff314d1c3cc9e8b0505ead88a49c3  issue-tracker/eintraege_claude_Build709.json
+81af99a31e0b65d78df7b2c5aee2d2a4  management/capacity/zeitfilter.py
+1ea5df8664967953b337948534f3853b  management/help/inhalt/personal.py
+8cc7e2d9d9d9b0d8ea2f9f0c4d47f6f5  management/server/management_app.py
+3d78a66f9cc391cfa2b5e27c236d81a5  management/server/static/cockpit.js
+8397ce8d4d561569dad731d4b700a934  management/server/static/cockpit_capacity_pflege.js
+40791ffae864178714b31ad74e21dbed  tests/hilfe_bedienung_stand.json
+e9563f35f0b0987377002fdf12eaa4bc  tests/test_capacity_zeitfilter.py
+bd932aeaf9bd008eab385679ae972751  tests/test_management_capacity_api.py
+c4a6316d9ffea93b19f6dffdd11164dc  tests/unit/test_cockpit_capacity_abfrage.test.js
+8ad4d8c463e2d47ad5f93f20d3c80fdc  tests/unit/test_cockpit_capacity_pflege.test.js

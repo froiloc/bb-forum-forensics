@@ -58,7 +58,19 @@
 #        selbstpflegende Person sieht auch entfernte Zeilen nur
 #        von sich.
 #
-# Version: v0.8.562 . Build: 562 . 2026-07-29
+# Build 709 (Vorgang 75f84fee) - DER ZEITFILTER:
+# KP26 - ohne Schalter beginnt die Liste mit dem laufenden Monat.
+# KP27 - die ZAHL der ausgeblendeten historischen Zeilen geht immer mit.
+# KP28 - mit ?include_historic=1 sind sie dabei (und werden weiter gezaehlt).
+# KP29 - gemessen wird am ENDE: was im Vormonat begann und noch laeuft,
+#        bleibt sichtbar.
+# KP30 - der Monatserste selbst bleibt sichtbar, der Tag davor nicht.
+# KP31 - Arbeitszeiten und Gruende sind ausgenommen - mit Begruendung.
+# KP32 - entfernt und historisch sind ZWEI Gruende: eine entfernte
+#        historische Zeile braucht beide Schalter.
+# KP33 - auch der zweite Schalter haengelt Rechte und Scope nicht aus.
+#
+# Version: v0.8.709 . Build: 709 . 2026-08-13
 # =============================================================================
 
 import json
@@ -298,7 +310,15 @@ class CapacityApiTests(unittest.TestCase):
         self._app().dispatch_write(1, "/api/capacity/holiday", {
             "day": "2026-07-08", "label": "Testfeiertag"})
 
-        r = self._app().dispatch(1, "/api/capacity/stammdaten", {})
+        # MITGEZOGEN IN BUILD 709 (Vorgang 75f84fee): Der Feiertag liegt im
+        # Juli 2026 und ist damit - je nachdem, wann dieser Lauf stattfindet -
+        # historisch. Seit Build 709 blendet die Sicht solche Zeilen
+        # standardmaessig aus. Dieser Fall prueft, dass ALLE VIER BESTAENDE
+        # geliefert werden; dafuer wird ausdruecklich mit eingeblendeter
+        # Historie gefragt. Ohne den Schalter haenge das Ergebnis am
+        # Kalendertag des Testlaufs - eine Zeitbombe im Bestand.
+        r = self._app().dispatch(1, "/api/capacity/stammdaten",
+                                 {"include_historic": ["1"]})
         self.assertEqual(r.status, 200, r.body)
         b = self._body(r)
         self.assertEqual(b["counts"]["worktimes"], 1)
@@ -778,8 +798,12 @@ class CapacityApiTests(unittest.TestCase):
         app.dispatch_write(1, "/api/capacity/worktime/remove",
                            {"worktime_id": wid})
 
+        # MITGEZOGEN IN BUILD 709: 'include_historic' steht hier, weil die
+        # Testzeilen im Juli 2026 liegen. Gemessen werden soll der
+        # ENTFERNT-Schalter; der Zeitfilter darf das Ergebnis nicht
+        # ueberlagern (und nicht vom Kalendertag des Laufs abhaengen).
         ohne = self._body(self._app().dispatch(
-            1, "/api/capacity/stammdaten", {}))
+            1, "/api/capacity/stammdaten", {"include_historic": ["1"]}))
         self.assertEqual([ohne["counts"]["worktimes"],
                           ohne["counts"]["availability"],
                           ohne["counts"]["holidays"]], [0, 0, 0])
@@ -788,7 +812,8 @@ class CapacityApiTests(unittest.TestCase):
                           ohne["entfernt"]["holidays"]], [1, 1, 1])
 
         mit = self._body(self._app().dispatch(
-            1, "/api/capacity/stammdaten", {"include_deleted": ["1"]}))
+            1, "/api/capacity/stammdaten",
+            {"include_deleted": ["1"], "include_historic": ["1"]}))
         self.assertEqual([mit["counts"]["worktimes"],
                           mit["counts"]["availability"],
                           mit["counts"]["holidays"]], [1, 1, 1])
@@ -819,6 +844,187 @@ class CapacityApiTests(unittest.TestCase):
         self.assertEqual(b["counts"]["worktimes"], 0)
         self.assertEqual(b["entfernt"]["worktimes"], 0,
                          "Fremde entfernte Zeile wurde mitgezaehlt.")
+
+    # =====================================================================
+    # Build 709 (Vorgang 75f84fee): der ZEITFILTER der Pflegeliste.
+    #
+    # Der Vorgang: "sollten per Default nur Daten mit Bezug ab dem aktuellen
+    # Monat angezeigt werden ... eine Checkbox 'auch historische Daten
+    # anzeigen'". Die Regel selbst ist in tests/test_capacity_zeitfilter.py
+    # mit festen Datumsangaben gemessen; HIER geht es um das, was der
+    # Endpunkt daraus macht - und darum, dass die Zahl der ausgeblendeten
+    # Zeilen NICHT verschwindet (Grundregel 1).
+    #
+    # Die Faelle rechnen den Monatsersten selbst aus, weil sie sonst am
+    # Kalendertag des Laufs haengen. Gegen die Regel gespiegelt wird dabei
+    # nichts: geprueft werden Zeilen, die eindeutig davor bzw. danach liegen,
+    # und zusaetzlich die GRENZE selbst.
+    # =====================================================================
+
+    def _monatserster(self):
+        from datetime import date
+        return date.today().replace(day=1).isoformat()
+
+    def _tag_davor(self):
+        from datetime import date, timedelta
+        return (date.today().replace(day=1) - timedelta(days=1)).isoformat()
+
+    # KP26 ---------------------------------------------------------------
+    def test_kp26_ohne_schalter_beginnt_die_liste_mit_dem_monat(self):
+        self._grant("supervisor", "alle", 1)
+        app = self._app()
+        # Eine abgelaufene und eine kuenftige Abwesenheit, dazu zwei
+        # Feiertage derselben Lage.
+        app.dispatch_write(1, "/api/capacity/availability", {
+            "person_id": 2, "period_start": "2020-01-01",
+            "period_end": "2020-01-31", "kind": "einschraenkung",
+            "value_minutes": 600})
+        app.dispatch_write(1, "/api/capacity/availability", {
+            "person_id": 2, "period_start": "2099-01-01",
+            "period_end": "2099-01-31", "kind": "einschraenkung",
+            "value_minutes": 600})
+        app.dispatch_write(1, "/api/capacity/holiday",
+                           {"day": "2020-05-01", "label": "Alt"})
+        app.dispatch_write(1, "/api/capacity/holiday",
+                           {"day": "2099-05-01", "label": "Kuenftig"})
+
+        b = self._body(self._app().dispatch(1, "/api/capacity/stammdaten", {}))
+        self.assertEqual(b["include_historic"], False)
+        self.assertEqual(b["historisch_ab"], self._monatserster())
+        self.assertEqual(b["counts"]["availability"], 1)
+        self.assertEqual(b["counts"]["holidays"], 1)
+        self.assertEqual(b["availability"][0]["period_end"], "2099-01-31")
+        self.assertEqual(b["holidays"][0]["day"], "2099-05-01")
+
+    # KP27 ---------------------------------------------------------------
+    def test_kp27_die_zahl_der_ausgeblendeten_geht_immer_mit(self):
+        """Derselbe Gedanke wie KP22 bei den entfernten Zeilen: wer die Zahl
+        nicht sieht, weiss nicht, dass es etwas einzublenden GIBT."""
+        self._grant("supervisor", "alle", 1)
+        app = self._app()
+        app.dispatch_write(1, "/api/capacity/availability", {
+            "person_id": 2, "period_start": "2020-01-01",
+            "period_end": "2020-01-31", "kind": "einschraenkung",
+            "value_minutes": 600})
+        app.dispatch_write(1, "/api/capacity/holiday",
+                           {"day": "2020-05-01", "label": "Alt"})
+
+        b = self._body(self._app().dispatch(1, "/api/capacity/stammdaten", {}))
+        self.assertEqual(b["counts"]["availability"], 0)
+        self.assertEqual(b["counts"]["holidays"], 0)
+        self.assertEqual(b["historisch"]["availability"], 1)
+        self.assertEqual(b["historisch"]["holidays"], 1)
+
+    # KP28 ---------------------------------------------------------------
+    def test_kp28_mit_schalter_sind_historische_zeilen_dabei(self):
+        self._grant("supervisor", "alle", 1)
+        app = self._app()
+        app.dispatch_write(1, "/api/capacity/availability", {
+            "person_id": 2, "period_start": "2020-01-01",
+            "period_end": "2020-01-31", "kind": "einschraenkung",
+            "value_minutes": 600})
+        app.dispatch_write(1, "/api/capacity/holiday",
+                           {"day": "2020-05-01", "label": "Alt"})
+
+        b = self._body(self._app().dispatch(
+            1, "/api/capacity/stammdaten", {"include_historic": ["1"]}))
+        self.assertEqual(b["include_historic"], True)
+        self.assertEqual(b["counts"]["availability"], 1)
+        self.assertEqual(b["counts"]["holidays"], 1)
+        # Auch beim Einblenden wird gezaehlt - die Oberflaeche sagt dann,
+        # WIE VIELE der angezeigten Zeilen historisch sind.
+        self.assertEqual(b["historisch"]["availability"], 1)
+        self.assertEqual(b["historisch"]["holidays"], 1)
+
+    # KP29 ---------------------------------------------------------------
+    def test_kp29_gemessen_wird_am_ende_des_zeitraums(self):
+        """DER KERN: Eine Abwesenheit, die VOR dem laufenden Monat begann und
+        noch laeuft, gehoert in die Liste. Wer am Anfang misst, blendet die
+        Angabe aus, die die Rechnung des laufenden Monats bestimmt."""
+        self._grant("supervisor", "alle", 1)
+        self._app().dispatch_write(1, "/api/capacity/availability", {
+            "person_id": 2, "period_start": "2020-01-01",
+            "period_end": "2099-12-31", "kind": "garantie",
+            "value_minutes": 120})
+
+        b = self._body(self._app().dispatch(1, "/api/capacity/stammdaten", {}))
+        self.assertEqual(b["counts"]["availability"], 1)
+        self.assertEqual(b["historisch"]["availability"], 0)
+
+    # KP30 ---------------------------------------------------------------
+    def test_kp30_die_grenze_selbst_bleibt_sichtbar(self):
+        """Der Vorgang sagt: 'beginnen die Daten ab dem 1. des aktuellen
+        Monats'. Der Erste gehoert dazu, der Tag davor nicht."""
+        self._grant("supervisor", "alle", 1)
+        app = self._app()
+        app.dispatch_write(1, "/api/capacity/holiday",
+                           {"day": self._monatserster(), "label": "Grenze"})
+        app.dispatch_write(1, "/api/capacity/holiday",
+                           {"day": self._tag_davor(), "label": "Davor"})
+
+        b = self._body(self._app().dispatch(1, "/api/capacity/stammdaten", {}))
+        self.assertEqual([h["label"] for h in b["holidays"]], ["Grenze"])
+        self.assertEqual(b["historisch"]["holidays"], 1)
+
+    # KP31 ---------------------------------------------------------------
+    def test_kp31_arbeitszeiten_und_gruende_bleiben_unberuehrt(self):
+        """Der Zeitfilter greift NUR dort, wo ein Datum steht, und das ist
+        keine Auslassung: Die Regel-Arbeitszeiten sind die Belegkette (ihre
+        derzeit gueltige Zeile traegt fast immer einen Stichtag aus der
+        Vergangenheit), und der Gruendekatalog hat ueberhaupt keinen
+        Zeitbezug - ohne ihn waeren bestehende Abwesenheitszeilen nicht
+        lesbar."""
+        self._grant("supervisor", "alle", 1)
+        app = self._app()
+        app.dispatch_write(1, "/api/capacity/worktime", {
+            "person_id": 2, "effective_from": "2020-01-01", "mon_min": 480})
+        app.dispatch_write(1, "/api/capacity/reason",
+                           {"code": "urlaub", "label": "Urlaub"})
+
+        b = self._body(self._app().dispatch(1, "/api/capacity/stammdaten", {}))
+        self.assertEqual(b["counts"]["worktimes"], 1)
+        self.assertEqual(b["counts"]["reasons"], 1)
+        self.assertNotIn("worktimes", b["historisch"])
+        self.assertNotIn("reasons", b["historisch"])
+
+    # KP32 ---------------------------------------------------------------
+    def test_kp32_beide_schalter_wirken_unabhaengig(self):
+        """Entfernt und historisch sind zwei verschiedene Gruende. Eine
+        entfernte HISTORISCHE Zeile braucht BEIDE Schalter."""
+        self._grant("supervisor", "alle", 1)
+        app = self._app()
+        app.dispatch_write(1, "/api/capacity/holiday",
+                           {"day": "2020-05-01", "label": "Alt"})
+        self._reload()
+        hid = self.con.execute("SELECT id FROM holiday").fetchone()["id"]
+        self._app().dispatch_write(1, "/api/capacity/holiday/remove",
+                                   {"holiday_id": hid})
+
+        nur_entfernt = self._body(self._app().dispatch(
+            1, "/api/capacity/stammdaten", {"include_deleted": ["1"]}))
+        self.assertEqual(nur_entfernt["counts"]["holidays"], 0,
+                         "Der Entfernt-Schalter allein holt keine "
+                         "historische Zeile zurueck.")
+        self.assertEqual(nur_entfernt["historisch"]["holidays"], 1)
+
+        beide = self._body(self._app().dispatch(
+            1, "/api/capacity/stammdaten",
+            {"include_deleted": ["1"], "include_historic": ["1"]}))
+        self.assertEqual(beide["counts"]["holidays"], 1)
+
+    # KP33 ---------------------------------------------------------------
+    def test_kp33_zeitfilter_haengelt_rechte_und_scope_nicht_aus(self):
+        """Wie KP25 fuer den zweiten Schalter: eine Anzeigefrage darf weder
+        das Recht ersetzen noch den Scope aufweichen."""
+        self._grant("supervisor", "alle", 1)
+        r = self._app().dispatch(3, "/api/capacity/stammdaten",
+                                 {"include_historic": ["1"]})
+        self.assertEqual(r.status, 403, r.body)
+
+        self._grant("investigator", "eigene", 2)
+        b = self._body(self._app().dispatch(
+            2, "/api/capacity/stammdaten", {"include_historic": ["1"]}))
+        self.assertEqual(b["person_id"], 2)
 
 
 if __name__ == "__main__":
