@@ -8603,7 +8603,7 @@
         "database": "forensic_<uid>.db"
       },
       "tags": [
-        "Prepper",
+        "SQLite-Prepper",
         "Scraping",
         "Likes"
       ],
@@ -8616,14 +8616,6 @@
           "old_value": "",
           "new_value": "",
           "comment": "Issue erstellt"
-        },
-        {
-          "timestamp": "2026-08-13T20:35:49.516271+00:00",
-          "author": "Alex",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Issue aktualisiert: Tags: 3 Einträge → 3 Einträge"
         }
       ]
     },
