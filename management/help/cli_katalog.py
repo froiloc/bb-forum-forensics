@@ -818,7 +818,12 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             _b("catalog", "lesend",
                "Den im Code hinterlegten Katalog der Rollen und Rechte "
                "ausgeben - ohne Datenbank."),
-            _b("grant", "schreibend", "Einer Rolle ein Recht geben."),
+            _b("grant", "schreibend",
+               "Einer Rolle ein Recht geben. ERST DIE MIGRATION, DANN DIESER "
+               "LAUF - steht das Recht noch nicht im Katalog der Datenbank, "
+               "bricht der Befehl ab, nennt den fehlenden Schritt und "
+               "schreibt nichts (Build 716; dieselbe Reihenfolge wie bei "
+               "'migrate-grants')."),
             _b("migrate-grants", "schreibend",
                "Die aktiven Rechte eines Rechts auf ein anderes uebernehmen "
                "(--from/--to, Umfang unveraendert). Gebraucht, wenn ein Recht "
@@ -880,7 +885,12 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "mehr anwenden, und das Management verweigerte den Start. "
                 "SEIT BUILD 711 wird die Reihenfolge geprueft: fehlt das Recht "
                 "in der Datenbank, bricht der Lauf ab, nennt den fehlenden "
-                "Schritt und schreibt nichts.",
+                "Schritt und schreibt nichts. SEIT BUILD 716 gilt das nicht "
+                "mehr nur fuer 'migrate-grants', sondern fuer JEDEN Weg, auf "
+                "dem ein Recht vergeben wird - auch fuer 'grant' und fuer die "
+                "Demodaten. Die Pruefung sitzt seither dort, wo die Zeile "
+                "geschrieben wird, und nicht mehr nur in dem einen Werkzeug, "
+                "an dem der Fehler damals auffiel.",
             ),
         ),
     ),
@@ -3877,10 +3887,15 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "der in der Datenbank (rbac_capability, gegen den niemand "
                 "prueft) -, und die Fremdschluessel bei foreign_keys=OFF "
                 "nicht greifen. Das Werkzeug schliesst diese Luecke NICHT, es "
-                "macht sie sichtbar; die Pruefung im Schreibpfad selbst ist "
-                "Vorgang 1b7d55ae und steht aus. Zu jedem Fund wird der Beleg "
-                "aus audit_log aufgeloest - dort steht, wer ihn wann erzeugt "
-                "hat.",
+                "macht sie sichtbar. Zu jedem Fund wird der Beleg aus "
+                "audit_log aufgeloest - dort steht, wer ihn wann erzeugt hat. "
+                "SEIT BUILD 716 wird die FAEHIGKEIT im Schreibpfad geprueft "
+                "(Vorgang 1b7d55ae): ein Grant auf ein der Datenbank "
+                "unbekanntes Recht entsteht nicht mehr. Dieses Werkzeug bleibt "
+                "trotzdem noetig - es findet BESTEHENDE Faelle, und fuer die "
+                "ROLLE (Richtungen 2 und 3: rbac_grant -> rbac_role, "
+                "person_role -> rbac_role) ist der Schreibpfad unveraendert "
+                "ungeprueft; das ist Vorgang 9783552e und steht aus.",
         # Build 713: geprueft am Quelltext. Kein ConfigLoader, kein
         # '--config'; der Pfad kommt ausschliesslich aus '--db'. Bewusst wie
         # bei pruefe_migrationskette: ein Diagnosewerkzeug soll die Datei

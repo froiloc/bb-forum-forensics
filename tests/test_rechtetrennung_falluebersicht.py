@@ -423,7 +423,15 @@ class SperrriegelTests(_MitDatenbank):
         self.assertIsNone(self._cap(_NEUES_RECHT),
                           "Die Kette haelt nicht vor M038 an.")
 
-        self.repo.grant("supervisor", _NEUES_RECHT, scope="alle", actor_id=1)
+        # db_katalog_pruefen=False (Build 716, Vorgang 1b7d55ae): seit dem
+        # zweiten Waechter in RbacRepo.grant weist der auditierte Weg genau
+        # diesen Grant ab - das ist der Zweck des Waechters. Die Nachstellung
+        # braucht die Waise aber als AUSGANGSLAGE. Rohes SQL scheidet aus:
+        # (c) unten prueft die Beleg-seq, der Grant muss also ein ordentlich
+        # belegter sein. Der uebergangene Waechter vermerkt sich seinerseits
+        # in der audit_log-Nutzlast; RB13 haelt das fest.
+        self.repo.grant("supervisor", _NEUES_RECHT, scope="alle", actor_id=1,
+                        db_katalog_pruefen=False)
         vorher = dict(self._grant_zeile())
 
         with self.assertLogs("management.migrations.coordinator."
@@ -459,7 +467,9 @@ class SperrriegelTests(_MitDatenbank):
         also half selbst der vorgesehene Rueckweg nicht mehr aus der Sackgasse
         heraus. Genau dieser Fall wird hier festgehalten.
         """
-        self.repo.grant("supervisor", _NEUES_RECHT, scope="alle", actor_id=1)
+        # Notausgang wie in RB11 - dieselbe Ausgangslage, dieselbe Begruendung.
+        self.repo.grant("supervisor", _NEUES_RECHT, scope="alle", actor_id=1,
+                        db_katalog_pruefen=False)
         gid = self._grant_zeile()["id"]
         self.repo.revoke_grant(gid, actor_id=1, note="Gegenprobe RB11b")
         self.assertIsNotNone(self._grant_zeile()["revoked_at"])
