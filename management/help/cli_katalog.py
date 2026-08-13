@@ -792,7 +792,9 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Die aktiven Rechte eines Rechts auf ein anderes uebernehmen "
                "(--from/--to, Umfang unveraendert). Gebraucht, wenn ein Recht "
                "geteilt wird: ohne diesen Lauf verliert jede Rolle die Sicht, "
-               "die an das neue Recht wandert. Erst mit '--probe' fahren."),
+               "die an das neue Recht wandert. ERST DIE MIGRATION, DANN DIESER "
+               "LAUF - das neue Recht muss in der Datenbank stehen, sonst "
+               "bricht der Lauf ab (Build 711). Erst mit '--probe' fahren."),
             _b("revoke-grant", "schreibend",
                "Ein Recht zuruecknehmen. Kein Loeschen, sondern Widerruf."),
             _b("assign-role", "schreibend",
@@ -836,6 +838,18 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "dem Lauf hat jede Rolle beide Rechte; ob das alte bleiben "
                 "soll, ist eine Entscheidung je Rolle und gehoert einzeln mit "
                 "'revoke-grant' getroffen.",
+                "REIHENFOLGE: Ein neues Recht entsteht in ZWEI Schritten - "
+                "die Migration traegt es in den Katalog der Datenbank ein "
+                "('python -m management.migrate'), erst danach verteilt es "
+                "'migrate-grants'. Wer tauscht, erzeugte bis Build 710 einen "
+                "Grant auf ein Recht, das die Datenbank nicht kannte: die "
+                "Pruefung in rbac_admin sieht den Katalog im CODE, und die "
+                "Fremdschluessel der coordinator.db greifen bei "
+                "foreign_keys=OFF nicht. Die Migration liess sich danach nicht "
+                "mehr anwenden, und das Management verweigerte den Start. "
+                "SEIT BUILD 711 wird die Reihenfolge geprueft: fehlt das Recht "
+                "in der Datenbank, bricht der Lauf ab, nennt den fehlenden "
+                "Schritt und schreibt nichts.",
             ),
         ),
     ),
@@ -2985,6 +2999,12 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "der Lauf bei der zweiten Migration mit einer unbehandelten "
                 "Ausnahme ab (geprueft Build 609). Der vorgesehene "
                 "Ausgangspunkt ist eine bereits eingerichtete Datei.",
+                "DIESER LAUF KOMMT ZUERST, wenn eine Umstellung ein neues "
+                "Recht mitbringt: die Migration legt es an, erst danach "
+                "verteilt 'rbac_admin migrate-grants' es an die Rollen. Die "
+                "umgekehrte Reihenfolge hat am 12.08.2026 einen Bestand "
+                "verriegelt (Vorgang 9c4e17b2); seit Build 711 weist "
+                "'migrate-grants' sie ab.",
             ),
         ),
     ),

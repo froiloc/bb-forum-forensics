@@ -213,6 +213,31 @@ def _cmd_catalog() -> int:
     return 0
 
 
+def _nicht_in_db(con: sqlite3.Connection, codes):
+    """
+    Welche der 'codes' fehlen in rbac_capability der DATENBANK?
+
+    -> Liste der fehlenden Codes (leer = alle vorhanden), oder None, wenn die
+       Tabelle selbst fehlt. Die Unterscheidung ist wichtig: 'Tabelle fehlt'
+       heisst 'falsche oder uneingerichtete Datenbank' und braucht eine andere
+       Auskunft als 'Migration steht noch aus'.
+
+    Diese Pruefung ist ABSICHTLICH getrennt von der Katalogpruefung in
+    RbacRepo: dort geht es um die Frage 'kennt der Code dieses Recht?', hier um
+    'kennt die Datenbank es schon?'. Beide koennen auseinanderlaufen, und
+    genau in diesem Spalt entstand Vorgang 9c4e17b2.
+    """
+    if con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND "
+                   "name='rbac_capability'").fetchone() is None:
+        return None
+    fehlt = []
+    for code in codes:
+        if con.execute("SELECT 1 FROM rbac_capability WHERE code=?",
+                       (code,)).fetchone() is None:
+            fehlt.append(code)
+    return fehlt
+
+
 def _cmd_grant(repo, args, actor_id, meta) -> int:
     seq = repo.grant(args.role, args.capability, scope=args.scope,
                      actor_id=actor_id, note=args.note, meta=meta)
@@ -248,8 +273,18 @@ def _cmd_grant(repo, args, actor_id, meta) -> int:
 # einer Rolle erhalten bleibt, ist eine fachliche Entscheidung je Rolle und
 # gehoert nicht in einen Uebernahmelauf. Wer es entziehen will, tut das
 # danach mit 'revoke-grant' — sichtbar, einzeln und mit eigenem Beleg.
+#
+# BUILD 711 — DIE REIHENFOLGE WIRD GEPRUEFT (Vorgang 9c4e17b2). Ein neues
+# Recht entsteht in ZWEI Schritten: die Migration traegt es in den Katalog der
+# Datenbank ein, dieser Lauf verteilt es. Wer sie tauscht, bekam bis Build 710
+# keinen Fehler, sondern einen Grant auf ein Recht, das es in der Datenbank
+# noch nicht gab — RbacRepo prueft gegen catalog.py im CODE, und die
+# Fremdschluessel der coordinator.db greifen bei foreign_keys=OFF nicht (so
+# geschehen am 12.08.2026, Grant #62). Der Bestand war danach verriegelt.
+# Deshalb wird jetzt zusaetzlich gegen rbac_capability in der DATENBANK
+# geprueft und mit einem Klartext abgebrochen, der den fehlenden Schritt nennt.
 # =============================================================================
-def _cmd_migrate_grants(repo, args, actor_id, meta) -> int:
+def _cmd_migrate_grants(repo, con, args, actor_id, meta) -> int:
     quelle = args.von
     ziel = args.nach
 
@@ -265,6 +300,26 @@ def _cmd_migrate_grants(repo, args, actor_id, meta) -> int:
     if quelle == ziel:
         print("[rbac_admin] --von und --nach sind dasselbe Recht (%s)."
               % quelle, file=sys.stderr)
+        return 1
+
+    fehlt = _nicht_in_db(con, (quelle, ziel))
+    if fehlt is None:
+        print("[rbac_admin] Diese Datenbank hat keine Tabelle "
+              "'rbac_capability'. Die Rechte-Matrix ist dort nicht "
+              "eingerichtet (Migration M006). Es wird nichts geschrieben.",
+              file=sys.stderr)
+        return 1
+    if fehlt:
+        print("[rbac_admin] Diese Faehigkeit(en) stehen im Katalog des Codes, "
+              "aber NICHT in der Datenbank: %s" % ", ".join(fehlt),
+              file=sys.stderr)
+        print("[rbac_admin] Die zugehoerige Migration ist noch nicht "
+              "angewandt. Zuerst 'python -m management.migrate' fahren, dann "
+              "diesen Lauf. Es wurde NICHTS geschrieben.", file=sys.stderr)
+        print("[rbac_admin] Grund: ein Grant auf ein Recht, das die Datenbank "
+              "nicht kennt, entsteht klaglos (die Fremdschluessel greifen bei "
+              "foreign_keys=OFF nicht) und behindert danach die Migration, "
+              "die das Recht anlegen soll.", file=sys.stderr)
         return 1
 
     alle = repo.list_grants(active_only=True)
@@ -463,7 +518,7 @@ def main(argv=None) -> int:
         if args.action == "grant":
             return _cmd_grant(repo, args, actor_id, meta)
         if args.action == "migrate-grants":
-            return _cmd_migrate_grants(repo, args, actor_id, meta)
+            return _cmd_migrate_grants(repo, con, args, actor_id, meta)
         if args.action == "revoke-grant":
             return _cmd_revoke_grant(repo, args, actor_id, meta)
         if args.action == "assign-role":

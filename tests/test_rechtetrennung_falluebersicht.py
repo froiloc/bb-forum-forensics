@@ -32,7 +32,24 @@
 #          uebergeht (Grundregel 1).
 #   RB10 - Die Hilfe erklaert die Umstellung, statt nur das Recht zu tauschen.
 #
+# NACHTRAG BUILD 711 (Vorgang 9c4e17b2) - DER SPERRRIEGEL:
+#   Wer 'migrate-grants' VOR M038 fuhr, bekam einen ordentlich belegten Grant
+#   auf ein Recht, das der Katalog der Datenbank noch nicht kannte. M038 zaehlte
+#   danach den BESTAND statt des ZUWACHSES, brach ab und rollte zurueck - die
+#   Faehigkeit entstand nie, das Management verweigerte den Start, und selbst
+#   der saubere Rueckweg (Soft-Revoke) half nicht, weil die Zaehlung
+#   'revoked_at' nicht filterte. Es blieb allein ein DELETE auf eine belegte
+#   Zeile.
+#
+#   RB11 - Ein VORGEFUNDENER Grant haelt M038 nicht mehr auf: die Migration
+#          laeuft durch, laesst ihn unveraendert und BENENNT ihn samt Beleg-seq.
+#   RB12 - Der Waechter ist damit nicht zahnlos: ein waehrend des Laufs
+#          ENTSTANDENER Grant bricht weiterhin ab, und der Rollback greift.
+#   RB13 - 'migrate-grants' weist den zu fruehen Lauf jetzt ab, nennt den
+#          fehlenden Schritt und schreibt NICHTS.
+#
 # Version: v0.8.698 - Build: 698 - 2026-08-11
+#   erweitert v0.8.711 - Build: 711 - 2026-08-13 (RB11-RB13)
 # =============================================================================
 
 from __future__ import annotations
@@ -63,6 +80,10 @@ _ALTES_RECHT = "dashboard.view"
 
 class _MitDatenbank(unittest.TestCase):
     """Eine frisch migrierte coordinator.db je Testfall."""
+
+    #: None = die ganze Kette. Eine Zahl haelt sie nach dieser Version an
+    #  (Build 711, fuer die Ausgangslage vor M038).
+    _BIS_VERSION = None
 
     #: Die Personentabelle ist AELTER als die Migrationskette (M001 schreibt
     #  seinen Genesis-Beleg gegen sie). Sie wird deshalb hier angelegt - wie in
@@ -113,7 +134,14 @@ class _MitDatenbank(unittest.TestCase):
                 "is_investigator, is_supervisor, is_support, created_at) "
                 "VALUES (?,?,?,?,0,?)", (uname, dname, inv, sup, jetzt))
         self.audit = AuditLog(self.con)
-        MigrationRunner(self.con, discover(coordinator_migrations),
+        # Build 711: Unterklassen koennen die Kette VOR M038 anhalten
+        # (_BIS_VERSION). Nur so laesst sich die Ausgangslage des Vorgangs
+        # 9c4e17b2 nachstellen - ein Grant, der vor der Migration entsteht.
+        migrationen = discover(coordinator_migrations)
+        if self._BIS_VERSION is not None:
+            migrationen = [m for m in migrationen
+                           if m.VERSION <= self._BIS_VERSION]
+        MigrationRunner(self.con, migrationen,
                         audit=self.audit, deployed_by="tester").run()
         self.writer = CoordinatorWriter(self.con, self.audit)
         self.repo = RbacRepo(self.con, self.writer)
@@ -364,6 +392,147 @@ class MigrateGrantsTests(_MitDatenbank):
         aktiv = [g for g in self.repo.list_grants(active_only=True)
                  if g["capability_code"] == _NEUES_RECHT]
         self.assertEqual(2, len(aktiv), "Grants doppelt vergeben.")
+
+
+class SperrriegelTests(_MitDatenbank):
+    """
+    Vorgang 9c4e17b2 — die Ausgangslage, die den Bestand verriegelte.
+
+    Die Kette haelt VOR M038 an. Damit ist genau der Zustand hergestellt, in
+    dem am 12.08.2026 der Uebernahmelauf gefahren wurde: das Recht steht im
+    Katalog des CODES (sonst wiese RbacRepo es ab), aber noch nicht in der
+    Datenbank.
+    """
+
+    _BIS_VERSION = 37
+
+    def _kette_zuende(self):
+        """Die restliche Kette (also M038) nachfahren."""
+        MigrationRunner(self.con, discover(coordinator_migrations),
+                        audit=AuditLog(self.con), deployed_by="tester").run()
+
+    def _grant_zeile(self):
+        return self.con.execute(
+            "SELECT id, audit_seq, scope, revoked_at FROM rbac_grant "
+            "WHERE capability_code=?", (_NEUES_RECHT,)).fetchone()
+
+    # -- RB11 -----------------------------------------------------------------
+    def test_rb11_vorgefundener_grant_haelt_m038_nicht_auf(self):
+        # Die Ausgangslage muss echt sein, sonst prueft der Test nichts:
+        # die Faehigkeit darf in der DATENBANK noch nicht stehen.
+        self.assertIsNone(self._cap(_NEUES_RECHT),
+                          "Die Kette haelt nicht vor M038 an.")
+
+        self.repo.grant("supervisor", _NEUES_RECHT, scope="alle", actor_id=1)
+        vorher = dict(self._grant_zeile())
+
+        with self.assertLogs("management.migrations.coordinator."
+                             "m038_caseoverview_rbac", level="WARNING") as log:
+            self._kette_zuende()
+
+        # (a) Die Migration ist durch - das ist der eigentliche Befund.
+        self.assertIsNotNone(self._cap(_NEUES_RECHT),
+                             "M038 hat die Faehigkeit nicht angelegt.")
+        self.assertEqual(38, self.con.execute(
+            "SELECT MAX(version) FROM schema_migrations").fetchone()[0])
+
+        # (b) Der vorgefundene Grant ist UNANGETASTET. Eine Migration, die
+        #     fremde, belegte Zeilen zurechtruecken wuerde, waere schlimmer
+        #     als die, die daran scheiterte.
+        self.assertEqual(vorher, dict(self._grant_zeile()))
+
+        # (c) Und er wird BENANNT (Grundregel 1), mit dem Beleg, ueber den
+        #     sich seine Herkunft klaeren laesst.
+        text = "\n".join(log.output)
+        self.assertIn("Grant #%d" % vorher["id"], text)
+        self.assertIn("Beleg-seq=%d" % vorher["audit_seq"], text)
+        self.assertIn("supervisor", text)
+
+        # (d) Die Belegkette haelt.
+        self.assertTrue(AuditLog(self.con).verify_chain().ok,
+                        "Audit-Kette nach M038 nicht intakt.")
+
+    # -- RB11b ----------------------------------------------------------------
+    def test_rb11b_auch_ein_zurueckgenommener_grant_haelt_nicht_auf(self):
+        """
+        Die Gegenprobe zur alten Zaehlung: sie filterte 'revoked_at' nicht,
+        also half selbst der vorgesehene Rueckweg nicht mehr aus der Sackgasse
+        heraus. Genau dieser Fall wird hier festgehalten.
+        """
+        self.repo.grant("supervisor", _NEUES_RECHT, scope="alle", actor_id=1)
+        gid = self._grant_zeile()["id"]
+        self.repo.revoke_grant(gid, actor_id=1, note="Gegenprobe RB11b")
+        self.assertIsNotNone(self._grant_zeile()["revoked_at"])
+
+        self._kette_zuende()
+        self.assertIsNotNone(self._cap(_NEUES_RECHT))
+
+    # -- RB12 -----------------------------------------------------------------
+    def test_rb12_ein_zuwachs_waehrend_des_laufs_bricht_weiterhin_ab(self):
+        """
+        Der Waechter darf durch die Berichtigung nicht zahnlos werden. Sein
+        Zweck ist unveraendert: diese Migration soll KEINEN Grant erzeugen.
+
+        Nachgestellt wird das mit einem Trigger, der beim Anlegen der
+        Faehigkeit eine Grant-Zeile mitschreibt - also einem Zuwachs, der
+        WAEHREND up() entsteht. Kein Mock: gemessen wird die echte Funktion an
+        einer echten Datenbank.
+        """
+        self.con.executescript(
+            "CREATE TRIGGER t_rb12_zuwachs AFTER INSERT ON rbac_capability "
+            "WHEN NEW.code = '%s' BEGIN "
+            "INSERT INTO rbac_grant (role_code, capability_code, scope, "
+            "audit_seq, granted_at) VALUES ('supervisor', '%s', 'alle', 1, 0);"
+            " END;" % (_NEUES_RECHT, _NEUES_RECHT))
+
+        with self.assertRaises(RuntimeError) as ctx:
+            self._kette_zuende()
+        self.assertIn("hinzubekommen", str(ctx.exception))
+
+        # Und der Rollback greift: kein Teilzustand, keine Registry-Zeile.
+        self.assertIsNone(self._cap(_NEUES_RECHT))
+        self.assertEqual(37, self.con.execute(
+            "SELECT MAX(version) FROM schema_migrations").fetchone()[0])
+        self.con.executescript("DROP TRIGGER t_rb12_zuwachs")
+
+    # -- RB13 -----------------------------------------------------------------
+    def test_rb13_migrate_grants_weist_den_zu_fruehen_lauf_ab(self):
+        """
+        Die Vorbeugung: das Werkzeug, mit dem der Fehlgriff geschah, laesst
+        ihn nicht mehr zu.
+        """
+        import io
+        from contextlib import redirect_stderr
+        from management.rbac import rbac_admin
+
+        self.repo.grant("supervisor", _ALTES_RECHT, scope="alle", actor_id=1)
+        spitze = self.con.execute(
+            "SELECT MAX(seq) FROM audit_log").fetchone()[0]
+
+        puffer = io.StringIO()
+        with redirect_stderr(puffer):
+            rc = rbac_admin.main(
+                ["migrate-grants", "--from", _ALTES_RECHT, "--to",
+                 _NEUES_RECHT, "--coordinator-db", self.db_path,
+                 "--actor", "h001"])
+        ausgabe = puffer.getvalue()
+
+        self.assertEqual(1, rc, "Der zu fruehe Lauf wurde nicht abgewiesen.")
+        # Die Meldung muss den FEHLENDEN SCHRITT nennen, nicht nur das
+        # Scheitern - sonst sucht der Betroffene an der falschen Stelle.
+        self.assertIn(_NEUES_RECHT, ausgabe)
+        self.assertIn("management.migrate", ausgabe)
+
+        # Es wurde NICHTS geschrieben - weder ein Grant noch ein Beleg.
+        self.con.close()
+        self.con = sqlite3.connect(self.db_path)
+        self.con.row_factory = sqlite3.Row
+        self.assertIsNone(self.con.execute(
+            "SELECT 1 FROM rbac_grant WHERE capability_code=?",
+            (_NEUES_RECHT,)).fetchone())
+        self.assertEqual(spitze, self.con.execute(
+            "SELECT MAX(seq) FROM audit_log").fetchone()[0],
+            "Der abgewiesene Lauf hat in das Belegbuch geschrieben.")
 
 
 if __name__ == "__main__":

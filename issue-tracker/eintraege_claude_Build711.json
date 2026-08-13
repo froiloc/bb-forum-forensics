@@ -1,0 +1,108 @@
+{
+  "issues": [
+    {
+      "id": "9c4e17b2-7f31-4a06-b58d-2e0c5a41d6f4",
+      "type": "bug",
+      "title": "M038 verriegelt die coordinator.db, wenn migrate-grants zu frueh lief",
+      "affected_version": "0.8.698",
+      "reporter": "Alex",
+      "reported_at": "2026-08-13T09:40:00+00:00",
+      "prerequisites": "Eine coordinator.db mit Migrationsstand M037. Auf ihr wurde 'python -m management.rbac.rbac_admin migrate-grants --from dashboard.view --to caseoverview.view' gefahren, BEVOR 'python -m management.migrate' lief. Danach 'python -m management.migrate'.",
+      "description": "M038 endete bis Build 710 mit einer ABSOLUTEN Zaehlung:\n    SELECT COUNT(*) FROM rbac_grant WHERE capability_code='caseoverview.view'\nund brach bei jedem Treffer ab. Gemeint war etwas anderes; der Kommentar daneben sagte es woertlich: 'haette DIESE MIGRATION versehentlich einen Grant erzeugt, faende er sich hier.' Das ist eine Delta-Frage (vorher gegen nachher) und wurde als Bestandsfrage geschrieben.\n\nWIE DER GRANT UEBERHAUPT ENTSTEHEN KONNTE: RbacRepo._validate_capability (rbac_repo.py:274) prueft gegen catalog.CAPABILITY_CODES - den Katalog im CODE -, nicht gegen rbac_capability in der DATENBANK. _cmd_migrate_grants (rbac_admin.py:262) tat dasselbe. Die Fremdschluessel rbac_grant.capability_code -> rbac_capability.code bestehen zwar, greifen aber nicht: die Management-Verbindungen laufen mit foreign_keys=OFF (SQLite-Vorgabe, in m002/m004 ausdruecklich festgehalten). Ein Uebernahmelauf vor der Migration erzeugt also klaglos einen Grant auf eine Faehigkeit, die es in der Datenbank noch nicht gibt.\n\nBELEG AUS DEM BETROFFENEN BESTAND (13.08.2026, schreibgeschuetzt ausgelesen):\n  schema_migrations ..... hoechste Version 37, M038 NICHT angewandt\n  rbac_capability ....... 'caseoverview.view' FEHLT\n  rbac_grant #62 ........ rolle=supervisor, scope=alle, aktiv,\n                          Beleg-seq 266, vergeben 12.08.2026 01:07,\n                          Notiz \"Uebernahme aus 'dashboard.view' (Grant #1), Scope unveraendert.\"\n  audit_log seq=266 ..... rbac_granted, actor_id NULL\n\nDIE FOLGE WAR EINE SACKGASSE. Die Migration rollte zurueck (BEGIN IMMEDIATE / ROLLBACK im Runner, kein Teilzustand), die Faehigkeit entstand nie, und der Start-Check des Managements verweigerte den Dienst mit genau der Faehigkeit, die diese Migration angelegt haette: 'Code-Katalog nicht vollstaendig in der DB - Faehigkeiten fehlen: caseoverview.view'.\n\nUND DER SAUBERE RUECKWEG HALF NICHT. Gegenprobe im Container gefahren: den Grant per 'revoke-grant' zurueckzunehmen (Soft-Revoke, append-only, der vorgesehene Weg) aenderte nichts, weil die Zaehlung 'revoked_at' nicht filterte. Es blieb allein ein hartes DELETE auf rbac_grant - also das Zerreissen der Beleg-Kopplung, um eine Migration freizubekommen. Ein Waechter, der als einzigen Ausweg den Bruch der Beweiskette laesst, schuetzt nichts.\n\nM038 war mit diesem Waechter ein Einzelfall: kein weiterer Treffer fuer das Muster in management/migrations/coordinator/. M030, M031 und M035 - dieselbe Bauart Capability-Seed - haben ihn nicht.",
+      "expected_behavior": "M038 laeuft durch. Ein bereits vorhandener, ordentlich belegter Grant gehoert nicht dieser Migration; sie benennt ihn samt Rolle, Umfang und Beleg-seq (Grundregel 1) und laesst ihn unveraendert. Abgebrochen wird nur, wenn waehrend des Laufs ein Grant HINZUKOMMT - das ist der Zweck des Waechters. Zusaetzlich weist 'migrate-grants' den zu fruehen Lauf ab, statt die Waise zu erzeugen.",
+      "actual_behavior": "M038 bricht ab: \"M038: 'caseoverview.view' traegt bereits 1 Grant(s). Diese Migration vergibt keine - Herkunft klaeren.\" Der Lauf rollt zurueck, die Faehigkeit entsteht nie, das Management startet nicht, und weder ein erneuter Migrationslauf noch der Soft-Revoke des Grants aendern etwas.",
+      "status": "resolved",
+      "priority": "critical",
+      "severity": "blocker",
+      "assigned_to": "Claude",
+      "related_to": [
+        "1b7d55ae-04c9-4f2a-9d63-8a0f21c7e5b0"
+      ],
+      "resolved_in_version": "0.8.711",
+      "target_version": "0.8.711",
+      "environment": {
+        "os": "Linux (Entwicklungsrechner) / Windows 11 (Produktiv-VM)",
+        "python_version": "3.12.3 (Container) / 3.14 (VM)",
+        "database": "coordinator.db"
+      },
+      "tags": [
+        "Migration",
+        "RBAC",
+        "M038",
+        "Blocker",
+        "Build711",
+        "gemessen",
+        "reproduziert"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-13T09:40:00+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Gemeldet aus dem laufenden Betrieb: 'python management.py' verweigert den Start mit fehlender Faehigkeit 'caseoverview.view', 'python -m management.migrate' bricht bei M038 ab. Kein Weg vor und keiner zurueck."
+        },
+        {
+          "timestamp": "2026-08-13T10:15:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "REPRODUZIERT, nicht vermutet. Im Container nachgebaut: Kette bis M037, Grant auf 'dashboard.view', dann Grant auf 'caseoverview.view' vor der Migration, dann M038. Fehlermeldung wortgleich, einschliesslich der Zahl 1. GEGENPROBE: Soft-Revoke des Grants fuehrt nicht aus der Sackgasse, weil die Zaehlung 'revoked_at' nicht filtert.\n\nHerkunft im betroffenen Bestand geklaert - der Grant traegt seinen Beleg: rbac_grant.audit_seq ist NOT NULL, seq 266 weist den Uebernahmelauf vom 12.08.2026 01:07 aus. Die Reihenfolge war getauscht."
+        },
+        {
+          "timestamp": "2026-08-13T11:30:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "resolved",
+          "comment": "BEHOBEN in Build 711, an zwei Stellen.\n\n(1) m038_caseoverview_rbac.py: Der Waechter misst jetzt ein DELTA. Grants werden vor dem Seed gezaehlt, nach dem Seed erneut; nur ein ZUWACHS bricht ab. Vorgefundene Grants werden mit Rolle, Umfang, Beleg-seq und Zustand protokolliert und bleiben unveraendert.\n\n(2) rbac_admin.py, _cmd_migrate_grants: prueft zusaetzlich gegen rbac_capability in der DATENBANK und bricht ab, wenn ein Recht dort fehlt - mit Nennung des fehlenden Schritts ('python -m management.migrate' zuerst). Es wird nichts geschrieben.\n\nAENDERUNG AN EINER MIGRATION - warum zulaessig: M038 war zum Zeitpunkt der Berichtigung nirgends angewandt (Alex, 13.08.2026; im betroffenen Bestand belegt durch das Fehlen der Zeile version=38). Keine Pruefsummen-Abweichung, keine umgeschriebene Historie moeglich. Eine nachgelagerte Migration haette nicht geholfen: M038 laeuft vor ihr und bricht den Lauf ab.\n\nHILFE nachgezogen (Regel 'keine Aenderung ohne Anpassung in der Hilfe'): cli_katalog.py an drei Stellen - Befehlstext von 'migrate-grants', Warnung zur Reihenfolge bei 'rbac_admin', Gegenstueck beim Werkzeug 'migrate'.\n\nREGRESSION: RB11, RB11b, RB12, RB13 neu in tests/test_rechtetrennung_falluebersicht.py (13 Faelle gruen). RB12 stellt den Zuwachs mit einem SQLite-Trigger her statt mit einem Mock - gemessen wird die echte Funktion an einer echten Datenbank."
+        }
+      ]
+    },
+    {
+      "id": "1b7d55ae-04c9-4f2a-9d63-8a0f21c7e5b0",
+      "type": "improvement",
+      "title": "RbacRepo.grant prueft den Code-Katalog, nicht den Katalog der Datenbank",
+      "affected_version": "0.8.711",
+      "reporter": "Claude",
+      "reported_at": "2026-08-13T11:35:00+00:00",
+      "prerequisites": "Eine coordinator.db, deren Migrationsstand hinter dem Code zurueckliegt - also jeder Zeitpunkt zwischen dem Einspielen einer Lieferung und dem Migrationslauf.",
+      "description": "RbacRepo._validate_capability (rbac_repo.py:274) prueft capability_code gegen catalog.CAPABILITY_CODES, also gegen den Katalog im CODE. Ob die Faehigkeit in rbac_capability der DATENBANK steht, prueft niemand; die Fremdschluessel greifen bei foreign_keys=OFF nicht. Ein Grant auf eine in der Datenbank unbekannte Faehigkeit entsteht deshalb klaglos.\n\nGenau daraus entstand Vorgang 9c4e17b2 (Grant #62 vom 12.08.2026). Die Vorbeugung sitzt seit Build 711 im CLI-Werkzeug 'migrate-grants' - also an dem Weg, auf dem es damals geschah. Sie sitzt NICHT im Repository selbst. Jeder andere Schreibpfad kann dieselbe Waise erzeugen: 'rbac_admin grant', demo_seed und jede kuenftige Stelle, die RbacRepo.grant aufruft.\n\nOFFENE FRAGE, die vor der Umsetzung zu klaeren ist: soll die Pruefung abweisen oder nur warnen? Ein Abweisen ist die strengere und vermutlich richtige Antwort, verhaelt sich aber anders als heute in einem Pfad, der bei jeder Rechtevergabe laeuft. Die Bestandsaufnahme, welche Aufrufer betroffen waeren, steht noch aus - sie gehoert vor die Aenderung, nicht danach.",
+      "expected_behavior": "Ein Grant auf eine Faehigkeit, die die Datenbank nicht kennt, entsteht gar nicht erst - unabhaengig davon, ueber welchen Weg er geschrieben wird.",
+      "actual_behavior": "Nur 'migrate-grants' prueft das (seit Build 711). Alle anderen Wege ueber RbacRepo.grant erzeugen die Waise weiterhin stillschweigend.",
+      "status": "open",
+      "priority": "medium",
+      "severity": "major",
+      "assigned_to": "",
+      "related_to": [
+        "9c4e17b2-7f31-4a06-b58d-2e0c5a41d6f4"
+      ],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14",
+        "database": "coordinator.db"
+      },
+      "tags": [
+        "RBAC",
+        "Vorbeugung",
+        "Build711",
+        "Wurzelursache"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-13T11:35:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Bei der Bearbeitung von 9c4e17b2 aufgefallen und bewusst NICHT mitbehoben: die Aenderung liegt in einem Pfad, der bei jeder Rechtevergabe laeuft, und gehoert nicht in einen Blocker-Build. Getrennt gefuehrt, damit sie nicht mit dem Blocker abgehakt wird."
+        }
+      ]
+    }
+  ]
+}

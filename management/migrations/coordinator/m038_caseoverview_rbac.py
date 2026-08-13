@@ -45,6 +45,47 @@
 #   'dashboard.view' bleibt, alle Grants darauf bleiben unangetastet, kein
 #   Zugang aendert sich durch diese Migration.
 #
+# ── BERICHTIGUNG BUILD 711 — DER WAECHTER WAR EIN SPERRRIEGEL ───────────────
+#
+#   Vorgang 9c4e17b2. Bis Build 710 endete diese Migration mit einer
+#   ABSOLUTEN Zaehlung: 'traegt caseoverview.view irgendwelche Grants? dann
+#   Abbruch'. Gemeint war etwas anderes — der Kommentar daneben sagte es
+#   woertlich: 'haette DIESE MIGRATION versehentlich einen Grant erzeugt,
+#   faende er sich hier'. Das ist eine DELTA-Frage (vorher gegen nachher) und
+#   wurde als Bestandsfrage geschrieben.
+#
+#   WAS DAS ANRICHTETE (belegt am Bestand vom 13.08.2026): Wer den
+#   Uebernahmelauf 'rbac_admin migrate-grants' VOR dieser Migration fuhr,
+#   bekam einen ordentlich belegten Grant auf ein Recht, das im Katalog der
+#   Datenbank noch fehlte — die Katalogpruefung in RbacRepo prueft gegen
+#   catalog.py im Code, und die Fremdschluessel der coordinator.db greifen
+#   bei foreign_keys=OFF nicht. Danach war der Bestand VERRIEGELT: die
+#   Migration rollte zurueck, die Faehigkeit entstand nie, der Start-Check
+#   des Managements verweigerte den Dienst mit genau der Faehigkeit, die
+#   diese Migration angelegt haette.
+#
+#   UND DER SAUBERE RUECKWEG HALF NICHT. Gegenprobe gefahren: den Grant per
+#   'revoke-grant' zurueckzunehmen (Soft-Revoke, append-only, der vorgesehene
+#   Weg) aenderte nichts, weil die Zaehlung 'revoked_at' nicht filterte. Es
+#   blieb allein ein hartes DELETE auf rbac_grant — also das Zerreissen der
+#   Beleg-Kopplung, um eine Migration freizubekommen. Ein Waechter, der als
+#   einzigen Ausweg den Bruch der Beweiskette laesst, schuetzt nichts.
+#
+#   SEIT BUILD 711 wird gemessen statt behauptet: Grants VOR dem Seed zaehlen,
+#   nach dem Seed erneut, und nur ein ZUWACHS bricht ab. Vorgefundene Grants
+#   sind nicht die Sache dieser Migration — sie tragen ihren eigenen Beleg in
+#   audit_log und werden mit Rolle, Umfang und Beleg-seq BENANNT (Grundregel
+#   1), nicht verschwiegen und nicht bestraft.
+#
+#   AENDERUNG AN EINER MIGRATION — WARUM SIE HIER ZULAESSIG IST: M038 war zum
+#   Zeitpunkt der Berichtigung NIRGENDS angewandt (Alex, 13.08.2026; im
+#   betroffenen Bestand belegt durch das Fehlen der Zeile version=38 in
+#   schema_migrations). Es gibt also keinen Bestand, dessen gespeicherte
+#   Pruefsumme abweichen koennte, und keine Historie, die umgeschrieben wuerde.
+#   Waere sie irgendwo angewandt gewesen, haette der Weg anders aussehen
+#   muessen — eine nachgelagerte Migration haette nicht geholfen, weil M038
+#   vor ihr laeuft und den Lauf abbricht.
+#
 # ── WAS DIESE MIGRATION AUSDRUECKLICH NICHT TUT: GRANTS ─────────────────────
 #
 #   Sie vergibt das neue Recht an KEINE Rolle. Das ist keine Nachlaessigkeit,
@@ -82,6 +123,8 @@
 #
 # IDEMPOTENZ: INSERT OR IGNORE + Guards + Inline-Verifikation.
 # Version: v0.8.698 · Build: 698 · 2026-08-11
+#   berichtigt v0.8.711 · Build: 711 · 2026-08-13 (Delta- statt Bestandszaehlung
+#   der Grants; noch nirgends angewandt, keine Pruefsummen-Abweichung moeglich)
 # =============================================================================
 
 import logging
@@ -133,11 +176,56 @@ def _cap_exists(con: sqlite3.Connection, code: str) -> bool:
         (code,)).fetchone() is not None
 
 
+def _grant_zahl(con: sqlite3.Connection, code: str) -> int:
+    """
+    Zahl ALLER Grant-Zeilen auf 'code' — auch der zurueckgenommenen.
+
+    Bewusst OHNE Filter auf revoked_at: gezaehlt wird, was diese Migration
+    selbst geschrieben haben koennte, und sie schreibt keine Ruecknahmen. Der
+    Wert ist nur als VERGLEICHSMASS gegen sich selbst gedacht (vorher/nachher);
+    fuer eine Aussage ueber die Rechtelage ist er der falsche Wert.
+    """
+    if not _table_exists(con, "rbac_grant"):
+        return 0
+    return con.execute(
+        "SELECT COUNT(*) FROM rbac_grant WHERE capability_code=?",
+        (code,)).fetchone()[0]
+
+
+def _grants_benennen(con: sqlite3.Connection, code: str) -> None:
+    """
+    Vorgefundene Grants mit Rolle, Umfang und Beleg-seq protokollieren.
+
+    WARUM UEBERHAUPT: Ein Grant auf ein Recht, das der Katalog der Datenbank
+    erst mit dieser Migration bekommt, ist ungewoehnlich genug, um genannt zu
+    werden — er ist in aller Regel ein Uebernahmelauf, der zu frueh gefahren
+    wurde. Er ist aber kein Fehler DIESER Migration und darf sie nicht
+    aufhalten: er traegt seinen eigenen Beleg in audit_log, und wer ihn
+    nachvollziehen will, findet mit der hier genannten seq den Akteur.
+    """
+    for row in con.execute(
+            "SELECT id, role_code, scope, audit_seq, revoked_at FROM "
+            "rbac_grant WHERE capability_code=? ORDER BY id", (code,)):
+        logger.warning(
+            "M038: '%s' trug vor dem Seed bereits Grant #%s (rolle=%s, "
+            "umfang=%s, Beleg-seq=%s, %s). Diese Migration vergibt keine — "
+            "Herkunft ueber audit_log seq=%s nachvollziehbar. Der Grant "
+            "bleibt unveraendert.",
+            code, row[0], row[1], row[2] or "-", row[3],
+            "zurueckgenommen" if row[4] else "aktiv", row[3])
+
+
 def up(con: sqlite3.Connection) -> None:
     if not _table_exists(con, "rbac_capability"):
         raise RuntimeError(
             "M038: rbac_capability fehlt — M006 ist nicht angewandt. "
             "Reihenfolge der Migrationen pruefen.")
+
+    # --- (0) Ausgangsstand MESSEN, bevor irgendetwas geschrieben wird ------
+    #  Ohne diese Messung liesse sich am Ende nicht unterscheiden, ob ein
+    #  Grant durch diesen Lauf entstanden oder schon vorher da gewesen ist —
+    #  und genau diese Unterscheidung ist der Zweck des Waechters unten.
+    grants_vorher = {code: _grant_zahl(con, code) for code, _l, _d in _SEED_CAPS}
 
     now = int(time.time())
 
@@ -183,16 +271,26 @@ def up(con: sqlite3.Connection) -> None:
             raise RuntimeError(
                 "M038: Faehigkeit '%s' fehlt nach dem Seed." % code)
 
-    # Die Grants bleiben ausdruecklich leer — siehe Kopf. Belegt statt
-    # angenommen: haette diese Migration versehentlich einen Grant erzeugt,
-    # faende er sich hier.
-    n = con.execute(
-        "SELECT COUNT(*) FROM rbac_grant WHERE capability_code=?",
-        ("caseoverview.view",)).fetchone()[0]
-    if n != 0:
-        raise RuntimeError(
-            "M038: 'caseoverview.view' traegt bereits %d Grant(s). Diese "
-            "Migration vergibt keine — Herkunft klaeren." % n)
+    # Diese Migration vergibt keine Grants — siehe Kopf. Belegt statt
+    # angenommen: haette sie versehentlich einen erzeugt, faende er sich als
+    # ZUWACHS gegenueber dem gemessenen Ausgangsstand.
+    #
+    # NUR DER ZUWACHS BRICHT AB (Build 711). Ein vorgefundener Grant gehoert
+    # nicht dieser Migration: er traegt seinen eigenen Beleg, und ihn hier zum
+    # Abbruchgrund zu machen hiesse, den Bestand zu verriegeln — die Faehigkeit
+    # entstuende nie, und der einzige Ausweg waere ein DELETE auf eine belegte
+    # Zeile. Die Begruendung in voller Laenge steht im Kopf.
+    for code, _l, _d in _SEED_CAPS:
+        vorher = grants_vorher[code]
+        nachher = _grant_zahl(con, code)
+        if vorher:
+            _grants_benennen(con, code)
+        if nachher > vorher:
+            raise RuntimeError(
+                "M038: '%s' hat waehrend dieses Laufs %d Grant(s) "
+                "hinzubekommen (vorher %d, jetzt %d). Diese Migration vergibt "
+                "keine — der Lauf wird zurueckgerollt."
+                % (code, nachher - vorher, vorher, nachher))
 
     logger.info("M038: Faehigkeit 'caseoverview.view' geseedet (ohne Grants). "
                 "Uebernahme der bestehenden Rechte: "
