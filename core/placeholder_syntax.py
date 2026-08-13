@@ -111,6 +111,37 @@ class PlaceholderSyntax:
         Blocktyp, der seinen Text anders ablegt, faellt so zwar durch — er
         wuerde aber auch im Client keine Chips rendern; die Wahrheit bleibt
         an dieser einen Stelle korrigierbar.
+
+        BUILD 710 — ZWEI TEXTSTELLEN FEHLTEN, UND SIE FEHLTEN AUF BEIDEN
+        SEITEN. Gemessen am 12.08.2026:
+
+          Liste, VERSCHACHTELTER Eintrag (items[].items[]) .... nicht gesehen
+          Zitat, QUELLENANGABE (caption) ..................... nicht gesehen
+
+        Beides sind belegte Textstellen: klartextAus() in
+        cockpit_baustein_eingabe.js geht rekursiv in Unterlisten und liest
+        'caption'; editor/html_renderer.py:127-151 rendert 'caption' als
+        <cite> in den Vermerk. Ein Platzhalter dort steht also im
+        unterschriebenen Dokument - er wurde nur nie gefunden.
+
+        WAS DAS GEKOSTET HAT: Diese Methode traegt ueber extract_from_block()
+        die serverseitige Feldpruefung eines Vermerks
+        (forensic_api/report.py:2063). Auf der Clientseite traegt ihr
+        Gegenstueck den Ausfuell-Assistenten der Ermittler
+        (userinfo/placeholder_wizard.js:241,636). Ein {{m:...}} an einer der
+        beiden Stellen wurde dem Ermittler NIE zum Ausfuellen angeboten und
+        serverseitig NIE geprueft - der Vermerk ging mit rohem
+        Vorlagentext hinaus.
+
+        DIE AENDERUNG WEITET DIE PRUEFUNG AUS. Ein Vermerk, der bisher
+        durchging, kann jetzt einen Verstoss melden. Das ist die richtige
+        Richtung - geprueft wird mehr, nie weniger -, aber es ist eine
+        Verhaltensaenderung und keine reine Reparatur.
+
+        Die Entsprechung im Client (placeholder_chips.js::mapBlockTexts) ist
+        WORTGLEICH mitgezogen. Beide Seiten MUESSEN dieselben Textstellen
+        sehen; laufen sie auseinander, prueft der Server Felder, die der
+        Client nie angeboten hat.
         """
         if not isinstance(block_data, dict):
             return
@@ -120,16 +151,16 @@ class PlaceholderSyntax:
         if isinstance(text, str):
             yield text
 
-        # list (Editor.js NestedList: items koennen Strings oder Dicts sein)
-        items = block_data.get("items")
-        if isinstance(items, list):
-            for item in items:
-                if isinstance(item, str):
-                    yield item
-                elif isinstance(item, dict):
-                    inner = item.get("content")
-                    if isinstance(inner, str):
-                        yield inner
+        # quote: die Quellenangabe (Build 710). Sie wird von
+        # html_renderer.py als <cite> in den Vermerk gerendert und ist damit
+        # vollwertiger Berichtsinhalt.
+        caption = block_data.get("caption")
+        if isinstance(caption, str):
+            yield caption
+
+        # list (Editor.js NestedList: items koennen Strings oder Dicts sein).
+        # REKURSIV ab Build 710: NestedList schachtelt ueber item['items'].
+        yield from cls._iter_list_items(block_data.get("items"))
 
         # table
         content = block_data.get("content")
@@ -140,6 +171,29 @@ class PlaceholderSyntax:
                 for cell in row:
                     if isinstance(cell, str):
                         yield cell
+
+    @classmethod
+    def _iter_list_items(cls, items, _tiefe: int = 0) -> Iterator[str]:
+        """
+        Die Eintraege einer (moeglicherweise verschachtelten) Liste.
+
+        TIEFENGRENZE: Editor.js schachtelt in der Bedienung nicht beliebig
+        tief, aber block_data kommt aus einer Datenbank und ist damit nicht
+        vertrauenswuerdig. Eine im Kreis zeigende Struktur (von Hand oder
+        durch einen Fehler entstanden) wuerde diese Methode sonst nicht
+        beenden - in einem Pfad, der beim SPEICHERN eines Vermerks laeuft.
+        Die Grenze ist grosszuegig und wird in der Praxis nie erreicht.
+        """
+        if not isinstance(items, list) or _tiefe > 32:
+            return
+        for item in items:
+            if isinstance(item, str):
+                yield item
+            elif isinstance(item, dict):
+                inner = item.get("content")
+                if isinstance(inner, str):
+                    yield inner
+                yield from cls._iter_list_items(item.get("items"), _tiefe + 1)
 
     # ------------------------------------------------------------------
     # Extraktion

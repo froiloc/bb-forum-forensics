@@ -72,8 +72,35 @@
         var typ = modul.block_type || 'paragraph';
 
         if (modul.block_data && typeof modul.block_data === 'object') {
-            // Zukunft: der Baustein traegt seine Blockdaten selbst.
-            return [{ type: typ, data: modul.block_data }];
+            // Der Baustein traegt seine Blockdaten selbst.
+            //
+            // BUILD 710 (Vorgang 5e08b3d1): HIER WERDEN DIE CHIPS
+            // GERENDERT. Bis dahin wurden die Blockdaten UNVERAENDERT
+            // durchgereicht - und als dieser Pfad in Build 710 zum ersten
+            // Mal wirklich benutzt wurde, waeren aus den farbigen Chips rohe
+            // '{{a:user.username}}'-Texte geworden. Genau davon will das
+            // Ticket 64edd18a weg; der Kopf dieser Datei sagt es woertlich:
+            // "Die Chips sind die eigentliche Information".
+            //
+            // hydrateBlockData() geht ueber ALLE Textstellen des Blocks -
+            // Absatztext, Zitatquelle, Listeneintraege bis in die
+            // Verschachtelung, Tabellenzellen. Es liefert eine NEUE
+            // block_data; das Original bleibt unberuehrt. Das ist hier keine
+            // Feinheit, sondern Bedingung: die Vorschau bekommt denselben
+            // Datensatz, der gleich gespeichert wird - wuerde sie darin
+            // hydrieren, stuende Chip-HTML in der Datenbank.
+            var daten = modul.block_data;
+            if (chips && typeof chips.hydrateBlockData === 'function') {
+                try {
+                    daten = chips.hydrateBlockData(modul.block_data, {}, {});
+                } catch (e) {
+                    // Die rohen Daten sind besser als nichts — und der
+                    // Fehler wird benannt, nicht verschluckt.
+                    log('hydrateBlockData fehlgeschlagen', e);
+                    daten = modul.block_data;
+                }
+            }
+            return [{ type: typ, data: daten }];
         }
 
         var roh = String(modul.body === undefined || modul.body === null

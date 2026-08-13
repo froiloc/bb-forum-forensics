@@ -434,12 +434,60 @@ describe("Bausteinmodule — Zustand des Schlüsselfeldes (Build 575)", () => {
  * LY02 — sie ist ohne Zutun sichtbar (Ticket: "dauerhaft eingeblendet").
  * LY03 — der Schalter klappt zu und wieder auf und MERKT SICH DEN STAND.
  * LY04 — die Umbruchregel steht im Stylesheet (Rasterbereiche + @media).
+ * LY05 — (Build 710) die Vorschau bekommt Blockart und Blockdaten, nicht
+ *        nur den Klartextspiegel (Vorgang 5e08b3d1).
  * =========================================================================== */
 describe("Bausteinmodule — Vorschau-Spalte (Build 652)", () => {
   const _main = (win) => win.document.getElementById("aiw-main");
   const _spalte = (main) => main.querySelector(".aiw-mod-vorschaucol");
   const _schalter = (main) => main.querySelector("#aiw-mod-vorschau-schalter");
   const _host = (main) => main.querySelector("#aiw-mod-vorschau");
+
+  // LY05 --------------------------------------------------------------------
+  //
+  // BUILD 710 (Vorgang 5e08b3d1): DIE VORSCHAU BEKOMMT DIE QUELLE.
+  //
+  // Bis dahin uebergab _vorschauAktualisieren() nur '{ body: text }' - also
+  // den Klartextspiegel. blockAus() in cockpit_baustein_vorschau.js hat einen
+  // Zweig fuer Blockdaten (durch BV03 seit Build 578 geprueft), aber dieser
+  // einzige Aufrufer loeste ihn NIE aus. Die Vorschau zeigte deshalb IMMER
+  // einen Absatz: eine Tabelle als Fliesstext mit Tabulatoren, eine
+  // Aufzaehlung als Absatz mit Zeilenumbruechen.
+  //
+  // Der Fall prueft, was BV03 allein nicht kann: dass der Zweig auch
+  // ANGESTEUERT wird. Ein Test, der eine Faehigkeit belegt, die im Betrieb
+  // niemand aufruft, sieht wie Deckung aus und ist keine.
+  it("LY05: die Vorschau bekommt Blockart und Blockdaten, nicht nur den "
+    + "Spiegel", () => {
+      const win = _ctx();
+      const main = _main(win);
+
+      // Die Vorschau durch ein Steuerobjekt ersetzen, das mitschreibt, WOMIT
+      // sie gefuettert wird.
+      const gesehen = [];
+      win.AIWBausteinVorschau = {
+        erzeuge: () => ({
+          zeige: (modul) => { gesehen.push(modul); return null; },
+          aus: () => {},
+          istOffen: () => false,
+        }),
+        werkzeuge: () => ({}),
+        fehlendeTeile: () => [],
+        blockAus: () => [],
+      };
+
+      _api(win).renderModules(main, _data(), {});
+
+      expect(gesehen.length).toBeGreaterThan(0);
+      const letzter = gesehen[gesehen.length - 1];
+      // DIE KERNAUSSAGE: Blockart und Blockdaten kommen mit.
+      expect(letzter).toHaveProperty("block_type");
+      expect(letzter).toHaveProperty("block_data");
+      // UND DER SPIEGEL BLEIBT DABEI. blockAus faellt auf ihn zurueck, wenn
+      // keine Blockdaten vorliegen; ihn wegzulassen haette Bestandszeilen aus
+      // der Zeit vor Build 655 die Vorschau gekostet.
+      expect(letzter).toHaveProperty("body");
+    });
 
   // LY01 --------------------------------------------------------------------
   it("LY01: die Vorschau steht in einer eigenen Spalte, nicht im Formular", () => {

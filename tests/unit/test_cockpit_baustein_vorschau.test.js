@@ -8,9 +8,11 @@
  *        zu Chips (der Chip-Renderer ist injizierbar).
  * BV02 — ohne Chip-Renderer bleibt der ROHTEXT stehen; die Vorschau fällt
  *        nicht aus, sie wird nur schlichter.
- * BV03 — ZUKUNFTSFEST: liegen block_type und block_data vor (ab Build 578),
- *        werden sie unverändert benutzt — die Vorschau muss dann nicht neu
- *        gebaut werden.
+ * BV03 — liegen block_type und block_data vor, bleibt die BLOCKART erhalten
+ *        und die Textstellen werden zu Chips hydriert; das Original bleibt
+ *        unberührt. (Bis Build 710: „unverändert durchgereicht" — siehe
+ *        Begründung an der Fundstelle, Vorgang 5e08b3d1.)
+ * BV03b — fehlt hydrateBlockData, bleiben die Daten roh statt zu scheitern.
  * BV04 — fehlendeTeile NENNT die fehlende Datei, statt nur "geht nicht".
  * BV05 — werkzeuge() trägt nur ein, was das Bündel wirklich mitbringt; ein
  *        undefiniertes Werkzeug ließe Editor.js beim Start scheitern.
@@ -43,10 +45,27 @@ function _api() {
 }
 
 /** Chip-Renderer wie in Baustelle 6: {{a:x}} -> <span class="ph-chip ...">x</span> */
+const _hydrate = (roh) => String(roh).replace(
+  /\{\{a:([a-z_.]+)\}\}/g,
+  '<span class="ph-chip ph-chip-auto" data-chip-raw="{{a:$1}}">$1</span>');
+
 const chips = {
-  hydrateChips: (roh) => String(roh).replace(
-    /\{\{a:([a-z_]+)\}\}/g,
-    '<span class="ph-chip ph-chip-auto" data-chip-raw="{{a:$1}}">$1</span>'),
+  hydrateChips: _hydrate,
+  // Build 710: Der Blockdaten-Pfad von blockAus hydriert seither ebenfalls
+  // (Vorgang 5e08b3d1). Ohne diese Stub-Funktion bliebe der neue Zweig
+  // ungeprueft - und BV03 waere nur deshalb gruen, weil der Stub sie nicht
+  // kann. Ein Test, der aus Mangel besteht, belegt nichts.
+  hydrateBlockData: (daten) => {
+    const um = (v) => (typeof v === 'string' ? _hydrate(v) : v);
+    const raus = { ...daten };
+    if (typeof raus.text === 'string') { raus.text = um(raus.text); }
+    if (typeof raus.caption === 'string') { raus.caption = um(raus.caption); }
+    if (Array.isArray(raus.content)) {
+      raus.content = raus.content.map(
+        (z) => (Array.isArray(z) ? z.map(um) : z));
+    }
+    return raus;
+  },
 };
 
 /** Minimal-Editor: merkt sich die Konfiguration, zählt destroy(). */
@@ -89,18 +108,52 @@ describe("Bausteinvorschau (Build 577)", () => {
   });
 
   // BV03 --------------------------------------------------------------------
-  it("BV03: vorhandene Blockdaten werden unveraendert benutzt", () => {
+  //
+  // MITGEZOGEN IN BUILD 710 (Vorgang 5e08b3d1). Bis dahin sicherte dieser
+  // Fall zu, dass die Blockdaten UNVERAENDERT durchgereicht werden ("kein
+  // Chip-Durchlauf"). Das war richtig, solange der Zweig nie benutzt wurde -
+  // und genau das war der Befund: cockpit_modules.js uebergab nur den
+  // Klartextspiegel, der Zweig lief nie an.
+  //
+  // Seit er wirklich benutzt wird, waere "unveraendert" ein Rueckschritt: aus
+  // den farbigen Chips wuerden rohe {{a:...}}-Texte, und der Kopf dieser
+  // Datei sagt, dass genau die Chips die eigentliche Information sind.
+  // Zugesichert ist jetzt: die BLOCKART bleibt, die TEXTSTELLEN werden
+  // hydriert, und das ORIGINAL bleibt unberuehrt.
+  it("BV03: Blockdaten behalten ihre Blockart und werden hydriert", () => {
     const { api } = _api();
     const daten = { withHeadings: true,
                     content: [["Feld", "Wert"], ["Name", "{{a:username}}"]] };
     const b = api.blockAus({ block_type: "table", block_data: daten }, chips);
     expect(b.length).toBe(1);
+    // DER KERN DES VORGANGS: eine Tabelle bleibt eine Tabelle.
     expect(b[0].type).toBe("table");
-    // UNVERAENDERT: kein Chip-Durchlauf, keine Umformung. Ab Build 578 traegt
-    // ein Baustein seine Blockdaten selbst; die Vorschau ist darauf schon
-    // vorbereitet und muss nicht neu gebaut werden.
-    expect(b[0].data).toBe(daten);
+    // Die Struktur ist unangetastet, nur die Textstelle traegt jetzt einen Chip.
+    expect(b[0].data.withHeadings).toBe(true);
+    expect(b[0].data.content[0]).toEqual(["Feld", "Wert"]);
+    expect(b[0].data.content[1][1]).toContain("ph-chip");
+
+    // DAS ORIGINAL BLEIBT UNBERUEHRT. Die Vorschau bekommt denselben
+    // Datensatz, der gleich gespeichert wird - wuerde sie darin hydrieren,
+    // stuende Chip-HTML in der Datenbank.
+    expect(daten.content[1][1]).toBe("{{a:username}}");
+    expect(b[0].data).not.toBe(daten);
   });
+
+  // BV03b -------------------------------------------------------------------
+  it("BV03b: ohne hydrateBlockData bleiben die Daten roh statt zu scheitern",
+    () => {
+      const { api } = _api();
+      const daten = { text: "{{a:username}}" };
+      // Ein Chip-Renderer aus der Zeit vor Build 710 kennt die Funktion
+      // nicht. Die Vorschau muss dann die rohen Daten zeigen - unschoen, aber
+      // vollstaendig. Ein Fehler an dieser Stelle liesse die ganze Flaeche
+      // leer, und das saehe wie ein leerer Baustein aus.
+      const b = api.blockAus({ block_type: "paragraph", block_data: daten },
+                             { hydrateChips: _hydrate });
+      expect(b[0].type).toBe("paragraph");
+      expect(b[0].data).toBe(daten);
+    });
 
   // BV04 --------------------------------------------------------------------
   it("BV04: fehlende Teile werden benannt", () => {
