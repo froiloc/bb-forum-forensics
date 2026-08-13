@@ -58,7 +58,7 @@
 #   ausserhalb der Struktur aufgerufen, steht dort 0." - richtig beschrieben,
 #   nie behoben. Jetzt berichtigt.
 #
-# Version: v0.8.708 - Build: 708 - 2026-08-12
+# Version: v0.8.718 - Build: 718 - 2026-08-13
 # =============================================================================
 
 from __future__ import annotations
@@ -265,6 +265,20 @@ _GEPRUEFT_690 = ("Build 690, 2026-08-11, gegen Wegwerf-HTML unter /tmp, "
 _GEPRUEFT_694 = ("Build 694, 2026-08-11, gegen Wegwerf-default.db unter "
                  "/tmp, Python 3.13")
 
+#: Build 718 (Ticket cf791ef0). Der Wegwerf-Bestand ist auf dem
+#: DOKUMENTIERTEN Weg entstanden - 'setup_coordinator_dev.py', dann
+#: 'python -m management.migrate' (alle 38 Migrationen angewandt, Belegkette
+#: 39 Eintraege, Wartungsvorbehalt von Hand bestaetigt). Gefahren sind DREI
+#: Laeufe gegen denselben Bestand: ohne lesbare config.yaml, mit einer
+#: config.yaml, die genau EINE der drei Schwellen setzt, und mit '--json'.
+#: Der mittlere Lauf ist der aussagekraeftige: er belegt, dass die
+#: Herkunftsangabe je Schwelle einzeln stimmt und nicht pauschal
+#: 'config.yaml' meldet.
+_GEPRUEFT_718 = ("Build 718, 2026-08-13, gegen einen eingerichteten "
+                     "Wegwerf-Bestand unter /tmp (setup_coordinator_dev + "
+                     "alle 38 Migrationen, KEINE Faelle), Python 3.11 im "
+                     "Baucontainer")
+
 
 def _bsp(aufruf: str, wirkung: str, geprueft: str = _GEPRUEFT) -> CliBeispiel:
     """Kurzform fuer einen GEFAHRENEN Beispielaufruf."""
@@ -401,14 +415,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.cases.escalation_admin --coordinator-db ./data/coordinator.db",
-                     "Gibt die Eskalationsstufen aus. Auf dem leeren Bestand: 'Eskalationen: hoch=0 mittel=0 niedrig=0 (von 0 Faellen)' und '(keine Eskalation)'. Rueckgabewert 0.",
-                     _GEPRUEFT_619),
+                     "Gibt die Eskalationsstufen aus. Auf dem leeren Bestand ZUERST der Massstab: 'Schwellen: red_overdue_days=30 [Vorgabe]  stale_open_days=14 [Vorgabe]  backlog_high=10 [Vorgabe]', dann 'Eskalationen: hoch=0 mittel=0 niedrig=0 (von 0 Faellen)' und '(keine Eskalation)'. Rueckgabewert 0.",
+                     _GEPRUEFT_718),
+                _bsp("python -m management.cases.escalation_admin --coordinator-db ./data/coordinator.db --config ./config.yaml",
+                     "Mit einer config.yaml, in der NUR 'escalation.red_overdue_days: 45' steht, lautet die erste Zeile 'Schwellen: red_overdue_days=45 [config.yaml]  stale_open_days=14 [Vorgabe]  backlog_high=10 [Vorgabe]'. Die Herkunft steht je Schwelle EINZELN dabei; sie stammt aus dem rohen Dateiinhalt und nicht aus dem geltenden Wert. Rueckgabewert 0.",
+                     _GEPRUEFT_718),
+                _bsp("python -m management.cases.escalation_admin --coordinator-db ./data/coordinator.db --json",
+                     "Dieselbe Auswertung als JSON. Zusaetzlich zu 'generated_at', 'total_cases', den drei Zaehlern und 'items' traegt die Antwort 'thresholds' mit den drei geltenden Schwellen - derselbe Schluesselsatz wie die HTTP-Sicht. Auf stdout steht AUSSCHLIESSLICH das JSON; die Schwellenzeile und eine etwaige Meldung ueber eine unlesbare config.yaml gehen nach stderr. Rueckgabewert 0.",
+                     _GEPRUEFT_718),
             ),
             exit_codes=((0, "ausgegeben - AUCH wenn nichts eskaliert ist"),),
             warnungen=(
                 "ES GIBT NUR DEN RUECKGABEWERT 0. Eine hohe Eskalation steht ausschliesslich in der Ausgabe; eine Ueberwachung muss den Text oder die JSON-Ausgabe auswerten.",
                 "FEHLT EINE BENOETIGTE TABELLE, gibt es einen rohen Programmabbruch statt einer handlungsleitenden Meldung - der Bestand ist dann zuerst zu migrieren.",
-                "IST DIE KONFIGURATION NICHT LESBAR, wird das STILL uebergangen und es gelten die Vorgabeschwellen. Dieselbe Datenbank kann damit eine andere Eskalationslage ergeben.",
+                "IST DIE KONFIGURATION NICHT LESBAR, wird das seit Build 718 auf der Fehlerausgabe GEMELDET ('config.yaml nicht lesbar (Vorgabe-Schwellen werden verwendet): ...'), und es gelten die Vorgabeschwellen. Bis Build 712 geschah das still - dieselbe Datenbank konnte damit unbemerkt eine andere Eskalationslage ergeben (Ticket cf791ef0). Die geltenden Schwellen stehen seitdem zusaetzlich in der ersten Ausgabezeile, damit zwei Laeufe vergleichbar bleiben.",
                 "Es oeffnet die coordinator.db ausdruecklich nur lesend und nimmt keine Sperre - der Betrieb darf weiterlaufen.",
             ),
         ),
@@ -441,6 +461,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             ),
             exit_codes=((0, "ausgegeben"),),
             warnungen=(
+                "IST DIE KONFIGURATION NICHT LESBAR, wird das seit Build 718 auf der Fehlerausgabe GEMELDET; es bleiben dann nur die Angaben von der Befehlszeile, und ohne '--coordinator-db' folgt gleich danach der Abbruch. Bis Build 712 geschah das STILL, und der Abbruch nannte die Ursache nicht (Ticket cf791ef0).",
                 "DIE QUELLE IST DAS PROTOKOLLBUCH, NICHT DIE FALLTABELLE. Das ist der Vorzug dieses Werkzeugs: die Uebergaben bleiben lesbar, auch wenn die Faelle spaeter veraendert wurden. Umgekehrt gilt: was nicht protokolliert wurde, steht hier nicht.",
                 "'--reassignments-only' FILTERT NUR DIE TEXTAUSGABE. Die Kopfzahlen und die JSON-Ausgabe bleiben ungefiltert - die Zaehlung passt dann nicht zur angezeigten Liste.",
                 "Nur lesend, mit ausdruecklichem Nur-Lese-Zugriff.",
@@ -474,6 +495,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             ),
             exit_codes=((0, "ausgegeben"),),
             warnungen=(
+                "IST DIE KONFIGURATION NICHT LESBAR, wird das seit Build 718 auf der Fehlerausgabe GEMELDET; es bleiben dann nur die Angaben von der Befehlszeile, und ohne '--coordinator-db' folgt gleich danach der Abbruch. Bis Build 712 geschah das STILL, und der Abbruch nannte die Ursache nicht (Ticket cf791ef0).",
                 "ES GIBT NUR DEN RUECKGABEWERT 0.",
                 "'--scope eigene' OHNE '--person-id' WIRD HIER NICHT ABGEFANGEN. Was dabei herauskommt, entscheidet die darunterliegende Auswertung; verlassen sollte man sich darauf nicht.",
                 "FEHLT EINE BENOETIGTE TABELLE, gibt es einen rohen Programmabbruch - wie bei escalation_admin.",
@@ -1163,6 +1185,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             ),
             exit_codes=((0, "ausgegeben - AUCH bei ausgeloestem Alarm"),),
             warnungen=(
+                "IST DIE KONFIGURATION NICHT LESBAR, wird das seit Build 718 auf der Fehlerausgabe GEMELDET; es gelten dann die Vorgabe-Schwellen. Bis Build 712 geschah das STILL - dieselbe Datenbank konnte damit unbemerkt eine andere Bewertung ergeben (Ticket cf791ef0).",
                 "ES GIBT NUR DEN RUECKGABEWERT 0. Der Ueberlast- und Rueckstau-Alarm steht ausschliesslich in der Ausgabe. Eine Ueberwachung muss den Text oder die JSON-Ausgabe auswerten; auf den Rueckgabewert kann sie sich nicht stuetzen.",
                 "DIE GRENZEN STEHEN IN JEDER AUSGABE und sind mitzulesen: ist die Konfiguration nicht lesbar, gelten die Vorgabewerte, und dieselbe Datenbank ergibt dann eine andere Bewertung.",
                 "Es ist das einzige Werkzeug dieser beiden Gruppen, das die coordinator.db ausdruecklich NUR LESEND oeffnet. Deshalb muss die Datei vorhanden sein - ein falscher Pfad meldet einen Datenbankfehler, statt eine leere Datei anzulegen.",
@@ -1217,6 +1240,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                         (1, "kein coordinator.db-Pfad - weder ueber "
                             "--coordinator-db noch aus der config.yaml")),
             warnungen=(
+                "IST DIE KONFIGURATION NICHT LESBAR, wird das seit Build 718 auf der Fehlerausgabe GEMELDET; es gelten dann die Vorgabewerte, hier insbesondere './data/evidence/' als Verzeichnis der evidence-Datenbanken. Bis Build 712 geschah das STILL (Ticket cf791ef0).",
                 "OHNE --coordinator-db UND --evidence-dir greift das Werkzeug "
                 "auf ./data/... zu, und zwar relativ zum aktuellen "
                 "Verzeichnis. Wer es aus der Bestandswurzel aufruft, wertet "
@@ -1269,6 +1293,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                         (1, "kein coordinator.db-Pfad, oder "
                             "--lookback-days 0 bzw. negativ")),
             warnungen=(
+                "IST DIE KONFIGURATION NICHT LESBAR, wird das seit Build 718 auf der Fehlerausgabe GEMELDET; es bleiben dann nur die Angaben von der Befehlszeile, und ohne '--coordinator-db' folgt gleich danach der Abbruch. Bis Build 712 geschah das STILL, und der Abbruch nannte die Ursache nicht (Ticket cf791ef0).",
                 "KEIN RUECKGABEWERT MELDET 'keine belastbare Prognose'. Das "
                 "steht nur im Text bzw. als data_sufficient=false im JSON. "
                 "Wer allein den Rueckgabewert auswertet, haelt ein "
@@ -1383,6 +1408,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             exit_codes=((0, "ausgegeben"),
                         (1, "kein coordinator.db-Pfad")),
             warnungen=(
+                "IST DIE KONFIGURATION NICHT LESBAR, wird das seit Build 718 auf der Fehlerausgabe GEMELDET; es bleiben dann nur die Angaben von der Befehlszeile, und ohne '--coordinator-db' folgt gleich danach der Abbruch. Bis Build 712 geschah das STILL, und der Abbruch nannte die Ursache nicht (Ticket cf791ef0).",
                 "Die Konsolenausgabe ist EINE ZEILE JE FALL. Bei realer "
                 "Fallzahl ist das nichts zum Ueberfliegen - fuer die "
                 "Weiterverarbeitung '--json' verwenden.",
@@ -2481,6 +2507,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             ),
             exit_codes=((0, "ausgegeben - AUCH wenn Kandidaten gefunden wurden"),),
             warnungen=(
+                "IST DIE KONFIGURATION NICHT LESBAR, wird das seit Build 718 auf der Fehlerausgabe GEMELDET; es gelten dann die Vorgabe-Schwellen. Bis Build 712 geschah das STILL - dieselbe Datenbank konnte damit unbemerkt eine andere Bewertung ergeben (Ticket cf791ef0).",
                 "ES LOESCHT NICHTS UND KANN NICHTS LOESCHEN. Die Ausgabe ist ein Pruefvorschlag; das Loeschen ist eine auditierte Entscheidung und geht einen anderen Weg. Der Hinweis steht bei jedem Lauf dabei.",
                 "ES GIBT NUR DEN RUECKGABEWERT 0. Gefundene Kandidaten stehen nur im Text bzw. in der JSON-Ausgabe.",
                 "'--retention-days' UEBERSCHREIBT die Frist aus der Konfiguration vollstaendig - die ausgegebene Fristangabe ist deshalb mitzulesen.",

@@ -9,7 +9,7 @@
 #          [--coordinator-db PATH] [--config ./config.yaml]
 #          [--scope alle|eigene] [--person-id N] [--json]
 #
-# Version: v0.7.469 · Build: 469 · 2026-07-20
+# Version: v0.8.718 · Build: 718 · 2026-08-13
 # =============================================================================
 
 import argparse
@@ -27,11 +27,23 @@ from core import werkzeug_konfig  # noqa: E402
 
 
 def _load_config(args):
-    try:
-        from core.config_loader import ConfigLoader
-        return ConfigLoader(config_path=args.config)
-    except Exception:  # pragma: no cover
-        return None
+    """
+    Laedt die config.yaml und MELDET ihren Ausfall auf stderr.
+
+    TICKET cf791ef0 (Build 718): Bis hierher stand an dieser Stelle eine
+    Abschrift mit 'except Exception: return None' - OHNE Ausgabe. Faellt
+    die Konfiguration aus, bleiben nur die Angaben von der Befehlszeile.
+    Das war ein still uebersprungener Beleg (Grundregel 1). Ohne '--
+    coordinator-db' folgt gleich danach der Abbruch; die Meldung nennt dann
+    die Ursache, die der Abbruch allein nicht nennt.
+
+    Die Meldung steht jetzt in core/werkzeug_konfig.konfig_laden(); die
+    ausfuehrliche Begruendung fuer die Zusammenfuehrung steht dort. Der
+    Rueckgabewert ist unveraendert: der ConfigLoader oder None.
+    """
+    return werkzeug_konfig.konfig_laden(
+        "next_actions_admin", args,
+        folge="es gelten nur die Angaben von der Befehlszeile")
 
 
 def _resolve_db_path(args, cfg) -> str:

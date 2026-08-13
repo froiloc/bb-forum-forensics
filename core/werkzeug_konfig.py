@@ -63,7 +63,7 @@
 #   Vorgabewert (Grundregel 1).
 #
 # Abhängigkeiten: os, sys, typing (Stdlib) + core.setting_resolver
-# Version: v0.8.643 · Build: 643 · 2026-08-01
+# Version: v0.8.718 · Build: 718 · 2026-08-13
 # =============================================================================
 
 from __future__ import annotations
@@ -115,6 +115,86 @@ def resolver_aus_loader(loader) -> SettingResolver:
     Vorgabewert.
     """
     return SettingResolver.aus_loader(loader)
+
+
+#: Der Rueckfall-Halbsatz fuer 'konfig_laden'. Er steht als Vorgabewert hier
+#: und nicht im Aufruf, weil er fuer die Mehrzahl der Werkzeuge zutrifft:
+#: faellt die config.yaml aus, arbeiten sie mit ihren festen Vorgabewerten
+#: weiter. Die Werkzeuge, bei denen etwas anderes gilt (Schwellenwerte;
+#: Werkzeuge ohne jeden Vorgabewert, die danach abbrechen), nennen ihren
+#: eigenen Halbsatz beim Aufruf — siehe die Erlaeuterung in 'konfig_laden'.
+FOLGE_VORGABEN = "Vorgaben werden verwendet"
+
+
+def konfig_laden(werkzeug: str, args, *, folge: str = FOLGE_VORGABEN):
+    """
+    Laedt die config.yaml fuer ein Verwaltungswerkzeug und MELDET ihren
+    Ausfall. Rueckgabe: der ConfigLoader oder None (NEU Build 718).
+
+    WARUM ES DIESE FUNKTION GIBT — Ticket cf791ef0. Vierzehn Werkzeuge
+    trugen dieselbe Funktion '_load_config(args)' als Abschrift; SECHS von
+    ihnen gaben im 'except'-Zweig eine Zeile auf stderr aus, ACHT gaben gar
+    nichts aus und lieferten wortlos None. Das ist dasselbe Muster, das
+    Ticket 15429c75 bei der Pfadaufloesung aufgedeckt hat: eine Regel, die
+    vierzehnmal abgeschrieben wird, ist vierzehnmal einzeln falsch zu
+    schreiben. Die Regel steht deshalb ab jetzt an EINER Stelle.
+
+    WAS DER STILLE AUSFALL GEKOSTET HAT: Die Konfiguration liefert nicht nur
+    den Datenbankpfad, sondern bei mehreren Werkzeugen die SCHWELLEN, nach
+    denen ausgewertet wird. Faellt sie unbemerkt aus, gelten die
+    Vorgabeschwellen — dieselbe Datenbank ergibt dann ein anderes Bild, und
+    wer zwei Ausgaben nebeneinanderlegt, kann nicht erkennen, dass die eine
+    ohne Konfiguration entstanden ist. Ein still uebersprungener Beleg an
+    einer Angabe, die das ERGEBNIS veraendert (Grundregel 1).
+
+    ES WAR AUCH SCHON SO DOKUMENTIERT: Der Kopf von 'resolver_aus_loader'
+    sagt zu 'loader is None' woertlich "der Aufrufer hat das bereits
+    gemeldet", und die Docstrings der acht stummen Werkzeuge sagten
+    "Die Meldung ueber eine unlesbare config.yaml gibt weiterhin
+    _load_config aus". Der Quelltext hat diese Zusage nicht eingeloest.
+    Diese Funktion loest sie ein; die Docstrings bleiben deshalb richtig.
+
+    NACH STDERR, NIE NACH STDOUT — aus demselben Grund wie bei
+    'herkunft_ausgeben': mehrere dieser Werkzeuge geben mit '--json' etwas
+    aus, das ein Programm weiterliest. Eine Zeile auf stdout waere dort kein
+    Hinweis, sondern ein Fehler.
+
+    NICHT OPT-IN, anders als die Herkunftszeilen. Die Herkunft eines Wertes
+    ist eine Auskunft ueber den Normalbetrieb; der AUSFALL der Konfiguration
+    ist eine Stoerung. Eine Stoerung, die man erst einschalten muss, um sie
+    zu sehen, ist keine Meldung.
+
+    'folge' benennt, WAS statt der Konfiguration gilt. Der Halbsatz gehoert
+    zur Meldung, weil er die Frage beantwortet, die der Empfaenger als
+    naechstes hat: "und was heisst das jetzt fuer meine Ausgabe?" Drei
+    Auspraegungen sind im Bestand:
+      * "Vorgabe-Schwellen werden verwendet" — das Werkzeug wertet nach
+        Schwellen aus, die auch aus der config.yaml stammen koennen.
+      * "Vorgaben werden verwendet" (Vorgabewert) — es gelten feste
+        Vorgabewerte fuer Verzeichnisse, Bezeichnungen und Aehnliches.
+      * "es gelten nur die Angaben von der Befehlszeile" — das Werkzeug
+        holt aus der Konfiguration NUR den Datenbankpfad, fuer den es
+        bewusst keinen Vorgabewert gibt; ohne '--coordinator-db' folgt
+        gleich danach der Abbruch. 'Vorgaben' waere hier schlicht falsch.
+
+    'args.config' wird ueber getattr geholt, damit die Funktion auch fuer
+    ein Werkzeug ohne '--config' benutzbar bleibt; ConfigLoader sucht dann
+    an seinem eigenen Vorgabeort.
+    """
+    try:
+        from core.config_loader import ConfigLoader
+        return ConfigLoader(config_path=getattr(args, "config", None))
+    except Exception as exc:
+        # BREITES 'except' MIT ABSICHT: Der Rueckfall auf die Vorgabewerte
+        # soll fuer JEDEN Ausfall der Datei greifen — fehlend, unlesbar,
+        # kaputtes YAML, ungueltiger Wert. Verengt auf ConfigLoaderError
+        # wuerde z.B. ein PermissionError das Werkzeug abbrechen lassen,
+        # was gegenueber dem bisherigen Verhalten eine Verschaerfung waere.
+        # Weil die Meldung jetzt IMMER erfolgt, bleibt der Ausfall
+        # trotzdem sichtbar.
+        print("[%s] config.yaml nicht lesbar (%s): %s" % (werkzeug, folge, exc),
+              file=sys.stderr)
+        return None
 
 
 def herkunft_ausgeben(werkzeug: str, r: SettingResolver) -> None:

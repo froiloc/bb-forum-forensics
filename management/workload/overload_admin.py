@@ -10,7 +10,7 @@
 #   python -m management.workload.overload_admin
 #          [--coordinator-db PATH] [--config ./config.yaml] [--json]
 #
-# Version: v0.7.451 · Build: 451 · 2026-07-19
+# Version: v0.8.718 · Build: 718 · 2026-08-13
 # =============================================================================
 
 import argparse
@@ -29,11 +29,23 @@ from core import werkzeug_konfig  # noqa: E402
 
 
 def _load_config(args):
-    try:
-        from core.config_loader import ConfigLoader
-        return ConfigLoader(config_path=args.config)
-    except Exception:  # pragma: no cover
-        return None
+    """
+    Laedt die config.yaml und MELDET ihren Ausfall auf stderr.
+
+    TICKET cf791ef0 (Build 718): Bis hierher stand an dieser Stelle eine
+    Abschrift mit 'except Exception: return None' - OHNE Ausgabe. Faellt
+    die Konfiguration aus, gelten die Vorgabeschwellen, und nichts weist
+    darauf hin. Das war ein still uebersprungener Beleg (Grundregel 1) -
+    und zwar an einer Angabe, die das ERGEBNIS veraendert und nicht nur
+    seinen Vermerk: dieselbe Datenbank ergibt mit den Vorgabeschwellen ein
+    anderes Bild.
+
+    Die Meldung steht jetzt in core/werkzeug_konfig.konfig_laden(); die
+    ausfuehrliche Begruendung fuer die Zusammenfuehrung steht dort. Der
+    Rueckgabewert ist unveraendert: der ConfigLoader oder None.
+    """
+    return werkzeug_konfig.konfig_laden(
+        "overload_admin", args, folge="Vorgabe-Schwellen werden verwendet")
 
 
 def _resolve_db_path(args, cfg) -> str:
