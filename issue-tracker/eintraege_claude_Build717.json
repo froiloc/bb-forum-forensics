@@ -1,0 +1,114 @@
+{
+  "issues": [
+    {
+      "id": "77757536-381e-491d-9c94-e1dda84fd02e",
+      "type": "improvement",
+      "title": "Versatz im Sicherungssatz nach produktiven Laeufen auswerten",
+      "affected_version": "0.8.617",
+      "reporter": "Claude",
+      "reported_at": "2026-07-31T23:40:00+00:00",
+      "prerequisites": "Mindestens fuenf bis zehn produktive Laeufe von 'backup_admin run' mit Build 617 oder neuer. Vorher gibt es die Zahlen nicht - Build 617 ist der erste Stand, der sie ueberhaupt erhebt.",
+      "description": "WORUM ES GEHT - BITTE ZUERST LESEN, der Vorgang ist ohne diesen Zusammenhang nicht verstaendlich.\n\nAM 31.07.2026 wurde backup_admin daraufhin nachgeprueft, ob seine Selbsteinstufung 'fuer den laufenden Betrieb gebaut' traegt (Vermerk 'Nachpruefung_backup_admin_Betriebsvertraeglichkeit_v1_0.md'). Ergebnis: Sie traegt fuer die Richtung, die sie ausspricht - die Sicherung beschaedigt den Betrieb nicht, denn sie kopiert mit 'VACUUM INTO' und veraendert die Quelle nicht. Sie traegt NICHT fuer die Gegenrichtung.\n\nDER KERN DES PROBLEMS: Die Datenbanken werden NACHEINANDER gesichert - erst coordinator.db, dann templates.db, dann jede evidence_<uid>.db und so weiter. Jede einzelne Kopie ist fuer sich transaktional stimmig. Der SATZ als Ganzes ist es nicht. Zwischen zwei Kopien arbeitet der Ermittlungsbetrieb weiter: es wird ein Fall angelegt, eine Zuweisung geaendert, eine Annotation geschrieben.\n\nWENN MAN AUS EINEM SOLCHEN SATZ DEN GESAMTEN BESTAND WIEDERHERSTELLT, entsteht ein Zustand, den es nie gegeben hat - zum Beispiel eine coordinator.db, die einen Fall noch nicht kennt, dessen evidence-Datenbank aber schon Annotationen enthaelt. Der laufende Betrieb macht die Sicherung also nicht kaputt, sondern IN SICH WIDERSPRUECHLICH. Im Ergebnis ist das dasselbe.\n\nDIE ENTSCHEIDUNG VON mc (31.07.2026): Es wurde bewusst KEIN Wartungsfenster fuer die Sicherung eingefuehrt - eine taegliche Sicherung soll nebenher laufen koennen. Stattdessen wird die Einschraenkung GEKENNZEICHNET. Das ist in Build 617 umgesetzt (Vorgang dc63928d-9d53-4532-931e-66efd7ac03e0, Vermerk Fassung 1.1).\n\nWAS BUILD 617 DAFUER EINGEBAUT HAT - das ist die Grundlage dieses Vorgangs:\n  * Jede gesicherte Datenbank traegt im Manifest jetzt 'begonnen_ts' und 'beendet_ts' - Beginn und Ende IHRER Kopie.\n  * Das Manifest nennt zusaetzlich 'satz_von' und 'satz_bis' - die Spanne vom Beginn der ersten bis zum Ende der letzten Kopie.\n  * Das Manifest traegt 'punktgleich: false' samt Klartextbegruendung, und derselbe Vermerk erscheint bei jedem Lauf auf der Konsole.\n\nWAS JETZT ZU TUN IST - und WARUM: Bis Build 617 war der Versatz nicht einmal ablesbar. Jetzt ist er es. Damit laesst sich zum ersten Mal die Frage beantworten, die ueber alles Weitere entscheidet: WIE GROSS IST DER VERSATZ IN DER PRAXIS? Liegen zwischen der ersten und der letzten Kopie zwei Minuten oder zwei Stunden?\n\nDIE ANTWORT AENDERT DIE BEWERTUNG VOLLSTAENDIG. Bei zwei Minuten ausserhalb der Arbeitszeit ist die Wahrscheinlichkeit eines dazwischenliegenden Schreibvorgangs sehr klein, und die Kennzeichnung genuegt auf Dauer. Bei zwei Stunden - und die default.db ist mit rund 4,8 GB der wahrscheinlichste Grund dafuer - ist praktisch sicher, dass mitten in den Satz hineingeschrieben wurde, und dann ist die Entscheidung gegen ein Wartungsfenster noch einmal zu pruefen.\n\nOHNE DIESE ZAHL LAESST SICH DAS NICHT ENTSCHEIDEN. Sie ist der Grund, aus dem dieser Vorgang existiert.",
+      "expected_behavior": "ANLEITUNG - so kommt man an die Zahlen:\n\n1. FUENF BIS ZEHN produktive Laeufe von 'backup_admin run' abwarten (mit Build 617 oder neuer). Frueher gibt es nichts auszuwerten.\n\n2. Im Sicherungsverzeichnis liegen die Dateien 'manifest_<zeitstempel>_<rechner>.json'. Je Manifest sind drei Angaben interessant:\n     - 'satz_von' und 'satz_bis'  -> die Gesamtspanne des Laufs\n     - je Eintrag unter 'results': 'label', 'begonnen_ts', 'beendet_ts'  -> welche Datenbank wie lange gedauert hat\n     - 'nicht_gesichert_weil_neu' -> Fall-Datenbanken, die waehrend des Laufs entstanden und deshalb NICHT im Satz sind\n\n3. FUER JEDEN LAUF NOTIEREN:\n     (a) die Gesamtspanne in Minuten (satz_bis minus satz_von),\n     (b) welche Datenbank die laengste Einzelkopie hatte und wie lange sie dauerte,\n     (c) die Uhrzeit des Laufs - lag er in der Arbeitszeit der Ermittelnden oder ausserhalb,\n     (d) ob 'nicht_gesichert_weil_neu' leer war.\n\n4. DIE DREI FRAGEN, DIE DANN ZU BEANTWORTEN SIND:\n     - Wie gross ist die Spanne typischerweise, und wie gross im schlechtesten beobachteten Fall?\n     - Faellt die Spanne fast vollstaendig auf EINE Datenbank (Verdacht: default.db)? Dann waere zu ueberlegen, ob gerade diese - die keine Ermittlungsergebnisse enthaelt - aus dem taeglichen Satz herausgenommen und gesondert gesichert wird. Der Satz aus den uebrigen waere dann deutlich enger.\n     - Kam waehrend eines Laufs eine Fall-Datenbank hinzu? Das ist der unmittelbare Beleg dafuer, dass der Betrieb in den Satz hineingearbeitet hat.\n\n5. ERGEBNIS: ein kurzer Vermerk mit den Zahlen und der Entscheidung, ob es bei der Kennzeichnung bleibt oder ob die Sicherung doch ein Wartungsfenster braucht (dann waere backup_admin run in Stufe A einzuordnen und mit dem Wartungsvorbehalt zu versehen - das Bauteil dafuer ist vorhanden und in sechs Werkzeugen erprobt).\n\nZWEI HINWEISE, damit die Auswertung nicht in die Irre geht:\n  * Die Zeitstempel sind in UTC und im Format JJJJMMTT'T'HHMMSS'Z'. Sie sind lexikografisch sortierbar; fuer die Differenz sind sie zu zerlegen.\n  * Eine kurze Spanne an einem ruhigen Abend beweist NICHT, dass sie auch am Vormittag kurz ist - die Dauer der Kopie haengt an der Last auf dem Netzlaufwerk. Es sollten deshalb Laeufe zu unterschiedlichen Zeiten dabei sein, und die Uhrzeit gehoert mit in die Notiz.",
+      "actual_behavior": "Der Versatz ist seit Build 617 messbar, aber noch nicht gemessen. Die Entscheidung fuer die Kennzeichnung statt eines Wartungsfensters ist damit derzeit auf eine Annahme gestuetzt und nicht auf eine Zahl.",
+      "status": "in_progress",
+      "priority": "medium",
+      "severity": "minor",
+      "assigned_to": "Claude",
+      "related_to": [
+        "dc63928d-9d53-4532-931e-66efd7ac03e0",
+        "651e6d84-7ebc-4905-ab21-9f324021ec1d"
+      ],
+      "resolved_in_version": null,
+      "target_version": "0.8.717",
+      "environment": {
+        "python_version": "3.14"
+      },
+      "tags": [
+        "backup",
+        "backup_admin",
+        "build717",
+        "cli",
+        "entscheidungsgrundlage",
+        "messung",
+        "wiederherstellung"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-07-31T23:40:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Eintrag erstellt auf Weisung von mc, damit die Auswertung nicht vergessen wird. Die Einleitung ist bewusst ausfuehrlich - der Vorgang wird erst in einigen Wochen bearbeitet, und bis dahin ist der Zusammenhang nicht mehr praesent."
+        },
+        {
+          "timestamp": "2026-07-31T23:58:50.644722+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eingang_claude_Build618.json"
+        },
+        {
+          "timestamp": "2026-08-13T18:30:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "in_progress",
+          "comment": "WERKZEUG GEBAUT, MESSUNG STEHT AUS. Der Vorgang bleibt offen - er kann gar nicht geschlossen werden, denn seine Voraussetzung ('fuenf bis zehn produktive Laeufe') ist eine Sache des Betriebs und nicht des Quelltextes. WAS SICH GEAENDERT HAT: die Schritte 2 bis 4 der Anleitung sind ab jetzt ein Aufruf statt einer Handarbeit.\n\n(1) NEU: 'python -m management.backup.backup_admin versatz'. Es liest die Manifeste eines Sicherungsverzeichnisses und beantwortet die drei Fragen des Vorgangs woertlich: kleinste/mittlere/groesste Spanne; welche Datenbank die Spanne bestimmt; in welchen Laeufen eine Fall-Datenbank waehrend der Sicherung entstanden ist. Text- und JSON-Ausgabe. REIN LESEND - es oeffnet nicht einmal eine Datenbank, auch die coordinator.db nicht. Die Wartungseinstufung von backup_admin aendert sich dadurch nicht (bleibt Stufe B).\n\n(2) WARUM DAS WERKZEUG DIE SPANNE NICHT VON SELBST BEURTEILT: Der Vorgang nennt zwei Minuten als 'sehr klein' und zwei Stunden als 'praktisch sicher zu lang'. Eine Grenze DAZWISCHEN ist nirgends entschieden. Sie hier fest zu verdrahten waere eine Entscheidung im Gewand einer Messung gewesen - der Rueckgabewert saehe dann aus wie ein Befund, waere aber eine Setzung von mir. Wer eine Grenze pruefen will, nennt sie mit '--schwelle-minuten'; ist keine genannt, sagt der Bericht ausdruecklich, dass NICHT beurteilt wurde (Grundregel 1).\n\n(3) DIE UHRZEITFRAGE (Punkt 3c der Anleitung) IST DIE HEIKELSTE. Die Manifest-Stempel sind UTC, die Arbeitszeit der Ermittelnden ist Ortszeit. Wer beides ohne Umrechnung vergleicht, ordnet im Sommer jeden Lauf um zwei Stunden falsch ein - und das Ergebnis SIEHT AUS WIE EINE AUSKUNFT. Deshalb verlangt '--arbeitszeit' zwingend auch '--ortszeit-versatz'; fehlt er, bricht der Aufruf mit Rueckgabewert 3 ab und gibt gar nichts aus, was man fuer ein Ergebnis halten koennte. Dieselbe Regel, die der CLI-Katalog bei den Datenbankpfaden anlegt: ein erratener Wert waere schlimmer als ein Abbruch.\n\n(4) KEIN MANIFEST WIRD STILL UEBERGANGEN. Was nicht ausgewertet werden konnte - unlesbar, kein JSON, aus einem Stand vor Build 617 -, steht namentlich und mit Grund im Abschnitt 'NICHT AUSGEWERTET' und hebt den Rueckgabewert. Sonst waere ein uebersprungenes Manifest von einem nicht vorhandenen nicht zu unterscheiden, und die Grundgesamtheit schrumpfte unbemerkt. Ein Manifest vor Build 617 wird ausdruecklich NICHT als Spanne 0 mitgezaehlt (Testfall VZ05).\n\n(5) EINE GEGENPROBE, DIE DER VORGANG NICHT VERLANGT HAT: die Felder 'satz_von'/'satz_bis' werden gegen die Einzelstempel der Kopien nachgerechnet. Sie kostet nichts und ist die einzige Stelle, an der ein nachtraeglich veraendertes Manifest auffallen kann. Fallen die beiden auseinander, wird weiter mit den Angaben des Manifests gerechnet - aber der Bericht sagt, dass die Zahl nicht mehr gegengelesen ist (VZ11).\n\n(6) NEUE TESTS: tests/test_backup_versatz.py, 19 Faelle (VZ01-VZ18). DER WICHTIGSTE IST VZ09: er verstellt die Zeitzone des Prozesses und prueft, dass die Zerlegung der Stempel davon unberuehrt bleibt. Ein Fehler an dieser Stelle waere unsichtbar gewesen - die DIFFERENZEN blieben richtig, nur die Uhrzeitfrage waere falsch beantwortet worden. VZ18 wertet ein von BackupExecutor WIRKLICH geschriebenes Manifest aus; ohne ihn pruefte die Reihe nur die eigene Vorrichtung (Lehre aus BE05, Vorgang c3f80e54).\n\n(7) WAS JETZT ZU TUN BLEIBT, und es ist Betriebsarbeit: fuenf bis zehn produktive Laeufe abwarten, dann 'backup_admin versatz --arbeitszeit <fenster> --ortszeit-versatz <120|60>' fahren und aus der Ausgabe den Vermerk nach Punkt 5 der Anleitung schreiben. Erst DANN ist zu entscheiden, ob es bei der Kennzeichnung bleibt oder ob 'run' in Stufe A gehoert.\n\n(8) MIGRATIONSVORBEHALT: NICHT BERUEHRT. Kein Schema, keine Migration, kein Schreibzugriff - das neue Bauteil liest JSON-Dateien."
+        }
+      ]
+    },
+    {
+      "id": "c8a41d70-6b02-4f5e-9a3d-2f77b1c4e905",
+      "type": "documentation",
+      "title": "CLI-Katalog backup_admin fuehrte vier ueberholte Warnungen",
+      "affected_version": "0.8.712",
+      "reporter": "Claude",
+      "reported_at": "2026-08-13T18:30:00+00:00",
+      "prerequisites": "Aufruf von 'python tools/hilfe.py zeige backup_admin' oder der HTML-Fassung derselben Hilfe auf einem Stand bis Build 716.",
+      "description": "Gefunden beim Ergaenzen des Katalogeintrags um den Unterbefehl 'versatz' (Vorgang 77757536). Aufgenommen und berichtigt auf Weisung von Alex vom 13.08.2026.\n\nDER BEFUND: Vier Warnungen im Eintrag 'backup_admin' beschrieben einen Stand, den der Quelltext seit Builds 617 bis 680 nicht mehr hat. Drei davon wurden VON DEMSELBEN EINTRAG weiter oben bereits richtig dargestellt - der Eintrag widersprach sich also selbst.\n\nJEDE ANGABE IST AM QUELLTEXT NACHGESEHEN und nicht aus dem Katalog abgeschrieben:\n  (a) \"'list' LIEFERT IMMER 0\" - falsch seit Build 626. backup_admin.py, cmd_list, zaehlt 'defekt' und gibt 1 zurueck, sobald eine registrierte Sicherung als nicht integer vermerkt ist. Der Unterbefehlstext im selben Eintrag sagt das seit Build 626.\n  (b) \"FUER DIE HIER ERZEUGTEN SICHERUNGEN GIBT ES KEINEN RUECKWEG. Das Werkzeug kennt kein 'restore'\" - falsch seit Build 680. Derselbe Eintrag fuehrt 'restore' unter den Unterbefehlen, mit drei gefahrenen Beispielen.\n  (c) \"Die Pruefsumme wird ERHOBEN, aber nie wieder GEPRUEFT. Die vorhandene Pruefroutine hat keinen produktiven Aufrufer\" - falsch seit Build 626 (backup_pruefer.py Z. 359, 'pruefen --pruefsummen') und Build 680 (backup_wiederhersteller.py).\n  (d) \"Eine Fall-Datenbank, die WAEHREND des Laufs neu entsteht, erscheint auch nicht unter den fehlenden\" - falsch seit Build 617. backup_executor._nachzuegler (Z. 682) wird in run() aufgerufen (Z. 278), das Ergebnis steht im Manifest unter 'nicht_gesichert_weil_neu' und wird von backup_admin auf der Konsole ausgegeben. Die Warnung zwei Zeilen darueber sagt genau das.\n\nWARUM DAS MEHR IST ALS EIN SCHOENHEITSFEHLER: Eine Hilfe, die sich selbst widerspricht, ist schlimmer als eine Luecke. Der Leser kann nicht wissen, welche Haelfte gilt, und wird im Zweifel der WARNUNG glauben - hier also dem aelteren, falschen Stand. Bei (b) heisst das: jemand haelt einen erprobten Rueckweg fuer nicht vorhanden und improvisiert im Ernstfall. Bei (c): jemand rechnet die Pruefsummen nicht gegen, weil er glaubt, es gehe gar nicht. DASSELBE MUSTER WIE IN BUILD 706 (Vorgang 70641ff9, Punkt 6): dort sicherte der Katalog eine Meldung zu, die es nicht gab.",
+      "expected_behavior": "Die Warnungen beschreiben den Stand des Quelltextes. Wo eine Warnung ueberholt ist, wird sie gestrichen oder auf den Teil zurueckgefuehrt, der noch gilt - nicht ersatzlos entfernt, wo eine echte Einschraenkung uebrig bleibt.",
+      "actual_behavior": "Vier Warnungen beschrieben einen Stand vor Build 617/626/680. Sie standen unveraendert neben den Textstellen, die den heutigen Stand richtig darstellen.",
+      "status": "resolved",
+      "priority": "medium",
+      "severity": "minor",
+      "assigned_to": "Claude",
+      "related_to": [
+        "77757536-381e-491d-9c94-e1dda84fd02e"
+      ],
+      "resolved_in_version": "0.8.717",
+      "target_version": "0.8.717",
+      "environment": {
+        "python_version": "3.14"
+      },
+      "tags": [
+        "backup_admin",
+        "build717",
+        "cli",
+        "gr1",
+        "hilfe",
+        "nachvollziehbarkeit"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-13T18:30:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Eintrag erstellt auf Weisung von Alex, gefunden bei der Bearbeitung von 77757536."
+        },
+        {
+          "timestamp": "2026-08-13T18:35:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "resolved",
+          "comment": "BEHOBEN IN BUILD 717, in derselben Lieferung wie der Fund - auf ausdrueckliche Weisung von Alex (13.08.2026), nachdem ich zuerst vorgeschlagen hatte, nur den Vorgang aufzunehmen.\n\n(1) (a) UND (d) GESTRICHEN. Bei beiden ist der richtige Sachverhalt an anderer Stelle desselben Eintrags bereits dargestellt - eine berichtigte Zweitfassung waere Doppelung ohne Gewinn. Der noch gueltige Rest von (a) - 'list' liest die Registrierung und nicht die Platte - steht beim Unterbefehl.\n\n(2) (b) UND (c) ERSETZT, NICHT GESTRICHEN. Unter beiden lag eine Einschraenkung, die WEITERHIN GILT und die die falsche Fassung verdeckt hat:\n  - Der Rueckweg ist erprobt, aber gegen einen Wegwerf-Bestand unter /tmp und nicht gegen eine Fall-Datenbank; und seine letzte Strecke, der Tausch, ist Handarbeit und war nie Gegenstand eines Laufs.\n  - Die Pruefsumme wird nur AUF VERLANGEN gegengerechnet: 'pruefen' ohne '--pruefsummen' liest die Dateien nicht ganz, und 'restore' faehrt nur, wenn jemand ihn faehrt. Ohne einen regelmaessigen Lauf altert eine Sicherung weiterhin unbeobachtet.\nBeides ist der wahre Kern der alten Warnungen. Ihn mit wegzustreichen waere der zweite Fehler nach dem ersten gewesen.\n\n(3) DER GRUND FUER JEDE AENDERUNG STEHT ALS KOMMENTAR AN DER FUNDSTELLE in cli_katalog.py, mit der Zeilenangabe des Quelltextes, der sie widerlegt. Wer in einem Jahr fragt, warum eine Warnung verschwunden ist, findet die Antwort dort und nicht nur hier.\n\n(4) KEIN NEUER TEST. Der Katalog ist Text; die vorhandenen Katalogpruefungen (637 Faelle unter '-k katalog or hilfe or cli') sind gruen. Einen Waechter, der Katalogaussagen gegen den Quelltext haelt, gibt es nicht und er waere ein eigener Vorgang - er muesste Prosa gegen Verhalten pruefen. DASS ES IHN NICHT GIBT, IST DER GRUND, WARUM DIESE VIER ACHT BIS ZWANZIG BUILDS LANG STEHEN BLIEBEN.\n\n(5) MIGRATIONSVORBEHALT: nicht beruehrt. Reine Textaenderung in einer Python-Datei ohne Datenbankbezug."
+        }
+      ]
+    }
+  ]
+}

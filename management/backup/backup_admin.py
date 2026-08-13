@@ -14,6 +14,11 @@
 #           viele BRAUCHBARE Generationen uebrig sind (Build 626, rein
 #           lesend). 'list' liest die Registrierung und sagt, was GESCHEHEN
 #           IST; 'pruefen' sieht auf die Platte und sagt, was DA IST.
+#   versatz — DIE NACHRECHNUNG (Build 717, Vorgang 77757536): rechnet aus
+#           den Manifesten aus, wie weit erste und letzte Kopie eines Laufs
+#           auseinanderliegen. Seit Build 617 ist der Versatz ABLESBAR; hier
+#           wird er zum ersten Mal GEMESSEN. Rein lesend - es wird nicht
+#           einmal eine Datenbank geoeffnet.
 #   restore — DER RUECKWEG (Build 680, Vorgang 2785556a): prueft eine
 #           Sicherung gegen die beim Sichern erhobene Pruefsumme, probt die
 #           Zieldatenbank auf Ruhe und legt die gegengelesene Kopie NEBEN
@@ -31,15 +36,22 @@
 #   Sicherungen 1 statt immer 0 (Vorgang e9522fe2).
 # Build 680: 'restore' kommt hinzu (Vorgang 2785556a). Damit ist der
 #   Rueckweg zum ersten Mal gefahren und nicht mehr bloss angenommen.
+# Build 717: 'versatz' kommt hinzu (Vorgang 77757536). Die Ungleichzeitigkeit
+#   des Sicherungssatzes ist damit nicht nur gekennzeichnet, sondern
+#   ausrechenbar. DIE EINSTUFUNG DES WERKZEUGS AENDERT SICH DADURCH NICHT:
+#   der neue Unterbefehl liest ausschliesslich die Manifest-Dateien im
+#   Sicherungsverzeichnis - keine Datenbank, kein Schreibzugriff, auch nicht
+#   auf die coordinator.db.
 # WARTUNGSSTUFE B - betriebsvertraeglich mit benennbarer Einschraenkung
 #   (Nachpruefung Build 616, Einstufung nachgetragen in Build 686).
-#   'plan', 'list' und 'pruefen' sind rein lesend. 'run' veraendert die
-#   Quellen nicht, konkurriert unter dem Rollback-Journal aber mit den
-#   Schreibern - und der Sicherungssatz ist NICHT punktgleich (Entscheidung
+#   'plan', 'list', 'pruefen' und 'versatz' sind rein lesend. 'run'
+#   veraendert die Quellen nicht, konkurriert unter dem Rollback-Journal
+#   aber mit den Schreibern - und der Sicherungssatz ist NICHT
+#   punktgleich (Entscheidung
 #   mc 2026-07-31: Kennzeichnung statt Wartungsfenster). 'restore' legt nur
 #   eine Datei NEBEN das Original. Kein Wartungsvorbehalt, mit Absicht.
 #
-# Version: v0.8.680 · Build: 680 · 2026-08-05
+# Version: v0.8.717 · Build: 717 · 2026-08-13
 # =============================================================================
 
 import argparse
@@ -58,6 +70,18 @@ from management.backup.backup_executor import (
 from management.backup.backup_planner import BackupPlanner
 from management.backup.backup_pruefer import (
     SicherungsPruefer, bericht_json, bericht_text,
+)
+# VORGANG 77757536 (die Nachrechnung des Versatzes). Umbenannt importiert,
+# weil dieses Werkzeug jetzt DREI Berichte kennt - der Pruefer beurteilt
+# einen Ordner, der Wiederhersteller einen Rueckweg, die Versatzauswertung
+# eine Reihe von Laeufen. Gleichnamige Einfuhren aus drei Bauteilen waeren
+# genau die Art von Verwechslung, die man erst im Fehlerfall bemerkt.
+from management.backup.backup_versatz import (
+    MINDEST_LAEUFE as VZ_MINDEST_LAEUFE,
+    RC_OHNE_GRUNDLAGE as VZ_RC_OHNE_GRUNDLAGE,
+    RC_UNLESBAR as VZ_RC_UNLESBAR,
+    VersatzAuswertung, arbeitszeit_zerlegen,
+    bericht_json as vz_bericht_json, bericht_text as vz_bericht_text,
 )
 # Build 680 (Vorgang 2785556a): der Rueckweg. Die Namen werden umbenannt
 # importiert, weil dieses Werkzeug jetzt ZWEI Berichte kennt - der Pruefer
@@ -648,11 +672,98 @@ def cmd_restore(args) -> int:
     return befund.rueckgabewert()
 
 
+# =============================================================================
+# versatz - DIE NACHRECHNUNG (Vorgang 77757536)
+# =============================================================================
+# WARUM ES DIESEN UNTERBEFEHL GIBT: Build 617 hat den Versatz im
+# Sicherungssatz ABLESBAR gemacht - 'begonnen_ts'/'beendet_ts' je Datenbank,
+# 'satz_von'/'satz_bis' je Lauf. Ablesbar ist nicht gemessen. Die
+# Entscheidung von mc gegen ein Wartungsfenster (31.07.2026) steht seither
+# auf der Annahme, der Versatz sei klein; ob er es ist, entscheidet eine
+# Zahl, die aus den Manifesten zu bilden ist.
+#
+# ER STEHT BEI DEN LESENDEN UNTERBEFEHLEN, weil er es ist: kein Schreiben,
+# keine Datenbankverbindung, nicht einmal die coordinator.db wird geoeffnet.
+# Gelesen werden ausschliesslich die Manifest-Dateien im
+# Sicherungsverzeichnis. Damit ist er zu jeder Betriebszeit unbedenklich -
+# anders als der Lauf, den er auswertet.
+# =============================================================================
+
+def cmd_versatz(args) -> int:
+    """
+    Den Versatz im Sicherungssatz aus den Manifesten ausrechnen. REIN LESEND.
+
+    DAS VERZEICHNIS KOMMT AUS DER KONFIGURATION (backup.dest_dir) und wird
+    nur durch '--verzeichnis' ersetzt. Der Ausnahmefall dahinter ist echt:
+    Manifeste, die von einem Sicherungsmedium in einen Ordner zurueckgeholt
+    wurden, liegen nicht dort, wo heute gesichert wird.
+
+    KEINE STILLE ANNAHME BEI DER UHRZEIT: '--arbeitszeit' verlangt zwingend
+    auch '--ortszeit-versatz'. Die Zeitstempel sind UTC, die Arbeitszeit der
+    Ermittelnden ist Ortszeit. Wer beides ohne Umrechnung vergleicht, ordnet
+    im Sommer jeden Lauf um zwei Stunden falsch ein - und das Ergebnis saehe
+    aus wie eine Auskunft. Ein Abbruch ist hier das kleinere Uebel; es ist
+    dieselbe Regel, die der CLI-Katalog bei den Datenbankpfaden anlegt.
+    """
+    if args.verzeichnis:
+        verzeichnis = args.verzeichnis
+    else:
+        cfg = _load_cfg(args.config)
+        verzeichnis = BackupConfig.from_loader(cfg).dest_dir
+
+    arbeitszeit = None
+    if args.arbeitszeit:
+        if args.ortszeit_versatz is None:
+            print("[backup_admin] '--arbeitszeit' verlangt zusaetzlich "
+                  "'--ortszeit-versatz'.", file=sys.stderr)
+            for zeile in _umbruch(
+                    "Die Zeitstempel der Manifeste sind UTC, ein "
+                    "Arbeitszeitfenster ist Ortszeit. Ohne den Versatz waere "
+                    "der Vergleich im Sommer um 120 Minuten daneben, ohne "
+                    "dass man es der Ausgabe ansieht. Fuer Europe/Berlin: "
+                    "'--ortszeit-versatz 120' (Sommerzeit) bzw. '60' "
+                    "(Winterzeit). Wer in UTC vergleichen will, gibt "
+                    "ausdruecklich '--ortszeit-versatz 0' an.", 76):
+                print("  " + zeile, file=sys.stderr)
+            return VZ_RC_UNLESBAR
+        try:
+            arbeitszeit = arbeitszeit_zerlegen(args.arbeitszeit)
+        except ValueError as exc:
+            print("[backup_admin] '--arbeitszeit' ist nicht verstaendlich: %s"
+                  % exc, file=sys.stderr)
+            return VZ_RC_UNLESBAR
+
+    befund = VersatzAuswertung(
+        verzeichnis,
+        mindest_laeufe=args.mindest_laeufe,
+        schwelle_minuten=args.schwelle_minuten,
+        ortszeit_versatz=args.ortszeit_versatz or 0,
+        arbeitszeit=arbeitszeit).auswerten()
+
+    if args.json:
+        print(json.dumps(vz_bericht_json(befund), ensure_ascii=True,
+                         indent=2))
+    else:
+        print(vz_bericht_text(befund))
+
+    # Wie bei 'pruefen': der Ernstfall geht zusaetzlich auf die
+    # FEHLERAUSGABE. Wer die Auswertung in eine Datei umleitet und nur bei
+    # Fehlern hinsieht, muss ihn trotzdem bemerken.
+    if befund.rueckgabewert() >= VZ_RC_OHNE_GRUNDLAGE:
+        print("[backup_admin] VERSATZ NICHT AUSGEWERTET: %s"
+              % ("das Verzeichnis '%s' ist nicht lesbar" % verzeichnis
+                 if not befund.lesbar
+                 else "kein Manifest aus Build 617 oder neuer in '%s'"
+                      % verzeichnis),
+              file=sys.stderr)
+    return befund.rueckgabewert()
+
+
 # ---------------------------------------------------------------- arg parser
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Auditierte Datensicherung "
-                    "(plan/run/list/pruefen/restore).",
+                    "(plan/run/list/pruefen/restore/versatz).",
         epilog=cli_epilog.epilog("backup_admin"),
         formatter_class=cli_epilog.HilfeFormat)
     sub = parser.add_subparsers(dest="action", required=True)
@@ -676,6 +787,48 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Die beim Sichern erhobenen Pruefsummen gegenrechnen. LIEST "
              "JEDE DATEI GANZ - bei grossen Bestaenden dauert das.")
     p_pruefen.add_argument("--json", action="store_true",
+                           help="Befund als JSON statt als Text.")
+
+    # VORGANG 77757536: die Nachrechnung. Sie steht bei den lesenden
+    # Unterbefehlen, weil sie nichts anfasst ausser den Manifesten.
+    p_versatz = sub.add_parser(
+        "versatz", parents=[common],
+        help="Den VERSATZ im Sicherungssatz aus den Manifesten ausrechnen: "
+             "wie weit liegen erste und letzte Kopie eines Laufs "
+             "auseinander? Rein lesend.")
+    p_versatz.add_argument(
+        "--verzeichnis", default=None,
+        help="Wo die Manifeste liegen. Ohne Angabe backup.dest_dir aus der "
+             "Konfiguration. Fuer Manifeste, die von einem "
+             "Sicherungsmedium zurueckgeholt wurden.")
+    p_versatz.add_argument(
+        "--mindest-laeufe", type=int, default=VZ_MINDEST_LAEUFE,
+        dest="mindest_laeufe",
+        help="Wie viele auswertbare Laeufe als Grundlage verlangt werden "
+             "(Vorgabe %d, aus Vorgang 77757536). Darunter ergeht ein "
+             "Befund - die Zahlen sind dann richtig, tragen aber noch "
+             "keine Entscheidung." % VZ_MINDEST_LAEUFE)
+    p_versatz.add_argument(
+        "--schwelle-minuten", type=float, default=None,
+        dest="schwelle_minuten",
+        help="Ab welcher Spanne ein Lauf beanstandet wird. OHNE ANGABE WIRD "
+             "NICHT BEURTEILT, nur gemessen: eine Grenze ist nicht "
+             "entschieden, und eine fest verdrahtete waere eine Entscheidung "
+             "im Gewand einer Messung.")
+    p_versatz.add_argument(
+        "--ortszeit-versatz", type=int, default=None,
+        dest="ortszeit_versatz",
+        help="Versatz der Ortszeit gegen UTC in MINUTEN (Europe/Berlin: 120 "
+             "im Sommer, 60 im Winter). Betrifft nur die Anzeige und die "
+             "Arbeitszeitfrage, nicht die gemessenen Spannen. Zwingend, "
+             "wenn '--arbeitszeit' angegeben wird.")
+    p_versatz.add_argument(
+        "--arbeitszeit", default=None,
+        help="Arbeitszeitfenster in ORTSZEIT als 'HH:MM-HH:MM' (z. B. "
+             "'07:00-18:00'). Ein Fenster ueber Mitternacht ist erlaubt. "
+             "Ohne Angabe wird nicht beurteilt, ob ein Lauf in die "
+             "Arbeitszeit fiel.")
+    p_versatz.add_argument("--json", action="store_true",
                            help="Befund als JSON statt als Text.")
 
     p_run = sub.add_parser("run", parents=[common],
@@ -725,7 +878,7 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv=None) -> int:
     args = _build_parser().parse_args(argv)
     return {"plan": cmd_plan, "run": cmd_run, "list": cmd_list,
-            "pruefen": cmd_pruefen,
+            "pruefen": cmd_pruefen, "versatz": cmd_versatz,
             "restore": cmd_restore}[args.action](args)
 
 

@@ -1,0 +1,6 @@
+a0500b16da466aae6a6d0c3bd7c1274c  build.json
+91d8c411769257e44a23aa4f387ea695  issue-tracker/eintraege_claude_Build717.json
+986adfc5fdabeabc1e607a0247df3de6  management/backup/backup_admin.py
+a2e5a05bb7f19a2da47a36db59bb5b37  management/backup/backup_versatz.py
+a70a5c4de188a89cd002bd46db901a51  management/help/cli_katalog.py
+7d24bb69f46230797e952f9f4ae39487  tests/test_backup_versatz.py
