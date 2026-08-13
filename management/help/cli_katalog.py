@@ -266,6 +266,18 @@ _GEPRUEFT_694 = ("Build 694, 2026-08-11, gegen Wegwerf-default.db unter "
                  "/tmp, Python 3.13")
 
 
+#: Build 715. Vorgang e61a7dd4 - qs_admin loest den Datenbankpfad jetzt auf,
+#: statt ihn zu raten. Gefahren gegen einen gebauten Wegwerf-Bestand unter
+#: /tmp/qsprobe (leere coordinator.db nach allen Migrationen, KEINE Ziehung)
+#: und daneben aus einem FREMDEN Arbeitsverzeichnis ohne config.yaml - das
+#: ist der Fall, um den es in dem Vorgang geht. Beide Beispiele sind in
+#: genau dieser Gestalt gelaufen; die Ausgaben sind abgeschrieben und nicht
+#: nacherzaehlt.
+_GEPRUEFT_715 = ("Build 715, 2026-08-13, im Container (Python 3.14.0rc2) "
+                 "gegen einen gebauten Wegwerf-Bestand unter /tmp - NICHT "
+                 "gegen einen echten Fall")
+
+
 def _bsp(aufruf: str, wirkung: str, geprueft: str = _GEPRUEFT) -> CliBeispiel:
     """Kurzform fuer einen GEFAHRENEN Beispielaufruf."""
     return CliBeispiel(aufruf=aufruf, wirkung=wirkung, geprueft=geprueft)
@@ -587,7 +599,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         schluessel="qs_admin",
         pfad="management/qs/qs_admin.py",
         aufruf="python -m management.qs.qs_admin liste|zeigen|nachziehen "
-               "--db data/coordinator.db",
+               "[--db data/coordinator.db] [--config ./config.yaml]",
         titel="QS-Stichprobe",
         gruppe="Fallsteuerung",
         zweck="QS-Stichproben ansehen und nachrechnen. Rein lesend - ein "
@@ -604,27 +616,46 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Die Stichprobe nachrechnen. Exit 1 bedeutet Abweichung - "
                "das ist ein Befund, kein Programmfehler."),
         ),
-        # Build 640 (Welle 1): geprueft am ganzen Quelltext von qs_admin.py -
-        # kein ConfigLoader, kein '--config'.
+        # Build 640 (Welle 1) hatte hier KONFIG_KEINE stehen und dazu den
+        # BEFUND vermerkt, der Rueckfallwert fuer '--db' sei die fest
+        # verdrahtete Zeichenkette _VORGABE_DB = "data/coordinator.db" - also
+        # NICHT 'paths.coordinator_db'. Der Vermerk war richtig; er hat den
+        # Mangel aber zweiundsiebzig Builds lang nur BESCHRIEBEN.
         #
-        # BEFUND, der zur Auskunft gehoert: Der Rueckfallwert fuer '--db' ist
-        # die fest verdrahtete Zeichenkette _VORGABE_DB = "data/coordinator.db"
-        # (Z. 54), NICHT 'paths.coordinator_db' aus config.yaml. Wer die
-        # coordinator.db anderswo liegen hat, MUSS hier '--db' angeben - eine
-        # Standortfestlegung in config.yaml hilft ihm bei diesem einen Werkzeug
-        # nicht. Das ist kein Fehler dieses Katalogs, aber es gehoert gesagt.
-        konfiguration=KONFIG_KEINE,
+        # BUILD 715 (Vorgang e61a7dd4): behoben. qs_admin loest den Pfad jetzt
+        # ueber core/werkzeug_konfig.py auf wie die uebrigen dreissig
+        # Werkzeuge - Argument '--db' > paths.coordinator_db > Abbruch. Der
+        # Rueckfallwert ist ersatzlos entfallen; nachgesehen am Quelltext
+        # (qs_admin.py, _db_pfad() und main()).
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die coordinator.db, deren QS-Ziehungen aufgefuehrt und "
+               "nachgerechnet werden.",
+               "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
+               "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
+               "waere schlimmer als ein Abbruch. Bis Build 712 wurde hier "
+               "'data/coordinator.db' RELATIV zum aktuellen Verzeichnis "
+               "angenommen (Vorgang e61a7dd4).",
+               "management/qs/qs_admin.py, _db_pfad(); die Aufloesung selbst "
+               "in core/werkzeug_konfig.py, db_pfad() (Build 643)", "--db"),
+        ),
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python -m management.qs.qs_admin liste --db ./data/coordinator.db",
                      "Fuehrt die Stichprobenziehungen auf. Auf dem leeren Bestand ein ausdruecklicher Leerbefund unter der Ueberschrift 'REIN LESEND'. Rueckgabewert 0.",
                      _GEPRUEFT_619),
+                _bsp("python -m management.qs.qs_admin liste",
+                     "Aus einem Verzeichnis OHNE config.yaml und ohne '--db': zwei Zeilen auf der Fehlerausgabe - erst 'config.yaml nicht ausgewertet ...', dann '[qs_admin] Kein Wert fuer \"db\". Es gibt hier bewusst keinen Vorgabewert - ein erratener Wert waere schlimmer als ein Abbruch.' samt beider Abhilfen. Rueckgabewert 1, KEINE Datenbank geoeffnet. Bis Build 712 wurde an dieser Stelle './data/coordinator.db' geraten (Vorgang e61a7dd4).",
+                     _GEPRUEFT_715),
+                _bsp("python -m management.qs.qs_admin liste  # mit paths.coordinator_db in der config.yaml",
+                     "Ohne '--db', aber mit 'paths.coordinator_db' in der config.yaml des Arbeitsverzeichnisses: derselbe Leerbefund wie beim ersten Beispiel, Rueckgabewert 0. Mit AIW_KONFIG_HERKUNFT=1 nennt die Fehlerausgabe zusaetzlich die Herkunft ('db = ...  [paths.coordinator_db aus /tmp/qsprobe/config.yaml]').",
+                     _GEPRUEFT_715),
             ),
-            exit_codes=((0, "ausgegeben, auch beim Leerbefund; bei 'nachziehen': die Ziehung stimmt"), (1, "BEFUND von 'nachziehen': ABWEICHUNG zwischen Ziehung und heutigem Stand. KEIN Programmfehler, sondern etwas, das ein Mensch bewerten muss"), (2, "coordinator.db oder die angegebene Ziehung nicht gefunden, oder Fachfehler"),),
+            exit_codes=((0, "ausgegeben, auch beim Leerbefund; bei 'nachziehen': die Ziehung stimmt"), (1, "BEFUND von 'nachziehen': ABWEICHUNG zwischen Ziehung und heutigem Stand. KEIN Programmfehler, sondern etwas, das ein Mensch bewerten muss. ODER (seit Build 715): es kam ueberhaupt kein Datenbankpfad zustande - weder '--db' noch 'paths.coordinator_db'; dann steht der Grund im Klartext auf der Fehlerausgabe und es wurde nichts geoeffnet"), (2, "coordinator.db oder die angegebene Ziehung nicht gefunden, oder Fachfehler"),),
             warnungen=(
-                "DER RUECKGABEWERT 1 IST EIN BEFUND UND KEIN FEHLER. Eine Abweichung heisst: der Bestand hat sich seit der Ziehung geaendert. Ob das in Ordnung ist, entscheidet ein Mensch.",
-                "OHNE '--db' WIRD STILL './data/coordinator.db' ANGENOMMEN - relativ zum aktuellen Verzeichnis. Aus dem falschen Verzeichnis aufgerufen prueft man eine andere Datenbank, ohne es zu merken.",
-                "'--db' darf vor ODER hinter dem Unterbefehl stehen.",
+                "DER RUECKGABEWERT 1 IST EIN BEFUND UND KEIN FEHLER. Eine Abweichung heisst: der Bestand hat sich seit der Ziehung geaendert. Ob das in Ordnung ist, entscheidet ein Mensch. Seit Build 715 gibt es fuer die 1 einen ZWEITEN Grund - den Abbruch ohne Datenbankpfad. Die beiden sind an der Ausgabe zu unterscheiden: der Abbruch schreibt eine Zeile mit dem Praefix '[qs_admin]' auf die Fehlerausgabe und gibt KEINEN Befund aus.",
+                "OHNE '--db' WIRD 'paths.coordinator_db' AUS DER CONFIG.YAML GENOMMEN - und wenn dort nichts steht, bricht das Werkzeug ab. Es raet den Pfad NICHT. Bis Build 712 nahm es an dieser Stelle './data/coordinator.db' relativ zum aktuellen Verzeichnis an; wer aus dem falschen Verzeichnis aufrief, pruefte eine andere Datenbank, ohne es zu merken (Vorgang e61a7dd4).",
+                "'--db' darf vor ODER hinter dem Unterbefehl stehen. Fuer '--config' gilt seit Build 715 dasselbe.",
                 "Es oeffnet ausdruecklich nur lesend und setzt kein PRAGMA - eines der wenigen Werkzeuge, bei denen die Nur-Lese-Zusage technisch durchgesetzt ist.",
             ),
         ),

@@ -24,14 +24,37 @@
 #   Schreibweg: eine Ziehung entsteht ueber den auditierten Endpunkt oder gar
 #   nicht. Ein CLI-Schreibweg waere ein unauditierter Nebeneingang.
 #
+# ── WELCHE DATENBANK GEOEFFNET WIRD (Vorgang e61a7dd4, Build 715) ──────────
+#
+#   Argument '--db'  >  paths.coordinator_db aus config.yaml  >  ABBRUCH.
+#
+#   Bis Build 712 stand hier ein Rueckfallwert: _VORGABE_DB =
+#   "data/coordinator.db". Das war ein RELATIVER Pfad, und damit hing die
+#   gepruefte Datenbank am aktuellen Arbeitsverzeichnis des Aufrufers. Wer
+#   den Befehl aus einem anderen Verzeichnis fuhr, pruefte eine ANDERE
+#   coordinator.db — oder eine, die es nicht gab — und merkte es nicht. Bei
+#   einem Werkzeug, dessen ganze Aufgabe die Qualitaetssicherung ist, ist
+#   das der unangenehmste Fall von allen: ein 'DIE ZIEHUNG STIMMT' aus dem
+#   falschen Verzeichnis sieht aus wie ein Befund und ist keiner.
+#
+#   Die Aufloesung liegt seit Build 643/644 an EINER Stelle
+#   (core/werkzeug_konfig.py, db_pfad); dreissig Verwaltungswerkzeuge
+#   benutzen sie, und der CLI-Katalog begruendet den Abbruch bei jedem
+#   einzelnen mit demselben Satz: 'ein erratener Pfad waere schlimmer als
+#   ein Abbruch.' Genau diesen Pfad hat qs_admin erraten. Ab hier nicht mehr.
+#
 # AUFRUF:
 #     python -m management.qs.qs_admin liste      --db data/coordinator.db
 #     python -m management.qs.qs_admin nachziehen --db data/coordinator.db --sample-id 3
 #     python -m management.qs.qs_admin zeigen     --db data/coordinator.db --sample-id 3
 #   '--db' darf auch VOR dem Befehl stehen:
 #     python -m management.qs.qs_admin --db data/coordinator.db liste
+#   Ohne '--db' wird 'paths.coordinator_db' aus der config.yaml genommen;
+#   '--config' benennt eine andere Konfigurationsdatei (Vorgabe ./config.yaml).
+#   Steht der Pfad weder im Argument noch in der config.yaml, bricht das
+#   Werkzeug mit Klartext ab (Rueckgabewert 1) — es raet nicht.
 #
-# Version: v0.8.541 · Build: 541 · 2026-07-26
+# Version: v0.8.715 · Build: 715 · 2026-08-13
 # =============================================================================
 
 from __future__ import annotations
@@ -48,10 +71,35 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from management.qs.qs_repo import QsError, QsRepo          # noqa: E402
 from management.qs.qs_vokabular import ZWECKBINDUNG        # noqa: E402
 from management.help import cli_epilog  # noqa: E402
+# Build 643/644: die Vorrangregel 'Argument > config.yaml > Abbruch' steht
+# seit diesen Builds an EINER Stelle (Ticket 15429c75). Build 715 (Vorgang
+# e61a7dd4) schliesst qs_admin an sie an.
+from core import werkzeug_konfig                           # noqa: E402
 
 
-#: Rueckfallwert fuer '--db'. Er steht an EINER Stelle (s. main()).
-_VORGABE_DB = "data/coordinator.db"
+def _db_pfad(args) -> str:
+    """
+    coordinator.db-Pfad: Argument '--db' > paths.coordinator_db > Abbruch.
+
+    BUILD 715 (Vorgang e61a7dd4) — DER RUECKFALLWERT IST ENTFALLEN.
+    Bis Build 712 stand hier '_VORGABE_DB = "data/coordinator.db"', ein
+    relativer Pfad. Die Begruendung fuer den Wegfall steht im Dateikopf; die
+    Aufloesung selbst in core/werkzeug_konfig.py, db_pfad().
+
+    KEIN VORGABEWERT ('default' wird nicht uebergeben) — das ist der Kern
+    dieser Aenderung und nicht eine Nachlaessigkeit: Fuer die Fall-Datenbanken
+    gibt es im ganzen Bestand bewusst keinen, weil ein erratener Pfad
+    schlimmer ist als ein Abbruch (Grundregel 1).
+
+    WAS SICH FUER DIE BEDIENUNG NICHT AENDERT: '--db' wirkt wie bisher und
+    darf weiterhin VOR oder HINTER dem Unterbefehl stehen; die Ausgabe auf
+    stdout bleibt Zeichen fuer Zeichen dieselbe. Neu ist allein, was ohne
+    '--db' geschieht: vorher ein geratener Pfad, jetzt der Blick in die
+    config.yaml und andernfalls der Abbruch mit Klartext.
+    """
+    return werkzeug_konfig.db_pfad(
+        "qs_admin", args, arg_attribut="db", arg_name="--db",
+        config_schluessel="paths.coordinator_db", name="db")
 
 
 def _ro(pfad: str) -> sqlite3.Connection:
@@ -191,10 +239,19 @@ def main(argv=None) -> int:
     # default=SUPPRESS ist dabei der Kern: mit einem gewoehnlichen Vorgabewert
     # SETZT der Unterparser die Vorgabe erneut und ueberschreibt damit ein
     # '--db', das VOR dem Befehl stand. Mit SUPPRESS fehlt das Attribut, wenn
-    # niemand es angegeben hat — der Rueckfallwert steht dann an EINER Stelle,
-    # unten bei _VORGABE_DB.
+    # niemand es angegeben hat — die Aufloesung sieht dann ueber
+    # getattr(args, "db", None) genau das, was der Fall ist: nichts angegeben.
+    #
+    # '--config' LIEGT AUS DEMSELBEN GRUND IM ELTERNPARSER (Build 715). Es
+    # traegt ebenfalls SUPPRESS und NICHT das sonst uebliche
+    # default="./config.yaml": ein Unterparser mit gewoehnlichem Vorgabewert
+    # wuerde ein vorangestelltes '--config' ueberschreiben — derselbe Fehler,
+    # der bei '--db' in der Rauchprobe zu Build 541 aufgefallen ist. Fehlt das
+    # Attribut, nimmt core/setting_resolver.py von sich aus './config.yaml';
+    # das Ergebnis ist dasselbe wie bei den uebrigen dreissig Werkzeugen.
     gemeinsam = argparse.ArgumentParser(add_help=False)
     gemeinsam.add_argument("--db", default=argparse.SUPPRESS)
+    gemeinsam.add_argument("--config", default=argparse.SUPPRESS)
 
     p = argparse.ArgumentParser(
         prog="qs_admin", parents=[gemeinsam],
@@ -220,8 +277,11 @@ def main(argv=None) -> int:
     c.set_defaults(func=cmd_nachziehen)
 
     args = p.parse_args(argv)
-    if not hasattr(args, "db"):
-        args.db = _VORGABE_DB
+    # Die Aufloesung steht VOR jeder Pruefung auf die Datei: erst muss
+    # feststehen, WELCHE Datei gemeint ist, dann kann man fragen, ob es sie
+    # gibt. Kommt kein Pfad zustande, bricht db_pfad() mit Klartext und
+    # Rueckgabewert 1 ab (SystemExit) — die Meldung nennt BEIDE Wege.
+    args.db = _db_pfad(args)
     if not Path(args.db).exists():
         print("[qs] Datenbank nicht gefunden: %s" % args.db, file=sys.stderr)
         return 2

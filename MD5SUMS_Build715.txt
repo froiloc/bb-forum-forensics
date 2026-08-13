@@ -1,0 +1,5 @@
+caa380e909f0cf7dd0c27c20ebbc740f  build.json
+d1cecf1f91f63fa6d58acb5a3ea16ced  issue-tracker/eintraege_claude_Build715.json
+6a87380eb7a5ef677f1f02c9315d94ba  management/help/cli_katalog.py
+bf3641cfb5c9c8245e7469aa57f5de99  management/qs/qs_admin.py
+b336dec724a0630b8829f5f6dad7f200  tests/test_qs_admin_db_pfad.py
