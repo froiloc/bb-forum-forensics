@@ -16493,6 +16493,45 @@
           "comment": "Importiert aus eintraege_claude_Build707.json"
         }
       ]
+    },
+    {
+      "id": "03a402a6-0f76-4758-8c27-3d5cc186ba9e",
+      "type": "bug",
+      "title": "Fehler bei Benutzer mit Spuren ohne Eintrag in users ",
+      "affected_version": "0.1.136",
+      "reporter": "Alex",
+      "reported_at": "2026-08-13T09:52:47.596124+00:00",
+      "prerequisites": "Der Benutzer hat Spuren hinterlassen. Ebenso eine User_ID ist bekannt. Aber es gibt keinen bestehenden Eintrag in der Benutzertabelle users. Der Eintrag in `mat_subject_map` gibt aber eine user_id zurück.\r\n\r\nmat_usernames_id,username,users_id,subject_kind,subject_id,scheme_prefix,scheme_version,user_id_conflict\r\n343134,censored,1976181,user,1976181,1000000000,v1,0\r\n",
+      "description": "Wenn der Prepper für solch einen Benutzer angestoßen wird mit run_by_username.sh, dann kommt es zum Fehler und das Skript bricht ab.\r\n\r\nWie es dazu kommt, dass der Benutzer eine User_ID hat, aber keinen Eintrag in users UND aber in mat_subject_map nicht in den Bereich über 100000000 geschoben wird, ist unklar. Auch das muss im Rahmen dieses Tickets untersucht werden, da dies die Kernursache des Problems ist.",
+      "expected_behavior": "Das Forenbenutzer-Bundle wird erzeugt.",
+      "actual_behavior": "paul@recherche:/opt/aiw_sqlite_prepper$ ./run_by_username.sh censored\r\nUsername: censored\r\nUser-ID:  1976181\r\nlog will be found in './log/test-run.344.log'\r\nCreating databases for user with id=1976181.\r\ndefault.db-Persistenz: Seed aus './forensik_shared/default.db' -> Stage 3 erweitert sie.\r\n2026-08-13 11:37:20 [INFO] __main__ — Initialisiere coordinator.db: forensik/coordinator.db\r\n2026-08-13 11:37:20 [INFO] __main__ — coordinator.db erfolgreich initialisiert.\r\nOK — coordinator.db: forensik/coordinator.db\r\n2026-08-13 11:37:20 [INFO] __main__ — aiw_sqlite_prepper scraper_stage1 v0.1.136 (Build 136)\r\n2026-08-13 11:37:20 [INFO] __main__ — Modus: Phase A (Manifest) ohne Phase B\r\n2026-08-13 11:37:20 [INFO] stage1.db_mariadb — Verbinde mit MariaDB 127.0.0.1:3306 / forum\r\n2026-08-13 11:37:20 [INFO] stage1.db_mariadb — MariaDB-Verbindung hergestellt.\r\n2026-08-13 11:37:20 [INFO] __main__ — ============================================================\r\n2026-08-13 11:37:20 [INFO] __main__ — Starte Verarbeitung fuer user_id=1976181\r\n2026-08-13 11:37:20 [INFO] stage1.group_unlocker — Prüfe Sperrstatus für user_id=1976181.\r\n2026-08-13 11:37:20 [ERROR] __main__ — FEHLER bei user_id=1976181: user_id=1976181 nicht in users-Tabelle gefunden (Aufruf vor resolve_user — Inkonsistenz).\r\nTraceback (most recent call last):\r\n  File \"/opt/aiw_sqlite_prepper/scraper_stage1.py\", line 484, in main\r\n    manifest_path, username = process_user(\r\n                              ~~~~~~~~~~~~^\r\n        user_id,\r\n        ^^^^^^^^\r\n    ...<5 lines>...\r\n        changeban_url=config.changeban_url,\r\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\r\n    )\r\n    ^\r\n  File \"/opt/aiw_sqlite_prepper/scraper_stage1.py\", line 175, in process_user\r\n    unlock_result = unlocker.unlock(user_id)\r\n  File \"/opt/aiw_sqlite_prepper/stage1/group_unlocker.py\", line 141, in unlock\r\n    current_group = self._get_current_group(user_id)\r\n  File \"/opt/aiw_sqlite_prepper/stage1/group_unlocker.py\", line 301, in _get_current_group\r\n    raise RuntimeError(\r\n    ...<2 lines>...\r\n    )\r\nRuntimeError: user_id=1976181 nicht in users-Tabelle gefunden (Aufruf vor resolve_user — Inkonsistenz).\r\n2026-08-13 11:37:20 [INFO] stage1.db_mariadb — MariaDB-Verbindung geschlossen.\r\n2026-08-13 11:37:20 [INFO] __main__ — ------------------------------------------------------------\r\n2026-08-13 11:37:20 [INFO] __main__ — Abschluss: 0 erfolgreich, 1 fehlgeschlagen, 0.0 s gesamt\r\n2026-08-13 11:37:20 [ERROR] __main__ —   FEHLER user_id=1976181  -> user_id=1976181 nicht in users-Tabelle gefunden (Aufruf vor resolve_user — Inkonsistenz).\r\n2026-08-13 11:37:20 [INFO] __main__ — ------------------------------------------------------------\r\n\r\nDas Script stürzt ab, da es zwar eine bekannte User-ID gibt, aber keinen Eintrag in der Datenbanktabelle users.",
+      "status": "open",
+      "priority": "critical",
+      "severity": "critical",
+      "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14",
+        "database": "mariadb"
+      },
+      "tags": [
+        "Prepper",
+        "Subject",
+        "User"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-13T09:52:47.596159+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
+        }
+      ]
     }
   ]
 }
