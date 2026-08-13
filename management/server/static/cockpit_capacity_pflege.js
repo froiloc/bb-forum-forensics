@@ -88,7 +88,14 @@
 //
 // Build 637 (Vorgang 17200856, Welle B5 - die letzte): HILFE-MARKEN
 //   fuer die siebenundzwanzig verbliebenen Bedienelemente dieser Sicht.
-// Version: v0.8.637 · Build: 637 · 2026-08-01
+//
+// BUILD 714 (Vorgang 75f84fee, zweiter Teil): Die Arbeitszeit-Regeln zaehlen
+//   jetzt beim Zeitfilter mit. Sie folgen derselben Grenze, aber einem anderen
+//   Nachweis des Ablaufs - eine Regel gilt als historisch, wenn eine JUENGERE
+//   sie abgeloest hat (append-only, kein effective_to; siehe Kopf von
+//   zeitfilter.py). Der Kopftext nennt BEIDE Lesarten, sonst sucht jemand an
+//   den Arbeitszeiten ein Enddatum, das es dort nicht gibt.
+// Version: v0.8.714 · Build: 714 · 2026-08-13
 // =============================================================================
 
 (function () {
@@ -569,8 +576,13 @@
         histLabel.textContent = 'Auch historische Daten anzeigen';
         histZeile.appendChild(histSchalter);
         histZeile.appendChild(histLabel);
-        var gesamtHistorisch = ['availability', 'holidays'].reduce(
-            function (s3, k) { return s3 + (histZahlen[k] || 0); }, 0);
+        // Build 714: 'worktimes' zaehlt mit. Eine Kopfsumme, die einen
+        // Abschnitt auslaesst, waere kleiner als die Summe der Hinweise
+        // darunter - und niemand wuesste, welche der beiden Zahlen gilt.
+        var gesamtHistorisch = ['availability', 'holidays', 'worktimes']
+            .reduce(function (s3, k) {
+                return s3 + (histZahlen[k] || 0);
+            }, 0);
         // DIE GRENZE STEHT IMMER DA, auch wenn nichts ausgeblendet ist. Sie
         // ist die Antwort auf die Frage, die der Schalter aufwirft: ab wann
         // gilt eine Zeile als historisch?
@@ -584,7 +596,9 @@
                 : 'Es liegt nichts vor dem laufenden Monat.')
             + (historischAb
                 ? (' Angezeigt wird ab dem ' + historischAb
-                   + '; abgelaufen heisst: Ende davor.')
+                   + '; abgelaufen heisst: Ende davor. Bei den '
+                   + 'Arbeitszeit-Regeln heisst es: durch eine jüngere Regel '
+                   + 'abgelöst — die geltende Regel bleibt immer stehen.')
                 : '')));
         mainEl.appendChild(histZeile);
 
@@ -838,8 +852,10 @@
             }
         });
 
+        // Build 714: die Arbeitszeiten haben jetzt ebenfalls eine Zahl.
         bauen('capacity_worktime', boxWt, worktimeRows(data), spaltenWt,
-              'Arbeitszeit-Regeln', [], entferntZahlen.worktimes);
+              'Arbeitszeit-Regeln', [], entferntZahlen.worktimes,
+              histZahlen.worktimes);
 
         // -------------------------------------------------- 2) Abwesenheiten
         var boxAv = _abschnitt(mainEl, 'capacity_availability.titel',

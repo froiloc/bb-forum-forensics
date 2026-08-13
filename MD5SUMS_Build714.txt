@@ -1,0 +1,9 @@
+32e4be5d98d1d29a6c0cf24dfc82cd51  build.json
+6d1c026ec95604e3c6f9c55cd9809291  issue-tracker/eintraege_claude_Build714.json
+3527449498bd8502c5f789f370e8d372  management/capacity/zeitfilter.py
+8530f23bf89deb884991e3af836d1f22  management/help/inhalt/personal.py
+165873dde7013318e45d3c7aa8a573d1  management/server/management_app.py
+f9c4f93c187ec3c0ae3f725423bc2618  management/server/static/cockpit_capacity_pflege.js
+e94dcabd3e53df38db7cc0bd89d597a5  tests/test_capacity_zeitfilter.py
+15ada57ede56bad6fdc4f88db9a74ea7  tests/test_management_capacity_api.py
+63bdbb25dc89f9637b51ed0f5a4f3fdc  tests/unit/test_cockpit_capacity_pflege.test.js

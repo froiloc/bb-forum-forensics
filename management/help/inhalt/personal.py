@@ -32,10 +32,20 @@
 # REGEL H-0: kein Falldatum, keine echte Kennung.
 # REGEL H-1: Anwendersprache.
 #
-# Version: v0.8.701 - Build: 701 - 2026-08-12
+# Version: v0.8.714 - Build: 714 - 2026-08-13
 #   Build 603: Erstfassung. Build 701: Kapitel "Ausscheiden und
 #   Rueckkehr" + sieben Texte fuer die Spalte "Ruhestand"
-#   (Ticket 95139d2a).
+#   (Ticket 95139d2a). Build 709: Zeitfilter der Kapazitaetspflege.
+#   Build 714: die Regel-Arbeitszeiten zaehlen beim Zeitfilter mit -
+#   nach der ABLOESUNG statt nach einem Enddatum (Vorgang 75f84fee,
+#   zweiter Teil).
+#
+#   ANMERKUNG ZUM STAND: Build 709 hat die Texte zum Zeitfilter
+#   ergaenzt, '_STAND' aber bei 701 gelassen. Der Stand ist die
+#   Angabe, auf welchem Buildstand ein Kapitel verfasst wurde - er
+#   wird hier auf 714 gezogen. Das ist kein stiller Eingriff in
+#   fremde Arbeit, sondern die Berichtigung einer Angabe, die sonst
+#   ein aelteres Kapitel behauptet, als tatsaechlich vorliegt.
 # =============================================================================
 
 from __future__ import annotations
@@ -44,7 +54,7 @@ from typing import List, Tuple
 
 from management.help.modell import Abschnitt, Kontexthilfe, Sichthilfe
 
-_STAND = 701
+_STAND = 714
 
 
 # =============================================================================
@@ -506,9 +516,20 @@ CAPACITY_PFLEGE = Sichthilfe(
                 "Gemessen wird am ENDE eines Zeitraums, nicht an seinem "
                 "Anfang: eine Abwesenheit, die im Vormonat begann und noch "
                 "läuft, bleibt sichtbar — sie bestimmt die Rechnung des "
-                "laufenden Monats. Die Regel-Arbeitszeiten sind von der "
-                "Umschaltung nicht betroffen, denn ihre Liste ist die "
-                "Belegkette, und der Gründekatalog hat keinen Zeitbezug.",
+                "laufenden Monats. Der Gründekatalog hat keinen Zeitbezug "
+                "und ist deshalb nie betroffen.",
+                "BEI DEN REGEL-ARBEITSZEITEN HEISST „ABGELAUFEN“ ETWAS "
+                "ANDERES, und das muss man wissen: eine Arbeitszeitregel "
+                "wird nie überschrieben und trägt fast nie ein Enddatum — "
+                "die heute geltende Regel kann Jahre alt sein. Ausgeblendet "
+                "wird deshalb nur, was ABGELÖST ist: eine Regel, für die es "
+                "eine jüngere gibt, die schon vor dem Monatsersten begann. "
+                "DIE GELTENDE REGEL STEHT IMMER DA. Beginnt die Nachfolgerin "
+                "erst im laufenden Monat, bleiben beide sichtbar — bis zu "
+                "ihrem Stichtag galt ja noch die ältere.",
+                "Auch hier wird nichts gelöscht: die abgelösten Regeln sind "
+                "weiterhin die Belegkette dafür, seit wann was galt, und "
+                "eine Umschaltung entfernt.",
                 "Neben der Überschrift sitzt der Minutenrechner. Er trägt "
                 "sein Ergebnis in das Minutenfeld ein, das zuletzt "
                 "angeklickt wurde.",
@@ -600,13 +621,16 @@ CAPACITY_PFLEGE = Sichthilfe(
         Kontexthilfe(
             "capacity_pflege.bedienung.historisch",
             "Auch historische Daten anzeigen",
-            "Blendet Abwesenheiten und Feiertage ein, die VOR dem laufenden "
-            "Monat abgelaufen sind. Ohne den Haken beginnt die Liste mit dem "
-            "Ersten des laufenden Monats — die Zahl der ausgeblendeten "
-            "Zeilen steht trotzdem über der jeweiligen Liste, zusammen mit "
-            "dem Stichtag. Gemessen wird am ENDE eines Zeitraums: eine "
+            "Blendet ein, was VOR dem laufenden Monat erledigt ist. Ohne "
+            "den Haken beginnt die Liste mit dem Ersten des laufenden "
+            "Monats — die Zahl der ausgeblendeten Zeilen steht trotzdem "
+            "über der jeweiligen Liste, zusammen mit dem Stichtag. Bei "
+            "Abwesenheiten und Feiertagen wird am ENDE gemessen: eine "
             "Abwesenheit, die im Vormonat begann und noch läuft, bleibt "
-            "sichtbar.",
+            "sichtbar. Bei den Regel-Arbeitszeiten zählt statt dessen die "
+            "ABLÖSUNG durch eine jüngere Regel — die geltende Regel steht "
+            "immer da, auch wenn sie Jahre alt ist. Der Gründekatalog ist "
+            "nie betroffen.",
             verweis="capacity_pflege#aufbau"),
         Kontexthilfe(
             "capacity_pflege.bedienung.rechner", "Minutenrechner",
