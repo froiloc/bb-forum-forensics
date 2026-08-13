@@ -1,0 +1,103 @@
+{
+  "issues": [
+    {
+      "id": "cf791ef0-5213-4458-8bfa-93df864e62d5",
+      "type": "bug",
+      "title": "escalation_admin uebergeht eine unlesbare config.yaml wortlos",
+      "affected_version": "0.8.708",
+      "reporter": "Claude",
+      "reported_at": "2026-08-13T10:45:17+00:00",
+      "prerequisites": "Aufruf von escalation_admin, waehrend die config.yaml fehlt, unlesbar ist oder nicht geparst werden kann",
+      "description": "DER BEFUND: management/cases/escalation_admin.py, Zeilen 28-33:\n\n    def _load_config(args):\n        try:\n            from core.config_loader import ConfigLoader\n            return ConfigLoader(config_path=args.config)\n        except Exception:  # pragma: no cover\n            return None\n\nKein 'print', keine Ausgabe. In Zeile 78 bekommt escalation_thresholds_from_config(cfg) dann None und liefert die Vorgabeschwellen.\n\nDIE ANDEREN WERKZEUGE MELDEN AN DIESER STELLE. dashboard_admin, export_admin, forecast_report_admin, status_report_admin, support_overview_admin und weitere haben dieselbe Funktion und geben dort eine Zeile auf der Fehlerausgabe aus ('config.yaml nicht lesbar (Vorgabe-Schwellen werden verwendet): ...'). escalation_admin ist die Ausnahme.\n\nWARUM DAS WIEGT: Die Schwellen entscheiden ueber die EskalationsLAGE. Dieselbe Datenbank ergibt mit den Vorgabeschwellen ein anderes Bild als mit den konfigurierten. Wer zwei Ausgaben vergleicht, kann nicht erkennen, dass die eine ohne Konfiguration entstanden ist - das ist ein still uebersprungener Beleg (GR1), und zwar an einer Angabe, die das ERGEBNIS veraendert und nicht nur seinen Vermerk.\n\nDER KATALOG WEISS ES: 'IST DIE KONFIGURATION NICHT LESBAR, wird das STILL uebergangen und es gelten die Vorgabeschwellen. Dieselbe Datenbank kann damit eine andere Eskalationslage ergeben.'",
+      "expected_behavior": "escalation_admin meldet eine nicht lesbare config.yaml auf der Fehlerausgabe, mit dem Grund und dem Hinweis, dass die Vorgabeschwellen gelten - im Wortlaut der uebrigen Werkzeuge. Zusaetzlich waere zu erwaegen, die geltenden Schwellen in der Ausgabe zu benennen, damit zwei Laeufe vergleichbar bleiben. Der Rueckgabewert bleibt unveraendert.",
+      "actual_behavior": "Die Konfiguration wird wortlos uebergangen; es gelten die Vorgabeschwellen, und nichts weist darauf hin.",
+      "status": "resolved",
+      "priority": "medium",
+      "severity": "major",
+      "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": "0.8.718",
+      "target_version": "0.8.718",
+      "environment": {
+        "python_version": "3.14"
+      },
+      "tags": [
+        "build718",
+        "cli",
+        "escalation_admin",
+        "gr1",
+        "konfiguration",
+        "nachvollziehbarkeit",
+        "werkzeug_konfig"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-13T10:45:17+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Eintrag erstellt auf Weisung von Alex (13.08.2026). Befund aus der Durchsicht der CLI-Katalog-Warnungen beim Abschluss von 70641ff9 und 5001d293; jede Angabe am Quelltext nachgesehen."
+        },
+        {
+          "timestamp": "2026-08-13T15:03:17.902551+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build712.json"
+        },
+        {
+          "timestamp": "2026-08-13T18:05:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "resolved",
+          "comment": "BEHOBEN IN BUILD 718.\n\n(1) DER BEFUND HAT SICH BEIM NACHSEHEN VERGROESSERT. Aufgenommen war escalation_admin. Gemessen am Quelltext tragen VIERZEHN Werkzeuge dieselbe Funktion '_load_config(args)' als Abschrift; SECHS melden im except-Zweig, ACHT gaben gar nichts aus: escalation_admin, retention_admin, overload_admin, annotation_stats_admin, next_actions_admin, handover_admin, forecast_admin und gantt_admin. Alle acht sind mit dieser Lieferung behoben (Entscheidung Alex, 13.08.2026: alle acht in einem Zug).\n\n(2) DER QUELLTEXT HAT EINE ZUSAGE GEBROCHEN, DIE ER SELBST SCHRIEB. Der Kopf von werkzeug_konfig.resolver_aus_loader sagt zu 'loader is None' woertlich 'der Aufrufer hat das bereits gemeldet'; die Docstrings von _resolve_db_path in allen acht stummen Werkzeugen sagen 'Die Meldung ueber eine unlesbare config.yaml gibt weiterhin _load_config aus'. Beides war unwahr. Das ist der Grund, warum der Mangel so lange unbemerkt blieb: wer die Dokumentation las, hatte keinen Anlass nachzusehen.\n\n(3) DIE REGEL STEHT JETZT AN EINER STELLE: core/werkzeug_konfig.konfig_laden(werkzeug, args, folge=...). Dasselbe Vorgehen wie bei der Pfadaufloesung in Build 643/644 (Ticket 15429c75) und aus demselben Grund - eine Regel, die vierzehnmal abgeschrieben wird, ist vierzehnmal einzeln falsch zu schreiben. Die acht behobenen Werkzeuge rufen die gemeinsame Fassung auf.\n\n(4) DREI VERSCHIEDENE FOLGEN, KEIN EINHEITSSATZ. 'Vorgabe-Schwellen werden verwendet' (escalation, retention, overload), 'Vorgaben werden verwendet' (annotation_stats) und 'es gelten nur die Angaben von der Befehlszeile' (next_actions, handover, forecast, gantt - diese vier holen aus der Konfiguration NUR den Datenbankpfad, fuer den es bewusst keinen Vorgabewert gibt; ohne '--coordinator-db' folgt gleich danach der Abbruch). 'Vorgaben' waere bei diesen vier schlicht falsch gewesen.\n\n(5) DER ZUSATZ AUS DEM VORGANG IST UMGESETZT (Entscheidung Alex, 13.08.2026): escalation_admin weist die geltenden Schwellen aus - im Textbetrieb als erste Zeile mit der Herkunft JE SCHWELLE ('Schwellen: red_overdue_days=45 [config.yaml]  stale_open_days=14 [Vorgabe]  backlog_high=10 [Vorgabe]'), mit '--json' unter dem Schluessel 'thresholds'. Der Schluesselsatz ist derselbe, den management_app._escalations seit Build 515 mitliefert; dieselbe Auskunft darf an zwei Stellen nicht anders heissen. Die Herkunft kommt aus ConfigLoader.stammt_aus_datei() und damit aus dem ROHEN Dateiinhalt - cfg.get() haette auch Coded Defaults als 'config.yaml' ausgewiesen, und eine falsche Herkunftsangabe ist schlimmer als keine (Begruendung im Kopf von config_loader.py, Build 638).\n\n(6) NEUE TESTS: tests/test_konfig_meldung_werkzeuge.py, 9 Faelle (KM01-KM05, KM10-KM13). KM04 ist der eigentliche Waechter: er zaehlt die Werkzeuge NICHT auf, sondern sucht im Quelltext selbst nach '_load_config' und verlangt von jedem Fund die Meldung. Ein neues Werkzeug mit einer stummen Abschrift faellt damit am Tag seiner Entstehung auf. GEGENPROBE GEFAHREN: gegen den unveraenderten Stand d5aa196 nennt KM04 genau die acht stummen Werkzeuge namentlich; gegen den geaenderten Stand ist er gruen.\n\n(7) STDOUT-VERGLEICH ALT GEGEN NEU fuer alle acht Werkzeuge gegen denselben Wegwerf-Bestand: unveraendert - mit der einen gewollten Ausnahme der Schwellenzeile bei escalation_admin. In der JSON-Ausgabe kam ausschliesslich 'thresholds' hinzu, alle uebrigen Schluessel und Werte sind gleich geblieben.\n\n(8) HILFE NACHGEFUEHRT: die Katalogwarnung zu escalation_admin behauptete das stille Uebergehen und ist berichtigt; drei neue, GEFAHRENE Beispiele (ohne config.yaml, mit einer config.yaml, die genau eine der drei Schwellen setzt, und '--json') mit eigenem Nachweisvermerk _GEPRUEFT_718. Die sieben nachgezogenen Werkzeuge haben je einen Warnhinweis auf die neue Meldung bekommen.\n\n(9) MIGRATIONSVORBEHALT: NICHT BERUEHRT. Kein Schema, keine Migration, kein Schreibzugriff - alle acht Werkzeuge oeffnen ihre Datenbank nur lesend.\n\n(10) OFFEN UND BENANNT: die sechs Werkzeuge, die schon vorher meldeten, rufen weiterhin ihre eigene Abschrift auf; ihr Wortlaut weicht in Nuancen ab. Als eigener Vorgang aufgenommen."
+        }
+      ]
+    },
+    {
+      "id": "6c64daf4-cad0-1f44-7ede-239427210357",
+      "type": "refactoring",
+      "title": "Sechs Werkzeuge halten eine eigene Abschrift von _load_config",
+      "affected_version": "0.8.718",
+      "reporter": "Claude",
+      "reported_at": "2026-08-13T18:05:00+00:00",
+      "prerequisites": "Keine - der Befund steht im Quelltext",
+      "description": "Aufgenommen beim Abschluss von cf791ef0 (Build 718).\n\nDER STAND NACH BUILD 718: Die Meldung ueber eine unlesbare config.yaml steht in core/werkzeug_konfig.konfig_laden(). Die ACHT Werkzeuge, die bis Build 712 gar nichts sagten, rufen sie auf. Die SECHS, die schon vorher meldeten, tun es NICHT - sie halten weiterhin ihre eigene Abschrift:\n\n  * management/dashboard/dashboard_admin.py, Z. 47-60\n  * management/export/export_admin.py, Z. 66-74\n  * management/workload/workload_admin.py, Z. 54-62\n  * management/stats/status_report_admin.py, Z. 52-59\n  * management/stats/forecast_report_admin.py, Z. 63-71\n  * management/support_overview/support_overview_admin.py, Z. 55-66\n\nIHR WORTLAUT WEICHT AB, und zwar so, dass er dem Leser Verschiedenes sagt: 'config.yaml nicht lesbar (Vorgabe-Schwellen werden verwendet)' (dashboard_admin), '(Vorgabe-Schwellen)' (workload_admin), '(Vorgaben werden verwendet)' (export_admin) und ganz ohne Folgesatz (status_report, forecast_report, support_overview). Bei den letzten drei beantwortet die Meldung die Frage nicht, die der Empfaenger als naechstes hat: was gilt jetzt statt der Konfiguration?\n\nWARUM ES IN BUILD 718 NICHT MITGEMACHT WURDE: Der Umfang war mit Alex auf die acht STUMMEN Werkzeuge festgelegt. Die sechs mitzuziehen haette getesteten Ausgabetext in sechs weiteren Dateien geaendert und die Kollisionsflaeche zu parallel laufenden Arbeiten ohne Not vergroessert.\n\nAUFWAND: je Datei der Ersatz einer Funktion durch einen Aufruf, dazu die Festlegung des Folgesatzes fuer die drei Werkzeuge, die heute keinen haben. KM04 in tests/test_konfig_meldung_werkzeuge.py deckt alle vierzehn bereits ab; er verlangt bewusst keinen einheitlichen Wortlaut und muesste dafuer nachgeschaerft werden.",
+      "expected_behavior": "Alle vierzehn Werkzeuge laden ihre config.yaml ueber werkzeug_konfig.konfig_laden() und melden einen Ausfall im selben Aufbau, mit einem Folgesatz, der zu ihrem eigenen Rueckfall passt. KM04 prueft danach zusaetzlich den Aufbau der Meldung und nicht nur ihr Vorhandensein.",
+      "actual_behavior": "Acht Werkzeuge nutzen die gemeinsame Fassung, sechs ihre eigene. Drei der sechs melden ohne Folgesatz.",
+      "status": "open",
+      "priority": "low",
+      "severity": "minor",
+      "assigned_to": "",
+      "related_to": [
+        "cf791ef0-5213-4458-8bfa-93df864e62d5"
+      ],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14"
+      },
+      "tags": [
+        "build718",
+        "cli",
+        "konfiguration",
+        "nachvollziehbarkeit",
+        "refactoring",
+        "werkzeug_konfig"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-13T18:05:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Eintrag erstellt beim Abschluss von cf791ef0 (Build 718); jede Angabe am Quelltext nachgesehen."
+        }
+      ]
+    }
+  ]
+}

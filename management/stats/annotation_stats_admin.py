@@ -12,7 +12,7 @@
 #          [--coordinator-db PATH] [--evidence-dir DIR] [--config ./config.yaml]
 #          [--scope alle|eigene] [--person-id N] [--json]
 #
-# Version: v0.7.449 · Build: 449 · 2026-07-19
+# Version: v0.8.718 · Build: 718 · 2026-08-13
 # =============================================================================
 
 import argparse
@@ -29,11 +29,21 @@ from core import werkzeug_konfig  # noqa: E402
 
 
 def _load_config(args):
-    try:
-        from core.config_loader import ConfigLoader
-        return ConfigLoader(config_path=args.config)
-    except Exception:  # pragma: no cover
-        return None
+    """
+    Laedt die config.yaml und MELDET ihren Ausfall auf stderr.
+
+    TICKET cf791ef0 (Build 718): Bis hierher stand an dieser Stelle eine
+    Abschrift mit 'except Exception: return None' - OHNE Ausgabe. Faellt
+    die Konfiguration aus, gelten die festen Vorgabewerte (u.a. das
+    Verzeichnis der evidence-Datenbanken), und nichts weist darauf hin. Das
+    war ein still uebersprungener Beleg (Grundregel 1).
+
+    Die Meldung steht jetzt in core/werkzeug_konfig.konfig_laden(); die
+    ausfuehrliche Begruendung fuer die Zusammenfuehrung steht dort. Der
+    Rueckgabewert ist unveraendert: der ConfigLoader oder None.
+    """
+    return werkzeug_konfig.konfig_laden(
+        "annotation_stats_admin", args, folge="Vorgaben werden verwendet")
 
 
 def _resolve_db_path(args, cfg) -> str:
