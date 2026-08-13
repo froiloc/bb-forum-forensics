@@ -3238,6 +3238,24 @@
                        : ('#' + personId);
     }
 
+    // Build 709 (Vorgang 75f84fee): die Adresse des Stammdaten-Abrufs.
+    //
+    // WARUM EINE EIGENE, REINE FUNKTION: Es sind jetzt ZWEI unabhaengige
+    // Umschaltungen (entfernte Zeilen, historische Daten). Zwei fest
+    // verdrahtete '?'-Anhaenge ergaeben beim zweiten ein zweites
+    // Fragezeichen - der Server saehe den Parameter nie, die Umschaltung
+    // bliebe wirkungslos, und NICHTS wuerde davon berichten: die Liste saehe
+    // einfach so aus, als gaebe es nichts einzublenden. Genau die Sorte
+    // stiller Fehler, die einen eigenen Fall verdient (CQ01-CQ04).
+    function stammdatenUrl(uebergabe) {
+        var u = uebergabe || {};
+        var abfrage = [];
+        if (u.entfernte) { abfrage.push('include_deleted=1'); }
+        if (u.historie) { abfrage.push('include_historic=1'); }
+        return '/api/capacity/stammdaten'
+             + (abfrage.length ? ('?' + abfrage.join('&')) : '');
+    }
+
     function loadCapacityPflege(mainEl, uebergabe) {
         mainEl = mainEl || document.getElementById('aiw-main');
         var mod = (typeof window !== 'undefined')
@@ -3339,6 +3357,29 @@
                         : 'Entfernte Zeilen ausgeblendet. Ihre Zahl steht '
                           + 'weiterhin ueber jeder Liste.',
                     error: false, entfernte: an,
+                    // Build 709: die ANDERE Umschaltung muss ihren Stand
+                    // ueberleben. Ohne sie hier weiterzureichen faellt der
+                    // Zeitfilter bei jedem Umschalten der entfernten Zeilen
+                    // auf die Vorgabe zurueck - und die eben eingeblendete
+                    // Historie verschwaende wieder.
+                    historie: uebergabe.historie,
+                    formular: (view && view.formularLesen)
+                        ? view.formularLesen() : null });
+            },
+            // Build 709 (Vorgang 75f84fee): dieselbe Bauart wie oben - es
+            // wird NEU GELADEN und nicht im Browser gefiltert. Der Server
+            // entscheidet, was sichtbar ist; ein Frontend-Filter waere eine
+            // zweite Wahrheit ueber Sichtbarkeit.
+            onHistorieUmschalten: function (an) {
+                loadCapacityPflege(mainEl, {
+                    text: an
+                        ? 'Historische Zeilen eingeblendet: auch, was vor dem '
+                          + 'laufenden Monat abgelaufen ist.'
+                        : 'Historische Zeilen ausgeblendet. Die Liste beginnt '
+                          + 'mit dem laufenden Monat; ihre Zahl steht '
+                          + 'weiterhin ueber jeder betroffenen Liste.',
+                    error: false, historie: an,
+                    entfernte: uebergabe.entfernte,
                     formular: (view && view.formularLesen)
                         ? view.formularLesen() : null });
             },
@@ -3434,8 +3475,7 @@
                 });
             }
         };
-        fetchJson('/api/capacity/stammdaten'
-                  + (uebergabe.entfernte ? '?include_deleted=1' : ''))
+        fetchJson(stammdatenUrl(uebergabe))
             .then(function (data) {
                 cleanupView();
                 _capacityPersonen = data.persons || [];
@@ -5225,7 +5265,10 @@
         // Build 657: der Lesepfad wird pruefbar. Er hat am 2026-08-02 die
         // Massnahme des Servers weggeworfen und nur die Zahl gezeigt - ein
         // Verhalten, das ohne Fall in der Suite wiederkommen kann.
-        fetchJson: fetchJson
+        fetchJson: fetchJson,
+        // Build 709 (Vorgang 75f84fee): die Adresse des Stammdaten-Abrufs
+        // mit zwei unabhaengigen Umschaltungen.
+        stammdatenUrl: stammdatenUrl
     };
     if (typeof module !== 'undefined' && module.exports) { module.exports = API; }
     if (typeof window !== 'undefined') { window.AIWCockpit = API; }

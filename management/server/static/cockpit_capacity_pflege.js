@@ -291,6 +291,27 @@
                + einheit + ').');
     }
 
+    // historischText: die Zahl der wegen des Zeitfilters NICHT gezeigten
+    // Zeilen in Worte fassen (Build 709, Vorgang 75f84fee).
+    //
+    // WARUM EIN EIGENER TEXT NEBEN ausgeblendetText(): Es sind zwei ganz
+    // verschiedene Gruende, aus denen eine Zeile fehlen kann - stillgelegt
+    // oder abgelaufen. Ein gemeinsamer Satz ("n Zeilen ausgeblendet") liesse
+    // offen, welcher Schalter sie zurueckholt. Die GRENZE wird mitgenannt,
+    // weil 'historisch' sonst eine Behauptung ohne Massstab ist.
+    //
+    // Rueckgabe null heisst "es ist nichts ausgeblendet" - dann steht auch
+    // kein Hinweis da, statt eines Hinweises ueber null Zeilen.
+    function historischText(anzahl, einheit, grenze) {
+        if (!anzahl) { return null; }
+        var ab = grenze ? (' vor dem ' + grenze) : '';
+        return anzahl === 1
+            ? ('1 historische Zeile ist ausgeblendet (' + einheit
+               + ', abgelaufen' + ab + ').')
+            : (anzahl + ' historische Zeilen sind ausgeblendet ('
+               + einheit + ', abgelaufen' + ab + ').');
+    }
+
     // heuteIso: Vorbelegung des Stichtags. Ein leeres Pflichtfeld, das erst
     // der Server bemaengelt, ist eine Falle (Befund mc, Build 560).
     function heuteIso(jetzt) {
@@ -512,6 +533,61 @@
                 : 'Es ist nichts entfernt.'));
         mainEl.appendChild(schalterZeile);
 
+        // UMSCHALTUNG 'auch historische Daten anzeigen' (Build 709, Vorgang
+        // 75f84fee). Zweite Zeile statt zweiter Haken in derselben - die
+        // beiden Schalter blenden aus VERSCHIEDENEN Gruenden aus
+        // (stillgelegt / abgelaufen), und sie wirken auf verschiedene
+        // Bestaende. Nebeneinander in einer Zeile laege der Schluss nahe, es
+        // sei zweimal dasselbe.
+        //
+        // WIE BEIM ENTFERNT-SCHALTER kommt der Zustand VOM SERVER
+        // (data.include_historic) und nicht aus dem Frontend: sonst koennte
+        // der Haken gesetzt sein, waehrend die Liste noch die alte Antwort
+        // zeigt. Und gefiltert wird ebenfalls auf dem Server - ein
+        // Frontend-Filter waere eine zweite Wahrheit ueber Sichtbarkeit.
+        var histZahlen = (data && data.historisch) || {};
+        var zeigeHistorie = !!(data && data.include_historic);
+        var historischAb = (data && data.historisch_ab) || '';
+        // Dieselbe Grundgestalt wie die Zeile darueber (aiw-capp-schalter),
+        // dazu eine eigene Kennung: sie macht die beiden Zeilen fuer
+        // Formatierung UND Pruefung unterscheidbar.
+        var histZeile = _el('div', 'aiw-capp-schalter aiw-capp-historie');
+        var histSchalter = document.createElement('input');
+        histSchalter.type = 'checkbox';
+        histSchalter.id = 'aiw-capp-historisch';
+        histSchalter.checked = zeigeHistorie;
+        histSchalter.setAttribute('data-hilfe-id',
+                                  'capacity_pflege.bedienung.historisch');
+        histSchalter.addEventListener('change', function () {
+            if (typeof opts.onHistorieUmschalten === 'function') {
+                opts.onHistorieUmschalten(histSchalter.checked);
+            }
+        });
+        var histLabel = document.createElement('label');
+        histLabel.setAttribute('for', 'aiw-capp-historisch');
+        histLabel.className = 'aiw-label';
+        histLabel.textContent = 'Auch historische Daten anzeigen';
+        histZeile.appendChild(histSchalter);
+        histZeile.appendChild(histLabel);
+        var gesamtHistorisch = ['availability', 'holidays'].reduce(
+            function (s3, k) { return s3 + (histZahlen[k] || 0); }, 0);
+        // DIE GRENZE STEHT IMMER DA, auch wenn nichts ausgeblendet ist. Sie
+        // ist die Antwort auf die Frage, die der Schalter aufwirft: ab wann
+        // gilt eine Zeile als historisch?
+        histZeile.appendChild(_el('span', 'aiw-hint',
+            (gesamtHistorisch
+                ? (zeigeHistorie
+                    ? (gesamtHistorisch + ' historische Zeile(n) sind '
+                       + 'eingeblendet.')
+                    : (gesamtHistorisch + ' historische Zeile(n) sind derzeit '
+                       + 'ausgeblendet.'))
+                : 'Es liegt nichts vor dem laufenden Monat.')
+            + (historischAb
+                ? (' Angezeigt wird ab dem ' + historischAb
+                   + '; abgelaufen heisst: Ende davor.')
+                : '')));
+        mainEl.appendChild(histZeile);
+
         // FELDMARKIERUNG: der Server nennt seit Build 560 das schuldige Feld.
         // Kennt er keines, wird auch keines markiert - ein geratenes rotes
         // Feld waere schlimmer als gar keines.
@@ -530,7 +606,8 @@
 
         var tables = [];
 
-        function bauen(sicht, box, rows, columns, einheit, eigene, entferntZahl) {
+        function bauen(sicht, box, rows, columns, einheit, eigene, entferntZahl,
+                       historischZahl) {
             // JE ABSCHNITT die eigene Zahl - eine Gesamtzahl im Kopf sagt
             // nicht, WO etwas fehlt. Der Hinweis entfaellt, sobald die Zeilen
             // eingeblendet sind (dann stehen sie ja da).
@@ -539,6 +616,18 @@
                 if (hinw) {
                     box.appendChild(_el('p', 'aiw-hint aiw-capp-ausgeblendet',
                                         hinw));
+                }
+            }
+            // Build 709: dasselbe fuer den Zeitfilter - und ausdruecklich als
+            // ZWEITE Zeile. Die beiden Gruende (stillgelegt / abgelaufen)
+            // sind verschieden, und wer eine Zeile sucht, muss wissen, WELCHER
+            // Schalter sie zurueckholt.
+            if (!zeigeHistorie) {
+                var hinwH = historischText(historischZahl, einheit,
+                                           historischAb);
+                if (hinwH) {
+                    box.appendChild(_el('p', 'aiw-hint aiw-capp-historisch',
+                                        hinwH));
                 }
             }
             if (!tk || typeof tk.tabelleAufbauen !== 'function') {
@@ -984,7 +1073,8 @@
                              { title: 'Stand', field: 'stand' });
         }
         bauen('capacity_availability', boxAv, availabilityRows(data),
-              spaltenAv, 'Abwesenheiten', [], entferntZahlen.availability);
+              spaltenAv, 'Abwesenheiten', [], entferntZahlen.availability,
+              histZahlen.availability);
 
         // ------------------------------------------------------ 3) Feiertage
         var boxHo = _abschnitt(mainEl, 'capacity_holiday.titel', 'Feiertage',
@@ -1037,7 +1127,8 @@
                              { title: 'Stand', field: 'stand' });
         }
         bauen('capacity_holiday', boxHo, holidayRows(data), spaltenHo,
-              'Feiertage', [], entferntZahlen.holidays);
+              'Feiertage', [], entferntZahlen.holidays,
+              histZahlen.holidays);
 
         // ------------------------------------------------------- 4) Gruende
         var boxRe = _abschnitt(mainEl, 'capacity_reason.titel',
@@ -1174,6 +1265,9 @@
         heuteIso: heuteIso,
         istEntfernt: istEntfernt,
         ausgeblendetText: ausgeblendetText,
+        // Build 709 (Vorgang 75f84fee): der Text zum Zeitfilter - reine
+        // Funktion, damit vitest ihn ohne DOM misst.
+        historischText: historischText,
         VORGABEN: VORGABEN,
         uebernahmeText: uebernahmeText,
         renderCapacityPflege: renderCapacityPflege

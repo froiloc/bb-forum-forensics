@@ -151,6 +151,8 @@ import secrets
 import sqlite3
 import time
 from dataclasses import dataclass, asdict
+# Build 709: der heutige Tag - fuer die Grenze 'ab dem laufenden Monat'.
+from datetime import date
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -245,6 +247,10 @@ from management.capacity.worktime_repo import WorktimeRepo
 from management.capacity.availability_repo import AvailabilityRepo
 from management.capacity.holiday_repo import HolidayRepo
 from management.capacity.reason_repo import ReasonRepo
+# Build 709 (Vorgang 75f84fee): die Regel, ab wann eine Zeile 'historisch'
+# ist. Eigenes Modul, weil sie ohne Datenbank und ohne den heutigen Tag
+# pruefbar sein muss - sonst waere sie nur an einem Tag im Monat zu messen.
+from management.capacity.zeitfilter import monatsbeginn, teile_historisch
 from management.workload.workload_repo import (
     WorkloadRepo,
     WorkloadSchemaError,
@@ -2481,6 +2487,24 @@ class ManagementApp:
         include_deleted = self._q1(query, "include_deleted") in (
             "1", "true", "ja", "yes")
 
+        # BUILD 709 (Vorgang 75f84fee) — HISTORISCHE ZEILEN.
+        # Abwesenheiten und Feiertage sammeln sich an; die Liste zeigte auch
+        # das, was laengst abgelaufen ist. Standardmaessig beginnt sie jetzt
+        # am Ersten des laufenden Monats.
+        #
+        # GEMESSEN WIRD AM ENDE, NICHT AM ANFANG: eine Abwesenheit, die im
+        # Vormonat begann und noch laeuft, gehoert in die Liste - sie
+        # bestimmt die Rechnung des laufenden Monats. Die Regel steht in
+        # management/capacity/zeitfilter.py, wo sie ohne Datenbank und ohne
+        # den heutigen Tag pruefbar ist.
+        #
+        # DIE ZAHL DER AUSGEBLENDETEN ZEILEN GEHT IMMER MIT (wie bei den
+        # entfernten, Build 562): eine Auslassung, von der die Oberflaeche
+        # nichts weiss, ist eine stille Auslassung.
+        include_historic = self._q1(query, "include_historic") in (
+            "1", "true", "ja", "yes")
+        historisch_ab = monatsbeginn(date.today())
+
         con = self._ro_con()
         try:
             wt, av, ho, re_ = self._capacity_repos(con)
@@ -2500,6 +2524,41 @@ class ManagementApp:
             availability, ent_av = _geteilt(alle_av)
             holidays, ent_ho = _geteilt(alle_ho)
             reasons, ent_re = _geteilt(alle_re)
+
+            # Build 709: der Zeitfilter greift NACH dem Entfernt-Filter - er
+            # ist eine Frage der Anzeige, nicht der Gueltigkeit, und die
+            # gezaehlten Zeilen sollen die sein, die der Benutzer sonst
+            # SAEHE.
+            #
+            # ER GILT FUER ZWEI DER VIER BESTAENDE, und das ist keine
+            # Auslassung, sondern ergibt sich aus den Daten:
+            #   * ABWESENHEITEN/GARANTIEN (period_end) und FEIERTAGE (day)
+            #     tragen ein Datum - hier greift er.
+            #   * DER GRUENDEKATALOG hat ueberhaupt keinen Zeitbezug
+            #     (availability_reason: code, label, sort). Ein Grund ist
+            #     kein Ereignis, sondern eine Bezeichnung; ihn nach seinem
+            #     Anlagedatum auszublenden hiesse, den Schluessel
+            #     wegzunehmen, mit dem bestehende Abwesenheitszeilen lesbar
+            #     sind.
+            #   * DIE REGEL-ARBEITSZEITEN sind bewusst ausgenommen: sie sind
+            #     append-only und ihre Liste IST die Belegkette. Die derzeit
+            #     gueltige Regel traegt in aller Regel einen Stichtag aus der
+            #     Vergangenheit und ein leeres Ende - sie bliebe zwar
+            #     sichtbar, aber ihre Vorgaenger bilden den Nachweis, seit
+            #     wann was galt. Der Vorgang nennt sie auch nicht.
+            hist_av = hist_ho = 0
+            if not include_historic:
+                availability, hist_av = teile_historisch(
+                    availability, "period_end", historisch_ab)
+                holidays, hist_ho = teile_historisch(
+                    holidays, "day", historisch_ab)
+            else:
+                # Auch beim Einblenden wird gezaehlt: die Oberflaeche sagt
+                # dann, WIE VIELE der angezeigten Zeilen historisch sind.
+                _, hist_av = teile_historisch(
+                    availability, "period_end", historisch_ab)
+                _, hist_ho = teile_historisch(
+                    holidays, "day", historisch_ab)
 
             # NAMEN GEHOEREN DAZU (Nachtrag Build 559). Die Repos liefern
             # ausschliesslich person_id - fachlich richtig, denn sie kennen
@@ -2568,6 +2627,13 @@ class ManagementApp:
             # gezaehlten Zeilen zugleich die mitgelieferten.
             "entfernt": {"worktimes": ent_wt, "availability": ent_av,
                          "holidays": ent_ho, "reasons": ent_re},
+            # Build 709 (Vorgang 75f84fee): der Zeitfilter und seine Grenze.
+            # 'historisch_ab' geht mit, damit die Oberflaeche die Grenze
+            # NENNEN kann statt sie nachzurechnen - und damit im Protokoll
+            # steht, gegen welchen Tag gefiltert wurde.
+            "include_historic": include_historic,
+            "historisch_ab": historisch_ab,
+            "historisch": {"availability": hist_av, "holidays": hist_ho},
             # Build 701: Rechenschaft ueber die aus der PERSONENAUSWAHL
             # ausgeblendeten Ausgeschiedenen. Ihre bestehenden Regeln bleiben
             # in 'worktimes'/'availability' sichtbar und beschriftet.
