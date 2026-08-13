@@ -1,6 +1,0 @@
-de836211bba49a680c1f85f03e538d61  build.json
-3150e8f42cbf26199f5aa373a160222d  issue-tracker/eintraege_claude_Build711.json
-c28227022cc01a9817939b79eaa1e757  management/help/cli_katalog.py
-b3d85adfbc83c02ea8ddbf349280b50c  management/migrations/coordinator/m038_caseoverview_rbac.py
-cc357f5e702a842790de3873bb8b796b  management/rbac/rbac_admin.py
-53587ea376f7ef4b526ce486e65ce598  tests/test_rechtetrennung_falluebersicht.py
