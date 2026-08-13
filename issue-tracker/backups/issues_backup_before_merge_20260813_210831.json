@@ -10342,13 +10342,13 @@
       "description": "DER BEFUND: management/qs/qs_admin.py fuehrt in Zeile 54 einen Rueckfallwert '_VORGABE_DB = \"data/coordinator.db\"' - einen RELATIVEN Pfad. Das Werkzeug nutzt core/werkzeug_konfig.py nicht.\n\nWARUM DAS WIEGT: Der Pfad ist relativ zum aktuellen Verzeichnis. Wer den Befehl aus einem anderen Verzeichnis aufruft, prueft eine ANDERE Datenbank - oder eine, die es nicht gibt - und merkt es nicht. Bei einem Werkzeug, dessen Aufgabe die Qualitaetssicherung ist, ist das besonders unangenehm: ein 'alles in Ordnung' aus dem falschen Verzeichnis sieht aus wie ein Befund.\n\nES WIDERSPRICHT EINER REGEL, DIE DER BESTAND SONST DURCHHAELT. Die in Build 643/644 vereinheitlichte Aufloesung lautet 'Argument > paths.coordinator_db > Abbruch', und der CLI-Katalog begruendet den Abbruch bei 30 Werkzeugen woertlich mit demselben Satz: 'Das ist Absicht: ein erratener Pfad waere schlimmer als ein Abbruch.' qs_admin erraet genau diesen Pfad.\n\nDER KATALOG WEISS ES BEREITS: 'OHNE --db WIRD STILL ./data/coordinator.db ANGENOMMEN - relativ zum aktuellen Verzeichnis. Aus dem falschen Verzeichnis aufgerufen prueft man eine andere Datenbank, ohne es zu merken.' Auch hier beschreibt die Hilfe einen Mangel, statt dass er behoben waere - dasselbe Muster wie bei den Berichtswerkzeugen (Warnung seit Build 613), bei glossary_admin (bis Build 706) und bei export_admin (Merkposten seit Build 640, behoben in Build 708).",
       "expected_behavior": "qs_admin loest den Pfad ueber werkzeug_konfig.db_pfad auf: Argument '--db' > paths.coordinator_db > Abbruch mit Klartext. Der Rueckfallwert _VORGABE_DB entfaellt. Damit gilt fuer dieses Werkzeug dieselbe Regel wie fuer die uebrigen 30.",
       "actual_behavior": "Ohne '--db' wird 'data/coordinator.db' relativ zum aktuellen Verzeichnis angenommen. Der Lauf sagt nicht, welche Datei er tatsaechlich geoeffnet hat.",
-      "status": "resolved",
+      "status": "open",
       "priority": "high",
       "severity": "major",
-      "assigned_to": "Claude",
+      "assigned_to": "",
       "related_to": [],
-      "resolved_in_version": "0.8.715",
-      "target_version": "0.8.715",
+      "resolved_in_version": null,
+      "target_version": null,
       "environment": {
         "python_version": "3.14"
       },
@@ -10374,14 +10374,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Build712.json"
-        },
-        {
-          "timestamp": "2026-08-13T17:40:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "BEHOBEN IN BUILD 715.\n\n(1) DIE AENDERUNG. management/qs/qs_admin.py loest den Datenbankpfad jetzt ueber core/werkzeug_konfig.py auf - Argument '--db' > paths.coordinator_db > Abbruch mit Klartext, also dieselbe Regel wie bei den uebrigen dreissig Verwaltungswerkzeugen seit Build 643/644. Der Rueckfallwert _VORGABE_DB ist ERSATZLOS entfallen; es wird kein 'default' an db_pfad() uebergeben. Neu ist die Option '--config' (Vorgabe ./config.yaml ueber den Aufloeser).\n\n(2) '--config' LIEGT IM ELTERNPARSER MIT default=SUPPRESS, nicht im Hauptparser mit gewoehnlichem Vorgabewert. Grund ist derselbe wie bei '--db' in Build 541: ein Unterparser mit Vorgabewert ueberschreibt eine VOR dem Unterbefehl stehende Angabe. Beide Stellungen sind gemessen (QSD06).\n\n(3) WAS SICH FUER DIE BEDIENUNG NICHT AENDERT: die Ausgabe auf stdout ist Zeichen fuer Zeichen dieselbe, '--db' wirkt wie bisher und darf weiterhin vor oder hinter dem Unterbefehl stehen. Neu ist allein, was OHNE '--db' geschieht: vorher ein geratener relativer Pfad, jetzt der Blick in die config.yaml und andernfalls der Abbruch.\n\n(4) DIE FRAGE AUS 'actual_behavior' - der Lauf sagt nicht, welche Datei er geoeffnet hat - ist BEWUSST NICHT MITENTSCHIEDEN. Die Auskunft gibt es jetzt opt-in ueber AIW_KONFIG_HERKUNFT=1 auf stderr (QSD07 misst sie); ob sie zur Voreinstellung werden soll, ist die Abwaegung des Vorgangs e49e4928 und gehoert dorthin. Entscheidung Alex, 13.08.2026: so lassen.\n\n(5) DIE HILFE IST NACHGEZOGEN. Der CLI-Katalog fuehrte den Mangel seit Build 640 als Merkposten ('OHNE --db WIRD STILL ./data/coordinator.db ANGENOMMEN') - zweiundsiebzig Builds lang beschrieben statt behoben. Der Eintrag steht jetzt auf 'paths.coordinator_db' statt auf KONFIG_KEINE, die Warnung ist umgeschrieben, der zweite Grund fuer Exit 1 ist benannt, und zwei neue Beispiele sind GEFAHREN und belegt (_GEPRUEFT_715).\n\n(6) NEUE TESTS: tests/test_qs_admin_db_pfad.py, 9 Faelle (QSD01-QSD09). GEGENPROBE wirklich gefahren, nicht abgeschaetzt: mit qs_admin.py UND cli_katalog.py auf Stand 712 fallen 8 der 9. Der neunte (QSD05) haelt fest, was sich nicht aendern durfte - dass ein ausdrueckliches '--db' gewinnt - und taugt als Gegenprobe ausdruecklich nicht.\n\n(7) DER KERNFALL IST QSD04, und er ist so gebaut, dass er den GEMELDETEN Fall trifft: im Arbeitsverzeichnis liegt eine gueltige, lesbare ./data/coordinator.db, die NICHT gemeint ist, und die beiden Wegwerf-Bestaende unterscheiden sich in der Zahl ihrer Ziehungen. Welche Datei geoeffnet wurde, wird damit an der Ausgabe abgelesen und nicht behauptet.\n\n(8) REGRESSION: Python 3.14.0rc2 im Container, 3593 gruen, 10 rot / 9 Fehler - unveraendert gegenueber der VOR der Aenderung gemessenen Baubasis (3584 gruen, dieselben 10 rot / 9 Fehler; die 9 zusaetzlichen Gruenen sind die neue Suite). Die roten liegen in tests/test_assets_db.py und tests/test_sperrprobe_dreiwertig.py und sind umgebungsbedingt: das SQLite dieses Containers hat SQLITE_USE_URI nicht gesetzt, ATTACH mit einer URI scheitert deshalb. JavaScript 141 Dateien / 1975 Faelle gruen.\n\n(9) MIGRATIONSVORBEHALT (ab 01.07.2026): NICHT BERUEHRT. Kein Schema, keine Migration, kein Schreibzugriff - qs_admin oeffnet ausschliesslich mit mode=ro."
         }
       ]
     },
