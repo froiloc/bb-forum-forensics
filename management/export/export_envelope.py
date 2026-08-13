@@ -40,7 +40,14 @@
 #   auf bestehende Tests: der Regelfall ist der haeufige Fall, und ein Vermerk,
 #   der auch dann ueber sich selbst spricht, wenn nichts fehlt, stumpft ab.
 #
-# Version: v0.8.702 · Build: 702 · 2026-08-12
+# BUILD 708 (Vorgang 5001d293) — EIN FELD, DAS DER VERMERK NICHT ZEIGT:
+#   ExportContext bekommt 'chain_detail' (Klartext der Kettenpruefung). Es
+#   wird von erzeugungsvermerk_lines() NICHT gerendert - der Vermerk bleibt
+#   Zeichen fuer Zeichen der aus Build 469. Das Feld traegt die Auskunft fuer
+#   den AUFRUFER; 'export_admin' meldet damit eine gebrochene Kette samt
+#   Fundstelle, ohne sich die Pruefung selbst nachbauen zu muessen.
+#
+# Version: v0.8.708 · Build: 708 · 2026-08-12
 # =============================================================================
 
 from __future__ import annotations
@@ -81,6 +88,25 @@ class ExportContext:
       chain_ok        — Ergebnis von AuditLog.verify_chain (True/False/None).
       chain_tip_seq   — seq der letzten audit_log-Zeile zum Exportzeitpunkt.
       chain_tip_hash  — row_hash der letzten audit_log-Zeile.
+      chain_detail    — (Build 708, Vorgang 5001d293) der Klartext aus
+                        VerifyResult.detail: bei einer gebrochenen Kette die
+                        Fundstelle ('prev_hash-Bruch bei seq=41'), sonst
+                        'OK (n Eintraege)'.
+
+                        ER WIRD IM VERMERK NICHT GERENDERT, und das ist
+                        Absicht: der Vermerk ist Zeichen fuer Zeichen der aus
+                        Build 469, und eine Aenderung dort haette alle
+                        bestehenden Abgabedokumente von den kuenftigen
+                        unterscheidbar gemacht. Das Feld traegt die Auskunft
+                        fuer den AUFRUFER - 'export_admin' meldet damit eine
+                        gebrochene Kette samt Fundstelle auf der
+                        Fehlerausgabe, so wie vor der Umstellung auf den
+                        context_builder.
+
+                        DASS DER VERMERK DIE FUNDSTELLE NICHT NENNT, ist eine
+                        eigene Frage und hier nicht entschieden - er sagt
+                        'GEBROCHEN' und nennt die Kettenspitze, was fuer sich
+                        genommen eine vollstaendige Aussage ist.
       klassifikation  — Vertraulichkeitsvermerk (Default s. o.).
       anzeigename     — optionaler AD-Anzeigename, nur zur Anzeige neben dem
                         SAMAccountName (Beleg identity.py: display_name).
@@ -106,6 +132,7 @@ class ExportContext:
     chain_ok: Optional[bool] = None
     chain_tip_seq: Optional[int] = None
     chain_tip_hash: Optional[str] = None
+    chain_detail: Optional[str] = None
     klassifikation: str = DEFAULT_KLASSIFIKATION
     anzeigename: Optional[str] = None
     rahmen_befunde: Tuple[RahmenBefund, ...] = field(default_factory=tuple)

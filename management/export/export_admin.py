@@ -22,18 +22,24 @@
 #
 #   VOR PRODUKTIVEM LAUF: MD5 der eingesetzten Dateien bestaetigen (GR8).
 #
-# Version: v0.7.441 · Build: 441 · 2026-07-19
+# BUILD 708 (Vorgang 5001d293) — DIE SCHRITTE 4 UND 5 MACHT JETZT DER
+#   CONTEXT_BUILDER. Bis Build 706 hielt dieses Werkzeug eigene Kopien von
+#   _build_number, _verify_tip und _resolve_actor und baute den ExportContext
+#   von Hand. Es war das einzige, das den in Build 442 eigens dafuer
+#   geschaffenen context_builder nicht benutzte - und deshalb auch das
+#   einzige, an dem die Rahmenbefunde aus Build 702 vorbeigingen. Naeheres bei
+#   _do_case_status_xlsx().
+#
+# Version: v0.8.708 · Build: 708 · 2026-08-12
 # =============================================================================
 
 import argparse
 import dataclasses
-import json
 import sqlite3
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from management.audit.audit_log import AuditLog
 from management.dashboard.dashboard_repo import (
     DashboardRepo,
     DashboardSchemaError,
@@ -44,7 +50,11 @@ from management.export.excel_case_status import (
     build_case_status_xlsx,
     ExcelUnavailable,
 )
-from management.export.export_envelope import ExportContext, DEFAULT_KLASSIFIKATION
+from management.export.export_envelope import DEFAULT_KLASSIFIKATION
+# Build 708 (Vorgang 5001d293): der gemeinsame Rahmen und seine Meldung -
+# dieselbe Quelle wie bei allen uebrigen Export-Werkzeugen.
+from management.export.context_builder import build_export_context
+from management.export.rahmen_meldung import melde_rahmen_befunde
 from management.help import cli_epilog  # noqa: E402
 # Build 644: die Vorrangregel Argument > config.yaml > Vorgabewert
 # steht seit Build 643 an EINER Stelle (Ticket 15429c75).
@@ -90,51 +100,39 @@ def _resolve_db_path(args, cfg) -> str:
         name="coordinator_db", r=werkzeug_konfig.resolver_aus_loader(cfg))
 
 
-def _build_number() -> int:
-    """Buildnummer aus der repo-eigenen build.json (GR4); Fallback 0."""
-    try:
-        p = Path(__file__).resolve().parents[2] / "build.json"
-        return int(json.loads(p.read_text(encoding="utf-8"))["build"])
-    except Exception:  # pragma: no cover - Randfall
-        return 0
-
-
-def _verify_tip(con):
-    """
-    (chain_ok, tip_seq, tip_hash, detail) aus dem audit_log.
-    chain_ok: True=intakt, False=gebrochen, None=nicht pruefbar (Tabelle fehlt).
-    In PROD existiert audit_log immer (M001); fehlt sie dennoch, wird der Export
-    NICHT abgebrochen, sondern ehrlich als 'nicht geprueft' vermerkt (GR1).
-    """
-    try:
-        audit = AuditLog(con)
-        vr = audit.verify_chain()
-        tip_hash, tip_seq = audit.tip()
-        return bool(vr.ok), tip_seq, tip_hash, vr.detail
-    except sqlite3.OperationalError as exc:
-        return None, None, None, "audit_log nicht pruefbar: %s" % exc
-
-
-def _resolve_actor(db_path, actor):
-    """
-    (system_username, display_name) der ausfuehrenden Person. --actor
-    uebersteuert; sonst OS-Identitaet via IdentityResolver. Scheitert die
-    Aufloesung, wird der Rohwert/--actor bzw. 'unbekannt' verwendet (der
-    Export bleibt moeglich; der Vermerk bleibt ehrlich).
-    """
-    try:
-        from management.server.identity import IdentityResolver
-        resolver = IdentityResolver(db_path)
-        person = resolver.resolve(system_username=actor)
-        return person.get("system_username") or (actor or "unbekannt"), \
-            person.get("display_name")
-    except Exception as exc:  # pragma: no cover - Identitaets-Randfall
-        print("[export_admin] Identitaet nicht aufloesbar (%s) — "
-              "Erzeugungsvermerk nutzt Rohwert." % exc, file=sys.stderr)
-        return (actor or "unbekannt"), None
-
-
 def _do_case_status_xlsx(args) -> int:
+    """
+    BUILD 708 (Vorgang 5001d293) — DIE DREI EIGENEN KOPIEN SIND ENTFALLEN.
+
+    Bis Build 706 hielt dieses Werkzeug eigene Fassungen von _build_number,
+    _verify_tip und _resolve_actor und setzte den ExportContext von Hand
+    zusammen. Es war damit das EINZIGE, das den context_builder nicht
+    benutzte - und deshalb auch das einzige, an dem die Rahmenbefunde aus
+    Build 702 vorbeigingen: sein _build_number gab bei unlesbarer build.json
+    still 0 zurueck, und die Fallstatus-XLSX trug dann 'Werkzeug-Build: 0'
+    ohne ein Wort. Genau der Zustand, den ff7e80ab fuer die
+    Berichtswerkzeuge beanstandet hat.
+
+    DREI UNTERSCHIEDE ZUM ALTEN VERHALTEN, jeder einzeln bedacht:
+
+    (1) DIE WARNUNG ZUR GEBROCHENEN KETTE BLEIBT - sie war der Grund, hier
+        nicht blind umzustellen. Der context_builder erzeugt fuer
+        chain_ok=False bewusst KEINEN Rahmenbefund (eine gebrochene Kette ist
+        eine Aussage ueber den BESTAND, nicht ueber den Vermerk; Build 702,
+        note (6)). Ein blosser Austausch haette diese Warnung also lautlos
+        entfernt. Sie steht deshalb weiterhin hier, und der Klartext dazu
+        kommt seit Build 708 als ctx.chain_detail mit.
+
+    (2) 'KETTE NICHT PRUEFBAR' WANDERT VOM HINWEIS ZUR WARNUNG. Dieser Fall
+        ist jetzt ein Rahmenbefund und wird wie jeder andere gemeldet. Der
+        Wortlaut aendert sich, die Auskunft nicht - sie wird eher deutlicher.
+
+    (3) DAS WERKZEUG SCHEITERT NICHT MEHR AN DER KETTENPRUEFUNG. Die alte
+        Kopie fing NUR sqlite3.OperationalError; ein Attribut- oder
+        Importfehler aus AuditLog schlug durch und beendete den Export. Der
+        context_builder faengt alles (RF06). Ein Export soll nicht am Rahmen
+        scheitern.
+    """
     cfg = _load_config(args)
     db_path = _resolve_db_path(args, cfg)
 
@@ -145,42 +143,42 @@ def _do_case_status_xlsx(args) -> int:
         except Exception:  # pragma: no cover
             thresholds = DEFAULT_AMPEL_THRESHOLDS
 
+    generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
     con = sqlite3.connect("file:%s?mode=ro" % db_path, uri=True)
     con.row_factory = sqlite3.Row
     try:
         repo = DashboardRepo(con)
         overviews = repo.list_case_overview(thresholds=thresholds)
         rows = [dataclasses.asdict(o) for o in overviews]
-        chain_ok, tip_seq, tip_hash, detail = _verify_tip(con)
+        # Der Rahmen wird JETZT gebildet, nicht mehr nach dem Schliessen:
+        # build_export_context braucht die offene Verbindung fuer die
+        # Kettenspitze. Es wirft nie, kann also innerhalb dieses try stehen,
+        # ohne den Schema-Zweig darunter zu stoeren.
+        context = build_export_context(
+            con=con, db_path=db_path,
+            behoerde=args.behoerde or _DEFAULT_BEHOERDE,
+            aktenzeichen=args.aktenzeichen or "Alle Faelle",
+            actor=args.actor,
+            klassifikation=args.klassifikation or DEFAULT_KLASSIFIKATION,
+            now_utc=generated)
     except DashboardSchemaError as exc:
         raise SystemExit("[export_admin] Schema-Fehler: %s" % exc)
     finally:
         con.close()
 
-    if chain_ok is False:
+    # Zuerst die Aussage ueber den BESTAND (siehe (1) oben), danach die ueber
+    # den VERMERK. Die Reihenfolge ist die des bisherigen Werkzeugs.
+    if context.chain_ok is False:
         print("[export_admin] WARNUNG: audit_log-Kette gebrochen (%s) — "
-              "Export erfolgt, Erzeugungsvermerk weist es aus." % detail,
-              file=sys.stderr)
-    elif chain_ok is None:
-        print("[export_admin] HINWEIS: audit_log-Kette nicht pruefbar (%s) — "
-              "Erzeugungsvermerk vermerkt 'nicht geprueft'." % detail,
+              "Export erfolgt, Erzeugungsvermerk weist es aus."
+              % (context.chain_detail or "ohne naehere Angabe"),
               file=sys.stderr)
 
-    actor, display = _resolve_actor(db_path, args.actor)
-    generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-
-    context = ExportContext(
-        behoerde=args.behoerde or _DEFAULT_BEHOERDE,
-        aktenzeichen=args.aktenzeichen or "Alle Faelle",
-        ersteller=actor,
-        build_number=_build_number(),
-        generated_at=generated,
-        chain_ok=chain_ok,
-        chain_tip_seq=tip_seq,
-        chain_tip_hash=tip_hash,
-        klassifikation=args.klassifikation or DEFAULT_KLASSIFIKATION,
-        anzeigename=display,
-    )
+    # Vor dem Schreiben der Datei — faellt das Schreiben aus (fehlendes
+    # openpyxl, Pfad, Platte), ist die Auskunft ueber den Rahmen bereits
+    # heraus.
+    melde_rahmen_befunde("[export_admin]", context)
 
     try:
         data = build_case_status_xlsx(
