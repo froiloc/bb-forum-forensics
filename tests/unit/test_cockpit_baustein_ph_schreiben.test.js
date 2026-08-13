@@ -206,12 +206,35 @@ describe("PS07 ersetzeInBlock — ueber ALLE Textstellen", () => {
     const liste = api.ersetzeInBlock(
       { items: ["{{m:x}}", { content: "{{m:x}}", items: ["{{m:x}}"] }] },
       "m", "x", neu, _pc(w));
-    // Die VERSCHACHTELTE Ebene faellt mit: mapBlockTexts geht nur eine Ebene
-    // tief in items[].content - das ist die Vorschrift des Bestandes, und
-    // dieser Test schreibt sie fest, damit eine Aenderung dort auffaellt.
-    expect(liste.ersetzt).toBe(2);
+    // MITGEZOGEN IN BUILD 710 - und dieser Fall hat genau getan, wofuer
+    // er geschrieben wurde.
+    //
+    // Bis Build 710 stand hier 'toBe(2)' mit der Begruendung, die
+    // verschachtelte Ebene falle mit, weil mapBlockTexts nur eine Ebene tief
+    // gehe: "das ist die Vorschrift des Bestandes, und dieser Test schreibt
+    // sie fest, damit eine Aenderung dort auffaellt." Sie ist aufgefallen.
+    //
+    // Die Vorschrift des Bestandes war ein FEHLER, kein Entwurf: derselbe
+    // Waechter, der hier die Zahl festhielt, hat verdeckt, dass ein
+    // {{m:...}} in einem verschachtelten Listeneintrag dem Ermittler nie
+    // zum Ausfuellen angeboten wurde (placeholder_wizard.js:241,636) und
+    // serverseitig nie geprueft wurde (forensic_api/report.py:2063). Seit
+    // Build 710 geht mapBlockTexts rekursiv - und damit greift auch das
+    // Zurueckschreiben aus der Platzhalter-Tabelle bis in die Verschachtelung.
+    expect(liste.ersetzt).toBe(3);
     expect(liste.daten.items[0]).toBe(neu);
     expect(liste.daten.items[1].content).toBe(neu);
+    expect(liste.daten.items[1].items[0]).toBe(neu);
+
+    // Build 710: die Quellenangabe eines Zitats ist ebenfalls eine
+    // Textstelle. html_renderer.py:127-151 rendert sie als <cite> in den
+    // Vermerk; seit Build 704 ueberlebt sie den Komfortmodus.
+    const zitat = api.ersetzeInBlock(
+      { text: "Zitat {{m:x}}", caption: "Quelle {{m:x}}" },
+      "m", "x", neu, _pc(w));
+    expect(zitat.ersetzt).toBe(2);
+    expect(zitat.daten.text).toBe("Zitat " + neu);
+    expect(zitat.daten.caption).toBe("Quelle " + neu);
 
     const tabelle = api.ersetzeInBlock(
       { content: [["{{m:x}}", "frei"], ["nichts", "{{m:x|alt}}"]] },

@@ -564,8 +564,32 @@
         if (!_state.fields) { return; }
         var f = _state.fields;
         var text = f.body ? f.body.value : '';
+        // Build 710 (Vorgang 5e08b3d1): DIE VORSCHAU BEKOMMT DIE QUELLE.
+        //
+        // Bis hierher stand hier '{ body: text }' - also nur der
+        // Klartextspiegel. blockAus() in cockpit_baustein_vorschau.js kann
+        // zweierlei (Blockdaten unveraendert ODER Rueckfall auf body), aber
+        // der Zweig fuer die Blockdaten wurde von diesem einzigen Aufrufer
+        // NIE ausgeloest. Die Vorschau zeigte deshalb IMMER einen Absatz -
+        // eine Tabelle als Fliesstext mit Tabulatoren, eine Aufzaehlung als
+        // Absatz mit Zeilenumbruechen. Sie zeigte, welchen TEXT der Baustein
+        // enthaelt, nicht WAS er ist.
+        //
+        // DIESELBE BEWEGUNG WIE BEI DER PLATZHALTER-TABELLE in Build 683,
+        // ein paar Zeilen weiter unten, und aus demselben Grund: die
+        // abgeleitete Fassung ist nicht die Quelle.
+        //
+        // DER SPIEGEL WIRD MITGEGEBEN, NICHT ERSETZT. blockAus faellt auf
+        // ihn zurueck, wenn keine Blockdaten vorliegen - und _blockstandAus()
+        // liefert fuer eine Bestandszeile aus der Zeit vor Build 655
+        // ohnehin { text: body }. Beide Wege bleiben damit heil.
         if (_state.vorschauAn && _state.vorschau) {
-            _state.vorschau.zeige({ body: text });
+            var vstand = _state.blockStand || { type: 'paragraph', data: {} };
+            _state.vorschau.zeige({
+                block_type: vstand.type,
+                block_data: vstand.data,
+                body: text
+            });
         }
         if (_state.platzhalter) {
             // BUILD 683 (Vorgang 5a7d4e21): DIE TABELLE LIEST DIE QUELLE.

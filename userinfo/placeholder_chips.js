@@ -390,13 +390,76 @@ window.PlaceholderChips.hydrateChips   = hydrateChips;
  *
  * Beruecksichtigte Textstellen:
  *   .text            paragraph / header / quote
- *   .items[]         list (Strings ODER {content: '...'} bei NestedList)
+ *   .caption         quote (Quellenangabe) — ab Build 710
+ *   .items[]         list (Strings ODER {content: '...'} bei NestedList),
+ *                    REKURSIV ueber item.items[] — ab Build 710
  *   .content[][]     table (2D-Array von Zellen)
+ *
+ * BUILD 710 — ZWEI TEXTSTELLEN FEHLTEN. Gemessen am 12.08.2026:
+ *
+ *   Liste, VERSCHACHTELTER Eintrag ..... von collectBlockTexts nicht gesehen,
+ *                                        von hydrateBlockData nicht hydriert
+ *   Zitat, QUELLENANGABE (caption) ..... dasselbe
+ *
+ * Beides sind belegte Textstellen: klartextAus() in
+ * cockpit_baustein_eingabe.js geht rekursiv in Unterlisten und liest
+ * 'caption'; editor/html_renderer.py:127-151 rendert 'caption' als <cite>
+ * in den Vermerk.
+ *
+ * WAS DAS GEKOSTET HAT: Diese Funktion traegt ueber
+ * extractFieldsFromBlockData() den Ausfuell-Assistenten der Ermittler
+ * (placeholder_wizard.js:241,636). Ein {{m:...}} an einer der beiden
+ * Stellen wurde dem Ermittler NIE zum Ausfuellen angeboten - der Vermerk
+ * ging mit rohem Vorlagentext hinaus. Ueber collectBlockTexts traegt sie
+ * ausserdem die Platzhalter-Tabelle der Bausteinsicht (Build 683); die
+ * beiden Stellen fehlten dort ebenfalls.
+ *
+ * DIE ENTSPRECHUNG AUF DEM SERVER (core/placeholder_syntax.py::iter_texts)
+ * IST WORTGLEICH MITGEZOGEN. Beide Seiten MUESSEN dieselben Textstellen
+ * sehen - laufen sie auseinander, prueft der Server Felder, die der Client
+ * nie angeboten hat, oder umgekehrt.
+ *
+ * SYMMETRIE VON hydrate UND dehydrate: Beide gehen durch diese eine
+ * Funktion. Sie erfassen damit weiterhin GENAU DIESELBEN Stellen - haette
+ * nur eine von beiden die neuen Stellen bekommen, bliebe beim Speichern
+ * Chip-HTML in einem verschachtelten Eintrag stehen.
  *
  * @param {Object}   data  block_data (Objekt, nicht JSON-String)
  * @param {Function} fn    (text: string) => string
  * @returns {Object}       neue block_data
  */
+/**
+ * _mapListItems: die Eintraege einer (moeglicherweise verschachtelten)
+ * Liste. Liefert eine NEUE Liste; das Original bleibt unberuehrt.
+ *
+ * TIEFENGRENZE: Editor.js schachtelt in der Bedienung nicht beliebig tief,
+ * aber block_data kommt aus einer Datenbank und ist damit nicht
+ * vertrauenswuerdig. Eine im Kreis zeigende Struktur wuerde diese Funktion
+ * sonst nicht beenden - in einem Pfad, der beim Rendern des Editors laeuft.
+ * Die Grenze ist grosszuegig und wird in der Praxis nie erreicht. Sie ist
+ * ZEICHENGLEICH zu core/placeholder_syntax.py::_iter_list_items.
+ *
+ * @param {Array}    items
+ * @param {Function} fn
+ * @param {number}   tiefe
+ * @returns {Array}  neue Eintragsliste
+ */
+function _mapListItems(items, fn, tiefe) {
+    if (!Array.isArray(items) || tiefe > 32) return items;
+    return items.map(item => {
+        if (typeof item === 'string') return fn(item);
+        if (item && typeof item === 'object') {
+            const neu = { ...item };
+            if (typeof neu.content === 'string') neu.content = fn(neu.content);
+            if (Array.isArray(neu.items)) {
+                neu.items = _mapListItems(neu.items, fn, tiefe + 1);
+            }
+            return neu;
+        }
+        return item;
+    });
+}
+
 function mapBlockTexts(data, fn) {
     if (!data || typeof data !== 'object' || typeof fn !== 'function') return data;
 
@@ -407,15 +470,15 @@ function mapBlockTexts(data, fn) {
         out.text = fn(out.text);
     }
 
-    // list — NestedList liefert je nach Version Strings oder {content}
+    // quote: die Quellenangabe (Build 710)
+    if (typeof out.caption === 'string') {
+        out.caption = fn(out.caption);
+    }
+
+    // list — NestedList liefert je nach Version Strings oder {content},
+    // und schachtelt ueber item.items[].
     if (Array.isArray(out.items)) {
-        out.items = out.items.map(item => {
-            if (typeof item === 'string') return fn(item);
-            if (item && typeof item === 'object' && typeof item.content === 'string') {
-                return { ...item, content: fn(item.content) };
-            }
-            return item;
-        });
+        out.items = _mapListItems(out.items, fn, 0);
     }
 
     // table

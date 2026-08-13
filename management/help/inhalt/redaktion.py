@@ -571,6 +571,12 @@ MODULES = Sichthilfe(
                 "Die Platzhalterzählung ist der eigentliche Prüfwert: Ein "
                 "vertippter Platzhaltername fällt hier auf — im fertigen "
                 "Vermerk fiele er als leere Stelle auf.",
+                "SEIT BUILD 710 ZEIGT SIE DIE BLOCKART. Bis dahin erschien "
+                "jeder Baustein als Absatz — eine Tabelle als Fließtext mit "
+                "Tabulatoren, eine Aufzählung als Absatz mit Zeilenumbrüchen. "
+                "Sie zeigte, welchen TEXT ein Baustein enthält, nicht WAS er "
+                "ist. Eine Tabelle erscheint jetzt als Tabelle, eine "
+                "Aufzählung als Aufzählung.",
             ),
         ),
         Abschnitt(
@@ -645,6 +651,16 @@ MODULES = Sichthilfe(
                 "Tabelle, und steht derselbe Name in mehreren Zellen, sind "
                 "das gemeinsam mehrere Vorkommen — eine Änderung trifft sie "
                 "alle.",
+                "SEIT BUILD 710 IST DIE ZÄHLUNG VOLLSTÄNDIG. Zwei "
+                "Textstellen wurden bis dahin übergangen: Einträge in einer "
+                "UNTERGEORDNETEN Aufzählungsebene und die QUELLENANGABE eines "
+                "Zitats. Ein Platzhalter dort erschien nicht in dieser "
+                "Tabelle — und wurde der schreibenden Person beim Verfassen "
+                "des Vermerks auch nicht zum Ausfüllen angeboten. Er stand "
+                "dann als Vorlagentext im fertigen Vermerk. Bei einem "
+                "bestehenden Baustein kann die Zahl in dieser Tabelle deshalb "
+                "jetzt höher sein als vorher; der Baustein hat sich nicht "
+                "geändert, nur die Zählung ist vollständig geworden.",
                 "VIER SPALTEN LASSEN SICH ÄNDERN: Art, Vorgabe, "
                 "Beschreibung und Prüfmuster. Was dort eingetragen wird, "
                 "wirkt beim VERLASSEN des Feldes auf den Bausteininhalt "
