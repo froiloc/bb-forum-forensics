@@ -8304,20 +8304,40 @@ class ManagementApp:
         Pfad der search_index.db.
 
         Sie liegt NEBEN den Beweismitteln, nicht darin — ein Hilfsmittel, das
-        jederzeit geloescht werden darf. Aus der Konfiguration lesbar
-        (paths.search_index_db); ohne Eintrag der Standard neben
-        coordinator.db, damit die Anlage auch ohne Konfigurationsaenderung
-        laeuft. Der Rueckfall wird protokolliert (Grundregel 1).
+        jederzeit geloescht werden darf.
+
+        BUILD 720 (Ticket 5a7e93b1): DIE AUFLOESUNG STEHT NICHT MEHR HIER.
+        Sie kommt aus management/search/index_ort.py und ist damit dieselbe
+        wie im Werkzeug index_cli. Bis Build 718 hatte derselbe Index ZWEI
+        Vorgabewerte: hier den gerechneten Ort neben der coordinator.db, dort
+        ein Literal - und nur diese Stelle las ueberhaupt
+        'paths.search_index_db'. Wer den Index verlegte, verlegte ihn nur
+        fuer den Server.
+
+        DER RUECKFALL 'NEBEN DER COORDINATOR.DB' IST DAMIT ENTFALLEN. Er
+        bleibt aber als ALTER Ort bekannt: liegt dort noch eine Datei und am
+        neuen Ort keine, wird das beim Start EINMAL gemeldet (siehe
+        _search_index_umzug_melden). Ein umgezogener Index und ein leerer
+        Index duerfen nicht gleich aussehen.
         """
-        try:
-            from core.config_loader import ConfigLoader
-            wert = ConfigLoader().get("paths.search_index_db")
-            if wert:
-                return str(wert)
-        except Exception as exc:  # pragma: no cover — Konfig-Ausfall
-            logger.warning("search_index_db nicht aus config.yaml lesbar "
-                           "(%s) — Standard neben coordinator.db.", exc)
-        return str(Path(self._db_path).parent / "search_index.db")
+        from management.search.index_ort import IndexOrt
+        ort = IndexOrt.bestimmen(coordinator_db=self._db_path)
+        self._search_index_umzug_melden(ort)
+        return ort.pfad
+
+    #: Merker, damit die Umzugsmeldung EINMAL erscheint und nicht bei jeder
+    #: Suchanfrage - eine Warnung, die in jeder Zeile steht, wird nicht
+    #: gelesen (dieselbe Ueberlegung wie beim Rauschfilter in bundle_bauen).
+    _search_index_umzug_gemeldet = False
+
+    def _search_index_umzug_melden(self, ort) -> None:
+        """Meldet einen moeglichen Umzug des Suchindex genau einmal."""
+        if ManagementApp._search_index_umzug_gemeldet:
+            return
+        meldung = ort.umzugsmeldung()
+        if meldung:
+            ManagementApp._search_index_umzug_gemeldet = True
+            logger.warning("%s", meldung)
 
     def _fulltext_service(self, con):
         """

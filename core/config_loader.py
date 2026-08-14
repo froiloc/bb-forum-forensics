@@ -43,8 +43,15 @@
 #     Der geladene Konfigurationsinhalt selbst ist UNVERÄNDERT; get() und
 #     as_dict() verhalten sich exakt wie zuvor.
 #
+# Änderungen Build 720 (Ticket 5a7e93b1 — Pfadhoheit):
+#   - paths.search_index_db in die Vorgaben aufgenommen. Für denselben Index
+#     gab es bis Build 718 ZWEI Vorgabewerte an zwei Orten; eine Verlegung
+#     über config.yaml wirkte deshalb nur für den Verwaltungsserver.
+#   - NEU coded_default(): der EINE Vorgabewert zu einem Schlüssel, damit
+#     aufrufende Werkzeuge keinen eigenen mehr führen müssen.
+#
 # Abhängigkeiten: yaml (PyYAML), os, pathlib — ausschließlich Stdlib + PyYAML
-# Version: v0.8.638 · Build: 638 · 2026-08-01
+# Version: v0.8.720 · Build: 720 · 2026-08-14
 # =============================================================================
 
 import os
@@ -77,6 +84,36 @@ class ConfigValueError(ConfigLoaderError, ValueError):
     """Ungültiger Konfigurationswert (ist gleichzeitig ValueError)."""
 
 
+def coded_default(schluessel: str, fallback: Any = None) -> Any:
+    """
+    Der EINE Vorgabewert zu einem Konfigurationsschlüssel (Build 720,
+    Ticket 5a7e93b1).
+
+    WOZU ES DIESE FUNKTION GIBT: Bis Build 718 trugen einzelne Werkzeuge
+    ihren eigenen Vorgabewert als Literal — 'STANDARD_INDEX_PFAD' in
+    index_cli.py, 'default="./data/evidence/"' an zwei Aufrufstellen. Solange
+    beide Zahlenwerte übereinstimmten, fiel das nicht auf; sobald einer
+    geändert wurde, hatte dieselbe Datenbank zwei Vorgabeorte, und eine
+    Verlegung über config.yaml wirkte nur halb (Beleg: der Befund in
+    index_cli.py, dort seit Build 641 vermerkt).
+
+    Aufrufer übergeben deshalb 'coded_default("paths.evidence_db_dir")' statt
+    eines Literals. Der Wert wird aus _DEFAULTS gelesen — der Datei, die das
+    Ticket ausdrücklich als alleinige Heimat der Vorgabewerte benennt.
+
+    'fallback' ist NICHT als Bequemlichkeit gedacht, sondern für den Fall,
+    dass ein Schlüssel bewusst KEINEN Vorgabewert hat (paths.migration_db).
+    Ohne Angabe kommt None zurück — und 'None' heißt hier 'nicht gesetzt',
+    nicht 'leer' (dieselbe Festlegung wie in SettingResolver).
+    """
+    knoten: Any = _DEFAULTS
+    for teil in schluessel.split("."):
+        if not isinstance(knoten, dict) or teil not in knoten:
+            return fallback
+        knoten = knoten[teil]
+    return knoten
+
+
 # ---------------------------------------------------------------------------
 # Coded Defaults
 # ---------------------------------------------------------------------------
@@ -98,6 +135,18 @@ _DEFAULTS: dict[str, Any] = {
         # Zentrale Siegel-DB freigegebener Berichte (Build 377). Nur der
         # auditierte Freigabepfad schreibt hier; Lesen (verify) ist frei.
         "approved_reports_db": "./data/approved_reports.db",
+        # Volltext-Suchindex (Build 720, Ticket 5a7e93b1). Er liegt NEBEN den
+        # Beweismitteln, nicht darin - ein Hilfsmittel, das jederzeit
+        # geloescht werden darf.
+        #
+        # WARUM ER HIER NEU STEHT: Bis Build 718 gab es fuer denselben Index
+        # ZWEI Vorgabewerte an zwei Orten - 'STANDARD_INDEX_PFAD' in
+        # management/search/index_cli.py und im Verwaltungsserver den
+        # gerechneten Ort neben der coordinator.db. Wer den Index per
+        # config.yaml verlegte, verlegte ihn nur fuer den Server; das
+        # Werkzeug schrieb weiter an die alte Stelle. Ab hier gilt: EIN
+        # Vorgabewert, und er steht in dieser Datei.
+        "search_index_db": "./data/search_index.db",
     },
     # Backup (Welle 0, Build 352 ff.). Ziel + Rahmenbedingungen fuer die
     # DB-Sicherung per 'VACUUM INTO'. Siehe kommentierte config.yaml.

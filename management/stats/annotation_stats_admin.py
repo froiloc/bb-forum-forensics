@@ -12,7 +12,9 @@
 #          [--coordinator-db PATH] [--evidence-dir DIR] [--config ./config.yaml]
 #          [--scope alle|eigene] [--person-id N] [--json]
 #
-# Version: v0.8.718 · Build: 718 · 2026-08-13
+# Version: v0.8.720 · Build: 720 · 2026-08-14
+#   Build 720 (Ticket 5a7e93b1): '--evidence-dir' holt seinen Vorgabewert
+#   aus core/config_loader.py statt aus einem eigenen Literal.
 # =============================================================================
 
 import argparse
@@ -25,7 +27,9 @@ from management.stats.annotation_stats_repo import AnnotationStatsRepo
 from management.help import cli_epilog  # noqa: E402
 # Build 644: die Vorrangregel Argument > config.yaml > Vorgabewert
 # steht seit Build 643 an EINER Stelle (Ticket 15429c75).
-from core import werkzeug_konfig  # noqa: E402
+from core import werkzeug_konfig
+# Build 720 (Ticket 5a7e93b1): EIN Vorgabewert je Pfad.
+from core.config_loader import coded_default  # noqa: E402
 
 
 def _load_config(args):
@@ -87,7 +91,11 @@ def _resolve_evidence_dir(args, cfg) -> str:
     return werkzeug_konfig.wert(
         "annotation_stats_admin", args, arg_attribut="evidence_dir",
         arg_name="--evidence-dir", config_schluessel="paths.evidence_db_dir",
-        default="./data/evidence/", name="evidence_dir", wandler=str,
+        # Build 720 (Ticket 5a7e93b1): KEIN Literal mehr - der eine
+        # Vorgabewert steht in core/config_loader.py. Zwei Literale fuer
+        # denselben Pfad sind solange harmlos, bis eines geaendert wird.
+        default=coded_default("paths.evidence_db_dir"),
+        name="evidence_dir", wandler=str,
         r=werkzeug_konfig.resolver_aus_loader(cfg))
 
 def main(argv=None) -> int:

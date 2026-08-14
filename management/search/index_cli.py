@@ -49,7 +49,11 @@
 #   nicht lesen - dann bleibt dieser Fall unvollstaendig und der Lauf endet
 #   mit 2. Das ist kein Sicherheits-, sondern ein Vollstaendigkeitsproblem.
 #
-# Version: v0.8.560 · Build: 560 · 2026-07-26
+# Version: v0.8.720 · Build: 720 · 2026-08-14
+#   Build 720 (Ticket 5a7e93b1): STANDARD_INDEX_PFAD entfallen. Der Ort des
+#   Suchindex kommt jetzt fuer Werkzeug UND Server aus derselben Aufloesung
+#   (management/search/index_ort.py, Schluessel 'paths.search_index_db').
+#   Ein moeglicher Umzug wird gemeldet; verschoben wird NICHTS.
 # =============================================================================
 
 import argparse
@@ -72,12 +76,22 @@ from management.search.index_status import SearchIndexStatus  # noqa: E402
 from management.help import cli_epilog  # noqa: E402
 # Build 646: Vorrangregel an EINER Stelle (Ticket 15429c75).
 from core import werkzeug_konfig  # noqa: E402
+# Build 720 (Ticket 5a7e93b1): EIN Vorgabewert je Pfad.
+from core.config_loader import coded_default  # noqa: E402
+from management.search.index_ort import IndexOrt  # noqa: E402
 
 logger = logging.getLogger("management.search.index_cli")
 
-#: Standardablage des Index. NEBEN den Beweismitteldatenbanken, nicht darin —
-#  search_index.db ist ein Hilfsmittel und darf jederzeit geloescht werden.
-STANDARD_INDEX_PFAD = "./data/search_index.db"
+# BUILD 720 (Ticket 5a7e93b1): STANDARD_INDEX_PFAD IST ENTFALLEN.
+#
+# Hier stand bis Build 718 ein eigener Vorgabewert fuer den Suchindex,
+# waehrend der Verwaltungsserver fuer DENSELBEN Index 'paths.search_index_db'
+# las. Der Befund war seit Build 641 im Kopf dieser Datei vermerkt: "Wer den
+# Index per config.yaml verlegt, verlegt ihn also nur fuer den Server."
+#
+# Der Ort kommt jetzt aus management/search/index_ort.py - EINE Aufloesung
+# fuer Werkzeug und Server, mit dem einen Vorgabewert aus
+# core/config_loader.py (paths.search_index_db).
 
 
 def _evidence_dir_aus_config() -> str:
@@ -90,24 +104,54 @@ def _evidence_dir_aus_config() -> str:
     Konfiguration fuehrt NICHT zum Abbruch, sondern zum Standard - der
     Rueckfall wird dabei protokolliert und nicht verschluckt (Grundregel 1).
 
-    DER ZWEITE PFAD DIESES WERKZEUGS BLEIBT BEWUSST AUSSEN VOR: Der Ort des
-    Suchindex kommt aus dem fest verdrahteten Vorgabewert von '--index-db'
-    (STANDARD_INDEX_PFAD), NICHT aus 'paths.search_index_db' - waehrend der
-    Verwaltungsserver fuer denselben Index eben diesen Eintrag liest. Wer den
-    Index per config.yaml verlegt, verlegt ihn also nur fuer den Server. Das
-    ist ein bekannter Befund (Erhebung zu 60e4236e, Build 641) und keine
-    Sache, die im Vorbeigehen einer Umstellung zu entscheiden waere: sie
-    aendert, wohin ein bestehender Index geschrieben wird.
+    BUILD 720 - DER ZWEITE PFAD IST NICHT MEHR AUSSEN VOR (Ticket 5a7e93b1).
+    Hier stand seit Build 641 der Befund: "Der Ort des Suchindex kommt aus dem
+    fest verdrahteten Vorgabewert von '--index-db' (STANDARD_INDEX_PFAD),
+    NICHT aus 'paths.search_index_db' - waehrend der Verwaltungsserver fuer
+    denselben Index eben diesen Eintrag liest. Wer den Index per config.yaml
+    verlegt, verlegt ihn also nur fuer den Server." Er war ausdruecklich
+    zurueckgestellt, weil die Umstellung aendert, wohin ein bestehender Index
+    geschrieben wird.
+
+    Sie ist jetzt entschieden (Alex, 13.08.2026) und vollzogen: beide lesen
+    'paths.search_index_db' ueber management/search/index_ort.py. Damit die
+    Aenderung nicht stillschweigend geschieht, MELDET das Werkzeug einen
+    moeglichen Umzug - siehe IndexOrt.umzugsmeldung().
     """
     r = werkzeug_konfig.resolver(_KEINE_ARGUMENTE)
     if r.config_meldung:
         logger.warning("evidence_db_dir nicht aus config.yaml lesbar (%s) - "
-                       "Standard './data/evidence/'.", r.config_meldung)
+                       "Vorgabewert %s.", r.config_meldung,
+                       coded_default("paths.evidence_db_dir"))
     return werkzeug_konfig.wert(
         "index_cli", _KEINE_ARGUMENTE,
         arg_attribut="(nicht ueber ein Argument)", arg_name="--evidence-dir",
         config_schluessel="paths.evidence_db_dir",
-        default="./data/evidence/", name="evidence_db_dir", wandler=str, r=r)
+        # Build 720: KEIN Literal mehr - der eine Vorgabewert steht in
+        # core/config_loader.py. Zwei Literale fuer denselben Pfad sind
+        # solange harmlos, bis eines geaendert wird.
+        default=coded_default("paths.evidence_db_dir"),
+        name="evidence_db_dir", wandler=str, r=r)
+
+
+def _coordinator_db_aus_config() -> str:
+    """
+    paths.coordinator_db - AUSSCHLIESSLICH fuer die Umzugserkennung des
+    Suchindex (Build 720).
+
+    Das Werkzeug braucht die coordinator.db selbst nicht. Es braucht ihren
+    Ort nur, um zu wissen, wo der Index nach der ALTEN Regel des Servers
+    gelegen haette ('neben der coordinator.db'). Ohne diese Angabe koennte
+    die Meldung den haeufigsten Umzugsfall nicht erkennen - genau den, der
+    auf einer Anlage mit verlegten Datenbanken eintritt.
+    """
+    r = werkzeug_konfig.resolver(_KEINE_ARGUMENTE)
+    return werkzeug_konfig.wert(
+        "index_cli", _KEINE_ARGUMENTE,
+        arg_attribut="(nicht ueber ein Argument)", arg_name="--coordinator-db",
+        config_schluessel="paths.coordinator_db",
+        default=coded_default("paths.coordinator_db"),
+        name="coordinator_db", wandler=str, r=r)
 
 
 class _KeineArgumente:
@@ -212,9 +256,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     "(Hilfsmittel, kein Beweismittel).",
         epilog=cli_epilog.epilog("index_cli"),
         formatter_class=cli_epilog.HilfeFormat)
-    p.add_argument("--index-db", default=STANDARD_INDEX_PFAD,
-                   help="Pfad der Indexdatei (Standard: %s)"
-                        % STANDARD_INDEX_PFAD)
+    # default=None ist PFLICHT, damit die Vorrangregel greift: ein
+    # argparse-Vorgabewert waere von einer Nutzereingabe nicht zu
+    # unterscheiden (siehe SettingResolver, Festlegung 1).
+    p.add_argument("--index-db", default=None,
+                   help="Pfad der Indexdatei. Ohne Angabe: "
+                        "paths.search_index_db aus config.yaml, sonst %s"
+                        % coded_default("paths.search_index_db"))
     p.add_argument("--evidence-dir", default=None,
                    help="Verzeichnis der evidence_<uid>.db "
                         "(Standard: paths.evidence_db_dir aus config.yaml)")
@@ -251,7 +299,24 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 1
 
     try:
-        index = SearchIndexDb(args.index_db)
+        # Build 720: EINE Aufloesung fuer Werkzeug und Server. Die
+        # Umzugsmeldung steht VOR dem Zugriff - danach haette der Aufbau
+        # die neue Datei schon angelegt, und die Bedingung waere nicht mehr
+        # erfuellt.
+        ort = IndexOrt.bestimmen(arg_wert=args.index_db,
+                                 coordinator_db=_coordinator_db_aus_config())
+        # '--json' BLEIBT MASCHINENLESBAR. Die Herkunftszeile und eine
+        # etwaige Umzugsmeldung ENTFALLEN dabei nicht (Grundregel 1) - sie
+        # wechseln den Kanal auf die Fehlerausgabe. Die Alternative waere
+        # gewesen, sie im JSON-Betrieb wegzulassen; dann saehe ein Skript
+        # einen umgezogenen Index wie einen leeren. SI23b liest stdout mit
+        # json.loads() und haette den Fehler ohnehin gemeldet.
+        kanal = sys.stderr if args.json else sys.stdout
+        print(ort.protokollzeile(), file=kanal)
+        meldung = ort.umzugsmeldung()
+        if meldung:
+            print(meldung, file=kanal)
+        index = SearchIndexDb(ort.pfad)
     except SearchIndexFehler as exc:
         print("Fehler: %s" % exc, file=sys.stderr)
         return 1

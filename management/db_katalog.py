@@ -64,17 +64,27 @@
 #   Pfad und traf die falsche Datei. Das Werkzeug holt den Pfad aus
 #   config.yaml und kann ihn nicht verfehlen.
 #
-# Version: v0.8.658 · Build: 658 · 2026-08-02
+# Version: v0.8.720 · Build: 720 · 2026-08-14
 #   Build 658: Feld datei_muster - die kanonische Form einer Falldatenbank.
+#   Build 720 (Ticket 5a7e93b1): Bei 'search_index' und 'approved_reports'
+#     stand 'vorgabe=None' und in der Begruendung der Befund, sie haetten
+#     keinen Eintrag in config.yaml. Beides ist mit Build 720 ueberholt: die
+#     Schluessel stehen in der ausgelieferten config.yaml, und der
+#     Vorgabewert wird aus core/config_loader.py geholt statt hier erneut
+#     hingeschrieben. EIN Vorgabewert je Pfad - das ist der Kern des Tickets.
 # Beleg: Vorfall 2026-08-02 (Sicht Baustein-Module, HTTP 500 ohne Logzeile);
 #        tools/migrate-dbs.py Kopf (Festlegungen mc 2026-07-30);
-#        management/server/migration_status.py (Entscheidung mc 2026-07-10).
+#        management/server/migration_status.py (Entscheidung mc 2026-07-10);
+#        config.yaml Build 720; core/config_loader.py, _DEFAULTS['paths'].
 # =============================================================================
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Optional, Tuple
+
+# Build 720 (Ticket 5a7e93b1): Vorgabewerte werden geholt, nicht abgeschrieben.
+from core.config_loader import coded_default
 
 
 # --- Wie ist der Stand ablesbar? ---------------------------------------------
@@ -257,30 +267,42 @@ DB_KATALOG: Tuple[DbEintrag, ...] = (
         kennung="search_index", name="Suchindex",
         art=ART_ANLAGE, stand=STAND_OHNE,
         config_schluessel="paths.search_index_db",
-        vorgabe=None,
+        # BUILD 720 (Ticket 5a7e93b1): war None. Der Vorgabewert wird nicht
+        # mehr hier erfunden, sondern aus der EINEN Stelle geholt - sonst
+        # stuenden fuer denselben Pfad wieder zwei Literale nebeneinander.
+        vorgabe=coded_default("paths.search_index_db"),
         blockierend=False,
         befehl=None,
         begruendung=(
             "Legt ihre Tabellen selbst an (CREATE TABLE IF NOT EXISTS, "
             "db/search_index_db.py) und fuehrt keinen Migrationsstand. Es "
             "gibt hier nichts zu pruefen - das steht hier ausdruecklich, "
-            "damit niemand sie fuer vergessen haelt. BEFUND NEBENBEI: sie "
-            "hat KEINEN Eintrag in config.yaml und laeuft auf einen "
-            "Vorgabewert im Quelltext."),
+            "damit niemand sie fuer vergessen haelt. BERICHTIGT IN BUILD "
+            "720 (Ticket 5a7e93b1): Der fruehere Zusatz 'BEFUND NEBENBEI: "
+            "sie hat KEINEN Eintrag in config.yaml und laeuft auf einen "
+            "Vorgabewert im Quelltext' galt bis Build 718 und gilt nicht "
+            "mehr. Sie steht jetzt als 'search_index_db' in der "
+            "ausgelieferten config.yaml, und ihr Vorgabewert steht an genau "
+            "einer Stelle (core/config_loader.py, _DEFAULTS)."),
         server=("verwaltung",),
     ),
     DbEintrag(
         kennung="approved_reports", name="Freigegebene Berichte",
         art=ART_ANLAGE, stand=STAND_OHNE,
         config_schluessel="paths.approved_reports_db",
-        vorgabe=None,
+        # BUILD 720 (Ticket 5a7e93b1): war None, obwohl core/config_loader.py
+        # seit Build 377 einen Vorgabewert fuehrt. Der Katalog nannte damit
+        # WENIGER, als das System weiss.
+        vorgabe=coded_default("paths.approved_reports_db"),
         blockierend=False,
         befehl=None,
         begruendung=(
             "Legt ihre Tabellen selbst an (CREATE TABLE IF NOT EXISTS, "
             "management/reports/approved_reports_db.py), kein "
-            "Migrationsstand. BEFUND NEBENBEI: ebenfalls ohne Eintrag in "
-            "config.yaml."),
+            "Migrationsstand. BERICHTIGT IN BUILD 720 (Ticket 5a7e93b1): "
+            "Der fruehere Zusatz 'BEFUND NEBENBEI: ebenfalls ohne Eintrag "
+            "in config.yaml' galt bis Build 718; seither steht "
+            "'approved_reports_db' in der ausgelieferten config.yaml."),
         server=("verwaltung",),
     ),
     DbEintrag(

@@ -58,7 +58,11 @@
 #   ausserhalb der Struktur aufgerufen, steht dort 0." - richtig beschrieben,
 #   nie behoben. Jetzt berichtigt.
 #
-# Version: v0.8.718 - Build: 718 - 2026-08-13
+# Version: v0.8.720 - Build: 720 - 2026-08-14
+#   Build 720 (Ticket 5a7e93b1): Eintrag 'index_cli' - der Befund von Build
+#   640 zur doppelten Aufloesung des Suchindex ist erledigt; er bleibt im
+#   Wortlaut stehen und wird als erledigt ausgewiesen. NEU dazu der Eintrag
+#   'paths.search_index_db', den dieses Werkzeug bis Build 718 nicht las.
 # =============================================================================
 
 from __future__ import annotations
@@ -2696,15 +2700,24 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "Ermittlungshandlung; die Handlung ist die Abfrage.",
         # Build 640 (Welle 4): geprueft an index_cli.py Z. 68-88/185-190.
         #
-        # BEFUND, der in die Auskunft gehoert: Die beiden Pfade dieses
-        # Werkzeugs werden UNTERSCHIEDLICH aufgeloest. Das Beweismittel-
-        # Verzeichnis kommt aus config.yaml; der Ort des Suchindex NICHT - er
-        # ist der fest verdrahtete Vorgabewert von '--index-db'
-        # (STANDARD_INDEX_PFAD, Z. 69). Der SERVER dagegen liest fuer denselben
-        # Index 'paths.search_index_db' (management_app.py, _search_index_pfad).
-        # Wer den Index also per config.yaml verlegt, verlegt ihn NUR fuer den
-        # Server - dieses Werkzeug arbeitet dann weiter am alten Ort, ohne dass
-        # es das meldet.
+        # DER BEFUND VON BUILD 640 - UND SEINE ERLEDIGUNG IN BUILD 720.
+        #
+        # Bis Build 718 stand hier: "Die beiden Pfade dieses Werkzeugs werden
+        # UNTERSCHIEDLICH aufgeloest. Das Beweismittel-Verzeichnis kommt aus
+        # config.yaml; der Ort des Suchindex NICHT - er ist der fest
+        # verdrahtete Vorgabewert von '--index-db' (STANDARD_INDEX_PFAD,
+        # Z. 69). Der SERVER dagegen liest fuer denselben Index
+        # 'paths.search_index_db'. Wer den Index also per config.yaml verlegt,
+        # verlegt ihn NUR fuer den Server - dieses Werkzeug arbeitet dann
+        # weiter am alten Ort, ohne dass es das meldet."
+        #
+        # DER BEFUND WAR RICHTIG UND IST MIT BUILD 720 (Ticket 5a7e93b1)
+        # BEHOBEN. Der Befundtext bleibt wortwoertlich stehen, weil ein
+        # ersatzlos geloeschter Befund von einem nie erhobenen nicht zu
+        # unterscheiden waere. Beide Pfade dieses Werkzeugs kommen jetzt aus
+        # config.yaml; die Aufloesung des Index steht fuer BEIDE Seiten in
+        # management/search/index_ort.py. Geprueft an index_cli.py (Build 720,
+        # --index-db mit default=None) und an tests/test_konfig_pfadhoheit.py.
         konfiguration=(
             _k("paths.evidence_db_dir",
                "Das Verzeichnis der evidence_<uid>.db, aus denen der Index "
@@ -2712,6 +2725,19 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "./data/evidence/ - und der Rueckfall wird protokolliert, nicht "
                "still genommen",
                "management/search/index_cli.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 646)", "--evidence-dir"),
+            # NEU Build 720 (Ticket 5a7e93b1). Der Eintrag fehlte hier nicht
+            # aus Nachlaessigkeit - das Werkzeug LAS ihn bis Build 718 nicht.
+            _k("paths.search_index_db",
+               "Der Ort des Volltext-Suchindex. Bis Build 718 las ihn NUR "
+               "der Verwaltungsserver; dieses Werkzeug schrieb an einen fest "
+               "verdrahteten Ort. Seit Build 720 lesen beide denselben "
+               "Eintrag - eine Verlegung wirkt jetzt fuer beide.",
+               "./data/search_index.db (core/config_loader.py, _DEFAULTS) - "
+               "liegt am bisherigen Ort noch ein Index und am neuen keiner, "
+               "wird das gemeldet; verschoben oder geloescht wird NICHTS",
+               "management/search/index_ort.py (SCHLUESSEL, bestimmen()); "
+               "Aufruf in management/search/index_cli.py",
+               "--index-db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -4841,6 +4867,10 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         # (management/server/management_app.py) liest - etwa
         # 'paths.search_index_db' oder 'ad.ldap.*'. Sie gehoeren zu dessen
         # Betrieb und nicht zum Start dieses Servers.
+        # PRAEZISIERUNG BUILD 720 (Ticket 5a7e93b1): 'paths.search_index_db'
+        # liest seither AUCH das Werkzeug 'index_cli' - dort ist der Eintrag
+        # aufgefuehrt. An der Aussage ueber DIESEN Server aendert das nichts:
+        # main.py liest ihn nach wie vor nicht.
         konfiguration=(
             _k("server.mode",
                "Der Startmodus: 'job' (Auftrag aus der Fall-Datenbank), 'cli' "
