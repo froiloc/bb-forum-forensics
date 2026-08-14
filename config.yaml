@@ -27,29 +27,51 @@ paths:
   # WEITERE PFADE, die der Code liest — bis Build 640 hier NICHT genannt.
   #
   # Befund aus der Erhebung zu Ticket 60e4236e (Build 640): Diese vier Einträge
-  # werden ausgewertet, standen aber in keiner ausgelieferten config.yaml. Wer
-  # sie setzen wollte, musste sie im Quelltext finden. Sie sind deshalb hier
-  # AUSKOMMENTIERT aufgenommen: sichtbar und erklärt, aber ohne Vorbelegung —
-  # jeder greift ohne Eintrag auf sein bisheriges Verhalten zurück.
+  # werden ausgewertet, standen aber in keiner ausgelieferten config.yaml.
+  #
+  # BUILD 720 (Ticket 5a7e93b1): ZWEI DAVON STEHEN JETZT GESETZT hier —
+  # approved_reports_db und search_index_db. Die Regel lautet ab hier: der Pfad
+  # einer Datenbank kommt aus dieser Datei, und wer nachsieht, findet ihn beim
+  # ERSTEN Hinsehen. Ein auskommentierter Eintrag ist eine Fußnote, keine
+  # Konfiguration.
+  #
+  # ZWEI BLEIBEN AUSKOMMENTIERT, und das ist eine Entscheidung und kein Rest:
+  # migration_db und backup_dir dürfen KEINEN Vorgabewert haben (siehe dort).
   # --------------------------------------------------------------------------
 
   # Zentrale Siegel-DB freigegebener Berichte (Build 377). Nur der auditierte
-  # Freigabepfad schreibt hier; Lesen (verify) ist frei. Steht seit Build 377 in
-  # den Coded Defaults, war aber in der config.yaml nie erwähnt.
+  # Freigabepfad schreibt hier; Lesen (verify) ist frei.
   # Beleg: management/reports/seal_check.py, management/server/management_app.py
-  #approved_reports_db: "./data/approved_reports.db"
+  approved_reports_db: "./data/approved_reports.db"
 
   # Volltext-Suchindex. Er liegt NEBEN den Beweismitteln, nicht darin — ein
-  # Hilfsmittel, das jederzeit gelöscht werden darf. Ohne Eintrag: neben der
-  # coordinator.db ('search_index.db'), und der Rückfall wird protokolliert.
-  # Beleg: management/server/management_app.py, _search_index_pfad()
-  #search_index_db: "./data/search_index.db"
+  # Hilfsmittel, das jederzeit gelöscht werden darf.
+  #
+  # BUILD 720: Bis Build 718 gab es für DIESELBE Datei zwei Vorgabeorte — im
+  # Werkzeug 'index_cli' ein Literal, im Verwaltungsserver der gerechnete Ort
+  # neben der coordinator.db. Nur der Server las diesen Eintrag hier. Wer den
+  # Index verlegte, verlegte ihn also nur für den Server; das Werkzeug schrieb
+  # weiter an die alte Stelle.
+  #
+  # ACHTUNG BEIM VERLEGEN: Ändert sich dieser Wert, findet die Volltextsuche
+  # den bisherigen Index nicht mehr — er wird NICHT mitverschoben. Beide
+  # Programme melden diesen Fall beim nächsten Lauf; danach entweder die alte
+  # Datei kopieren oder den Index neu aufbauen
+  # ('python -m management.search.index_cli --auffrischen --voll').
+  # Beleg: management/search/index_ort.py
+  search_index_db: "./data/search_index.db"
 
   # Steuerdatenbank der Migrationsflotte (migration_fleet_admin). OHNE EINTRAG
   # UND OHNE '--migration-db' BRICHT DAS WERKZEUG AB — es gibt hier keinen
   # Vorgabewert, und das ist Absicht: eine Migration soll nicht versehentlich
   # gegen eine erfundene Steuerdatei laufen.
   # Beleg: management/migration_fleet/migration_fleet_admin.py, Z. 60-75
+  #
+  # BUILD 720: BLEIBT AUSKOMMENTIERT — AUSDRÜCKLICHE AUSNAHME von der Regel
+  # "jeder Pfad steht gesetzt hier". Ein gesetzter Wert wäre genau der Schaden,
+  # den der fehlende Vorgabewert verhindert: eine Flottenmigration liefe dann
+  # gegen eine Steuerdatei, die niemand gewählt hat. Die Sperre in
+  # tests/test_konfig_pfadhoheit.py kennt diese Ausnahme namentlich.
   #migration_db: "./data/migration.db"
 
   # Sicherungsziel der Migrationsflotte. Ohne Eintrag und ohne '--backup-dir'
@@ -59,6 +81,11 @@ paths:
   # laufende Datensicherung (backup_admin), dies hier die einmalige Sicherung
   # vor einer Migration.
   # Beleg: management/migration_fleet/migration_fleet_admin.py, Z. 78-94
+  #
+  # BUILD 720: BLEIBT AUSKOMMENTIERT — AUSDRÜCKLICHE AUSNAHME, aus demselben
+  # Grund wie migration_db: eine Migration ohne Sicherung findet nicht statt,
+  # und ein vorbelegtes Sicherungsziel nähme dem Tor 'KEIN_BACKUP_DIR' seine
+  # Wirkung.
   #backup_dir: "./backups/migration/"
 
 # =============================================================================
