@@ -10968,14 +10968,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Prepper_Build139.json"
-        },
-        {
-          "timestamp": "2026-08-14T08:40:46+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "ZURUECKGESTELLT, NICHT VERGESSEN - Weisung Alex vom 14.08.2026. Die Vorbereitung dieser Nachruestung hat einen Befund zutage gefoerdert, der sie bis zu seiner Behebung GEGENSTANDSLOS gemacht haette.\n\n(1) DIE PRUEFFRAGE VOR DEM BAU war: traegt ein NEU gerechneter BLOB die Gruppennamen aus Build 139 ueberhaupt? Antwort: nein.\n\n(2) DER BEFUND. _step1_lookup_export schreibt default_groups und default_forums nach default.db (phase_b_exporter.py:1599). _load_forensic_data las sie von der FORENSIC-Verbindung; dort gibt es sie nicht und hat es nie gegeben (forensic_schema.db.sql fuehrt 39 Tabellen, keine davon). _safe_fetchall verschluckte den Fehler wortlos. GEMESSEN am 14.08.2026 ueber den vollstaendigen Erzeugungspfad Schritt 1 bis 7: genau zwei Abfragen liefen ins Leere. Der Renderer bekam seit Build 007 (04.05.2026) leere Kataloge.\n\n(3) WAERE DIESE NACHRUESTUNG VORHER GELAUFEN, haette sie die Siegel von Bestandsdateien gebrochen und einen BLOB eingesetzt, der IMMER NOCH keine Gruppennamen traegt - ein Eingriff unter Migrationsvorbehalt ohne Gegenwert.\n\n(4) DIE WURZEL IST MIT PREPPER-BUILD 0.1.141 BEHOBEN (eigener Vorgang, siehe related_to). Damit ist dieser Vorgang jetzt sinnvoll durchfuehrbar. VORBEDINGUNG FUER DIE UMSETZUNG: an einem NEU abgezogenen Fall nachsehen, dass die Namen im BLOB stehen - erst dann lohnt es, Siegel zu brechen.\n\n(5) WAS SICH FUER DIE UMSETZUNG SCHON GEAENDERT HAT: beide BLOB-Migrationen (Build 127 und 137) und ihre Befehlszeilen nehmen seit 0.1.141 '--default-db' entgegen. Ohne diese Angabe rechnen sie den BLOB weiterhin ohne Namen; auf einer ab 0.1.141 abgezogenen Datei waere das ein Rueckschritt. Die Angabe wird nicht erraten - fehlt sie, steht im Protokoll, was unaufgeloest bleibt.\n\n(6) EIN PUNKT, DER VOR DEM BAU ZU KLAEREN IST und der die Auswahl der Dateien betrifft: PHASE_B_BUILD steht seit der zweiten Heatmap unveraendert auf '062'. static_pages.generator_version beantwortet damit nicht, mit welchem Renderer ein BLOB entstanden ist - die Build-127-Migration sagt das ueber sich selbst bereits und hat deshalb ein inhaltliches Merkmal (TOGGLE_MARKER) gewaehlt. Als eigener Vorgang aufgenommen (siehe related_to). Denkbar ist auch, die Frage abzuschaffen: neu rechnen und mit dem Gespeicherten VERGLEICHEN - unterscheiden sie sich nicht, wird nichts angefasst. Das waere zugleich die Antwort auf die im Vorgang notierte Frage, ob eine einzige Nachruest-Migration fuer alle Anlaesse genuegt."
         }
       ]
     },
@@ -11265,113 +11257,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Prepper_Build140.json"
-        }
-      ]
-    },
-    {
-      "id": "358f5d01-41d1-41ab-a482-a949b651c392",
-      "type": "bug",
-      "title": "Nachschlagetabellen wurden an der falschen Datenbank abgefragt",
-      "affected_version": "0.1.139",
-      "reporter": "Claude",
-      "reported_at": "2026-08-14T08:40:46+00:00",
-      "prerequisites": "Jeder Phase-B-Lauf. Der Fehler ist nicht von einer Datei oder einer Fassung abhaengig - er trat auf JEDER forensic_<uid>.db auf, seit die Nachschlagetabellen mit Build 007 (04.05.2026) eingefuehrt wurden.",
-      "description": "Bei der Vorbereitung von 7c4f1b93 aufgefallen und in Build 0.1.141 behoben.\n\nDER BEFUND, dreifach belegt:\n  * '_step1_lookup_export' schreibt default_groups und default_forums nach default.db (phase_b_exporter.py:1599, 'sqlite3.connect(self._default_db)').\n  * '_load_forensic_data' las sie von der FORENSIC-Verbindung (Z. 4188/4189 der Fassung 0.1.139).\n  * In forensic_<uid>.db gibt es diese Tabellen nicht und hat es nie gegeben - forensic_schema.db.sql fuehrt 39 Tabellen, keine davon.\n'_safe_fetchall' fing den 'no such table'-Fehler ab und lieferte eine leere Liste, ohne ein Wort.\n\nGEMESSEN, NICHT GELESEN. Eine Sonde um _safe_fetchall, gefahren ueber den vollstaendigen Erzeugungspfad Schritt 1 bis 7 am 14.08.2026: GENAU ZWEI Abfragen liefen ins Leere, 'SELECT * FROM default_groups' und 'SELECT * FROM default_forums'. Keine dritte. Zweite Messung an derselben Anlage: die Tabellen stehen in default.db, nicht in der forensic-Datei; _load_forensic_data lieferte dem Renderer je eine leere Liste.\n\nWAS DAS BEDEUTETE: §7.17 (Gruppenaenderungen) zeigte seit Build 007 blosse Kennungen statt Namen - der Code loeste auf, was nie ankam. §7.8 loeste die Forennamen ebenso wenig auf. Und von den vier Stellen aus Vorgang bb50a048 (Build 139) wirkten drei nicht: §7.5, §7.11 und §7.17 haengen alle an data['default_groups']. Nur die Kopfzeile §7.1 wirkte, weil sie aus uid_profile.group_details_json liest und das in der forensic-Datei steht.\n\nWARUM ES FUENFZEHN MONATE UEBERLEBTE - und das ist die eigentliche Lehre: die vorhandenen Tests reichen default_groups DIREKT in render_userinfo_blob hinein und ueberspringen damit genau die Stelle, an der der Fehler sass. Dieselbe Diagnose steht bereits im Quelltext, zu einem anderen Fall: 'die Luecke blieb unbemerkt, weil kein Test von der Datenbank bis in den Renderer durchlief' (phase_b_exporter.py, Build 137). Es war die zweite Wiederholung desselben Musters.\n\nDER ALTE KOMMENTAR HATTE DIE URSACHE FAST: 'Tabellen koennen in alten forensic_<uid>.db-Dateien fehlen (werden aus default.db befuellt, nicht immer vorhanden)'. Der erste Halbsatz stimmt, der Schluss daraus war falsch - sie fehlen in JEDER forensic-Datei.",
-      "expected_behavior": "Der Renderer bekommt die Nachschlagetabellen aus der Datenbank, in der sie stehen; ein fehlgeschlagener Zugriff wird gemeldet.",
-      "actual_behavior": "Leere Kataloge, ohne jede Meldung - seit Build 007.",
-      "status": "resolved",
-      "priority": "high",
-      "severity": "major",
-      "assigned_to": "Claude",
-      "related_to": [
-        "7c4f1b93-2e0a-4f6d-9b18-5a3c7d0e64f2",
-        "bb50a048-120a-487e-b1a1-87e705fd87f1"
-      ],
-      "resolved_in_version": "0.1.141",
-      "target_version": "0.1.141",
-      "environment": {
-        "python_version": "3.14",
-        "database": "forensic_<uid>.db, default.db"
-      },
-      "tags": [
-        "Gruppenname",
-        "Nachschlagetabellen",
-        "Prepper",
-        "PrepperBuild141",
-        "Userinfo-BLOB",
-        "Wurzelursache"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-14T08:40:46+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "BEHOBEN IN 0.1.141. Gelesen wird jetzt dort, wo die Daten stehen: neue Funktion _lookup_tabellen(default_db), neuer Parameter an _load_forensic_data, Schritt 7 gibt self._default_db mit. KEINE Schemaaenderung an forensic_<uid>.db - der Migrationsvorbehalt bleibt unberuehrt (Entscheidung Alex, 14.08.2026; die Alternative, die Tabellen in die forensic-Datei mitzuschreiben, war benannt und wurde deswegen nicht gewaehlt). default.db wird nur lesend geoeffnet; LQ02b misst das an der Datei selbst.\n\nUMFANG Gruppen UND Foren (Entscheidung Alex): beide liefen durch dieselbe Zeile. default_badges ist nicht betroffen - _load_forensic_data liest es gar nicht, die Abzeichen kommen aus uid_profile.badge_details_json. Nachgesehen, nicht angenommen.\n\n_safe_fetchall SCHWEIGT NICHT MEHR. Der Rueckfall auf die leere Liste bleibt richtig - er haelt alte Dateien lesbar -, aber was uebersprungen wurde, steht jetzt mit der Abfrage im Klartext im Protokoll (Grundregel 1). Genau dieses Schweigen hat den Befund gedeckt.\n\nMITBEHOBEN, WEIL ERST DURCH DEN ERFOLG ENTSTANDEN: die beiden BLOB-Migrationen rechnen den BLOB neu und haetten auf einer ab 0.1.141 abgezogenen Datei eine Ansicht MIT Namen durch eine OHNE ersetzt. Beide Klassen und beide Befehlszeilen nehmen jetzt '--default-db' entgegen.\n\nNEUE REGRESSION: tests/test_lookup_quelle.py, 16 Faelle (LQ01-LQ07f). LQ05 laeuft von der DATENBANK bis in den fertigen BLOB - die Strecke, die bisher kein Test ging.\n\nGEGENPROBE: fuenf Mutationen. IM ERSTEN DURCHGANG BLIEB EINE UNERKANNT, und das war ein Mangel meiner eigenen Tests - sie prueften nur, dass der Pfad GESPEICHERT wird, nicht dass er ANKOMMT. LQ07e/LQ07f schliessen die Luecke; im zweiten Durchgang wurden alle fuenf vom jeweils zustaendigen Test erkannt.\n\nMESSUNG (zweite Fassung, gegen die Baubasis 0.1.140 gemessen): 1158 Tests vorher, 1174 nachher, je OK bei 8 uebersprungenen (Python 3.13.13). Die erste Fassung war gegen 0.1.139 gebaut und fiel beim Einspielen an acht Faellen in tests/test_bestandsliste.py - nicht am Quelltext, sondern an der Bestandsliste: git vereinigt die ID-Zeilen zweier parallel gebauter Lieferungen sauber, die Kopfzahl kann er nicht mitrechnen. Der Waechter aus Build 140 hat genau das getan, wofuer er gebaut wurde."
-        },
-        {
-          "timestamp": "2026-08-14T12:54:55+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "ZWEITE FASSUNG DER LIEFERUNG 0.1.141, auf die Baubasis 0.1.140 (df69e87) neu aufgesetzt. Am Quelltext hat sich nichts geaendert; berichtigt sind die Baubasis, die Bestandsliste (auf dem Stand von Build 140 fortgeschrieben, 1174 Eintraege) und die Messzahlen.\n\nALLE MESSUNGEN WURDEN GEGEN DIE NEUE BAUBASIS WIEDERHOLT und nicht bloss uebernommen: die Sonde um _safe_fetchall meldet dort NULL verschluckte Abfragen (Build 140 hat keine weiteren mitgebracht), der Ende-zu-Ende-Lauf liefert die Namen unveraendert, und alle fuenf Mutationen der Gegenprobe wurden erneut vom jeweils zustaendigen Test erkannt.\n\nZUR URSACHE DES FEHLSCHLAGS, weil sie eine Wiederholung ist: dasselbe ist mir am 13.08.2026 beim Webserver-Build 716 passiert, und die Lehre steht dort woertlich in build.json. Ich habe sie beim naechsten Bau nicht angewandt. Sie lautet: eine Baubasis und jede darauf gestuetzte Messung altern, solange parallel gearbeitet wird - beides ist unmittelbar vor der Auslieferung gegen origin/master zu wiederholen."
-        },
-        {
-          "timestamp": "2026-08-14T13:13:16.392971+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Prepper_Build141.json"
-        }
-      ]
-    },
-    {
-      "id": "585b1605-3f52-4be1-8744-b0a36433f089",
-      "type": "improvement",
-      "title": "static_pages.generator_version sagt nicht, welcher Renderer es war",
-      "affected_version": "0.1.141",
-      "reporter": "Claude",
-      "reported_at": "2026-08-14T08:40:46+00:00",
-      "prerequisites": "Jede Entscheidung darueber, WELCHE Bestandsdatei einen neuen Nutzerinfo-BLOB braucht - also jede kuenftige Nachruestung.",
-      "description": "Bei der Vorbereitung von 7c4f1b93 aufgefallen; dort ist es die offene Frage, die vor dem Bau zu klaeren ist.\n\nDER BEFUND: 'PHASE_B_BUILD' (phase_b_exporter.py:173) steht auf '062' und ist seit der Einfuehrung der zweiten Heatmap nicht mehr fortgeschrieben worden. Genau dieser Wert landet als static_pages.generator_version in jeder forensic-Datei. Er beantwortet damit nicht, mit welchem Renderer ein BLOB entstanden ist - obwohl er die einzige Angabe in der Datei ist, die es koennte.\n\nDAS IST BEREITS EINMAL AUFGEFALLEN und wurde umgangen statt behoben: die Build-127-Migration sagt es ueber sich selbst woertlich ('dort steht die Modul-Buildnummer des Renderers (\"062\"), die seit Einfuehrung der zweiten Heatmap unveraendert geblieben ist - sie wuerde also die Frage gar nicht beantworten') und hat deshalb ein inhaltliches Merkmal gewaehlt, den TOGGLE_MARKER. Fuer jeden neuen Anlass braeuchte es ein neues Merkmal.\n\nDREI WEGE, und die Entscheidung gehoert in den Vorgang und nicht hierher:\n  (a) PHASE_B_BUILD bei jeder Renderer-Aenderung fortschreiben - billig, aber es ist eine Disziplinfrage, und die hat hier schon einmal nicht gehalten.\n  (b) Eine Pruefsumme des Renderer-Moduls mitschreiben - maschinell, aber sie aendert sich auch bei Aenderungen ohne Wirkung auf die Ausgabe.\n  (c) DIE FRAGE ABSCHAFFEN: den BLOB neu rechnen und mit dem gespeicherten VERGLEICHEN. Unterscheiden sie sich nicht, wird nichts angefasst. Das braucht gar keine Kennzeichnung, deckt jeden vergangenen und kuenftigen Anlass ab und waere zugleich die Antwort auf die in 7c4f1b93 notierte Frage, ob eine einzige Nachruest-Migration genuegt.",
-      "expected_behavior": "Es laesst sich ohne Rueckgriff auf inhaltliche Sondermerkmale feststellen, ob der Nutzerinfo-BLOB einer Datei dem heutigen Renderer entspricht.",
-      "actual_behavior": "generator_version ist seit vielen Builds derselbe Wert; jede Nachruestung braucht ein eigenes inhaltliches Erkennungsmerkmal.",
-      "status": "open",
-      "priority": "medium",
-      "severity": "minor",
-      "assigned_to": "",
-      "related_to": [
-        "7c4f1b93-2e0a-4f6d-9b18-5a3c7d0e64f2"
-      ],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "python_version": "3.14",
-        "database": "forensic_<uid>.db"
-      },
-      "tags": [
-        "Migration",
-        "Nachvollziehbarkeit",
-        "Prepper",
-        "Userinfo-BLOB"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-14T08:40:46+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Bei der Vorbereitung von 7c4f1b93 aufgefallen und getrennt gefuehrt: es ist eine Abwaegung mit drei gangbaren Wegen und kein Befund, der sich nebenbei abhaken liesse."
-        },
-        {
-          "timestamp": "2026-08-14T13:13:16.392992+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Prepper_Build141.json"
         }
       ]
     }
