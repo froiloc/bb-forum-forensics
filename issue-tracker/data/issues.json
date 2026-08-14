@@ -16532,6 +16532,188 @@
           "comment": "Issue erstellt"
         }
       ]
+    },
+    {
+      "id": "7b3d9e04-5c12-4a86-9f37-e2081b6ca4d5",
+      "type": "bug",
+      "status": "open",
+      "priority": "low",
+      "severity": "minor",
+      "title": "stage2/blob_revisions.py aus Prepper-Build 132 ist nie im Bestand angekommen",
+      "reporter": "Claude",
+      "assigned_to": "Alex",
+      "tags": [
+        "Prepper",
+        "Lieferkette",
+        "BLOB",
+        "Selbstbeschreibung"
+      ],
+      "affected_version": "0.1.137",
+      "reported_at": "2026-08-13T13:45:00+00:00",
+      "prerequisites": "Zugriff auf den Prepper-Bestand.",
+      "environment": {
+        "python_version": "3.14.0rc2",
+        "database": "forensic_<uid>.db"
+      },
+      "description": "DRITTER VERLUST AUS BUILD 132, beim Aufarbeiten von 9c2f5b71 gefunden.\n\nVorgang 4e91b3c7 beschreibt als bereits getroffene Entwurfsentscheidung: 'Genau diese Ueberlegung hat beim Prepper-Build 132 dazu gefuehrt, den Vermerk ueber neu gerechnete BLOBs NICHT in schema_migrations zu stempeln, sondern in ein eigenes Register (stage2/blob_revisions.py).'\n\nGEPRUEFT am 2026-08-13: stage2/blob_revisions.py gibt es nicht - weder als Datei noch in der Historie ('git log --all -- stage2/blob_revisions.py' ist leer). Wie die Registry und wie die ganze Lieferung 132 ist es nie angekommen.\n\nWARUM ES DERZEIT NICHT WEHTUT: Die beiden BLOB-beruehrenden Migrationen (Build 127 und Build 137) hinterlassen ihre Spur in static_pages.generator_version - dort steht nach einem Austausch sichtbar, welche Werkzeugversion den BLOB neu gerechnet hat. Ein eigenes Register waere die staerkere Form, aber die schwaechere ist vorhanden und wird benutzt.",
+      "expected_behavior": "Entweder gibt es das Register und die BLOB-Migrationen tragen dort ein, oder der Vorgang 4e91b3c7 wird berichtigt - er beschreibt derzeit einen Bestand, den es nicht gibt.",
+      "actual_behavior": "Das Modul fehlt. Vorgang 4e91b3c7 beruft sich darauf.",
+      "related_to": [
+        "9c2f5b71-4e08-4a3d-b6c1-7d5a8e2f40b9",
+        "4e91b3c7-8a25-4f93-b7d1-06c2ef5a9b48"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-08-13T13:45:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "BEWUSST NICHT MITGEBAUT (Entscheidung Alex 2026-08-13). Das Modul aus einer Beschreibung zu rekonstruieren hiesse, Entwurfsentscheidungen zu raten, die in Build 132 schon einmal getroffen wurden. Der Vorgang wird eingetragen, damit der Verlust nicht ein zweites Mal verlorengeht.\n\nANMERKUNG: Falls die Lieferung 132 noch als ZIP oder Bundle irgendwo liegt, waere der Originalstand wiederherstellbar - das waere dem Nachbau vorzuziehen."
+        },
+        {
+          "timestamp": "2026-08-14T03:53:15.410115+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Prepper_Build138.json"
+        }
+      ]
+    },
+    {
+      "id": "c48a1f26-90b7-4e53-a1d8-3f7602bce915",
+      "type": "bug",
+      "status": "open",
+      "priority": "low",
+      "severity": "minor",
+      "title": "migrate-dbs.py meldet fuer forensic 'Register nicht moeglich'",
+      "reporter": "Claude",
+      "assigned_to": "Alex",
+      "tags": [
+        "Webserver",
+        "Migration",
+        "forensic",
+        "Anzeige"
+      ],
+      "affected_version": "0.8.707",
+      "reported_at": "2026-08-13T13:50:00+00:00",
+      "prerequisites": "Eine mit Prepper 0.1.138 erzeugte oder nachgeruestete forensic_<uid>.db.",
+      "environment": {
+        "python_version": "3.14",
+        "database": "forensic_<uid>.db"
+      },
+      "description": "BETRIFFT DEN WEBSERVER-BESTAND, gefunden beim Bau von Prepper-Build 138.\n\ntools/migrate-dbs.py meldet fuer jede forensic-Datei unbesehen:\n\n  '%-22s versiegelt - Register nicht moeglich, keine Luecke'\n\nDie Begruendung im Quelltext war richtig, solange forensic kein Register tragen KONNTE: 'Sonst meldete das Werkzeug bis in alle Ewigkeit einen Notstand, den niemand beheben darf.'\n\nSEIT PREPPER 0.1.138 traegt jede neu erzeugte forensic_<uid>.db schema_migrations mit der Baseline-Version 1, und bestehende lassen sich mit migrate_forensic_registry.py nachruesten. Fuer solche Dateien ist die Meldung falsch - sie sagt 'nicht moeglich' ueber etwas, das vorhanden ist.\n\nZUSAETZLICH, aus Vorgang 2c9e0f41 bereits bekannt: MigrationRunner._check_checksum() vergleicht den gespeicherten Wert mit sha256(Modul) und warnt bei Abweichung ('Modul nachtraeglich geaendert?'). Diese Warnung erscheint kuenftig auch fuer forensic-Dateien, weil der Prepper dort einen Herkunftsvermerk 'prepper:<version>:<hash>' eintraegt statt eines Modul-Hashes. Sachlich harmlos, aber irrefuehrend formuliert.",
+      "expected_behavior": "Die Meldung unterscheidet: Register vorhanden (mit Nennung der Versionen) gegenueber Register fehlt. Und die Checksummen-Warnung erkennt einen Herkunftsvermerk am Praefix, statt ihn als geaendertes Modul zu melden.",
+      "actual_behavior": "Unbesehen 'Register nicht moeglich, keine Luecke'.",
+      "related_to": [
+        "2dc0b8f0-26e6-4d78-88ae-4849ae217d56",
+        "4e91b3c7-8a25-4f93-b7d1-06c2ef5a9b48"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-08-13T13:50:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "NICHT VOM PREPPER AUS ZU BEHEBEN - die Datei liegt im Webserver-Bestand. Hier nur eingetragen, damit die Folge der Prepper-Aenderung nicht unbemerkt bleibt. Kein Datenrisiko: das Werkzeug wendet auf forensic ohnehin nichts an, es zeigt nur an."
+        },
+        {
+          "timestamp": "2026-08-14T03:53:15.410159+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Prepper_Build138.json"
+        }
+      ]
+    },
+    {
+      "id": "7c4f1b93-2e0a-4f6d-9b18-5a3c7d0e64f2",
+      "type": "improvement",
+      "title": "Nutzerinfo-BLOB im Bestand traegt noch Gruppen ohne Namen",
+      "affected_version": "0.1.139",
+      "reporter": "Claude",
+      "reported_at": "2026-08-13T21:01:08+00:00",
+      "prerequisites": "Eine forensic_<uid>.db, die VOR Prepper-Build 0.1.139 abgezogen wurde. Ihr static_pages['userinfo'] ist mit dem damaligen Renderer entstanden.",
+      "description": "Abgeleitet aus bb50a048, auf Weisung Alex vom 13.08.2026 als eigener Vorgang gefuehrt und in Build 0.1.139 ausdruecklich NICHT mitbehoben.\n\nDER STAND NACH 0.1.139: der Renderer gibt Gruppen mit Namen aus. Der Nutzerinfo-BLOB entsteht aber in Phase B Schritt 7 und liegt danach als static_pages['userinfo'] in der forensic_<uid>.db. Neue Abzuege bekommen die Namen sofort; bereits abgezogene Faelle behalten die blossen Kennungen.\n\nWAS DARAN WIEGT: es entsteht ein Unterschied zwischen alten und neuen Faellen, den spaeter niemand mehr erklaeren kann. Zwei Ermittler, die dieselbe Angabe in zwei Faellen nachschlagen, sehen Verschiedenes - ohne dass die Seite sagt, warum.\n\nDER WEG IST VORGEZEICHNET UND SCHON EINMAL GEGANGEN: migration/forensic_userinfo_blob_migration.py (Build 127) ruestet genau diesen BLOB nach. Sie arbeitet auf einer VACUUM-INTO-Kopie, legt userinfo_before.html und userinfo_after.html ab und weist mit migration/static_page_diff.py NACH, dass die primaeren Beweisdaten (pages-BLOBs, uid_*) unangetastet bleiben. Kein Byte des Originals wird angefasst; Phase 3 (Vieraugen) und Phase 4 (Produktivtausch) sind bewusst nicht automatisiert.\n\nZU BEDENKEN, BEVOR ETWAS GEBAUT WIRD: (a) Der neue BLOB wird aus dem GESAMTEN Renderer neu erzeugt und unterscheidet sich deshalb auch an anderen Stellen vom alten, wenn der Renderer seit dem Abzug fortgeschritten ist - das ist bei der Build-127-Migration schon so gewesen und dort ausdruecklich benannt. (b) Das Siegel forensic_meta.sha256 aendert sich zwangslaeufig. (c) Zu pruefen ist, ob eine einzige Nachruest-Migration fuer beide Anlaesse (Heatmap Build 127 und Gruppennamen) sinnvoller ist als eine zweite daneben - sie tun dasselbe.",
+      "expected_behavior": "Auch ein vor 0.1.139 abgezogener Fall zeigt in Nutzerinfo die Gruppennamen; die Beweisdaten bleiben nachweislich unveraendert.",
+      "actual_behavior": "Alte Faelle zeigen weiterhin blosse Kennungen, neue zeigen Namen.",
+      "status": "open",
+      "priority": "medium",
+      "severity": "minor",
+      "assigned_to": "",
+      "related_to": [
+        "bb50a048-120a-487e-b1a1-87e705fd87f1"
+      ],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14",
+        "database": "forensic_<uid>.db"
+      },
+      "tags": [
+        "Gruppenname",
+        "Migration",
+        "Prepper",
+        "Userinfo",
+        "Userinfo-BLOB"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-13T21:01:08+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Aus bb50a048 abgeleitet und auf Weisung Alex getrennt gefuehrt: eine BLOB-Nachruestung faellt unter den Migrationsvorbehalt und ist eine eigene Lieferung, kein Anhaengsel."
+        },
+        {
+          "timestamp": "2026-08-14T03:53:15.552417+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Prepper_Build139.json"
+        }
+      ]
+    },
+    {
+      "id": "f25c9a88-7ddd-4028-b0e5-60004ce28435",
+      "type": "bug",
+      "title": "testbestand.txt stempelt die Buildnummer des Laufs, nicht die der Lieferung",
+      "affected_version": "0.1.139",
+      "reporter": "Claude",
+      "reported_at": "2026-08-13T21:01:08+00:00",
+      "prerequisites": "tools/testbestand_schreiben.py wird gefahren, BEVOR build.json auf die neue Buildnummer steht. Das ist im vereinbarten Arbeitsablauf der Regelfall: die freie Buildnummer wird erst erfragt, wenn alle Tests gruen sind - die Bestandsliste muss dafuer aber schon fortgeschrieben sein, sonst faellt B03.",
+      "description": "Beim Bau von 0.1.139 aufgefallen und im selben Zug umgangen, aber nicht behoben.\n\nDER BEFUND: tools/testbestand_schreiben.py schreibt in die Kopfzeile 'Erzeugt fuer Build <N>' die Nummer, die zum Zeitpunkt des LAUFS in build.json steht. Wer die Liste fortschreibt und danach die Buildnummer setzt - also genau in der Reihenfolge, die der Arbeitsablauf verlangt -, liefert eine Liste mit der Nummer der VORIGEN Lieferung aus.\n\nGEMESSEN AM 13.08.2026: nach dem Fortschreiben stand dort 'Erzeugt fuer Build 138 am 2026-08-13 20:56 UTC. Eintraege: 1127' - die 1127 ist die Zahl aus Build 139, die 138 ist falsch.\n\nUND ES LAESST SICH MIT DEM WERKZEUG NICHT BERICHTIGEN: ein zweiter Lauf nach dem Nummernwechsel meldet 'Die Bestandsliste ist bereits aktuell' und schreibt NICHT neu - der Vergleich sieht nur die Test-IDs, nicht den Kopf. Die Datei sagt zugleich 'NICHT VON HAND PFLEGEN'. Der Ausweg in dieser Lieferung war, die Liste zu verwerfen ('git checkout') und nach dem Setzen der Nummer neu zu erzeugen - das ist ein Umweg und keine Loesung.\n\nWARUM DAS MEHR IST ALS EIN SCHOENHEITSFEHLER: der Kopf ist ein Herkunftsvermerk. Steht dort eine falsche Nummer, ist beim spaeteren Nachvollziehen nicht mehr zu erkennen, mit welcher Lieferung ein Testbestand entstanden ist - und der Vermerk sagt genau das aus (Grundregel: Ueberpruefbarkeit).",
+      "expected_behavior": "Der Kopf nennt die Buildnummer der Lieferung. Denkbar sind ein Schalter '--build N', ein erneutes Schreiben bei abweichendem Kopf oder ein Vermerk 'erzeugt am' ohne Buildnummer - welcher Weg der richtige ist, ist Teil des Vorgangs und hier nicht vorweggenommen.",
+      "actual_behavior": "Der Kopf nennt die Nummer, die beim Lauf zufaellig in build.json stand; ein zweiter Lauf berichtigt sie nicht.",
+      "status": "open",
+      "priority": "low",
+      "severity": "minor",
+      "assigned_to": "",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14"
+      },
+      "tags": [
+        "Nachvollziehbarkeit",
+        "Prepper",
+        "Testbestand",
+        "Werkzeug"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-13T21:01:08+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Beim Bau von 0.1.139 aufgefallen. In dieser Lieferung umgangen, indem die Liste nach dem Setzen der Buildnummer neu erzeugt wurde - der ausgelieferte Kopf nennt also richtig Build 139."
+        },
+        {
+          "timestamp": "2026-08-14T03:53:15.552441+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Prepper_Build139.json"
+        }
+      ]
     }
   ]
 }
