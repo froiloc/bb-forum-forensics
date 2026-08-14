@@ -1,0 +1,10 @@
+d40d16ba4c061a36ad3607a0d1e10d1c  build.json
+73a9126190d21145769781b4085f4ec0  issue-tracker/eintraege_claude_Build724.json
+d2d2f8de152d7b37b692adf97ef578c6  management/dashboard/dashboard_admin.py
+1a0c0073b184c05e6e6b140e2a823aa1  management/export/export_admin.py
+4f9bf39c8a7cb0424320a0c86767a6f8  management/help/cli_katalog.py
+67abd6c33f6b35004fa6d81e1c118bd5  management/stats/forecast_report_admin.py
+b8d768f74eca19c4a943025f4a47d950  management/stats/status_report_admin.py
+64f1f6f78192e9188cc24ad7dda3f96d  management/support_overview/support_overview_admin.py
+63e88438052ff709125f63f7b651fc68  management/workload/workload_admin.py
+aba5b3e51f0c8e8a29c8c34347f07a24  tests/test_konfig_meldung_werkzeuge.py

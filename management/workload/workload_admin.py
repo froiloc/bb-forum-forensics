@@ -26,7 +26,7 @@
 #   Seit Build 706 wird es zusaetzlich auf der Fehlerausgabe benannt - wer
 #   den Lauf beobachtet, erfuhr es sonst erst beim Aufschlagen der Datei.
 #
-# Version: v0.8.706 · Build: 706 · 2026-08-12
+# Version: v0.8.724 · Build: 724 · 2026-08-14
 # =============================================================================
 
 import argparse
@@ -52,13 +52,24 @@ from core import werkzeug_konfig  # noqa: E402
 
 
 def _load_config(args):
-    try:
-        from core.config_loader import ConfigLoader
-        return ConfigLoader(config_path=args.config)
-    except Exception as exc:  # pragma: no cover - Konfig-Randfall
-        print("[workload_admin] config.yaml nicht lesbar (Vorgabe-Schwellen): "
-              "%s" % exc, file=sys.stderr)
-        return None
+    """
+    Laedt die config.yaml und MELDET ihren Ausfall auf stderr.
+
+    TICKET 6c64daf4 (Build 724): Bis hierher stand hier eine Abschrift
+    der immer gleichen sechs Zeilen. Sie MELDETE zwar - dieses Werkzeug
+    gehoerte nicht zu den acht stummen aus cf791ef0 -, aber jede Abschrift
+    fuehrte ihren eigenen Wortlaut. Hier war er verkuerzt ('(Vorgabe-
+    Schwellen)') und sagte damit nicht, dass diese Schwellen JETZT GELTEN -
+    er liess sich auch als blosse Nennung des betroffenen Bereichs lesen.
+    Der Halbsatz ist deshalb auf den Wortlaut der uebrigen Schwellen-
+    Werkzeuge gebracht.
+
+    Die Meldung steht jetzt in core/werkzeug_konfig.konfig_laden(); die
+    ausfuehrliche Begruendung fuer die Zusammenfuehrung steht dort. Der
+    Rueckgabewert ist unveraendert: der ConfigLoader oder None.
+    """
+    return werkzeug_konfig.konfig_laden(
+        "workload_admin", args, folge="Vorgabe-Schwellen werden verwendet")
 
 
 def _resolve_db_path(args, cfg) -> str:

@@ -58,7 +58,7 @@
 #   ausserhalb der Struktur aufgerufen, steht dort 0." - richtig beschrieben,
 #   nie behoben. Jetzt berichtigt.
 #
-# Version: v0.8.723 - Build: 723 - 2026-08-14 (Rueckweg-Befund erledigt, Vorgang 69ede1c7)
+# Version: v0.8.724 - Build: 724 - 2026-08-14
 #   Build 720 (Ticket 5a7e93b1): Eintrag 'index_cli' - der Befund von Build
 #   640 zur doppelten Aufloesung des Suchindex ist erledigt; er bleibt im
 #   Wortlaut stehen und wird als erledigt ausgewiesen. NEU dazu der Eintrag
@@ -1118,6 +1118,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             ),
             exit_codes=((0, "ausgegeben bzw. geschrieben - AUCH bei gebrochener Belegkette"), (1, "coordinator.db nicht gefunden oder eine benoetigte Tabelle fehlt"),),
             warnungen=(
+                "IST DIE KONFIGURATION NICHT LESBAR, wird das auf der Fehlerausgabe gemeldet; es bleiben dann nur die Angaben von der Befehlszeile, und ohne '--coordinator-db' folgt gleich danach der Abbruch. Bis Build 720 nannte die Meldung den Ausfall, aber nicht seine FOLGE - und das ist die Frage, die als naechstes kommt (Ticket 6c64daf4).",
                 "EINE GEBROCHENE BELEGKETTE AENDERT DEN RUECKGABEWERT NICHT. Sie erscheint als Warnung auf der Fehlerausgabe und als Banner in der Ausgabe; der Lauf endet mit 0. Wer den Bericht weitergibt, muss die Fehlerausgabe gelesen haben.",
                 "Die Datenquelle ist das PROTOKOLLBUCH - die Historie wird daraus rekonstruiert. Was dort nicht steht, gibt es hier nicht.",
                 "'--out' ueberschreibt eine vorhandene Datei wortlos.",
@@ -1185,6 +1186,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             ),
             exit_codes=((0, "ausgegeben bzw. geschrieben - AUCH bei gebrochener Belegkette"), (1, "coordinator.db nicht gefunden, Konfigurationsfehler oder eine benoetigte Tabelle fehlt"),),
             warnungen=(
+                "IST DIE KONFIGURATION NICHT LESBAR, wird das auf der Fehlerausgabe gemeldet; es gelten dann die Vorgabe-Schwellen. Der Halbsatz zur Folge lautete bis Build 720 verkuerzt '(Vorgabe-Schwellen)' und war damit auch als blosse Nennung des betroffenen Bereichs zu lesen; seit Build 724 steht dort der Wortlaut der uebrigen Werkzeuge (Ticket 6c64daf4).",
                 "EINE GEBROCHENE BELEGKETTE AENDERT DEN RUECKGABEWERT NICHT - wie beim Support-Ueberblick nur eine Warnung auf der Fehlerausgabe.",
                 "DIE AMPELSCHWELLEN KOMMEN AUS DER KONFIGURATION (Vorgabe 7 und 21 Tage). DIESELBE DATENBANK LIEFERT MIT EINER ANDEREN KONFIGURATION ANDERE AMPELZAHLEN. Wer zwei Ausgaben vergleicht, muss dieselbe Konfiguration benutzt haben.",
                 "Die Zeile fuer den Rueckstau (Faelle ohne Zuweisung) ist eine Sammelzeile ohne Rollen und ohne Aktionen - sie steht fuer niemanden.",
@@ -1403,6 +1405,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                             "bzw. negativ, oder reportlab fehlt (nur bei "
                             "--format pdf)")),
             warnungen=(
+                "IST DIE KONFIGURATION NICHT LESBAR, wird das auf der Fehlerausgabe gemeldet; es bleiben dann nur die Angaben von der Befehlszeile, und ohne '--coordinator-db' folgt gleich danach der Abbruch. Bis Build 720 nannte die Meldung den Ausfall, aber nicht seine FOLGE - und das ist die Frage, die als naechstes kommt (Ticket 6c64daf4).",
                 "DAS VORGABEFORMAT IST PDF und setzt reportlab voraus. Fuer "
                 "einen Lauf ohne diese Abhaengigkeit '--format html' "
                 "angeben.",
@@ -1585,6 +1588,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                         (1, "kein coordinator.db-Pfad, oder reportlab fehlt "
                             "(nur bei --format pdf)")),
             warnungen=(
+                "IST DIE KONFIGURATION NICHT LESBAR, wird das auf der Fehlerausgabe gemeldet; es bleiben dann nur die Angaben von der Befehlszeile, und ohne '--coordinator-db' folgt gleich danach der Abbruch. Bis Build 720 nannte die Meldung den Ausfall, aber nicht seine FOLGE - und das ist die Frage, die als naechstes kommt (Ticket 6c64daf4).",
                 "DAS VORGABEFORMAT IST PDF und setzt reportlab voraus.",
                 # Build 702 (Vorgang ff7e80ab): siehe Kommentar beim
                 # Prognosebericht - beide Werkzeuge trugen denselben Fehler.
