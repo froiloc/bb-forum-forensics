@@ -11091,6 +11091,46 @@
           "comment": "Importiert aus eintraege_claude_Build719.json"
         }
       ]
+    },
+    {
+      "id": "953f68e5-5fa5-41cc-8436-fb405c9b986b",
+      "type": "bug",
+      "title": "poster_id entspricht nicht der users.id",
+      "affected_version": "0.0.1",
+      "reporter": "Alex",
+      "reported_at": "2026-08-14T11:13:08.223160+00:00",
+      "prerequisites": "Das Forum ist ein Export. Und es ist offensichtlich bereits von Anfang an defekt. Ein Forennutzer hat Posts verfasst. In der Tabelle posts wird sowohl der username als auch mit poster_id die interne Benutzerkennung festgehalten.",
+      "description": "Die Auswirkung ist fatal! Wir erfassen zu einem Benutzer nicht alle Posts und vielleicht auch nicht alle restlichen Spuren.\r\n\r\nWir müssen ALLE, wirklich ALLE, Aufbereitungen nochmal machen.\r\n\r\nEs gibt einen Benutzer censored und dieser ist ein registrierter und bestehender Benutzer mit einem Eintrag in der Tabelle users. Für diesen Benutzer gibt es Einträge in der Tabelle posts. Und dort steht für gewöhnlich in der Spalte `posts.poster_id` die ID aus `users_id`. Zusätzlich gibt es noch die Spalte `posts.poster`. In dieser steht der zum Zeitpunkt des Postens aktuelle Benutzername des Beitragsverfassers. Das ist unsere einzige Brücke, die wir aktuell haben, um die Daten mit dem Benutzer zu verknüpfen. Das ist aufgefallen über eine genauere Sichtung der generierten Tabelle `mat_attestations`.",
+      "expected_behavior": "Abgleich muss nun bei Posts auch (zusätzlich) über `posts.poster` zu `users.username` erfolgen.",
+      "actual_behavior": "Die poster_id entspricht nicht der users.id.",
+      "status": "open",
+      "priority": "critical",
+      "severity": "blocker",
+      "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14",
+        "database": "alle"
+      },
+      "tags": [
+        "Prepper",
+        "User",
+        "Posts",
+        "ID"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-14T11:13:08.223190+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
+        }
+      ]
     }
   ]
 }
