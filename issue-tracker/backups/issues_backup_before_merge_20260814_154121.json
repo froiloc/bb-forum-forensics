@@ -1779,7 +1779,7 @@
     {
       "id": "c9d24a7f-3e51-4802-b6ad-8f107c53e2b4",
       "type": "improvement",
-      "status": "resolved",
+      "status": "open",
       "priority": "low",
       "title": "Schutzhuelle auch auf placeholders.py und fileasset.py anwenden",
       "affected_version": "0.8.578",
@@ -1806,30 +1806,8 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Build578.json"
-        },
-        {
-          "timestamp": "2026-08-14T08:00:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "AM QUELLTEXT NACHGESEHEN - DER AUFTRAG WAR NUR DIE HAELFTE. Diese Endpunkte scheitern auf ZWEI Arten, und die Huelle deckt nur eine ab.\n\n(A) DIE AUSNAHME FLIEGT AUS DEM HANDLER. handle_values, handle_resolve und handle_refresh gehen ueber EvidenceDb.get_reports(), get_blocks_for_report() und set_cache_entry() - die rufen self._con.execute() OHNE try. Die Verbindung stirbt, der Browser meldet 'Failed to fetch'. Das ist der Vorfall aus f0a3c85b.\n\n(B) DIE UNTERE SCHICHT FAENGT SELBST UND ANTWORTET LEER. Hier kommt die Huelle nie zum Zuge - der Befund aus Build 579. Betroffen sind alle Zugriffe ueber TemplatesDb (list_queries -> [], get_query -> None) und bei fileasset AssetsDb (_retryable_query gibt nach drei Versuchen None zurueck, genau wie bei einem Treffer ins Leere)."
-        },
-        {
-          "timestamp": "2026-08-14T08:30:00+00:00",
-          "author": "Alex",
-          "action": "comment",
-          "comment": "ENTSCHEIDUNGEN (14.08.2026): (1) fileasset: NUR der echte Fehler wird 503. 'Nicht angebunden' und 'kein Treffer' bleiben 404 - sonst antwortet auf einer Anlage ohne asset_importer-Lauf jedes Bild mit 503. (2) placeholders: BEIDES beheben - Huelle gegen (A) und Zustandspruefung gegen (B). (3) Der bei der Durchsicht gefundene uid-Defekt wird in diesem Build mitbehoben und als Nebenbefund ausgewiesen."
-        },
-        {
-          "timestamp": "2026-08-14T09:45:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "UMGESETZT IN BUILD 0.8.722.\n\nGEMESSEN AM UNVERAENDERTEN STAND (origin/master, eigener git-worktree, Probelauf mit gestelltem Fehlerfall) - die vier falschen Antworten im Wortlaut des Laufs:\n  * resolve: 200, resolved='Nutzer UNBEKANNT.' Der VORGABEWERT des Platzhalters stand im BERICHTSTEXT, der Platzhalter erschien unter 'unresolved' wie eine unbekannte Query. Der schwerste der Faelle: der Ermittler bekommt eine Ersatzangabe in den Bericht geschrieben und hat keinen Anlass zu pruefen, ob dort der ermittelte Wert steht.\n  * refresh: 200, {'refreshed': 0, 'errors': []} - ein falscher Freispruch fuer den, der gerade WEGEN eines Verdachts auffrischt.\n  * cache (POST): 400 'Nur bekannte m/o-Platzhalter ...' - beschuldigt den Platzhalter, obwohl die Quelle nicht lesbar war; die Eingabe des Ermittlers wurde nicht gespeichert.\n  * fileasset: 404 auch bei aufgegebener Abfrage.\nDazu zwei ungefangene Ausnahmen: DatabaseError am Verteiler und ValueError bei '?uid=abc'.\n\nGEBAUT: db/assets_db.py trennt mit _abfrage() 'Zeile nicht da' von 'Abfrage aufgegeben'; darauf setzt get_asset_by_full_url_befund() mit vier benannten Befunden auf. Die Wiederholungsschleife ist unveraendert uebernommen, get_asset_by_full_url() behaelt Signatur und Verhalten - kein bestehender Aufrufer aendert sich. Die Huelle sitzt am VERTEILER von /_forensic/placeholders/*; sechs try/except waeren sechs Stellen, an denen die siebte vergessen wird.\n\nWO DIE MELDUNG ABSICHTLICH NICHT KOMMT (jeweils mit eigenem Testfall): 'nicht angebunden' und 'kein Treffer' bleiben 404 (GA07) - eine Meldung, die immer kommt, wird nicht gelesen. resolve prueft die Quelle nur, wenn der Text ueberhaupt einen {{a:}}-Platzhalter enthaelt (GA09) - sonst ist 'unveraendert, nichts offen' vollstaendig wahr.\n\nBEFUND AN DER PRUEFVORRICHTUNG: tests/test_placeholders.py setzte TemplatesDb per __new__ zusammen und '_available = True' von Hand; 'tdb' war nie angebunden. Jetzt wird eine echte Datei angebunden - und dabei kam heraus, dass ihr Schema DREI Migrationen alt war (validation_ci/497, module_key/341, block_type+block_data/655). Die Vorrichtung baute eine Datenbank, die das Werkzeug im Betrieb zurueckweisen wuerde. Beides berichtigt.\n\nBERICHTIGUNG MEINER EIGENEN MELDUNG: Ich hatte gemeldet, auch handle_cache_get laufe ueber eine schluckende Methode. Das stimmt NICHT - get_cache_entries_for_ids() und clear_cache_for_query_ids() rufen self._con.execute() ungeschuetzt; ihre fruehen 'return {}' bzw. 'return 0' gelten der LEEREN ID-Liste, nicht einem Fehler. Sie gehoeren zu (A) und sind durch die Huelle abgedeckt.\n\nNEUE TESTS: tests/test_db_guard_ausdehnung.py, GA01-GA12 nebst Gegenproben (17 Faelle). Darunter GA03 in zwei Haelften: ein PROGRAMMIERFEHLER wird an beiden neuen Huellen NICHT gefangen - ohne diese Gegenprobe waere jede Zusicherung wertlos.\n\nPRUEFSTAND: 3695 Python bestanden, 87 uebersprungen, 86 Subtests; JavaScript 1976 bestanden. Rot bleiben PY08/PY10 - containerbedingt (PEP-701-f-String gegen Python 3.11 der Bauumgebung). Weil PY08 damit BLIND ist, wurde seine Erhebung von Hand nachgefahren und die unparsbare Datei namentlich ausgelassen: 21 schreibfaehige Module, davon NULL neu. Dieser Build legt keinen neuen Schreibpfad an."
         }
-      ],
-      "resolved_in_version": "0.8.722",
-      "target_version": "0.8.722"
+      ]
     },
     {
       "id": "4b032177-036d-4c60-847a-3c1ed705a100",
