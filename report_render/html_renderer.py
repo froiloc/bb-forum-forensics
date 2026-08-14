@@ -29,6 +29,9 @@ from __future__ import annotations
 from datetime import datetime
 
 from report_render.report_document import ReportDocument, RenderedBlock
+# Vorgang 9c41a7e6: die im Werkzeug gewaehlte Zitatvariante. Normalisiert
+# wird sie in report_source; hier wird nur noch die Klasse dazu geholt.
+from report_render.quote_typen import QUOTE_TYP_FELD, css_klasse
 
 CLASSIFICATION = "VERTRAULICH — IT-FORENSISCHES ERMITTLUNGSWERKZEUG NRW"
 
@@ -110,8 +113,28 @@ class HtmlRenderer:
     .block {{ margin-bottom: 14pt; page-break-inside: avoid; }}
     .para-content {{ line-height: 1.6; word-break: break-word; }}
     h1,h2,h3,h4,h5,h6 {{ font-family: Arial, sans-serif; }}
-    blockquote {{ border-left: 3pt solid #ccc; margin: 8pt 0; padding: 2pt 12pt; color: #333; }}
+    blockquote {{ margin: 8pt 0; padding: 2pt 12pt; color: #333; }}
     blockquote cite {{ display: block; font-size: 9pt; color: #666; margin-top: 4pt; }}
+    /* Die drei Zitatvarianten des Werkzeugs (Vorgang 9c41a7e6).
+       Sie bilden nach, was der Bearbeiter auf dem Bildschirm gewaehlt hat;
+       die Zuordnung zu den Werten von 'type' steht in
+       report_render/quote_typen.py. Bis Build 718 gab es hier nur EINE
+       Regel - die des senkrechten Strichs -, und zwar unabhaengig davon,
+       was gewaehlt war.
+       NACHBILDUNG, NICHT KOPIE: die Stile des Buendels sind fuer den
+       Bildschirm gemacht (Pixel, Bildschirmfarben, ein SVG-Symbol von
+       '/icons/'). Hier gilt Druckmass (pt), und ein Verweis auf eine
+       externe Datei verboete sich - dieses HTML muss selbstenthaltend
+       bleiben. Das Anfuehrungszeichen ist deshalb ein Schriftzeichen und
+       kein Bild. Die drei Varianten sind unterscheidbar; pixelgleich sind
+       sie nicht, und das sollen sie auch nicht sein. */
+    blockquote.zitat--anfuehrung {{ text-align: center; padding: 2pt 24pt;
+           border: none; }}
+    blockquote.zitat--anfuehrung::before {{ content: "\\201E"; display: block;
+           font-size: 20pt; line-height: 1; color: #999; margin-bottom: 2pt; }}
+    blockquote.zitat--linie {{ border-left: 3pt solid #ccc; text-align: left; }}
+    blockquote.zitat--kasten {{ border: 1pt solid #d7d7d7; padding: 8pt 12pt;
+           text-align: left; }}
     table.report-table {{ border-collapse: collapse; width: 100%; }}
     table.report-table td, table.report-table th {{ border: 1pt solid #999; padding: 3pt 6pt; }}
     .image-ref {{ border: 1pt dashed #999; background: #fafafa; padding: 8pt 12pt;
@@ -211,9 +234,22 @@ class HtmlRenderer:
         return "".join(out)
 
     def _render_quote(self, blk: RenderedBlock) -> str:
+        """
+        Zitat mit Quellenangabe UND der gewaehlten Variante (Vorgang
+        9c41a7e6).
+
+        css_klasse() bekommt den bereits normalisierten Wert aus
+        report_source und normalisiert ihn sicherheitshalber noch einmal -
+        der Renderer soll auch dann eine gueltige Klasse liefern, wenn ihm
+        jemand ein von Hand gebautes ReportDocument vorsetzt (die Tests tun
+        genau das). Ein 'KeyError' mitten im Bericht waere die schlechteste
+        aller Antworten.
+        """
         caption = blk.data.get("_resolved_caption", "")
         cite = f"<cite>{caption}</cite>" if caption else ""
-        return f'<blockquote>{blk.resolved_text}{cite}</blockquote>'
+        klasse = css_klasse(blk.data.get(QUOTE_TYP_FELD))
+        return (f'<blockquote class="{klasse}">'
+                f'{blk.resolved_text}{cite}</blockquote>')
 
     def _render_image(self, blk: RenderedBlock) -> str:
         """§4.2: forensisch harter VERWEIS, KEINE Bild-Bytes."""
