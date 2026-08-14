@@ -24,12 +24,13 @@
 #   KM03  konfig_laden: der Halbsatz 'folge' steht woertlich in der Meldung
 #   KM04  GEGENPROBE UEBER DEN BESTAND: jedes Werkzeug mit _load_config meldet
 #   KM05  konfig_laden schreibt nach stderr, NIE nach stdout
+#   KM06  kein Werkzeug haelt noch eine eigene Abschrift (Ticket 6c64daf4)
 #   KM10  escalation_admin: Schwellenzeile im Textbetrieb, Herkunft 'Vorgabe'
 #   KM11  escalation_admin: Herkunft 'config.yaml', wenn der Wert dort steht
 #   KM12  escalation_admin --json: stdout ist reines JSON und traegt 'thresholds'
 #   KM13  escalation_admin --json: derselbe Schluesselsatz wie der HTTP-Endpunkt
 #
-# Version: v0.8.718 · Build: 718 · 2026-08-13
+# Version: v0.8.724 · Build: 724 · 2026-08-14
 # =============================================================================
 
 import importlib
@@ -136,6 +137,24 @@ class KonfigLadenTests(unittest.TestCase):
         _, _, err = _ruf_ab(werkzeug_konfig.konfig_laden, "pruef_admin", args)
         self.assertIn("(%s)" % werkzeug_konfig.FOLGE_VORGABEN, err)
 
+    #: Der Aufbau, den jede Meldung haben muss (Build 724, Ticket 6c64daf4):
+    #:     [<werkzeug>] config.yaml nicht lesbar (<folge>): <grund>
+    #: Der Halbsatz in Klammern ist der Teil, um den es geht — er beantwortet
+    #: die Frage "und was gilt jetzt?". Drei Werkzeuge hatten ihn nicht.
+    _MELDUNGSFORM = re.compile(
+        r"^\[(?P<werkzeug>[a-z_]+)\] config\.yaml nicht lesbar "
+        r"\((?P<folge>[^)]+)\): (?P<grund>.+)$")
+
+    #: Die Folgen, die es geben DARF. Kommt eine vierte hinzu, ist das kein
+    #: Fehler — sie gehoert dann aber in den Kopf von konfig_laden(), sonst
+    #: waechst wieder ein Wildwuchs. Der Test ist deshalb ein Stolperdraht
+    #: und keine Sperre gegen neue Faelle.
+    _ERLAUBTE_FOLGEN = {
+        "Vorgabe-Schwellen werden verwendet",
+        "Vorgaben werden verwendet",
+        "es gelten nur die Angaben von der Befehlszeile",
+    }
+
     def test_km04_jedes_werkzeug_mit_load_config_meldet(self):
         """
         KM04: Die Gegenprobe ueber den GESAMTEN Bestand (siehe Kopf).
@@ -143,15 +162,22 @@ class KonfigLadenTests(unittest.TestCase):
         Gesucht werden alle Module unter management/ mit einer Funktion
         '_load_config'; jedes wird mit einem nicht vorhandenen Konfigpfad
         aufgerufen. Verlangt wird: Rueckgabe None UND eine Meldung auf
-        stderr, die die Datei benennt. NICHT verlangt wird ein bestimmter
-        Wortlaut — die Werkzeuge nennen unterschiedliche Folgen, und ein
-        erzwungener Einheitssatz waere an dieser Stelle ungenauer.
+        stderr, die die Datei benennt.
+
+        BUILD 724 (Ticket 6c64daf4) — JETZT AUCH DER AUFBAU. In Build 718
+        liess dieser Test den Wortlaut bewusst offen: acht Werkzeuge hatten
+        gar keine Meldung, sechs je eine eigene, und ein erzwungener
+        Einheitssatz waere damals ungenauer gewesen als das Schweigen darueber.
+        Seit alle vierzehn dieselbe Fassung aufrufen, ist die Form pruefbar —
+        und erst damit faellt auch die naechste Abschrift auf, die zwar meldet,
+        aber ohne Folgesatz (das war der Befund bei status_report,
+        forecast_report und support_overview_admin).
         """
         module = self._werkzeuge_mit_load_config()
         self.assertGreaterEqual(
             len(module), 14,
             "Die Modulsuche findet zu wenig — sie greift ins Leere.")
-        stumme = []
+        stumme, formfehler, unbekannte_folgen = [], [], []
         for modulname in module:
             mod = importlib.import_module(modulname)
             cfg, aus, err = _ruf_ab(mod._load_config,
@@ -159,12 +185,74 @@ class KonfigLadenTests(unittest.TestCase):
             if cfg is not None or "config.yaml" not in err:
                 stumme.append("%s (stdout=%r, stderr=%r)"
                               % (modulname, aus, err))
+                continue
             # Auch hier gilt: stdout bleibt unberuehrt (--json-Zusage).
             self.assertEqual("", aus, "%s schreibt nach stdout" % modulname)
+            erste = err.splitlines()[0]
+            treffer = self._MELDUNGSFORM.match(erste)
+            if treffer is None:
+                formfehler.append("%s: %r" % (modulname, erste))
+                continue
+            if treffer.group("folge") not in self._ERLAUBTE_FOLGEN:
+                unbekannte_folgen.append(
+                    "%s: %r" % (modulname, treffer.group("folge")))
+            # Der GRUND muss mitkommen — eine Meldung ohne ihn zwingt zum Raten.
+            self.assertIn("/gibt/es/nicht/config.yaml", err, modulname)
         self.assertEqual(
             [], stumme,
             "Diese Werkzeuge uebergehen eine unlesbare config.yaml wortlos "
             "(Ticket cf791ef0): " + "; ".join(stumme))
+        self.assertEqual(
+            [], formfehler,
+            "Diese Meldungen haben nicht den gemeinsamen Aufbau "
+            "'[werkzeug] config.yaml nicht lesbar (folge): grund' — sie "
+            "stammen vermutlich aus einer eigenen Abschrift statt aus "
+            "werkzeug_konfig.konfig_laden() (Ticket 6c64daf4): "
+            + "; ".join(formfehler))
+        self.assertEqual(
+            [], unbekannte_folgen,
+            "Diese Werkzeuge nennen eine Folge, die im Kopf von "
+            "konfig_laden() nicht beschrieben ist. Ist sie richtig, gehoert "
+            "sie dort hinein UND in _ERLAUBTE_FOLGEN: "
+            + "; ".join(unbekannte_folgen))
+
+    def test_km06_kein_werkzeug_haelt_noch_eine_eigene_abschrift(self):
+        """
+        KM06 (Build 724, Ticket 6c64daf4): Kein Verwaltungswerkzeug baut
+        seinen ConfigLoader mehr selbst.
+
+        WARUM DAS EIN EIGENER TEST IST, obwohl KM04 die Wirkung prueft: KM04
+        misst die AUSGABE. Eine Abschrift, die zufaellig denselben Satz
+        ausgibt, kaeme dort durch — und waere doch wieder die Stelle, an der
+        beim naechsten Mal etwas auseinanderlaeuft. Dieser Test sieht
+        stattdessen in den Quelltext und verbietet das Muster selbst.
+
+        AUSGENOMMEN sind bewusst die Werkzeuge, die ihre Konfiguration NICHT
+        ueber '_load_config' laden (case_detect, seal_check, lkae_admin): Sie
+        haben eigene Vorrangreihen und sind in Ticket 6c64daf4 ausdruecklich
+        nicht enthalten. Sie stehen hier namentlich, damit die Ausnahme eine
+        Entscheidung bleibt und nicht zur Luecke wird.
+        """
+        ausgenommen = {"management.cases.case_detect",
+                       "management.reports.seal_check",
+                       "management.distribution.lkae_admin"}
+        eigenbau = []
+        for pfad in sorted((_REPO_ROOT / "management").rglob("*.py")):
+            modulname = ".".join(pfad.relative_to(_REPO_ROOT)
+                                 .with_suffix("").parts)
+            if modulname in ausgenommen:
+                continue
+            text = pfad.read_text(encoding="utf-8")
+            if not re.search(r"^def _load_config\(", text, re.M):
+                continue
+            rumpf = text.split("def _load_config(", 1)[1].split("\ndef ", 1)[0]
+            if "ConfigLoader(" in rumpf:
+                eigenbau.append(modulname)
+        self.assertEqual(
+            [], eigenbau,
+            "Diese Werkzeuge bauen ihren ConfigLoader in _load_config wieder "
+            "selbst, statt werkzeug_konfig.konfig_laden() zu rufen "
+            "(Ticket 6c64daf4): " + ", ".join(eigenbau))
 
     def test_km05_meldung_geht_nach_stderr_nicht_nach_stdout(self):
         """

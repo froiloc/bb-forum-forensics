@@ -1,0 +1,62 @@
+{
+  "issues": [
+    {
+      "id": "6c64daf4-cad0-1f44-7ede-239427210357",
+      "type": "refactoring",
+      "title": "Sechs Werkzeuge halten eine eigene Abschrift von _load_config",
+      "affected_version": "0.8.718",
+      "reporter": "Claude",
+      "reported_at": "2026-08-13T18:05:00+00:00",
+      "prerequisites": "Keine - der Befund steht im Quelltext",
+      "description": "Aufgenommen beim Abschluss von cf791ef0 (Build 718).\n\nDER STAND NACH BUILD 718: Die Meldung ueber eine unlesbare config.yaml steht in core/werkzeug_konfig.konfig_laden(). Die ACHT Werkzeuge, die bis Build 712 gar nichts sagten, rufen sie auf. Die SECHS, die schon vorher meldeten, tun es NICHT - sie halten weiterhin ihre eigene Abschrift:\n\n  * management/dashboard/dashboard_admin.py, Z. 47-60\n  * management/export/export_admin.py, Z. 66-74\n  * management/workload/workload_admin.py, Z. 54-62\n  * management/stats/status_report_admin.py, Z. 52-59\n  * management/stats/forecast_report_admin.py, Z. 63-71\n  * management/support_overview/support_overview_admin.py, Z. 55-66\n\nIHR WORTLAUT WEICHT AB, und zwar so, dass er dem Leser Verschiedenes sagt: 'config.yaml nicht lesbar (Vorgabe-Schwellen werden verwendet)' (dashboard_admin), '(Vorgabe-Schwellen)' (workload_admin), '(Vorgaben werden verwendet)' (export_admin) und ganz ohne Folgesatz (status_report, forecast_report, support_overview). Bei den letzten drei beantwortet die Meldung die Frage nicht, die der Empfaenger als naechstes hat: was gilt jetzt statt der Konfiguration?\n\nWARUM ES IN BUILD 718 NICHT MITGEMACHT WURDE: Der Umfang war mit Alex auf die acht STUMMEN Werkzeuge festgelegt. Die sechs mitzuziehen haette getesteten Ausgabetext in sechs weiteren Dateien geaendert und die Kollisionsflaeche zu parallel laufenden Arbeiten ohne Not vergroessert.\n\nAUFWAND: je Datei der Ersatz einer Funktion durch einen Aufruf, dazu die Festlegung des Folgesatzes fuer die drei Werkzeuge, die heute keinen haben. KM04 in tests/test_konfig_meldung_werkzeuge.py deckt alle vierzehn bereits ab; er verlangt bewusst keinen einheitlichen Wortlaut und muesste dafuer nachgeschaerft werden.",
+      "expected_behavior": "Alle vierzehn Werkzeuge laden ihre config.yaml ueber werkzeug_konfig.konfig_laden() und melden einen Ausfall im selben Aufbau, mit einem Folgesatz, der zu ihrem eigenen Rueckfall passt. KM04 prueft danach zusaetzlich den Aufbau der Meldung und nicht nur ihr Vorhandensein.",
+      "actual_behavior": "Acht Werkzeuge nutzen die gemeinsame Fassung, sechs ihre eigene. Drei der sechs melden ohne Folgesatz.",
+      "status": "resolved",
+      "priority": "low",
+      "severity": "minor",
+      "assigned_to": "Claude",
+      "related_to": [
+        "cf791ef0-5213-4458-8bfa-93df864e62d5"
+      ],
+      "resolved_in_version": "0.8.724",
+      "target_version": "0.8.724",
+      "environment": {
+        "python_version": "3.14"
+      },
+      "tags": [
+        "build718",
+        "build724",
+        "cli",
+        "konfiguration",
+        "nachvollziehbarkeit",
+        "refactoring",
+        "werkzeug_konfig"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-13T18:05:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Eintrag erstellt beim Abschluss von cf791ef0 (Build 718); jede Angabe am Quelltext nachgesehen."
+        },
+        {
+          "timestamp": "2026-08-13T20:34:39.878274+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build718.json"
+        },
+        {
+          "timestamp": "2026-08-14T18:30:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "resolved",
+          "comment": "BEHOBEN IN BUILD 724.\n\n(1) ALLE VIERZEHN WERKZEUGE laden ihre config.yaml jetzt ueber core/werkzeug_konfig.konfig_laden(). Die sechs mit eigener Abschrift (dashboard_admin, export_admin, workload_admin, status_report_admin, forecast_report_admin, support_overview_admin) rufen sie mit dem Halbsatz auf, der zu ihrem eigenen Rueckfall passt.\n\n(2) VIER MELDUNGEN AENDERN SICH, ZEHN NICHT — und das ist gemessen und nicht behauptet: Ein Lauf ueber alle vierzehn Werkzeuge gegen origin/master und gegen den neuen Stand ergibt zehn byte-gleiche Meldungen. Geaendert haben sich: workload_admin (der Halbsatz lautete verkuerzt '(Vorgabe-Schwellen)' und war damit auch als blosse Nennung des betroffenen Bereichs zu lesen) sowie status_report, forecast_report und support_overview_admin (dort fehlte der Halbsatz ganz — die Meldung nannte den Ausfall, aber nicht seine FOLGE).\n\n(3) DIE PRAEFIXE BLEIBEN, wie der CLI-Katalog sie fuehrt — auch die beiden ohne '_admin': '[status_report]' und '[forecast_report]'. Sie werden als Werkzeugname an konfig_laden() uebergeben; eine Vereinheitlichung waere eine Aenderung an dokumentierter Ausgabe ohne Anlass gewesen.\n\n(4) KM04 PRUEFT JETZT DEN AUFBAU, wie im Vorgang gefordert: '[werkzeug] config.yaml nicht lesbar (folge): grund'. In Build 718 war das bewusst offengelassen — bei acht stummen und sechs eigenwilligen Werkzeugen waere ein erzwungener Einheitssatz ungenauer gewesen als das Schweigen darueber. Der Test kennt die drei zulaessigen Folgen; eine vierte laesst ihn stolpern, damit sie im Kopf von konfig_laden() dokumentiert wird, statt wieder wild zu wachsen.\n\n(5) NEU KM06 SIEHT IN DEN QUELLTEXT statt auf die Ausgabe: kein _load_config baut noch selbst einen ConfigLoader. WARUM ZUSAETZLICH ZU KM04: Eine Abschrift, die zufaellig denselben Satz ausgibt, kaeme durch KM04 durch — und waere doch wieder die Stelle, an der beim naechsten Mal etwas auseinanderlaeuft.\n\n(6) GEGENPROBE GEFAHREN: Gegen origin/master nennt KM04 genau die drei Werkzeuge ohne Folgesatz und KM06 alle sechs mit eigener Abschrift; gegen den neuen Stand sind beide gruen.\n\n(7) HILFE NACHGEFUEHRT: Die vier Werkzeuge mit geaenderter Meldung haben je einen Warnhinweis im CLI-Katalog bekommen. dashboard_admin und export_admin bleiben unberuehrt — ihre Ausgabe aendert sich nicht.\n\n(8) REGRESSION 724: vorher 3681 gruen / 0 rot, nachher 3682 gruen / 0 rot (der eine neue Fall KM06), Python 3.13 im Baucontainer. Gebaut auf dem aktuellen master einschliesslich Build 721.\n\n(9) NICHT ENTHALTEN, wie im Vorgang beschrieben: case_detect, seal_check und lkae_admin laden ihre Konfiguration ebenfalls selbst, aber nicht ueber '_load_config' und mit eigenen Vorrangreihen. Sie stehen in KM06 namentlich als Ausnahme, damit sie eine Entscheidung bleiben und nicht zur Luecke werden."
+        }
+      ]
+    }
+  ]
+}

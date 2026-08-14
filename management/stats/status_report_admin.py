@@ -21,7 +21,7 @@
 #   Herleitung steht im Kopf von forecast_report_admin.py; beide Werkzeuge
 #   trugen denselben Fehler und sind deshalb gleich behandelt.
 #
-# Version: v0.8.702 · Build: 702 · 2026-08-12
+# Version: v0.8.724 · Build: 724 · 2026-08-14
 # =============================================================================
 
 import argparse
@@ -50,12 +50,26 @@ def _now_utc() -> str:
 
 
 def _load_config(args):
-    try:
-        from core.config_loader import ConfigLoader
-        return ConfigLoader(config_path=args.config)
-    except Exception as exc:  # pragma: no cover
-        print("[status_report] config.yaml nicht lesbar: %s" % exc, file=sys.stderr)
-        return None
+    """
+    Laedt die config.yaml und MELDET ihren Ausfall auf stderr.
+
+    TICKET 6c64daf4 (Build 724): Bis hierher stand hier eine Abschrift
+    der immer gleichen sechs Zeilen. Sie MELDETE zwar - dieses Werkzeug
+    gehoerte nicht zu den acht stummen aus cf791ef0 -, aber jede Abschrift
+    fuehrte ihren eigenen Wortlaut. Hier fehlte er ganz: Die Meldung nannte
+    den Ausfall, aber nicht seine FOLGE - und das ist die Frage, die der
+    Empfaenger als naechstes hat. Dieses Werkzeug holt aus der
+    Konfiguration NUR den Datenbankpfad, fuer den es bewusst keinen
+    Vorgabewert gibt; ohne '--coordinator-db' folgt gleich danach der
+    Abbruch.
+
+    Die Meldung steht jetzt in core/werkzeug_konfig.konfig_laden(); die
+    ausfuehrliche Begruendung fuer die Zusammenfuehrung steht dort. Der
+    Rueckgabewert ist unveraendert: der ConfigLoader oder None.
+    """
+    return werkzeug_konfig.konfig_laden(
+        "status_report", args,
+        folge="es gelten nur die Angaben von der Befehlszeile")
 
 
 def _resolve_db_path(args, cfg) -> str:

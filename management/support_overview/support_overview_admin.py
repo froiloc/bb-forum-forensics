@@ -26,7 +26,7 @@
 #   Seit Build 706 wird es zusaetzlich auf der Fehlerausgabe benannt - wer
 #   den Lauf beobachtet, erfuhr es sonst erst beim Aufschlagen der Datei.
 #
-# Version: v0.8.706 · Build: 706 · 2026-08-12
+# Version: v0.8.724 · Build: 724 · 2026-08-14
 # =============================================================================
 
 import argparse
@@ -54,16 +54,23 @@ from core import werkzeug_konfig  # noqa: E402
 
 def _load_config(args):
     """
-    Laedt config.yaml (best effort) und gibt den ConfigLoader oder None zurueck.
-    Die config.yaml ist die Quelle des coordinator.db-Pfads (paths.coordinator_db).
+    Laedt die config.yaml und MELDET ihren Ausfall auf stderr.
+
+    TICKET 6c64daf4 (Build 724): Bis hierher stand hier eine Abschrift
+    der immer gleichen sechs Zeilen. Sie MELDETE zwar - dieses Werkzeug
+    gehoerte nicht zu den acht stummen aus cf791ef0 -, aber jede Abschrift
+    fuehrte ihren eigenen Wortlaut. Hier fehlte er ganz: Die Meldung nannte
+    den Ausfall, aber nicht seine FOLGE. Dieses Werkzeug holt aus der
+    Konfiguration NUR den coordinator.db-Pfad (paths.coordinator_db), fuer
+    den es bewusst keinen Vorgabewert gibt.
+
+    Die Meldung steht jetzt in core/werkzeug_konfig.konfig_laden(); die
+    ausfuehrliche Begruendung fuer die Zusammenfuehrung steht dort. Der
+    Rueckgabewert ist unveraendert: der ConfigLoader oder None.
     """
-    try:
-        from core.config_loader import ConfigLoader
-        return ConfigLoader(config_path=args.config)
-    except Exception as exc:  # pragma: no cover - Konfig-Randfall
-        print("[support_overview_admin] config.yaml nicht lesbar: %s" % exc,
-              file=sys.stderr)
-        return None
+    return werkzeug_konfig.konfig_laden(
+        "support_overview_admin", args,
+        folge="es gelten nur die Angaben von der Befehlszeile")
 
 
 def _resolve_db_path(args, cfg) -> str:
