@@ -28,6 +28,10 @@ from __future__ import annotations
 import io
 
 from report_render.report_document import ReportDocument, RenderedBlock
+# Vorgang 9c41a7e6: die im Werkzeug gewaehlte Zitatvariante.
+from report_render.quote_typen import (
+    QUOTE_TYP_ANFUEHRUNG, QUOTE_TYP_FELD, QUOTE_TYP_KASTEN, normalisiere,
+)
 
 CLASSIFICATION = "VERTRAULICH — IT-FORENSISCHES ERMITTLUNGSWERKZEUG NRW"
 
@@ -43,6 +47,43 @@ WARNING_LABELS = {
     "unknown_block_type":     "Unbekannter Blocktyp (Inhalt nicht regulaer dargestellt)",
     "missing_image":          "Bild-Verweis nicht auffindbar",
 }
+
+
+def _absatzrahmen(absatz) -> None:
+    """
+    Einen duennen Rahmen um einen Absatz legen - die Variante 'Kasten'
+    (Vorgang 9c41a7e6).
+
+    WARUM ROHES XML: python-docx bietet fuer Absatzrahmen keine oeffentliche
+    Schnittstelle. Ohne diesen Umweg fiele die Variante 'Kasten' im
+    Word-Export mit 'senkrechter Strich' zusammen - eine von drei
+    Bedienmoeglichkeiten haette dann WEITERHIN keine Wirkung, und genau
+    darum geht es in diesem Vorgang.
+
+    DAS RISIKO WIRD BENANNT UND NICHT VERSCHWIEGEN: '_p' ist ein internes
+    Attribut von python-docx. Es ist seit 0.8 unveraendert und in 1.2.0
+    vorhanden (requirements.txt verlangt >= 1.1.0); bricht es in einer
+    kuenftigen Fassung weg, faellt es hier auf - und zwar im Test
+    QT13, der den erzeugten Rahmen im XML nachweist, nicht erst beim
+    Ermittler.
+
+    Die Masse folgen dem Bildschirm: 'sz' ist in Achtelpunkten (4 = 0,5 pt),
+    'space' in Punkten Abstand zum Text, die Farbe ist die des Buendels
+    (#d7d7d7).
+    """
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    pPr = absatz._p.get_or_add_pPr()
+    rahmen = OxmlElement("w:pBdr")
+    for kante in ("top", "left", "bottom", "right"):
+        el = OxmlElement("w:" + kante)
+        el.set(qn("w:val"), "single")
+        el.set(qn("w:sz"), "4")
+        el.set(qn("w:space"), "4")
+        el.set(qn("w:color"), "D7D7D7")
+        rahmen.append(el)
+    pPr.append(rahmen)
 
 
 class DocxRendererUnavailable(RuntimeError):
@@ -140,6 +181,13 @@ class DocxRenderer:
 
     # ------------------------------------------------------------------
     def _render_block(self, d, blk: RenderedBlock, Pt) -> None:
+        # ORTSNAHER IMPORT wie in render(): python-docx ist eine optionale
+        # Abhaengigkeit, und diese Methode wird ausschliesslich aus render()
+        # gerufen - also erst, nachdem der dortige Import gelungen ist. Ein
+        # Import am Dateikopf machte report_render ohne python-docx
+        # unimportierbar und braeche die uebrigen Ausgabeformate mit.
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+
         if not blk.is_known_type:      # R3
             r = d.add_paragraph().add_run(
                 f"⚠ Unbekannter Blocktyp '{blk.block_type}' — "
@@ -177,10 +225,35 @@ class DocxRenderer:
                     for i in range(ncols):
                         cells[i].text = row[i] if i < len(row) else ""
         elif bt == "quote":
-            d.add_paragraph(blk.resolved_text_plain, style="Intense Quote")
+            # VORGANG 9c41a7e6: die gewaehlte Zitatvariante bekommt Wirkung.
+            # Grundstil bleibt 'Intense Quote' - das ist die Darstellung, die
+            # der Bericht bis Build 718 fuer JEDES Zitat hatte. Wer die
+            # Variante 'senkrechter Strich' gewaehlt hat, sieht danach also
+            # unveraendert dasselbe.
+            typ = normalisiere(blk.data.get(QUOTE_TYP_FELD))
+            zitat = d.add_paragraph(blk.resolved_text_plain,
+                                    style="Intense Quote")
+            if typ == QUOTE_TYP_ANFUEHRUNG:
+                zitat.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            elif typ == QUOTE_TYP_KASTEN:
+                _absatzrahmen(zitat)
             cap = blk.data.get("_resolved_caption_plain", "")
             if cap:
-                d.add_paragraph(f"— {cap}").italic = True
+                # BUILD 719 - HIER STAND EINE ZEILE OHNE WIRKUNG:
+                #   d.add_paragraph(f"— {cap}").italic = True
+                # 'italic' ist keine Eigenschaft eines Absatzes, sondern
+                # eines Laufs. python-docx legt auf dem Absatzobjekt
+                # stillschweigend ein neues Attribut an, das niemand liest;
+                # die Quellenangabe war im Word-Dokument NIE kursiv.
+                # GEMESSEN am 13.08.2026 mit python-docx 1.2.0:
+                #   p = d.add_paragraph("— Quelle"); p.italic = True
+                #   -> getattr(p, "italic") == True, aber [r.italic for r
+                #      in p.runs] == [None]
+                # Das ist dieselbe Art Fehler, um die es in diesem Vorgang
+                # geht: eine Zusage, die niemand einloest. Deshalb hier
+                # mitbehoben - die Kursivstellung gehoert an den Lauf.
+                quelle = d.add_paragraph()
+                quelle.add_run(f"— {cap}").italic = True
         elif bt == "image":
             url = blk.data.get("_image_url", "")
             avail = blk.data.get("_image_available", False)

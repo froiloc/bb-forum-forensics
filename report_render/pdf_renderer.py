@@ -29,6 +29,10 @@ import io
 from datetime import datetime
 
 from report_render.report_document import ReportDocument, RenderedBlock
+# Vorgang 9c41a7e6: die im Werkzeug gewaehlte Zitatvariante.
+from report_render.quote_typen import (
+    QUOTE_TYP_ANFUEHRUNG, QUOTE_TYP_FELD, QUOTE_TYP_KASTEN, normalisiere,
+)
 
 CLASSIFICATION = "VERTRAULICH — IT-FORENSISCHES ERMITTLUNGSWERKZEUG NRW"
 
@@ -86,6 +90,33 @@ class PdfRenderer:
         anchor_style = ParagraphStyle("anchor", parent=small, leftIndent=6)
         quote_style = ParagraphStyle("quote", parent=body, leftIndent=18,
                                      textColor=colors.HexColor("#333333"), fontName="Helvetica-Oblique")
+        # DIE DREI ZITATVARIANTEN (Vorgang 9c41a7e6). 'quote_style' bleibt
+        # unveraendert und traegt jetzt die Variante 'senkrechter Strich' -
+        # das ist genau die Darstellung, die der Bericht bisher fuer JEDES
+        # Zitat hatte. Wer ein Zitat auf diese Variante gesetzt hat, sieht
+        # danach also dasselbe wie vorher.
+        #
+        # WAS EIN PDF NICHT KANN: reportlab kennt keinen einseitigen Rahmen.
+        # Der senkrechte Strich der Bildschirmfassung bleibt deshalb ein
+        # Einzug (leftIndent) - so war es hier schon immer, und es ist die
+        # naechstliegende Entsprechung. Der Kasten dagegen ist ein echter
+        # Rahmen, und die Anfuehrungsvariante ist mittig gesetzt wie auf dem
+        # Bildschirm. Die drei sind damit UNTERSCHEIDBAR; pixelgleich zur
+        # Bildschirmfassung sind sie nicht und sollen es nicht sein.
+        quote_mitte = ParagraphStyle(
+            "quote_mitte", parent=quote_style, leftIndent=0, alignment=TA_CENTER)
+        quote_kasten = ParagraphStyle(
+            "quote_kasten", parent=quote_style, leftIndent=0,
+            borderWidth=0.5, borderColor=colors.HexColor("#D7D7D7"),
+            borderPadding=8)
+        # Die Zuordnung Variante -> Stil. Als Woerterbuch und nicht als drei
+        # weitere Uebergabewerte: die Signatur von _block ist schon lang
+        # genug, und ein Woerterbuch macht an der Fundstelle unten sichtbar,
+        # dass hier GENAU EINE Entscheidung faellt.
+        quote_styles = {
+            QUOTE_TYP_ANFUEHRUNG: quote_mitte,
+            QUOTE_TYP_KASTEN:     quote_kasten,
+        }
         unknown_style = ParagraphStyle("unknown", parent=body, textColor=colors.HexColor("#7A0000"),
                                        fontName="Helvetica-Bold", borderPadding=3)
         hint_style = ParagraphStyle("hint", parent=small)
@@ -116,7 +147,8 @@ class PdfRenderer:
         for blk in doc.blocks:
             self._block(story, blk, P, Paragraph, Spacer, Table, TableStyle,
                         HRFlowable, ListFlowable, ListItem, colors, body, small,
-                        quote_style, unknown_style, anchor_style, img_style)
+                        quote_style, unknown_style, anchor_style, img_style,
+                        quote_styles)
 
         # R2 Hinweise
         story.append(Spacer(1, 20))
@@ -185,7 +217,8 @@ class PdfRenderer:
     # ------------------------------------------------------------------
     def _block(self, story, blk: RenderedBlock, P, Paragraph, Spacer, Table, TableStyle,
                HRFlowable, ListFlowable, ListItem, colors, body, small,
-               quote_style, unknown_style, anchor_style, img_style) -> None:
+               quote_style, unknown_style, anchor_style, img_style,
+               quote_styles=None) -> None:
         if not blk.is_known_type:      # R3
             story.append(Paragraph(_xml_esc(
                 f"⚠ Unbekannter Blocktyp '{blk.block_type}' — "
@@ -225,7 +258,14 @@ class PdfRenderer:
                 ]))
                 story.append(t)
         elif bt == "quote":
-            story.append(Paragraph(_xml_esc(blk.resolved_text_plain), quote_style))
+            # VORGANG 9c41a7e6: die gewaehlte Variante bestimmt den Stil.
+            # Ohne Zuordnung bleibt es bei 'quote_style' - der Variante
+            # 'senkrechter Strich', die der Bericht bis Build 718 fuer jedes
+            # Zitat hatte. Damit bleibt diese Route auch dann lauffaehig,
+            # wenn _block von aussen ohne 'quote_styles' gerufen wird.
+            typ = normalisiere(blk.data.get(QUOTE_TYP_FELD))
+            story.append(Paragraph(_xml_esc(blk.resolved_text_plain),
+                                   (quote_styles or {}).get(typ, quote_style)))
             cap = blk.data.get("_resolved_caption_plain", "")
             if cap:
                 story.append(Paragraph(_xml_esc(f"— {cap}"), small))

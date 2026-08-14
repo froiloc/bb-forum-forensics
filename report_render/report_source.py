@@ -50,6 +50,11 @@ from report_render.report_document import (
 )
 from report_render.placeholder_resolver import PlaceholderResolver
 from report_render.auto_query import AutoQueryResolver
+# Vorgang 9c41a7e6: die drei Zitatvarianten. Das Modul wird als Ganzes
+# eingefuehrt und nicht mit Einzelnamen - der Aufruf 'quote_typen.aus_daten'
+# sagt an der Fundstelle, WOHER die Regel kommt.
+from report_render import quote_typen
+from report_render.quote_typen import QUOTE_TYP_FELD
 
 # -----------------------------------------------------------------------------
 # Die neun bekannten Blocktypen (Editor.js-Toolnamen).
@@ -226,6 +231,21 @@ class ReportSource:
                 ch, cp = rs(data.get("caption", ""))
                 rb.data["_resolved_caption"] = ch
                 rb.data["_resolved_caption_plain"] = cp
+                # VORGANG 9c41a7e6 (Weg C, Entscheidung Alex 13.08.2026):
+                # die im Werkzeug gewaehlte Zitatvariante bekommt Wirkung.
+                #
+                # DIE NORMALISIERUNG GESCHIEHT HIER UND NICHT IN DEN DREI
+                # RENDERERN. Genau daran ist der Zitatblock schon einmal
+                # zerbrochen: zwei Stellen, die dieselbe Frage beantworten,
+                # geben irgendwann zwei Antworten. Die Renderer sehen nur
+                # noch das fertige Ergebnis - sie entscheiden, WIE eine
+                # Variante aussieht, nicht mehr, WELCHE es ist.
+                #
+                # 'type' WIRD GELESEN, NIE GESCHRIEBEN. Der Rohwert bleibt
+                # unangetastet in rb.data['type'] stehen; hier kommt ein
+                # ABGELEITETES Feld dazu. Kein Migrationsschritt, kein
+                # Schreibzugriff, Migrationsvorbehalt nicht beruehrt.
+                rb.data[QUOTE_TYP_FELD] = quote_typen.aus_daten(data)
         # Liste -> jedes Item aufloesen (html + plain).
         elif bt == "list":
             items = data.get("items", []) if isinstance(data.get("items"), list) else []
