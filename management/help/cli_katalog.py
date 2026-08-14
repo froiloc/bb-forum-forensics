@@ -58,7 +58,7 @@
 #   ausserhalb der Struktur aufgerufen, steht dort 0." - richtig beschrieben,
 #   nie behoben. Jetzt berichtigt.
 #
-# Version: v0.8.720 - Build: 720 - 2026-08-14
+# Version: v0.8.723 - Build: 723 - 2026-08-14 (Rueckweg-Befund erledigt, Vorgang 69ede1c7)
 #   Build 720 (Ticket 5a7e93b1): Eintrag 'index_cli' - der Befund von Build
 #   640 zur doppelten Aufloesung des Suchindex ist erledigt; er bleibt im
 #   Wortlaut stehen und wird als erledigt ausgewiesen. NEU dazu der Eintrag
@@ -3326,12 +3326,21 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "die benannten Fall-Datenbanken (nur beim scharfen "
                      "Lauf schreibend)"),
         betrieb="STUFE A - WARTUNGSFENSTER ERFORDERLICH (Analyse Build "
-                "609), sobald 'companion --confirm' gesetzt ist. Der "
-                "Rueckweg im Fehlerfall KOPIERT die Sicherung UEBER die "
-                "Originaldatei und setzt dabei voraus, dass keine andere "
-                "Verbindung offen ist - er prueft es aber nicht. Genau das "
-                "ist der Fall, in dem ein laufender Auswertungsdienst "
-                "Schaden nimmt. Vor dem scharfen Lauf sind vier Tore zu "
+                "609), sobald 'companion --confirm' gesetzt ist. Bis Build "
+                "720 stand hier: 'Der Rueckweg im Fehlerfall KOPIERT die "
+                "Sicherung UEBER die Originaldatei und setzt dabei voraus, "
+                "dass keine andere Verbindung offen ist - er prueft es aber "
+                "nicht.' DAS IST SEIT BUILD 723 ERLEDIGT (Vorgang 69ede1c7): "
+                "Der Rueckweg misst die Ruhe unmittelbar vor der Kopie. Ist "
+                "die Datei belegt oder die Ruhe nicht messbar, wird NICHTS "
+                "kopiert; die Sicherung bleibt liegen, und der Lauf wird im "
+                "Laufbuch als 'restore_refused' gefuehrt. "
+                "DAS WARTUNGSFENSTER BLEIBT DENNOCH ERFORDERLICH, und zwar "
+                "aus einem sachlichen Grund: Zwischen der Vorpruefung und "
+                "dem Rueckweg liegt die gesamte Migration. Die Vorpruefung "
+                "sorgt fuer ruhige Verhaeltnisse zu Beginn, die Pruefung im "
+                "Rueckweg faengt ab, was in der Zwischenzeit dazukommt. "
+                "Vor dem scharfen Lauf sind vier Tore zu "
                 "passieren; eine Sicherung ist Pflicht. Ohne --confirm wird "
                 "nur vorgeprueft und geplant. "
                 "SEIT BUILD 612 SETZT DAS WERKZEUG DAS SELBST DURCH: es prueft vor "
@@ -3400,9 +3409,17 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                         (2, "Aufruffehler"),
                         (3, "Wartungsvorbehalt - der Lauf wurde nicht ausgefuehrt; es wurde NICHTS geschrieben")),
             warnungen=(
-                "Der Rueckweg im Fehlerfall kopiert die Sicherung UEBER die "
+                "ERLEDIGT SEIT BUILD 723 (Vorgang 69ede1c7). Bis dahin galt: "
+                "'Der Rueckweg im Fehlerfall kopiert die Sicherung UEBER die "
                 "Originaldatei und setzt voraus, dass keine andere "
-                "Verbindung offen ist - er prueft es nicht.",
+                "Verbindung offen ist - er prueft es nicht.' Er prueft es "
+                "jetzt.",
+                "NEUE LAGE STATT DER ALTEN WARNUNG: Ist die Zieldatei beim "
+                "Rueckweg belegt, wird NICHT zurueckgespielt. Der Lauf endet "
+                "dann mit 'failed_not_restored', das Laufbuch traegt "
+                "'restore_refused', und die Sicherung bleibt unveraendert "
+                "liegen. Diese Instanz ist VON HAND zu klaeren - die Ansage "
+                "dazu steht auf der Fehlerausgabe.",
                 "Der Beleg laeuft nicht ueber das Protokollbuch: "
                 "Beweis-Datenbanken fuehren keines. Der Nachweis ist das "
                 "verkettete Laufbuch.",

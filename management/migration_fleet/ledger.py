@@ -32,7 +32,7 @@
 # Beleg: management/audit/hashing.py (GENESIS_PREV_HASH, 0x1F/SHA256-Formel),
 #        management/migration_fleet/migration_db.py (migration_runs-Schema),
 #        Datenmigrationsleitfaden_AIW.md v0.2 Paragraph 6.3, mc 2026-07-03.
-# Version: v0.7.318 · Build: 318 · 2026-07-03
+# Version: v0.8.723 · Build: 723 · 2026-08-14 (Terminal-Status restore_refused)
 # =============================================================================
 
 import hashlib
@@ -47,7 +47,29 @@ from management.audit.hashing import GENESIS_PREV_HASH
 _USEP = "\x1f"
 
 #: Zulaessige Abschluss-Status (Terminal-Events).
-_TERMINAL_STATUS = ("ok", "failed", "restored")
+#:
+#: BUILD 723 (Vorgang 69ede1c7) — 'restore_refused' kommt hinzu.
+#:
+#: WARUM EIN NEUER WERT UND NICHT EINE NOTIZ: migration_runs hat KEINE
+#: Freitextspalte (Schema Build 316, migration_db.py). Der Status ist der
+#: einzige Kanal, ueber den sich im Laufbuch ueberhaupt etwas sagen laesst —
+#: und dass ein Rueckweg NICHT gelaufen ist, ist die wichtigste Tatsache eines
+#: solchen Laufs. Sie darf nicht bloss auf der Konsole stehen, die niemand
+#: aufbewahrt (Grundregel 1).
+#:
+#: WARUM DAS DIE KETTE NICHT BRICHT: Die Hash-Formel (_row_hash) ist
+#: unveraendert, sie nimmt den Status als Zeichenkette entgegen. Bestehende
+#: Zeilen werden nicht angefasst, ihre Hashes bleiben gueltig; der neue Wert
+#: kann nur in NEUEN Zeilen auftreten. Die Tabelle hat auf 'status' KEINEN
+#: CHECK-Constraint (nachgesehen in migration_db.py, _DDL_RUNS) — es ist also
+#: auch keine Schema-Aenderung und keine Migration noetig.
+#:
+#: WAS DABEI NICHT VERGESSEN WERDEN DARF: interrupted_runs() zaehlt einen Lauf
+#: nur dann als abgeschlossen, wenn ein Terminal-Event vorliegt. Ohne
+#: Aufnahme in die dortige IN-Liste waere ein verweigerter Rueckweg als
+#: 'unterbrochener Lauf' erschienen — eine falsche Auskunft ueber einen Lauf,
+#: der sehr wohl zu Ende gefuehrt und protokolliert wurde.
+_TERMINAL_STATUS = ("ok", "failed", "restored", "restore_refused")
 
 
 def _row_hash(
@@ -153,7 +175,16 @@ class MigrationLedger:
                       backup_path: Optional[str] = None,
                       operator: Optional[str] = None,
                       verifier: Optional[str] = None) -> int:
-        """Abschluss eines Laufs (status 'ok'|'failed'|'restored')."""
+        """
+        Abschluss eines Laufs
+        (status 'ok'|'failed'|'restored'|'restore_refused').
+
+        'restore_refused' (Build 723): Die Migration ist gescheitert UND der
+        Rueckweg ist nicht gelaufen. Er wird IMMER zusaetzlich zu 'failed'
+        geschrieben, nie an dessen Stelle — 'failed' sagt, was mit der
+        Migration war, 'restore_refused' sagt, was mit der Wiederherstellung
+        war. Das sind zwei Tatsachen.
+        """
         if status not in _TERMINAL_STATUS:
             raise ValueError(
                 "Ungueltiger Abschluss-Status %r (erlaubt: %s)"
@@ -222,7 +253,12 @@ class MigrationLedger:
             "FROM migration_runs s "
             "WHERE s.status='started' AND NOT EXISTS ("
             "  SELECT 1 FROM migration_runs t "
-            "  WHERE t.status IN ('ok','failed','restored') "
+            # Build 723: 'restore_refused' gehoert hier dazu — siehe die
+            # Begruendung bei _TERMINAL_STATUS. Die Liste wird aus der
+            # Konstanten gebaut, damit sie nicht wieder auseinanderlaufen
+            # kann; genau dieses Auseinanderlaufen war die Gefahr.
+            "  WHERE t.status IN (%s) "
+            % ",".join("'%s'" % s for s in _TERMINAL_STATUS) +
             "    AND t.db_kind = s.db_kind "
             "    AND IFNULL(t.uid,-1) = IFNULL(s.uid,-1) "
             "    AND t.to_version = s.to_version "

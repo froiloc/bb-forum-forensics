@@ -26,7 +26,7 @@
 # Beleg: Datenmigrationsleitfaden_AIW.md v0.2 §7/§8/§10, Bauplan Migrations-
 #        Ausfuehrung v0.1 §1 (317-320), management/migration_fleet/{executor,
 #        ledger,catalog,planner,migration_db}, mc 2026-07-03.
-# Version: v0.7.320 · Build: 320 · 2026-07-03
+# Version: v0.8.723 · Build: 723 · 2026-08-14 (Rueckweg durchgereicht, zwei Fehlerstatus)
 # =============================================================================
 
 import logging
@@ -34,10 +34,13 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 from management.migration_fleet.catalog import CatalogReconciler
-from management.migration_fleet.executor import ExecutionResult, FleetExecutor
+from management.migration_fleet.executor import (
+    ExecutionResult, FEHLERSTATUS, FleetExecutor,
+)
 from management.migration_fleet.ledger import MigrationLedger
 from management.migration_fleet.migration_db import MigrationDb, RegistryEntry
 from management.migration_fleet.planner import TargetDb
+from management.migration_fleet.rueckweg import Rueckweg
 
 logger = logging.getLogger(__name__)
 
@@ -78,15 +81,19 @@ class MigrationCompanion:
     def __init__(self, mdb: MigrationDb, ledger: MigrationLedger, *,
                  backup_dir: Optional[str] = None,
                  operator: Optional[str] = None,
-                 packages: Optional[Dict] = None) -> None:
+                 packages: Optional[Dict] = None,
+                 rueckweg: Optional[Rueckweg] = None) -> None:
         self._mdb = mdb
         self._ledger = ledger
         self._backup_dir = backup_dir
         self._operator = operator
         self._reconciler = CatalogReconciler(mdb, packages)
+        # 'rueckweg' wird nur DURCHGEREICHT (Build 723). Der Companion trifft
+        # hier wie ueberall keine eigene Entscheidung; er ermoeglicht nur,
+        # den Rueckweg im Test zu stellen, ohne den Ausfuehrer zu umgehen.
         self._executor = FleetExecutor(
             mdb, ledger, backup_dir=backup_dir, operator=operator,
-            packages=packages)
+            packages=packages, rueckweg=rueckweg)
 
     # ------------------------------------------------------- Phase A: Vorpruefung
     def preflight(self, *, require_backup_dir: bool = False) -> PreflightResult:
@@ -161,11 +168,28 @@ class MigrationCompanion:
 
         results = self._executor.execute_fleet(
             targets, dry_run=False, verifier=verifier)
-        failed = [r for r in results if r.status == "failed_restored"]
-        reason = ("Alle Instanzen erfolgreich."
-                  if not failed else
-                  "%d Instanz(en) fehlgeschlagen und wiederhergestellt — "
-                  "menschliche Pruefung noetig." % len(failed))
+        # BUILD 723 (Vorgang 69ede1c7): Es gibt ZWEI Fehlerstatus. Bis
+        # Build 720 stand hier 'r.status == "failed_restored"'. Der Rueckweg
+        # konnte damals nicht Nein sagen, also gab es auch nur einen Fall.
+        # Jetzt kann er es — und wer weiter nur gegen den EINEN Wert prueft,
+        # zaehlt ausgerechnet den SCHWEREREN Fall als Erfolg. Deshalb steht
+        # die Liste jetzt in executor.FEHLERSTATUS und nicht hier.
+        failed = [r for r in results if r.status in FEHLERSTATUS]
+        nicht_zurueck = [r for r in results
+                         if r.status == "failed_not_restored"]
+        if not failed:
+            reason = "Alle Instanzen erfolgreich."
+        elif not nicht_zurueck:
+            reason = ("%d Instanz(en) fehlgeschlagen und wiederhergestellt — "
+                      "menschliche Pruefung noetig." % len(failed))
+        else:
+            # Der schwerere Fall wird ZUERST genannt und beim Namen. Eine
+            # Zusammenfassung, die "wiederhergestellt" sagt, wo nichts
+            # wiederhergestellt wurde, waere schlimmer als gar keine.
+            reason = ("%d Instanz(en) fehlgeschlagen, davon %d OHNE "
+                      "ausgefuehrten Rueckweg — diese Instanz(en) sind VON "
+                      "HAND zu klaeren; die Sicherungen liegen unveraendert."
+                      % (len(failed), len(nicht_zurueck)))
         return CompanionResult(executed=True, preflight=pf, results=results,
                                reason=reason)
 

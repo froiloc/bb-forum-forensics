@@ -20,12 +20,28 @@
 # migration.db enthaelt keinen Beweisinhalt; Anlegen/Schreiben ist unbedenklich.
 #
 # WARTUNGSVORBEHALT — STUFE A (Build 612), NUR BEI 'companion --confirm':
-#   Der tragende Grund liegt im RUECKWEG. Scheitert eine Migration, kopiert
-#   _restore() die Sicherung UEBER die Originaldatei und setzt dabei voraus,
-#   dass keine Verbindung offen ist — der Quelltext nennt die Voraussetzung
-#   und prueft sie nicht (Befund 3 der Wartungsanalyse). Dieser Pfad laeuft
-#   genau dann, wenn ohnehin schon etwas schiefgegangen ist.
-#   Vor der Ausfuehrung wird deshalb geprueft, ob die Ziel-Datenbanken und
+#   DER WORTLAUT VON BUILD 612 BLEIBT STEHEN — ein ersatzlos geloeschter
+#   Befund waere von einem nie erhobenen nicht zu unterscheiden:
+#
+#     "Der tragende Grund liegt im RUECKWEG. Scheitert eine Migration, kopiert
+#      _restore() die Sicherung UEBER die Originaldatei und setzt dabei voraus,
+#      dass keine Verbindung offen ist — der Quelltext nennt die Voraussetzung
+#      und prueft sie nicht (Befund 3 der Wartungsanalyse). Dieser Pfad laeuft
+#      genau dann, wenn ohnehin schon etwas schiefgegangen ist."
+#
+#   ERLEDIGT MIT BUILD 723 (Vorgang 69ede1c7): Der Rueckweg prueft die
+#   Voraussetzung jetzt selbst, unmittelbar vor der Kopie
+#   (management/migration_fleet/rueckweg.py, Tor 3). Ist die Zieldatei nicht
+#   ruhig, wird NICHT kopiert; die Sicherung bleibt liegen, und die Lage wird
+#   im Laufbuch ('restore_refused') und auf der Fehlerausgabe benannt.
+#
+#   DER WARTUNGSVORBEHALT BLEIBT TROTZDEM, und zwar nicht aus Vorsicht,
+#   sondern aus einem sachlichen Grund: Zwischen der Vorpruefung und dem
+#   Rueckweg liegt die gesamte Migration. Die Vorpruefung sorgt dafuer, dass
+#   der Lauf ueberhaupt unter ruhigen Verhaeltnissen beginnt; die Pruefung im
+#   Rueckweg faengt ab, was in der Zwischenzeit dazukommt. Das eine ersetzt
+#   das andere nicht.
+#   Geprueft wird vor der Ausfuehrung, ob die Ziel-Datenbanken und
 #   migration.db ruhig sind (maintenance/wartungsvorbehalt.py). Alle uebrigen
 #   Unterbefehle — catalog-sync, reconcile, plan, ledger-* — sind davon NICHT
 #   betroffen; sie fassen keine Ziel-Datenbank an.
@@ -36,7 +52,7 @@
 #             3 = Wartungsvorbehalt, es wurde NICHTS ausgefuehrt.
 #
 # Beleg: Datenmigrationsleitfaden_AIW.md v0.2 Paragraph 6/9, mc 2026-07-03.
-# Version: v0.8.612 · Build: 612 · 2026-07-31 (Wartungsvorbehalt eingebaut)
+# Version: v0.8.723 · Build: 723 · 2026-08-14 (Rueckweg-Klartext auf stderr, FEHLERSTATUS)
 # =============================================================================
 
 import argparse
@@ -46,6 +62,7 @@ from pathlib import Path
 
 from management.migration_fleet.catalog import CatalogReconciler
 from management.migration_fleet.companion import MigrationCompanion
+from management.migration_fleet.executor import FEHLERSTATUS
 from management.migration_fleet.ledger import MigrationLedger
 from management.migration_fleet.migration_db import MigrationDb
 from management.migration_fleet.planner import MigrationPlanner, TargetDb
@@ -312,6 +329,15 @@ def main(argv=None) -> int:
                       % (r.db_kind,
                          ("/uid=%s" % r.uid) if r.uid is not None else "",
                          r.status, r.from_version, r.to_version))
+                # BUILD 723 (Vorgang 69ede1c7): Ist der Rueckweg NICHT
+                # gelaufen, bleibt Arbeit von Hand liegen. Die Ansage dazu
+                # geht auf die FEHLERAUSGABE und nicht auf stdout: Sie ist
+                # der handlungsleitende Teil der Ausgabe und darf in einer
+                # umgeleiteten Protokolldatei nicht untergehen.
+                if r.rueckweg_klartext:
+                    print("", file=sys.stderr)
+                    print(r.rueckweg_klartext, file=sys.stderr)
+                    print("", file=sys.stderr)
             print("  -> %s" % result.reason)
             # Zusammenfassung + Vieraugen-Erinnerung
             summ = comp.summary()
@@ -319,7 +345,10 @@ def main(argv=None) -> int:
             print("  Ledger-Kette: %s" % ("ok" if summ.chain_ok else "FEHLERHAFT"))
             for rem in summ.reminders:
                 print("  ! %s" % rem)
-            has_failed = any(r.status == "failed_restored" for r in result.results)
+            # BUILD 723: gegen FEHLERSTATUS pruefen, nicht gegen einen
+            # einzelnen Wert — sonst liefe der Rueckstand 'Rueckweg nicht
+            # ausgefuehrt' mit Exit-Code 0 durch (siehe companion.execute).
+            has_failed = any(r.status in FEHLERSTATUS for r in result.results)
             return 1 if has_failed else 0
         finally:
             con.close()
