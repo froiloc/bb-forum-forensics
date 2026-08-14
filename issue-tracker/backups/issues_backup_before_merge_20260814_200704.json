@@ -11174,26 +11174,18 @@
       "id": "953f68e5-5fa5-41cc-8436-fb405c9b986b",
       "type": "bug",
       "title": "poster_id entspricht nicht der users.id",
-      "affected_version": "0.1.140",
+      "affected_version": "0.0.1",
       "reporter": "Alex",
       "reported_at": "2026-08-14T11:13:08.223160+00:00",
       "prerequisites": "Das Forum ist ein Export. Und es ist offensichtlich bereits von Anfang an defekt. Ein Forennutzer hat Posts verfasst. In der Tabelle posts wird sowohl der username als auch mit poster_id die interne Benutzerkennung festgehalten.",
-      "description": "Die Auswirkung ist fatal! Wir erfassen zu einem Benutzer nicht alle Posts und vielleicht auch nicht alle restlichen Spuren. Wir muessen ALLE Aufbereitungen nochmal machen. posts.poster ist die einzige Bruecke, um die Daten mit dem Benutzer zu verknuepfen. Aufgefallen ueber eine genauere Sichtung der generierten Tabelle mat_attestations.",
-      "expected_behavior": "Abgleich muss nun bei Posts auch (zusaetzlich) ueber `posts.poster` zu `users.username` erfolgen.",
+      "description": "Die Auswirkung ist fatal! Wir erfassen zu einem Benutzer nicht alle Posts und vielleicht auch nicht alle restlichen Spuren.\r\n\r\nWir müssen ALLE, wirklich ALLE, Aufbereitungen nochmal machen.\r\n\r\nEs gibt einen Benutzer censored und dieser ist ein registrierter und bestehender Benutzer mit einem Eintrag in der Tabelle users. Für diesen Benutzer gibt es Einträge in der Tabelle posts. Und dort steht für gewöhnlich in der Spalte `posts.poster_id` die ID aus `users_id`. Zusätzlich gibt es noch die Spalte `posts.poster`. In dieser steht der zum Zeitpunkt des Postens aktuelle Benutzername des Beitragsverfassers. Das ist unsere einzige Brücke, die wir aktuell haben, um die Daten mit dem Benutzer zu verknüpfen. Das ist aufgefallen über eine genauere Sichtung der generierten Tabelle `mat_attestations`.",
+      "expected_behavior": "Abgleich muss nun bei Posts auch (zusätzlich) über `posts.poster` zu `users.username` erfolgen.",
       "actual_behavior": "Die poster_id entspricht nicht der users.id.",
-      "status": "in_progress",
+      "status": "open",
       "priority": "critical",
       "severity": "blocker",
       "assigned_to": "Claude",
-      "related_to": [
-        "03a402a6-0f76-4758-8c27-3d5cc186ba9e",
-        "cb6236d2-2406-49a2-90ca-ea8cefa73f4d",
-        "dc4c9328-1afa-45b3-9a0e-7cd5aee7512e",
-        "69e37acd-045f-4c20-b9fe-98aab839b49b",
-        "5cb12595-9c17-40ed-9d7f-51a5dd30b00a",
-        "9c7b1a4e-3d2f-4a51-8b60-1c2e4f7a9d83",
-        "7f3a8c21-6b94-4e07-9a15-b8e2f0c4d5a6"
-      ],
+      "related_to": [],
       "resolved_in_version": null,
       "target_version": null,
       "environment": {
@@ -11204,12 +11196,7 @@
         "Prepper",
         "User",
         "Posts",
-        "ID",
-        "gr1",
-        "namensweg",
-        "diagnose",
-        "build142",
-        "messung"
+        "ID"
       ],
       "attachments": [],
       "updates": [
@@ -11220,22 +11207,6 @@
           "old_value": "",
           "new_value": "",
           "comment": "Issue erstellt"
-        },
-        {
-          "timestamp": "2026-08-14T13:40:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "in_progress",
-          "comment": "BUILD 141 — MESSWERKZEUG UND BEFUND. NOCH KEINE PROGRAMMAENDERUNG.\n\n(1) DER BEFUND AM QUELLTEXT IST BELEGT UND GROESSER ALS DAS TICKET VERMUTEN LAESST. Im Realpfad des Preppers gibt es KEINEN EINZIGEN namensbasierten Abgleich. posts.poster wird dort nur PROJIZIERT (als actor_username weitergereicht, query_blocks.py Z. 577), nie als SUCHSCHLUESSEL benutzt. Betroffen sind 38 Praedikate ueber fuenf Tabellen (29 Einschluss, 9 Ausschluss): posts 14, pms_new_posts 13, warnings 5, pms_my_posts 5, topics 1. Die vollstaendige Fundstellenliste mit Datei und Zeile steht in 'Befund_poster_id_Bruch_v1_0.md', Abschnitt 2.\n\n(2) DER NAMENSWEG EXISTIERT BEREITS — aber nur im GEIST-Pfad. query_blocks.py Z. 1327 'WHERE p.poster IN ({ph})' gegenueber Z. 257 'WHERE p.poster_id = %s'. Ein Realnutzer mit abweichender poster_id laeuft durch resolve_user(), _is_ghost ist falsch, und damit greift Z. 257. Der eigentliche Mangel ist nicht die fehlende Zeile, sondern dass KEIN Zweig danach sucht und es deshalb auch keine Fehlanzeige gibt (Grundregel 1).\n\n(3) DER NAMENSWEG UEBER users.username IST EINDEUTIG — der forensisch tragende Punkt fuer die ganze Korrektur. mariadb.sql Z. 1596-1597: 'constraint users_username_idx unique (username(25))' bei Tabellen-Collation utf8mb4_unicode_ci (Z. 1600). Zu einem Namen gibt es damit HOECHSTENS EIN Konto; der Abgleich posts.poster = users.username ist kein Wahrscheinlichkeitsschluss, sondern eine eindeutige Zuordnung. Fuer HISTORISCHE Namen aus mat_user_aliases gilt das NICHT — ein frueher von A getragener Name kann heute B gehoeren.\n\n(4) EIN- UND AUSSCHLUSS MUESSEN DIESELBE BEDINGUNG VERWENDEN. Wuerde nur der Einschluss erweitert, erfuellte ein ueber den Namen gefundener eigener Beitrag zugleich die erweiterte Einschlussbedingung (uid_posts active=1) UND die unveraenderte Ausschlussbedingung 'p.poster_id != uid' (uid_posts active=0). Derselbe Beitrag stuende zweimal in der Akte — aus einem uebersehenen Beleg wuerde ein doppelt gezaehlter, und Zeitstrahl, Wortzahlen und uid_stats liefen auseinander. Deshalb gehoert das Praedikat in EIN Modul (Grundregel 10) und nicht in 38 Handanpassungen. Nebenbedingung: topics.poster_id ist NULL-faehig (Schema Z. 1369), die Verneinung braucht ein COALESCE — sonst faellt eine Zeile mit NULL aus BEIDEN Mengen heraus.\n\n(5) EINE STRUKTURELLE GRENZE, DIE BENANNT WERDEN MUSS: pms_my_posts fuehrt KEINE Namensspalte (am laufenden Schema geprueft: poster_id, topic_id, post_id, my_message, language_*, word_count). Fuenf der 38 Stellen bleiben damit ID-gebunden. Es gibt einen mittelbaren Weg ueber post_id -> pms_new_posts.poster; ob der Schluessel im Bestand traegt, ist offen (siehe 69e37acd). Bis dahin ist diese Luecke zu PROTOKOLLIEREN — eine stille Auslassung waere genau der Fehler, den dieses Ticket anprangert.\n\n(6) ENTSCHEIDUNGEN ALEX VOM 14.08.2026: (a) Erst messen, dann bauen. (b) Namensweg = aktueller Name UND historische Aliasnamen, mehrdeutige mitgenommen und markiert. (c) Diese Lieferung enthaelt nur die Diagnose.\n\n(7) GELIEFERT: 'diagnose_poster_id_bruch.sql' (rein lesend, 8 Abschnitte) und 'Befund_poster_id_Bruch_v1_0.md'. Die entscheidende Zahl ist Abschnitt (2) des Skripts: Beitraege, deren poster auf ein BESTEHENDES Konto zeigt, deren poster_id aber eine andere ist. Abschnitt (8) rechnet vor, wie viele Scrape-Ziele die Korrektur zusaetzlich braechte — daran wird sie spaeter gemessen (Reproduktion vorher/nachher wie bei Build 140).\n\n(8) DAS MESSWERKZEUG IST NICHT NUR SYNTAXGEPRUEFT, SONDERN FUNKTIONAL DURCHLAUFEN. In der Bausitzung wurde eine MariaDB 10.11 aufgesetzt, das Produktivschema aus mariadb.sql vollstaendig eingespielt (77 Tabellen, fehlerfrei) und eine Attrappenlage mit je einem Fall der Klassen A-F angelegt. Alle acht Abschnitte liefern die von Hand vorausberechneten Zahlen, die Summenprobe in Abschnitt (1) geht auf. Gegenprobe zur Aliasstufe: ein Beitrag unter einem historischen Namen DES SUBJEKTS hebt die Vorschau von 4 auf 5 Beitraege und von 1 auf 2 Themenseiten, ein Beitrag unter dem Aliasnamen eines FREMDEN Kontos dagegen nicht. Das belegt die Rechenwege; es belegt NICHT das Verhalten auf 1.213.126 Beitraegen.\n\n(9) WAS DIESER BUILD AM ABLAUF AENDERT: nichts. Testlauf unveraendert 1158 gruen / 0 rot (python run_tests.py, Python 3.13 im Baucontainer, vor und nach der Aenderung gemessen). Kein Eingriff in evidence_/forensic_/assets_<uid>.db, kein Migrationsvorbehalt beruehrt.\n\n(10) OFFEN UND BENANNT: Der UMFANG des Schadens ist bis zum Vorliegen der Messzahlen UNBELEGT. Der Befund am Quelltext traegt die Aussage 'der Namensweg fehlt'; er traegt NICHT die Aussage 'es sind viele Belege betroffen'."
-        },
-        {
-          "timestamp": "2026-08-14T15:20:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "BUILD 142 — DIE MESSUNG LIEGT VOR (Alex, 14.08.2026). SIE BESTAETIGT DIE MELDUNG UND VERSCHIEBT DEN SCHWERPUNKT.\n\n(11) GESAMTLAGE posts, 1.011.881 Zeilen, Summenprobe geht auf: A (id und Name dasselbe Konto) 897.502 = 88,70 %; F (poster_id ohne Zeile in users) 99.668 = 9,85 %; B (Aliasname derselben id) 11.377; E (poster_id = 1) 2.257; D (Name weder Alias noch Konto) 1.077; C (Name gehoert einem ANDEREN bestehenden Konto) NULL.\n\n(12) KLASSE C = 0 IST DER WICHTIGSTE EINZELBEFUND FUER DEN BAU. Es gibt im ganzen Bestand keinen Beitrag, dessen poster_id auf ein bestehendes Konto zeigt und dessen Name zugleich einem ANDEREN bestehenden Konto gehoert. ID-Weg und Namensweg koennen sich auf posts also nie widersprechen; die Vereinigung beider ist konfliktfrei. Das war vorab nicht zu wissen und vereinfacht das Praedikat erheblich.\n\n(13) DIE KERNZAHL: 5.218 Beitraege ueber 2.649 Konten sind ueber den Namen belegt und ueber die id nicht auffindbar — 0,52 % des Bestandes. DIE SCHWERE LIEGT NICHT IM MITTELWERT: Im Auszug der 100 belegstaerksten betroffenen Konten haben 54 von 100 den Wert n_ueber_id = 0. Fuer diese Subjekte findet die bisherige Aufbereitung KEINEN EINZIGEN Beitrag — das Paket ist nicht unvollstaendig, es ist leer. 712 der 1.296 Beitraege des Auszugs gehoeren zu solchen Subjekten.\n\n(14) DER GROESSTE EINZELPOSTEN SIND DIE ATTESTIERUNGEN, nicht die Beitraege: 295.833 Belege (266.209 ohne user_id bei 27.450 Konten, 29.624 mit falscher user_id bei 5.337 Konten). _step4_attestations filtert mit 'WHERE user_id = %s' (phase_b_exporter.py Z. 3849) und verwirft sie alle. Das ist 56-mal so viel wie der Beitragsverlust — und genau die Stelle, an der der Fehler aufgefallen ist.\n\n(15) ZWEI VERSCHIEDENE URSACHEN IN DIESER ZAHL, und sie auseinanderzuhalten ist wichtig. URSACHE 1, rund 266.000 Belege: Felder, die NIE eine id hatten (posts.edited_by 101.120, topics.last_poster 84.428, logs.username 39.759, posts.message[quote=] 20.862, pms_new_posts.edited_by 13.866, logins.username 5.950, forums.last_poster 224). Sie sind nicht verlorengegangen, sie waren nie ueber eine id erreichbar — der Exportfilter verwirft sie trotzdem. Das ist eine Belegauslassung im Prepper UNABHAENGIG vom gemeldeten Fehler. URSACHE 2: die poster-Felder mit FALSCHER id — topics.poster 6.910, posts.poster 5.218, pms_new_posts.poster 3.033.\n\n(16) DIESE DREI ZAHLEN SIND AUF DIE EINHEIT IDENTISCH mit den unabhaengig gemessenen Werten aus Abschnitt (2) und (4) derselben Messung. Das ist ein Beweis und kein Indiz: username_attestations.user_id ist fuer die poster-Felder AUS poster_id abgeleitet worden und traegt exakt denselben Fehler. FOLGE: mat_subject_map.sql leitet subject_kind, users_id und die Subjektnummer aus username_attestations.user_id her — DIE SUBJEKTKARTE ERBT DEN FEHLER. Alex' Einschaetzung zu mat_usernames, mat_user_aliases und mat_usernames_mentioned trifft zu (sie sind namensbasiert); die Attestierungstabelle und alles aus ihrer user_id-Spalte Gebildete ist betroffen.\n\n(17) DIE GEFAEHRLICHSTE STELLE FUER DEN FIX IST KLASSE D. Ihre 1.077 Beitraege und 557 ids sind auf die Einheit gleich mit der Gegenrichtung aus Abschnitt (3) — und sie tragen laut Messung EINEN EINZIGEN Namen, verteilt auf 557 bestehende Konten, in einem Fenster von drei Tagen (2023-07-09 bis 2023-07-12). Das ist kein Namenswechsel und kein Exportverlust, sondern ein Vorgang. Ein namensbasierter Abgleich wuerde diesem Namen die Beitraege von 557 realen Konten zuschreiben — derselbe Fehler wie der gemeldete, nur in die andere Richtung. Der Namensweg braucht deshalb eine SPERRLISTE, und bis F2 geklaert ist, darf er fuer diesen Namen nicht greifen.\n\n(18) EIN MUSTER IN DEN KONTONUMMERN: In demselben Auszug zeigen 8 von 100 Konten eine users.id, die aus der fremden poster_id mit vorangestellter Ziffernfolge besteht — fuenfmal '9', dreimal '99'. Traegt das breit, ist ein Teil des Bruchs kein Datenverlust, sondern eine nachtraegliche UMNUMMERIERUNG von Konten, bei der die Beitraege ihre alte id behielten. Das waere maschinell und eindeutig aufloesbar und damit BELASTBARER ALS DER NAMENSWEG, weil es ohne jede Namensannahme auskommt. Abschnitt F1 der Folgemessung prueft es.\n\n(19) WARNINGS IST SAUBER: 0 von 0. Gemessen, nicht angenommen. Die fuenf Verwarnungs-Praedikate brauchen heute keinen Namensweg — die Messung gehoert trotzdem in den Regressionsumfang, weil sich das bei einem neuen Einspielen aendern kann.\n\n(20) EIN WIDERSPRUCH IM GEMELDETEN FALL, der vor dem Bau zu klaeren ist. Die Gegenprobe meldet fuer den eingetragenen Fall: KEINE Zeile in users, NULL Beitraege ueber die id, 1.077 ueber den Namen. Das Ticket beschreibt den Fall dagegen als 'registrierter und bestehender Benutzer mit einem Eintrag in der Tabelle users'. Beides zugleich kann nicht zutreffen. Die 1.077 sind zudem genau die Menge aus Klasse D. Waere der gemeldete Fall dieser Name, dann ist der Ausgangspunkt des Tickets kein Fall von UEBERSEHENEN, sondern von FALSCH ZUGEORDNETEN Belegen — und der Fix muesste anders aussehen. Abschnitt G der Folgemessung unterscheidet die drei moeglichen Erklaerungen.\n\n(21) GEAENDERTE REIHENFOLGE DES BAUPLANS gegenueber Build 141: erst F1 (Ziffernpraefix) und F2 (Klasse D) klaeren, dann stage1/zuordnung.py, dann _step4_attestations (groesster Posten, kleinste Aenderung), dann query_blocks.py, dann phase_b_exporter.py, dann mockup_dump.py.\n\n(22) GELIEFERT: diagnose_poster_id_bruch_folgefragen.sql (rein lesend; F1 Ziffernpraefix, F2 Klasse D, F3 Adressierbarkeit der 99.668 Beitraege aus Klasse F, P pms_my_posts ueber ALLE Unterhaltungen, Z Aliasnamen entdoppelt, G Gegenprobe zum Fall) und Befund_poster_id_Bruch_v1_1.md. Beide Skripte sind gegen das Produktivschema in einer MariaDB 10.11 funktional durchlaufen, nicht nur syntaxgeprueft.\n\n(23) WAS DIESER BUILD AM ABLAUF AENDERT: nichts. Testlauf unveraendert 1158 gruen / 0 rot (Python 3.13 im Baucontainer). Keine .py-Datei angefasst. Kein Eingriff in evidence_/forensic_/assets_<uid>.db, kein Migrationsvorbehalt beruehrt.\n\n(24) KEINE BENUTZERNAMEN IN DIESER DOKUMENTATION. Alle Angaben sind Aggregate; die Einzeldaten stehen nur in den Messprotokollen (Weisung Alex, 14.08.2026 — laufende Ermittlungen)."
         }
       ]
     },
@@ -11487,332 +11458,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Build723.json"
-        }
-      ]
-    },
-    {
-      "id": "cb6236d2-2406-49a2-90ca-ea8cefa73f4d",
-      "type": "documentation",
-      "title": "Herkunft von mat_usernames/mat_user_aliases/mat_usernames_mentioned unbelegt",
-      "affected_version": "0.1.140",
-      "reporter": "Claude",
-      "reported_at": "2026-08-14T13:40:00+00:00",
-      "prerequisites": "Aufgefallen bei der Aufarbeitung von 953f68e5 (poster_id-Bruch).",
-      "description": "Der Prepper stuetzt sich an tragenden Stellen auf drei materialisierte MariaDB-Tabellen: mat_user_aliases (historische Namen, user_resolver.py Z. 179), mat_usernames und mat_usernames_mentioned (Erwaehnungsindex, query_blocks.py Z. 579-591 und Bloecke 11-15). Im Repository gibt es fuer diese drei KEIN Erzeugungsskript — nur mat_subject_map hat eines (mat_subject_map.sql). Damit ist hier nicht pruefbar, WORAUS sie gebildet werden.\n\nDas ist im Zusammenhang mit 953f68e5 mehr als eine Dokumentationsluecke: Wenn diese Tabellen ihrerseits ueber posts.poster_id gebildet wurden, haben sie denselben Fehler geerbt. Dann wuerde ein namensbasierter Fix, der ueber mat_user_aliases geht, auf einer bereits verkuerzten Grundlage aufsetzen und den Schaden nur teilweise beheben — ohne dass das an den Zahlen sichtbar waere.",
-      "expected_behavior": "Die Erzeugungsskripte der drei Tabellen liegen im Repository (oder ihre Herkunft ist dokumentiert), sodass nachpruefbar ist, ob sie ID- oder namensbasiert gebildet werden.",
-      "actual_behavior": "Kein Erzeugungsskript im Repository; die Tabellen sind nur als Ist-Schema in mariadb.sql (Z. 496, 606, 615) dokumentiert.",
-      "status": "resolved",
-      "priority": "high",
-      "severity": "major",
-      "assigned_to": "Claude",
-      "related_to": [
-        "953f68e5-5fa5-41cc-8436-fb405c9b986b"
-      ],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "python_version": "3.14",
-        "database": "mariadb"
-      },
-      "tags": [
-        "Prepper",
-        "mat_tabellen",
-        "nachpruefbarkeit",
-        "build142"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-14T13:40:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Eintrag erstellt bei der Aufarbeitung von 953f68e5. Abschnitt (5) von diagnose_poster_id_bruch.sql misst die Lage fuer username_attestations und gibt damit einen ersten Hinweis darauf, ob die Erhebung die user_id ueberhaupt zuverlaessig mitfuehrt."
-        },
-        {
-          "timestamp": "2026-08-14T15:20:00+00:00",
-          "author": "Alex",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "BEANTWORTET (Alex, 14.08.2026): Die drei Tabellen werden ausserhalb des Preppers erzeugt. Das dortige Programm erfordert nur einmalige, keine wiederholten Ausfuehrungen; im Prepper liegen grundsaetzlich nur Programme zur wiederholten Nutzung. mat_subject_map ist dagegen im Rahmen des Preppers entstanden und keine reine Vorleistung. Die drei Tabellen beruhen auf users.username, nicht auf users.id, und sind vom poster_id-Bruch nicht betroffen."
-        },
-        {
-          "timestamp": "2026-08-14T15:25:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "ANGENOMMEN, MIT EINER EINSCHRAENKUNG, DIE DIE MESSUNG BELEGT. Fuer mat_usernames, mat_user_aliases und mat_usernames_mentioned trifft die Auskunft zu: sie sind namensbasiert. NICHT zu trifft sie fuer username_attestations.user_id — Abschnitt (5) der Messung vom 14.08.2026 weist fuer die poster-Felder genau 6.910 (topics.poster), 5.218 (posts.poster) und 3.033 (pms_new_posts.poster) falsche user_id aus, auf die Einheit identisch mit den unabhaengig gemessenen Bruchzahlen. Diese Spalte ist also aus poster_id abgeleitet. Da mat_subject_map.sql daraus subject_kind, users_id und die Subjektnummer herleitet, erbt die Subjektkarte den Fehler. Dafuer ist der eigene Vorgang 5cb12595 angelegt; dieser hier ist damit beantwortet."
-        },
-        {
-          "timestamp": "2026-08-14T18:07:04.764338+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Prepper_Build142.json"
-        }
-      ]
-    },
-    {
-      "id": "dc4c9328-1afa-45b3-9a0e-7cd5aee7512e",
-      "type": "improvement",
-      "title": "username_regex wird im Realpfad an keine Abfrage weitergereicht",
-      "affected_version": "0.1.140",
-      "reporter": "Claude",
-      "reported_at": "2026-08-14T13:40:00+00:00",
-      "prerequisites": "Aufgefallen bei der Aufarbeitung von 953f68e5.",
-      "description": "scraper_stage1.py Z. 195 baut ueber build_username_regex(user.all_usernames) ein MariaDB-REGEXP-Muster und uebergibt es an QueryBlocks.run_all_blocks() (query_blocks.py Z. 213). Im REALPFAD wird der Parameter in keinem einzigen Block verwendet: die Bloecke 11-15 gehen ueber mat_usernames_mentioned, Block 1 ueber poster_id. Nur der Geist-Pfad arbeitet namensbasiert, und der nutzt all_usernames direkt, nicht den Regex.\n\nZwei Lesarten, und sie fuehren zu entgegengesetzten Massnahmen: entweder ist der Parameter ein Ueberbleibsel und gehoert entfernt — oder er ist der Rest eines namensbasierten Weges, der beim Umbau auf mat_usernames_mentioned (2026-04-08, Kommentar Z. 559-561) verlorenging. Im zweiten Fall waere er ein frueher Hinweis auf genau den Mangel aus 953f68e5. Vor dem Umbau zu klaeren, damit nicht ein noch benoetigter Weg entfernt wird.",
-      "expected_behavior": "Entweder der Parameter wird verwendet, oder er ist entfernt und der Wegfall ist begruendet.",
-      "actual_behavior": "Parameter wird uebergeben und nicht ausgewertet.",
-      "status": "open",
-      "priority": "medium",
-      "severity": "minor",
-      "assigned_to": "Claude",
-      "related_to": [
-        "953f68e5-5fa5-41cc-8436-fb405c9b986b"
-      ],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "python_version": "3.14",
-        "database": "mariadb"
-      },
-      "tags": [
-        "Prepper",
-        "query_blocks",
-        "toter_code",
-        "build142"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-14T13:40:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Eintrag erstellt bei der Aufarbeitung von 953f68e5."
-        },
-        {
-          "timestamp": "2026-08-14T18:07:04.764360+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Prepper_Build142.json"
-        }
-      ]
-    },
-    {
-      "id": "69e37acd-045f-4c20-b9fe-98aab839b49b",
-      "type": "bug",
-      "title": "pms_my_posts hat keine Namensspalte - Namensweg strukturell unmoeglich",
-      "affected_version": "0.1.140",
-      "reporter": "Claude",
-      "reported_at": "2026-08-14T13:40:00+00:00",
-      "prerequisites": "Folgt aus 953f68e5: der Namensweg soll den ID-Weg ergaenzen.",
-      "description": "Fuenf der 38 ID-gebundenen Praedikate greifen auf pms_my_posts zu (phase_b_exporter.py Z. 3475, 3483, 3685, 3694; mockup_dump.py Z. 663). Die Tabelle fuehrt jedoch KEINE Namensspalte — am laufenden Schema geprueft: poster_id, topic_id, post_id, my_message, language_*, word_count. Ein Abgleich ueber den Namen ist dort also nicht moeglich.\n\npms_my_posts ist die Sendekopie des Absenders und speist uid_stats.pm_posts_sent sowie uid_pms_word_count. Traegt die poster_id dort denselben Bruch wie in posts, fehlen gesendete PN des Beschuldigten in Zaehlung und Wortstatistik — ohne dass es auffiele.\n\nEs gibt einen mittelbaren Weg: pms_my_posts.post_id -> pms_new_posts.id -> pms_new_posts.poster. Ob dieser Schluessel im Bestand traegt (also ob post_id tatsaechlich auf pms_new_posts.id verweist und die Zuordnung eindeutig ist), ist am Echtbestand zu pruefen.\n\nSolange das offen ist, muss die Luecke im Bericht ausgewiesen werden: 'nicht feststellbar' und 'null' duerfen nicht gleich aussehen.",
-      "expected_behavior": "Entweder der mittelbare Namensweg ueber pms_new_posts traegt und wird genutzt, oder die Luecke wird je Subjekt protokolliert.",
-      "actual_behavior": "Kein Namensweg; die Luecke ist bislang nicht ausgewiesen.",
-      "status": "in_progress",
-      "priority": "high",
-      "severity": "major",
-      "assigned_to": "Claude",
-      "related_to": [
-        "953f68e5-5fa5-41cc-8436-fb405c9b986b"
-      ],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "python_version": "3.14",
-        "database": "mariadb"
-      },
-      "tags": [
-        "Prepper",
-        "pms_my_posts",
-        "namensweg",
-        "gr1",
-        "build142"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-14T13:40:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Eintrag erstellt bei der Aufarbeitung von 953f68e5. Abschnitt (4) von diagnose_poster_id_bruch.sql weist pms_my_posts ausdruecklich als nicht messbar aus, statt die Tabelle stillschweigend wegzulassen."
-        },
-        {
-          "timestamp": "2026-08-14T15:20:00+00:00",
-          "author": "Alex",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "GEMESSEN (Alex, 14.08.2026): 915 private Nachrichten von 139 Absendern ohne aktives Konto in users. Ueber pms_new_topics (starter/to_user) liessen sich 73 benennen, ueber pms_new_posts.poster 137. Die verbleibenden 2 waren mit der kombinierten Abfrage nicht aufzuloesen."
-        },
-        {
-          "timestamp": "2026-08-14T15:25:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "DAMIT IST DER MITTELBARE WEG BELEGT — und zwar ein besserer als der urspruenglich vermutete. Nicht ueber pms_my_posts.post_id -> pms_new_posts.id, sondern direkt ueber die poster_id: pms_new_posts wirkt als id-zu-Name-NACHSCHLAGEWERK. Das reicht ueber pms_my_posts hinaus: fuer JEDE id ohne users-Zeile laesst sich so ein Name gewinnen — genau das, was ein verwaistes Konto (Build 140, Vorgang 03a402a6) benennbar macht. Der Ersatzname '[users.id=<n>, Konto geloescht]' aus resolve_orphaned_user waere damit in vielen Faellen durch einen echten Namen zu ersetzen.\n\nZU DEN VERBLIEBENEN ZWEI EIN VORBEHALT. Die Zwischenmenge der drei Abfragen gruppiert nach poster_id und waehlt dazu EINE topic_id aus; welche, ist bei MariaDB nicht festgelegt. Hat ein Absender mehrere Unterhaltungen, wird nur eine geprueft — der Sprung von 73 auf 137 zwischen der ersten und der zweiten Abfrage zeigt genau diesen Effekt. Die zwei koennen also benennbar sein und nur an der Auswahl gescheitert sein. Bei zwei Subjekten ist das kein Rundungsfehler (GR1).\n\nAbschnitt P von diagnose_poster_id_bruch_folgefragen.sql prueft deshalb ALLE Unterhaltungen je Absender und trennt zusaetzlich den Fall ab, dass die Unterhaltung SELBST fehlt (keine Zeile in pms_new_topics) — der wuerde sonst in derselben Restmenge verschwinden und wie 'nicht benennbar' aussehen, obwohl er einen anderen Befund und eine andere Folge hat. Der Abschnitt ist an einer Attrappenlage gegengeprobt, in der ein Absender nur ueber EINE von ZWEI Unterhaltungen benennbar ist."
-        },
-        {
-          "timestamp": "2026-08-14T18:07:04.764368+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Prepper_Build142.json"
-        }
-      ]
-    },
-    {
-      "id": "5cb12595-9c17-40ed-9d7f-51a5dd30b00a",
-      "type": "bug",
-      "title": "mat_subject_map erbt den poster_id-Bruch ueber username_attestations",
-      "affected_version": "0.1.140",
-      "reporter": "Claude",
-      "reported_at": "2026-08-14T15:25:00+00:00",
-      "prerequisites": "Folgt aus der Messung zu 953f68e5 vom 14.08.2026.",
-      "description": "mat_subject_map.sql leitet subject_kind, users_id und die Subjektnummer allein aus username_attestations.user_id her (Abschnitt 2 des Skripts; in Build 140 wurde dort die Existenzpruefung gegen users ergaenzt, nicht aber die Herkunft der Spalte hinterfragt).\n\nDIE MESSUNG BELEGT, DASS DIESE SPALTE DEN BRUCH TRAEGT: Abschnitt (5) weist fuer die poster-Felder 6.910 (topics.poster), 5.218 (posts.poster) und 3.033 (pms_new_posts.poster) Attestierungen mit FALSCHER user_id aus. Diese drei Zahlen sind auf die Einheit identisch mit den unabhaengig gemessenen Bruchzahlen aus Abschnitt (2) und (4) derselben Messung. Die user_id der poster-Felder ist also aus poster_id uebernommen worden.\n\nFOLGE: Die Subjektkarte kann einen Beleg dem falschen Subjekt zuordnen — und zwar an der Stelle, an der der Prepper entscheidet, WELCHES SUBJEKT er ueberhaupt bearbeitet. Das wirkt vor allen Praedikaten aus 953f68e5 und ist damit nicht durch deren Korrektur mit erledigt.\n\nAbzugrenzen ist der zweite Fall aus derselben Messung: 266.209 Attestierungen ohne user_id stammen aus Feldern, die nie eine id hatten (edited_by, last_poster, logs.username, quote=). Die traegt die Karte nicht falsch, sie sieht sie nur nicht — dafuer ist 9c7b1a4e angelegt.",
-      "expected_behavior": "Die Subjektkarte beruht auf einer Zuordnung, die den Namensweg einschliesst, oder sie weist die betroffenen Zeilen als unsicher aus (analog user_id_conflict).",
-      "actual_behavior": "subject_kind, users_id und subject_id werden aus einer Spalte hergeleitet, die den poster_id-Bruch traegt.",
-      "status": "open",
-      "priority": "critical",
-      "severity": "major",
-      "assigned_to": "Claude",
-      "related_to": [
-        "953f68e5-5fa5-41cc-8436-fb405c9b986b",
-        "cb6236d2-2406-49a2-90ca-ea8cefa73f4d",
-        "03a402a6-0f76-4758-8c27-3d5cc186ba9e"
-      ],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "python_version": "3.14",
-        "database": "mariadb"
-      },
-      "tags": [
-        "Prepper",
-        "mat_subject_map",
-        "username_attestations",
-        "gr1",
-        "build142"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-14T15:25:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Eintrag erstellt aus der Messung zu 953f68e5. Die Gleichheit der drei Zahlen ist der Beleg; sie ist reproduzierbar mit diagnose_poster_id_bruch.sql, Abschnitte (2), (4) und (5)."
-        },
-        {
-          "timestamp": "2026-08-14T18:07:04.764373+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Prepper_Build142.json"
-        }
-      ]
-    },
-    {
-      "id": "9c7b1a4e-3d2f-4a51-8b60-1c2e4f7a9d83",
-      "type": "bug",
-      "title": "_step4_attestations verwirft 266.209 reine Namensbelege",
-      "affected_version": "0.1.140",
-      "reporter": "Claude",
-      "reported_at": "2026-08-14T15:25:00+00:00",
-      "prerequisites": "Folgt aus der Messung zu 953f68e5 vom 14.08.2026.",
-      "description": "_step4_attestations (phase_b_exporter.py Z. 3849) exportiert username_attestations mit 'WHERE user_id = %s'. Die Messung weist 266.209 Belege bei 27.450 Konten aus, deren user_id NULL ist, deren Name aber zu einem bestehenden Konto gehoert.\n\nDIESE BELEGE SIND NICHT VERLORENGEGANGEN — SIE WAREN NIE UEBER EINE ID ERREICHBAR. Sie stammen aus reinen Namensfeldern: posts.edited_by 101.120, topics.last_poster 84.428, logs.username 39.759, posts.message[quote=] 20.862, pms_new_posts.edited_by 13.866, logins.username 5.950, forums.last_poster 224. Der Exportfilter verwirft sie trotzdem, still und ohne Fehlanzeige.\n\nDAS IST EIN EIGENSTAENDIGER MANGEL, unabhaengig vom gemeldeten poster_id-Bruch: Auch bei vollstaendig korrekten poster_id fehlten diese Belege in jeder Akte. Ihre forensische Bedeutung ist erheblich — 'wer hat einen Beitrag bearbeitet', 'wer war letzter Schreiber in einem Thema', 'wer wird in einem Zitat genannt' sind Beziehungsbelege, und 5.950 Belege aus logins.username betreffen sogar den Zugang selbst.\n\nDie Aenderung ist technisch klein (eine Abfrage), der Ertrag mit 266.209 Belegen der groesste Einzelposten des ganzen Vorgangs. Sie setzt allerdings dieselbe Zuordnungsentscheidung voraus wie 953f68e5 (welche Namen gelten als die des Subjekts) und gehoert deshalb hinter das Modul stage1/zuordnung.py.",
-      "expected_behavior": "Der Export erfasst Attestierungen zusaetzlich ueber den Namen und weist die Fundstufe je Beleg aus.",
-      "actual_behavior": "Nur Belege mit passender user_id werden exportiert; der Rest faellt ohne Meldung weg.",
-      "status": "open",
-      "priority": "critical",
-      "severity": "major",
-      "assigned_to": "Claude",
-      "related_to": [
-        "953f68e5-5fa5-41cc-8436-fb405c9b986b"
-      ],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "python_version": "3.14",
-        "database": "alle"
-      },
-      "tags": [
-        "Prepper",
-        "attestations",
-        "phase_b",
-        "gr1",
-        "build142"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-14T15:25:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Eintrag erstellt aus der Messung zu 953f68e5, Abschnitt (5)."
-        },
-        {
-          "timestamp": "2026-08-14T18:07:04.764380+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Prepper_Build142.json"
-        }
-      ]
-    },
-    {
-      "id": "7f3a8c21-6b94-4e07-9a15-b8e2f0c4d5a6",
-      "type": "documentation",
-      "title": "posts enthaelt 1.011.881 Zeilen - Projektbeschreibung nennt 1.213.126",
-      "affected_version": "0.1.140",
-      "reporter": "Claude",
-      "reported_at": "2026-08-14T15:25:00+00:00",
-      "prerequisites": "Aufgefallen bei der Messung zu 953f68e5 (Summenprobe in Abschnitt 1).",
-      "description": "Die Gegenprobe der Messung meldet COUNT(*) FROM posts = 1.011.881. Die Projektbeschreibung nennt 1.213.126 Beitraege. Differenz: 201.245 Zeilen, 16,6 %.\n\nDrei Erklaerungen sind denkbar und fuehren zu sehr verschiedenen Folgen: (a) andere Zaehlweise (z.B. einschliesslich privater Nachrichten oder soft_delete), (b) die Zahl in der Projektbeschreibung stammt aus einem frueheren Stand, (c) dem eingespielten Bestand fehlen Zeilen.\n\nDer Fall (c) waere ein Belegverlust in einer Groessenordnung, gegen die der gemeldete poster_id-Bruch klein ist — und er waere bisher niemandem aufgefallen. Deshalb gehoert die Differenz geklaert und nicht als Rundung abgetan (GR1).",
-      "expected_behavior": "Die Zahl im Bestand und die Zahl in der Projektbeschreibung stimmen ueberein, oder die Abweichung ist begruendet und dokumentiert.",
-      "actual_behavior": "Differenz von 201.245 Zeilen, ungeklaert.",
-      "status": "open",
-      "priority": "high",
-      "severity": "major",
-      "assigned_to": "Alex",
-      "related_to": [
-        "953f68e5-5fa5-41cc-8436-fb405c9b986b"
-      ],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "python_version": "3.14",
-        "database": "mariadb"
-      },
-      "tags": [
-        "Prepper",
-        "bestand",
-        "nachpruefbarkeit",
-        "gr1",
-        "build142"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-14T15:25:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Eintrag erstellt. Gegenprobe: SELECT COUNT(*) FROM posts; sowie SELECT COUNT(*) FROM posts WHERE soft_delete = 1; und SELECT COUNT(*) FROM pms_new_posts;"
-        },
-        {
-          "timestamp": "2026-08-14T18:07:04.764386+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Prepper_Build142.json"
         }
       ]
     }
