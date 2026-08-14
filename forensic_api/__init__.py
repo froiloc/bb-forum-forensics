@@ -65,7 +65,9 @@
 #     report.js (contenteditable-Modell) entfernt.
 #     Beleg: Bauplan B6 v0.5 §4.1, Projektgespraech 2026-05-06
 #
-# Version: v0.6.114 · Build: 114 · 2026-05-07
+# Version: v0.8.722 · Build: 722 · 2026-08-14
+#   Build 722 (Ticket c9d24a7f): Schutzhuelle am Verteiler von
+#   /_forensic/placeholders/* - EINE Stelle fuer alle sechs Zweige.
 # =============================================================================
 
 from __future__ import annotations
@@ -693,7 +695,48 @@ class ForensicApi:
         """
         Interne Dispatch-Funktion fuer /_forensic/placeholders/*-Pfade.
         Beleg: Bauplan B6 v0.3 §3, Build 089
+
+        BUILD 722 (Ticket c9d24a7f) - DIE HUELLE SITZT AM VERTEILER.
+
+        Bis Build 721 fassten drei dieser Endpunkte die evidence_<uid>.db
+        ungeschuetzt an: EvidenceDb.get_reports(), get_blocks_for_report()
+        und set_cache_entry() rufen self._con.execute() ohne try. Eine
+        unlesbare Falldatenbank liess die Ausnahme aus dem Handler fliegen,
+        die Verbindung starb, und der Browser meldete 'Failed to fetch' -
+        ohne Status, ohne Hinweis. Das ist derselbe Vorfall wie am
+        2026-07-30 im Berichtseditor (Ticket f0a3c85b, Build 578).
+
+        WARUM HIER UND NICHT IN JEDEM HANDLER: sechs try/except waeren
+        sechs Stellen, an denen die siebte vergessen wird - die Begruendung
+        steht wortgleich in forensic_api/templates_ep.py. Der Verteiler ist
+        die EINE Stelle, durch die alle sechs Zweige gehen.
+
+        DIE HUELLE IST DAS ZWEITE NETZ, nicht das erste. Gegen Methoden, die
+        ihren Fehler selbst schlucken und [] oder {} liefern, richtet sie
+        nichts aus - dagegen steht die Zustandspruefung in
+        PlaceholdersEndpoint._quelle_nicht_lesbar(). Beide zusammen decken
+        die zwei Arten ab, auf die diese Endpunkte scheitern koennen.
+
+        'evidence_<uid>.db / templates.db' als Name der Datenbank ist
+        ABSICHTLICH unscharf: der Verteiler weiss nicht, welche der beiden
+        im Einzelfall gestolpert ist, und eine geratene Zuordnung waere
+        schlechter als eine ehrlich unbestimmte. Die genaue Ausnahme samt
+        Typ steht in der Antwort ('ursache') und im Protokoll.
         """
+        from forensic_api.db_guard import geschuetzt
+        geschuetzt(
+            handler, "evidence_<uid>.db / templates.db",
+            lambda: self._dispatch_placeholders_intern(
+                handler, method, url_path, params))
+
+    def _dispatch_placeholders_intern(
+        self,
+        handler: "ForensicRequestHandler",
+        method: str,
+        url_path: str,
+        params: dict,
+    ) -> None:
+        """Die unveraenderte Verteilung (von _dispatch_placeholders umhuellt)."""
         if url_path == "/_forensic/placeholders/resolve":
             if method != "POST":
                 self._method_not_allowed(handler)

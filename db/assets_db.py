@@ -35,7 +35,10 @@
 #   default.db gespeichert.
 #
 # Abhängigkeiten: sqlite3 — ausschließlich Stdlib
-# Version: v0.1.0 · Build: 271 · 2026-05-31
+# Version: v0.8.722 · Build: 722 · 2026-08-14
+#   Build 722 (Ticket c9d24a7f): BEFUND_*-Konstanten und
+#   get_asset_by_full_url_befund() - 'kein Treffer' und 'Abfrage
+#   gescheitert' sind nicht mehr dieselbe Antwort. READ-ONLY unberuehrt.
 #   Build 402 (2026-07-14): get_asset_reference() ergaenzt — BLOB-freie
 #   Referenz-Metadaten (url_hash/asset_id/mime_type/file_size) fuer den
 #   forensischen Bild-Verweis der Berichts-Ausgabe (§4.2). READ-ONLY bleibt.
@@ -56,6 +59,31 @@
 #     geteilten Verbindung. Die Serialisierung erfolgt jetzt zentral im
 #     LockingConnection-Wrapper (db/locking_connection.py), der self._con
 #     umschliesst. Ein zusaetzlicher lokaler Lock waere redundant.
+#
+# =============================================================================
+# AENDERUNG BUILD 722 (Ticket c9d24a7f) — DREI FAELLE STATT EINEM
+#
+#   BEFUND, gemessen am 14.08.2026: get_asset_by_full_url() gibt in DREI
+#   voellig verschiedenen Lagen dasselbe zurueck, naemlich None:
+#     (1) assets_<uid>.db ist gar nicht angebunden (der Regelfall vor dem
+#         asset_importer-Lauf),
+#     (2) die Datenbank ist da, das Asset aber nicht,
+#     (3) die Abfrage ist DREIMAL gescheitert und _retryable_query hat
+#         aufgegeben (Z. 224-226: 'Query nach %d Versuchen aufgegeben' ->
+#         return None).
+#
+#   Der Endpunkt /_forensic/fileasset macht daraus in allen drei Faellen
+#   HTTP 404. Fall (3) ist damit von 'das Bild gibt es nicht' nicht zu
+#   unterscheiden - ein still uebersprungener Fehlschlag (Grundregel 1).
+#
+#   NEU sind deshalb die BEFUND_*-Konstanten und
+#   get_asset_by_full_url_befund(). Das bisherige get_asset_by_full_url()
+#   BLEIBT UNVERAENDERT in Verhalten und Signatur - es ruft die neue Fassung
+#   auf und laesst den Befund fallen. So aendert sich fuer keinen bestehenden
+#   Aufrufer etwas; wer die Unterscheidung braucht, fragt danach.
+#
+#   READ-ONLY bleibt harte Invariante. Es wird nichts geschrieben, nichts
+#   angelegt, nichts wiederholt, was nicht schon vorher wiederholt wurde.
 # =============================================================================
 
 from __future__ import annotations
@@ -63,7 +91,7 @@ from __future__ import annotations
 import time
 import sqlite3
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Tuple
 
 from core.logger import get_logger
 
@@ -71,6 +99,18 @@ logger = get_logger(__name__)
 
 # Standard-MIME-Type wenn keiner in der DB gespeichert ist
 _DEFAULT_MIME_TYPE = "application/octet-stream"
+
+# --- Befunde eines Lookups (NEU Build 722, Ticket c9d24a7f) ---------------
+#: Treffer - das Asset liegt vor.
+BEFUND_OK = "ok"
+#: Die Datenbank ist angebunden und lesbar, das Asset steht nicht darin.
+BEFUND_KEIN_TREFFER = "kein_treffer"
+#: assets_<uid>.db ist gar nicht angebunden (con=None). KEIN Fehler: die
+#: Datei entsteht erst nach dem asset_importer-Lauf.
+BEFUND_NICHT_ANGEBUNDEN = "nicht_angebunden"
+#: Die Abfrage ist gescheitert (nach den Wiederholungen aufgegeben). DAS
+#: IST EIN FEHLER und darf nicht wie 'kein Treffer' aussehen.
+BEFUND_ABFRAGEFEHLER = "abfragefehler"
 
 
 @dataclass(frozen=True)
@@ -195,7 +235,41 @@ class AssetsDb:
     # ------------------------------------------------------------------
 
     def _retryable_query(self, sql: str, params=(), max_retries: int = 3) -> Optional[sqlite3.Row]:
+        """
+        UNVERAENDERTES VERHALTEN (Build 722): Zeile oder None.
+
+        Die Wiederholungsschleife ist nach _abfrage() gewandert, weil sie
+        seit Build 722 ZWEI Auskuenfte liefert - die Zeile und die Frage, ob
+        ein Fehler aufgetreten ist. Hier wird die zweite fallen gelassen,
+        damit die bestehenden Aufrufer (get_asset, get_asset_reference,
+        db/default_db.py-Muster) sich nicht aendern muessen.
+        """
+        zeile, _fehler = self._abfrage(sql, params, max_retries=max_retries)
+        return zeile
+
+    def _abfrage(self, sql: str, params=(),
+                 max_retries: int = 3) -> Tuple[Optional[sqlite3.Row],
+                                                Optional[str]]:
+        """
+        Die Wiederholungsschleife, jetzt MIT Fehlerauskunft.
+
+        -> (zeile, None)      Abfrage gelaufen; zeile kann None sein
+                              (= es gibt die Zeile nicht)
+        -> (None, meldung)    Abfrage nach allen Versuchen aufgegeben
+
+        WARUM DIE ZWEITE AUSKUNFT NOETIG IST: Bis Build 721 gab diese
+        Schleife in beiden Faellen None zurueck. Der Aufrufer konnte 'nicht
+        gefunden' und 'nicht nachgesehen' nicht auseinanderhalten, und
+        /_forensic/fileasset machte aus beidem HTTP 404. Genau das verbietet
+        Grundregel 1.
+
+        Die Schleife selbst - Anzahl der Versuche, Wartezeiten, gefangene
+        Ausnahmearten, das rollback() dazwischen - ist UNVERAENDERT
+        uebernommen. Es wird also nicht oefter und nicht seltener
+        wiederholt als vorher.
+        """
         delay = 0.1
+        letzte_meldung: Optional[str] = None
         for attempt in range(max_retries):
             cursor = None
             try:
@@ -206,8 +280,9 @@ class AssetsDb:
                 # Prüfe auf leeres Row-Objekt (Länge 0)
                 if row is not None and hasattr(row, "__len__") and len(row) == 0:
                     raise IndexError("Leeres Row-Objekt (Länge 0)")
-                return row
+                return (row, None)
             except (sqlite3.InterfaceError, sqlite3.OperationalError, IndexError, TypeError) as exc:
+                letzte_meldung = "%s: %s" % (type(exc).__name__, exc)
                 logger.warning(
                     "Query fehlgeschlagen (Versuch %d/%d): %s - %s",
                     attempt + 1, max_retries, sql[:80], exc
@@ -223,10 +298,12 @@ class AssetsDb:
                     pass
                 if attempt == max_retries - 1:
                     logger.error("Query nach %d Versuchen aufgegeben: %s", max_retries, sql[:80])
-                    return None
+                    return (None, letzte_meldung or "Abfrage aufgegeben")
                 time.sleep(delay)
                 delay *= 2
-        return None
+        # Nur erreichbar, wenn max_retries <= 0 uebergeben wurde. Auch das ist
+        # ein 'nicht nachgesehen' und kein 'nicht gefunden'.
+        return (None, letzte_meldung or "keine Abfrage ausgefuehrt")
 
     def get_asset(self, url: str) -> Optional[AssetRecord]:
         if not self._available:
@@ -390,10 +467,44 @@ class AssetsDb:
         Für /_forensic/fileasset: die URL kommt bereits vollständig
         als Query-Parameter (z.B. 'http://filer.onion/img/x.jpg').
         Beleg: Projektgespräch 2026-05-31.
+
+        VERHALTEN UNVERAENDERT (Build 722). Wer den Grund fuer ein None
+        braucht, nimmt get_asset_by_full_url_befund().
+        """
+        datensatz, _befund = self.get_asset_by_full_url_befund(url)
+        return datensatz
+
+    def get_asset_by_full_url_befund(
+        self, url: str
+    ) -> Tuple["Optional[AssetRecord]", str]:
+        """
+        Wie get_asset_by_full_url, aber MIT Begruendung (NEU Build 722,
+        Ticket c9d24a7f).
+
+        -> (AssetRecord, BEFUND_OK)
+        -> (None, BEFUND_NICHT_ANGEBUNDEN)  assets_<uid>.db ist nicht
+                                            angebunden - der Regelfall vor
+                                            dem asset_importer-Lauf
+        -> (None, BEFUND_KEIN_TREFFER)      Datenbank gelesen, Asset nicht da
+        -> (None, BEFUND_ABFRAGEFEHLER)     Abfrage aufgegeben ODER die Zeile
+                                            liess sich nicht auswerten
+
+        WARUM DIE DRITTE ZEILE EIN EIGENER BEFUND IST: Sie ist die einzige
+        der vier, bei der der ERMITTLER ETWAS NICHT SIEHT, OHNE ES ZU MERKEN.
+        Ein nicht importiertes Asset-Verzeichnis faellt auf (kein Bild ist
+        da); ein einzelnes fehlendes Asset ist eine Tatsache ueber den
+        Bestand. Eine gescheiterte Abfrage sieht dagegen genauso aus wie
+        'gibt es nicht' - und das darf sie nicht.
+
+        DIE AUSWERTUNGSPANNE ZAEHLT ALS FEHLER, nicht als Leerbefund: Wenn
+        die Zeile DA ist, sich aber nicht in einen AssetRecord ueberfuehren
+        laesst (IndexError/TypeError, s.u.), dann existiert das Asset sehr
+        wohl und wir koennen es nur nicht ausliefern. Das als 'kein Treffer'
+        zu melden waere die falsche Auskunft.
         """
         if not self._available:
-            return None
-        row = self._retryable_query(
+            return (None, BEFUND_NICHT_ANGEBUNDEN)
+        row, fehler = self._abfrage(
             """
             SELECT au.url, a.data, a.mime_type, a.file_size
             FROM adb.asset_urls au
@@ -402,18 +513,23 @@ class AssetsDb:
             """,
             (url,)
         )
+        if fehler is not None:
+            logger.error(
+                "get_asset_by_full_url: Abfrage gescheitert fuer '%s' (%s)",
+                url[:120], fehler)
+            return (None, BEFUND_ABFRAGEFEHLER)
         if row is None:
-            return None
+            return (None, BEFUND_KEIN_TREFFER)
         try:
-            return AssetRecord(
+            return (AssetRecord(
                 url=str(row[0]),
                 data=row[1],
-                mime_type=str(row[2]) if row[2] else "application/octet-stream",
+                mime_type=str(row[2]) if row[2] else _DEFAULT_MIME_TYPE,
                 file_size=int(row[3]) if row[3] is not None else None,
-            )
+            ), BEFUND_OK)
         except (IndexError, TypeError) as exc:
             logger.error("get_asset_by_full_url Fehler '%s': %s", url, exc)
-            return None
+            return (None, BEFUND_ABFRAGEFEHLER)
 
     def asset_count(self) -> int:
         """Gibt die Anzahl der gespeicherten Assets zurück. Für Statusanzeigen."""

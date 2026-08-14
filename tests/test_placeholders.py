@@ -17,7 +17,13 @@
 # T11 -- PLACEHOLDER_RE: Regex matched korrekte Syntaxvarianten
 #
 # Build 469: Schluesselumstellung user_id -> subject_id (M019)
-# Version: v0.7.469 · Build: 469 · 2026-07-20
+# Version: v0.8.722 · Build: 722 · 2026-08-14
+# Build 722 (Ticket c9d24a7f): Die Vorrichtung bildete die Anlage nicht ab.
+#   templates.db wird jetzt WIRKLICH als 'tdb' angebunden statt TemplatesDb
+#   per __new__ zusammenzusetzen, und ihr Schema ist auf den Stand der
+#   Migrationen gebracht (validation_ci, module_key, block_type,
+#   block_data). Ohne beides meldete sich die Quelle - zu Recht - als
+#   nicht nutzbar, sobald jemand nach ihrem Zustand fragte.
 # Beleg: Bauplan B6 v0.3 §3, §2.1, Ausdefinitionsgespraech 2026-05-05
 # =============================================================================
 
@@ -40,14 +46,21 @@ from forensic_api.placeholders import PlaceholdersEndpoint, _PLACEHOLDER_RE
 # Hilfsfunktionen
 # =============================================================================
 
-def _make_templates_db_with_data() -> tuple[sqlite3.Connection, TemplatesDb]:
-    """Erstellt eine In-Memory-templates.db mit Testdaten."""
-    import time
-    con = sqlite3.connect(":memory:")
-    con.row_factory = sqlite3.Row
-
-    # Schema anlegen
-    con.executescript("""
+#: Schema der templates.db, wie es der Aufbau anlegt. Es steht seit Build 722
+#: in EINER Zeichenkette, weil es jetzt an ZWEI Stellen gebraucht wird - im
+#: Hauptschema (fuer T02-T05, die mit rohem SQL ohne 'tdb.'-Praefix pruefen)
+#: UND unter dem Alias 'tdb' (fuer alles, was durch TemplatesDb geht). Zwei
+#: Abschriften desselben Schemas liefen beim naechsten Feld auseinander.
+#
+#: ZWEITER BEFUND BUILD 722: DAS SCHEMA DER VORRICHTUNG WAR VERALTET.
+#: Es fehlten 'placeholders.validation_ci' (Build 497),
+#: 'report_modules.module_key' (Build 341) sowie 'block_type' und
+#: 'block_data' (Build 655) - also drei Migrationen. Aufgefallen ist das
+#: erst, als TemplatesDb.zustand() hier ueberhaupt aufgerufen wurde: die
+#: Vorrichtung baute eine Datenbank, die das Werkzeug im Betrieb als
+#: 'unvollstaendig migriert' zurueckweisen wuerde. Ergaenzt nach
+#: db/templates_db.py, ERWARTETE_SPALTEN (Z. 189-205).
+_TEMPLATES_SCHEMA = """
         CREATE TABLE IF NOT EXISTS report_modules (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL, description TEXT,
@@ -55,6 +68,9 @@ def _make_templates_db_with_data() -> tuple[sqlite3.Connection, TemplatesDb]:
             topic TEXT NOT NULL, body TEXT NOT NULL,
             sort_order INTEGER NOT NULL DEFAULT 0,
             is_active INTEGER NOT NULL DEFAULT 1,
+            module_key TEXT,
+            block_type TEXT,
+            block_data TEXT,
             created_by TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
         );
         CREATE TABLE IF NOT EXISTS placeholders (
@@ -64,10 +80,19 @@ def _make_templates_db_with_data() -> tuple[sqlite3.Connection, TemplatesDb]:
             sql_query TEXT, default_value TEXT,
             validation TEXT,
             validation_type TEXT CHECK (validation_type IN ('regex','list','like')),
+            validation_ci INTEGER NOT NULL DEFAULT 0,
             tags TEXT, return_type TEXT NOT NULL DEFAULT 'scalar'
             CHECK (return_type IN ('scalar','list','table')),
             is_active INTEGER NOT NULL DEFAULT 1,
             created_by TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS report_templates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            template_key TEXT NOT NULL, title TEXT NOT NULL,
+            description TEXT, report_type TEXT,
+            blocks_json TEXT,
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            is_active INTEGER NOT NULL DEFAULT 1
         );
         CREATE TABLE IF NOT EXISTS templates_audit_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -76,38 +101,86 @@ def _make_templates_db_with_data() -> tuple[sqlite3.Connection, TemplatesDb]:
             changed_by TEXT NOT NULL, changed_at INTEGER NOT NULL,
             old_value TEXT, new_value TEXT
         );
-    """)
+"""
+
+
+def _make_templates_db_with_data() -> tuple[sqlite3.Connection, TemplatesDb]:
+    """
+    Erstellt eine templates.db mit Testdaten.
+
+    BERICHTIGT IN BUILD 722 (Ticket c9d24a7f) - DIE VORRICHTUNG BILDETE DIE
+    ANLAGE NICHT AB.
+
+    Bis Build 721 stand hier eine In-Memory-Datenbank OHNE ATTACH, und
+    TemplatesDb wurde von Hand zusammengesetzt:
+        tdb = TemplatesDb.__new__(TemplatesDb)
+        tdb._con = con
+        tdb._available = True
+    Der Kommentar sagte das offen ("wir simulieren das ... Trick"). Solange
+    niemand nach dem ZUSTAND der Quelle fragte, fiel das nicht auf: die
+    tdb.*-Abfragen von TemplatesDb scheiterten, wurden dort gefangen und
+    ergaben leere Ergebnisse - was die Tests ohnehin erwarteten.
+
+    Mit der Zustandspruefung aus Build 722 faellt es auf: 'SELECT 1 FROM
+    tdb.placeholders' scheitert, die Quelle meldet sich als nicht angebunden,
+    und die Endpunkte antworten - richtigerweise - mit 503. Nicht der neue
+    Code war falsch, sondern die Vorrichtung.
+
+    Jetzt wird eine echte Datei angelegt und als 'tdb' angebunden, so wie
+    connection_manager.py es im Betrieb tut. Die Tabellen entstehen
+    ZUSAETZLICH im Hauptschema, weil T02-T05 mit rohem SQL ohne Praefix
+    pruefen; beide Seiten bekommen dieselben Daten.
+    """
+    import time
+    import tempfile
+    con = sqlite3.connect(":memory:")
+    con.row_factory = sqlite3.Row
+
+    # Die angebundene templates.db als echte Datei - eine In-Memory-Datenbank
+    # laesst sich nicht ohne shared cache anbinden.
+    tdb_datei = tempfile.NamedTemporaryFile(suffix="_templates.db",
+                                            delete=False)
+    tdb_datei.close()
+    roh = sqlite3.connect(tdb_datei.name)
+    roh.executescript(_TEMPLATES_SCHEMA)
+    roh.commit()
+    roh.close()
+    con.execute("ATTACH DATABASE '%s' AS tdb" % tdb_datei.name)
+
+    # Schema anlegen
+    con.executescript(_TEMPLATES_SCHEMA)
 
     now = int(time.time())
-    # Testmodul
-    con.execute(
-        "INSERT INTO report_modules (title, role, topic, body, created_by, created_at, updated_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-        ("Identifikation", "intro", "Identifikation",
-         "Nutzer {{a:user.username}} registriert seit {{a:user.registered_date}}.",
-         "setup_script", now, now)
-    )
-    # Testqueries
-    for qid, title, sql, tags in [
-        ("user.username", "Benutzername", "SELECT username FROM uid_profile WHERE id = :uid", "identitaet,name"),
-        ("user.id",       "Benutzer-ID",  "SELECT id FROM uid_profile WHERE id = :uid",       "identitaet,id"),
-    ]:
+    # Die Testdaten gehen in BEIDE Schemata - Hauptschema und tdb. Dieselben
+    # Zeilen, damit die rohen SQL-Pruefungen (T02-T05) und der Weg ueber
+    # TemplatesDb dasselbe sehen.
+    for ziel in ("", "tdb."):
+        # Testmodul
         con.execute(
-            "INSERT INTO placeholders (id, title, description, type, sql_query, tags, return_type, created_by, created_at, updated_at) "
-            "VALUES (?, ?, ?, 'a', ?, ?, 'scalar', 'test', ?, ?)",
-            (qid, title, f"Gibt {title} zurueck.", sql, tags, now, now)
+            "INSERT INTO %sreport_modules (title, role, topic, body, created_by, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)" % ziel,
+            ("Identifikation", "intro", "Identifikation",
+             "Nutzer {{a:user.username}} registriert seit {{a:user.registered_date}}.",
+             "setup_script", now, now)
         )
+        # Testqueries
+        for qid, title, sql, tags in [
+            ("user.username", "Benutzername", "SELECT username FROM uid_profile WHERE id = :uid", "identitaet,name"),
+            ("user.id",       "Benutzer-ID",  "SELECT id FROM uid_profile WHERE id = :uid",       "identitaet,id"),
+        ]:
+            con.execute(
+                "INSERT INTO %splaceholders (id, title, description, type, sql_query, tags, return_type, created_by, created_at, updated_at) "
+                "VALUES (?, ?, ?, 'a', ?, ?, 'scalar', 'test', ?, ?)" % ziel,
+                (qid, title, f"Gibt {title} zurueck.", sql, tags, now, now)
+            )
     con.commit()
 
-    # TemplatesDb benoetigt ATTACH als 'tdb' — wir simulieren das mit einer
-    # zweiten Connection die auf die gleiche In-Memory-DB via ATTACH nicht kann.
-    # Stattdessen: TemplatesDb direkt mit dieser Con, aber tdb-Prefix ueberbruecken.
-    # Wir monkey-patchen _check_available() um den tdb-Check zu umgehen.
-    tdb = TemplatesDb.__new__(TemplatesDb)
-    tdb._con = con
-    tdb._available = True
-    # Alle tdb.*-Referenzen durch direkte Tabellennamen ersetzen fuer Tests
-    # Trick: Methoden direkt aufrufen aber SQL ohne tdb-Praefix nutzen
+    # KEIN __new__-Trick mehr: tdb ist wirklich angebunden, also darf
+    # TemplatesDb sich auch wirklich selbst pruefen. Meldet es sich hier als
+    # nicht verfuegbar, stimmt etwas mit der Vorrichtung nicht - und das
+    # soll dann auffallen und nicht uebergangen werden.
+    tdb = TemplatesDb(con)
+    assert tdb._available, "Vorrichtung: tdb ist nicht angebunden"
     return con, tdb
 
 
