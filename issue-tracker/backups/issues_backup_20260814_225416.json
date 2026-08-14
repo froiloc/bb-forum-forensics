@@ -11671,23 +11671,24 @@
       "id": "5cb12595-9c17-40ed-9d7f-51a5dd30b00a",
       "type": "bug",
       "title": "mat_subject_map erbt den poster_id-Bruch ueber username_attestations",
-      "affected_version": "0.1.142",
+      "affected_version": "0.1.140",
       "reporter": "Claude",
       "reported_at": "2026-08-14T15:25:00+00:00",
       "prerequisites": "Folgt aus der Messung zu 953f68e5 vom 14.08.2026.",
-      "description": "mat_subject_map.sql leitete subject_kind, users_id und die Subjektnummer allein aus username_attestations.user_id her und filterte dabei nur 'IS NOT NULL'. Die Spaltenvorgaben des Forums sind aber topics.poster_id DEFAULT 0 (mariadb.sql Z. 1369) und posts.poster_id DEFAULT 1 (Z. 955) — Platzhalter fuer 'unbekannt', beide NICHT NULL. Sie kamen durch, und weil die Auswahl MIN(user_id) nahm, schlugen sie jede echte Kennung.\n\nGEMESSEN (Alex, 14.08.2026): 5.668 Attestierungen mit user_id=0 ueber 2.726 Namen, 2.976 mit user_id=1 ueber 60 Namen; in der Karte 2.765 Zeilen mit subject_id 0 oder 1. 'SELECT id FROM users WHERE id IN (0,1)' liefert nichts.\n\nFOLGE: Die Paketdateien heissen forensic_<subject_id>.db und run_by_username.sh holt die Nummer aus dieser Spalte. 2.765 verschiedene Subjekte haetten sich zwei Akten geteilt und einander ueberschrieben.",
-      "expected_behavior": "Platzhalterwerte gelten nicht als Kennung; die Karte prueft ihre eigenen Schluessel und bricht bei Verletzung ab.",
-      "actual_behavior": "2.765 Kartenzeilen mit subject_id 0 oder 1, als subject_kind='user' gefuehrt.",
-      "status": "resolved",
+      "description": "mat_subject_map.sql leitet subject_kind, users_id und die Subjektnummer allein aus username_attestations.user_id her (Abschnitt 2 des Skripts; in Build 140 wurde dort die Existenzpruefung gegen users ergaenzt, nicht aber die Herkunft der Spalte hinterfragt).\n\nDIE MESSUNG BELEGT, DASS DIESE SPALTE DEN BRUCH TRAEGT: Abschnitt (5) weist fuer die poster-Felder 6.910 (topics.poster), 5.218 (posts.poster) und 3.033 (pms_new_posts.poster) Attestierungen mit FALSCHER user_id aus. Diese drei Zahlen sind auf die Einheit identisch mit den unabhaengig gemessenen Bruchzahlen aus Abschnitt (2) und (4) derselben Messung. Die user_id der poster-Felder ist also aus poster_id uebernommen worden.\n\nFOLGE: Die Subjektkarte kann einen Beleg dem falschen Subjekt zuordnen — und zwar an der Stelle, an der der Prepper entscheidet, WELCHES SUBJEKT er ueberhaupt bearbeitet. Das wirkt vor allen Praedikaten aus 953f68e5 und ist damit nicht durch deren Korrektur mit erledigt.\n\nAbzugrenzen ist der zweite Fall aus derselben Messung: 266.209 Attestierungen ohne user_id stammen aus Feldern, die nie eine id hatten (edited_by, last_poster, logs.username, quote=). Die traegt die Karte nicht falsch, sie sieht sie nur nicht — dafuer ist 9c7b1a4e angelegt.",
+      "expected_behavior": "Die Subjektkarte beruht auf einer Zuordnung, die den Namensweg einschliesst, oder sie weist die betroffenen Zeilen als unsicher aus (analog user_id_conflict).",
+      "actual_behavior": "subject_kind, users_id und subject_id werden aus einer Spalte hergeleitet, die den poster_id-Bruch traegt.",
+      "status": "open",
       "priority": "critical",
-      "severity": "blocker",
+      "severity": "major",
       "assigned_to": "Claude",
       "related_to": [
         "953f68e5-5fa5-41cc-8436-fb405c9b986b",
+        "cb6236d2-2406-49a2-90ca-ea8cefa73f4d",
         "03a402a6-0f76-4758-8c27-3d5cc186ba9e"
       ],
-      "resolved_in_version": "0.1.143",
-      "target_version": "0.1.143",
+      "resolved_in_version": null,
+      "target_version": null,
       "environment": {
         "python_version": "3.14",
         "database": "mariadb"
@@ -11697,7 +11698,7 @@
         "mat_subject_map",
         "username_attestations",
         "gr1",
-        "build143"
+        "build142"
       ],
       "attachments": [],
       "updates": [
@@ -11707,23 +11708,13 @@
           "action": "comment",
           "old_value": "",
           "new_value": "",
-          "comment": "Eintrag erstellt aus der Messung zu 953f68e5."
+          "comment": "Eintrag erstellt aus der Messung zu 953f68e5. Die Gleichheit der drei Zahlen ist der Beleg; sie ist reproduzierbar mit diagnose_poster_id_bruch.sql, Abschnitte (2), (4) und (5)."
         },
         {
-          "timestamp": "2026-08-14T18:40:00+00:00",
-          "author": "Alex",
+          "timestamp": "2026-08-14T18:07:04.764373+00:00",
+          "author": "merge-tool",
           "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "GEGENGEPRUEFT (Alex, 14.08.2026): 'SELECT id, username FROM users WHERE id IN (0,1)' ist ohne Ergebnis. user_id=0 stammt aus bans.username und topics.poster (5.668 Belege, 2.726 Namen), user_id=1 aus pms_new_posts.message[quote=], posts.message[quote=], posts.poster und thanks.thanks_by (2.976 Belege, 60 Namen). In mat_subject_map: 2.765 Zeilen, subject_kind='user'. Im Bestand liegen KEINE Paketdateien *_0.db oder *_1.db — es ist nichts passiert."
-        },
-        {
-          "timestamp": "2026-08-14T19:30:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "BEHOBEN IN PREPPER BUILD 143 (0.1.143), zusammen mit zwei Fehlern, die untrennbar dazugehoeren.\n\n(1) PLATZHALTER SIND KEINE KENNUNGEN. Die Kandidatensuche nimmt 0 und 1 aus. DER AUSSCHLUSS IST BEWEISPFLICHTIG: Abschnitt 0b prueft VOR dem Bau, ob zu einem Platzhalterwert doch eine users-Zeile existiert, und bricht dann ab — sonst wuerde der Ausschluss ein echtes Subjekt verschwinden lassen, was schlimmer waere als der behobene Fehler.\n\n(2) DIE EIGENTLICHE URSACHE, WARUM ES ZWEI BUILDS LANG UNBEMERKT BLIEB: Die 'defensiven' Sperren dieses Skripts haben nie gesperrt. Sie standen als 'SELECT IF(<bedingung>, (1/0), 1)', in der Annahme, eine Division durch Null erzwinge einen Laufzeitfehler. MariaDB liefert dafuer NULL und eine Warnung und laeuft weiter; nachgestellt am 14.08.2026. Strict-Mode aendert daran nichts (er wirkt bei INSERT/UPDATE, nicht bei SELECT). Eine Sperre, die nicht sperrt, ist schlimmer als keine.\n\n(3) DIE NEUEN SPERREN BRECHEN WIRKLICH AB (CHECK-Bedingung, ERROR 4025, Rueckgabewert 1). ZWEI TABELLEN: mat_subject_map_abnahme nimmt JEDEN Befund auf (auch den schlechten), mat_subject_map_sperre zaehlt daneben nur die offenen. Grund: Traegt die Protokolltabelle die Bedingung selbst, scheitert genau die Einfuegung, die den schlechten Wert festhalten soll — man weiss danach, DASS etwas nicht stimmte, aber nicht WIE VIEL.\n\n(4) ZWEI TORE, und das erste steht VOR dem DROP der Karte. Schlaegt eine Vorpruefung an, bleibt der bisherige gueltige Stand stehen. Gegengeprobt: Bei 'Platzhalter ist doch ein Konto' bricht der Lauf ab UND die alte Karte ist unveraendert erhalten.\n\n(5) SECHS PRUEFUNGEN: subject_id > 1; Konsistenz je subject_id (gleiche Kennung, gleiche Art); Bandtrennung Real/Geist; Vollstaendigkeit der Kennungsliste; Ankermarkierung; keine Platzhalter oder ausgeschlossenen Konten in der Kennungsliste. Dazu zwei Vorpruefungen.\n\n(6) ERPROBUNG mit Attrappenlage gegen das Produktivschema: Gutfall Rueckgabewert 0, alle acht Befunde 0. Gegenproben einzeln gefahren — Platzhalter 1 zugelassen: Abbruch, Befund 'subject_id_zulaessig=1' im Protokoll nachlesbar. Platzhalter ist ein Konto: Abbruch vor dem Bau, alte Karte erhalten. Leere Platzhalterliste: sauberer Abbruch statt eines unverstaendlichen 'ERROR 1292' an anderer Stelle.\n\n(7) OFFEN: Der Python-Pfad kennt die neue Kennungsliste noch nicht und braucht eine eigene Sperre gegen subject_id <= 1 (Build 144)."
+          "comment": "Importiert aus eintraege_claude_Prepper_Build142.json"
         }
       ]
     },
@@ -11822,151 +11813,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Prepper_Build142.json"
-        }
-      ]
-    },
-    {
-      "id": "0a9b7474-7bf5-4791-99bf-f93c4799fcda",
-      "type": "improvement",
-      "title": "Entschlüsselung von bisher nicht entschlüsselten Nachrichten",
-      "affected_version": "0.0.1",
-      "reporter": "Alex",
-      "reported_at": "2026-08-14T20:54:16.128012+00:00",
-      "prerequisites": "Es gibt private Nachrichten, die noch nicht entschlüsselt wurden und für die es keinen Eintrag in pms_cracked_bundles gibt. Diese könnten aber evtl. noch entschlüsselt werden.",
-      "description": "Bei manchen Mitteilungen gab es trotz bekanntem Passwort keinen Erfolg bei der Entschlüsselung der privaten Nachrichten. Es betrifft einzelne Nachrichten (ca. 3,6% aller verschlüsselten Nachrichten) und diese müssen alle einzeln nochmals untersucht werden.",
-      "expected_behavior": "Der größte Teil der Nachrichten kann entschlüsselt werden.",
-      "actual_behavior": "Nachrichten sind zum Teil noch nicht entschlüsselt",
-      "status": "open",
-      "priority": "medium",
-      "severity": "minor",
-      "assigned_to": "Alex",
-      "related_to": [],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "python_version": "3.14",
-        "database": "mariadb"
-      },
-      "tags": [
-        "Private Nachrichten",
-        "Verschlüsselung"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-14T20:54:16.128045+00:00",
-          "author": "Alex",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Issue erstellt"
-        }
-      ]
-    },
-    {
-      "id": "a4d81f66-2c07-4b3e-9f21-77c5e3b90a12",
-      "type": "bug",
-      "title": "MIN(user_id) waehlte das aelteste statt des lebenden Kontos",
-      "affected_version": "0.1.142",
-      "reporter": "Alex",
-      "reported_at": "2026-08-14T18:40:00+00:00",
-      "prerequisites": "Aufgefallen bei der Besprechung des Platzhalterfehlers 5cb12595.",
-      "description": "Auch ohne Platzhalter ist MIN() die falsche Auswahlregel. Ein Benutzername kann NACHEINANDER mehreren Konten gehoert haben: Konto wegen Untaetigkeit geloescht, Name dadurch frei, dieselbe Person registriert sich neu. Das Forum haelt Loeschungen nicht nach, der Name ist danach wieder vergebbar.\n\nGEMESSEN (14.08.2026): 1.462 Namen tragen mehr als eine poster_id; bei 1.461 davon ueberschneiden sich die Zeitraeume nicht; bei 2.521 von 2.533 Konten endet die alte Aktivitaet VOR der Registrierung des heutigen Kontos. Die Namensnachfolge ist der Regelfall.\n\nMIN() waehlt daraus die AELTESTE, in aller Regel geloeschte Kennung — den schwaechsten Anker: kein Profil, kein Postfach, keine Abonnements, keine Downloads, kein PGP-Schluessel. Das lebende Konto faellt hinten runter, und das Ergebnis sieht dabei plausibel aus.\n\nHinzu kommt die Gegenrichtung: Ein Konto kann MEHRERE Namen tragen, wenn ein Administrator es umbenannt hat. Die Beziehung Name/Konto ist also beidseitig mehrdeutig; eine Karte mit einer Kennung je Name kann das nicht abbilden.",
-      "expected_behavior": "Anker ist die Kennung, deren Konto den Namen heute traegt; sonst die juengste. Alle Generationen werden gefuehrt.",
-      "actual_behavior": "MIN() waehlte die aelteste Kennung; weitere Generationen wurden nur gezaehlt, nicht gefuehrt.",
-      "status": "resolved",
-      "priority": "critical",
-      "severity": "major",
-      "assigned_to": "Claude",
-      "related_to": [
-        "953f68e5-5fa5-41cc-8436-fb405c9b986b",
-        "5cb12595-9c17-40ed-9d7f-51a5dd30b00a"
-      ],
-      "resolved_in_version": "0.1.143",
-      "target_version": "0.1.143",
-      "environment": {
-        "python_version": "3.14",
-        "database": "mariadb"
-      },
-      "tags": [
-        "Prepper",
-        "mat_subject_map",
-        "namensnachfolge",
-        "umbenennung",
-        "build143"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-14T18:40:00+00:00",
-          "author": "Alex",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Auch 'AND ua.user_id > 2' allein wuerde still die aelteste users.id waehlen und alle neueren desselben Benutzernamens ueberspringen. Zudem: unter einer users.id koennen mehrere Benutzernamen auftauchen, naemlich wenn ein Administrator den Namen geaendert hat. Solche Vorfaelle gibt es im Forum."
-        },
-        {
-          "timestamp": "2026-08-14T19:30:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "BEHOBEN IN PREPPER BUILD 143 (0.1.143).\n\n(1) DIE NEUE ANKERREGEL, nach Beweiskraft geordnet: (a) die Kennung, deren Konto den Namen HEUTE traegt — davon kann es wegen 'constraint users_username_idx unique (username(25))' (mariadb.sql Z. 1596-1597) hoechstens eine geben; (b) sonst die GROESSTE Kennung, weil users.id auto_increment ist und die groesste Zahl damit die juengste Registrierung bezeichnet. Ausdruecklich nicht die kleinste.\n\n(2) ALLE GENERATIONEN WERDEN GEFUEHRT, in der neuen Tabelle mat_subject_map_accounts (Schema nach Entwurf Alex: id, subject_id, user_id, username, UNIQUE(username,user_id), Indizes auf subject_id/user_id/username; dazu konto_lebt, ist_anker, traegt_namen, n_belege, von_ts, bis_ts). Erst damit kann die Abfrageschicht 'poster_id IN (<alle Kennungen>) OR poster IN (<alle Namen>)' fragen und verliert nichts, was nur an einer Zahl haengt.\n\n(3) DIE UNIQUE-BEDINGUNG IST MEHR ALS EINE FORMALIE: Ein Paar (Name, Kennung) darf zu hoechstens einem Subjekt gehoeren. Wuerde eine spaetere Zusammenfuehrung ueber Umbenennungen dasselbe Paar zweimal einhaengen, schluege der Einfuegevorgang fehl, statt still zwei Akten zu erzeugen.\n\n(4) UMBENENNUNGEN WERDEN OHNE ZUSATZLOGIK ZUSAMMENGEFUEHRT: Traegt ein Konto zwei Namen, fuehrt die Karte zwei Zeilen, beide zeigen auf dasselbe Konto und dieselbe subject_id. subject_id ist deshalb ABSICHTLICH nicht zeilenweise eindeutig. Der Unterschied zum Schadensfall aus 5cb12595 liegt nicht in der Mehrfachnutzung der Zahl, sondern darin, worauf sie zeigt: hier auf dasselbe Konto, dort auf gar keines. Die Abnahmesperre prueft deshalb KONSISTENZ und nicht Eindeutigkeit — eine Eindeutigkeitspruefung wuerde die Behebung verhindern.\n\n(5) NACHFOLGE UND KOLLISION SIND GETRENNT. conflict_art unterscheidet 'nachfolge' (Zeitraeume getrennt — der Regelfall), 'kollision' (Zeitraeume ueberlappen; da users.username eindeutig ist, koennen zwei Konten den Namen nicht gleichzeitig getragen haben — gemessen: 1 Fall) und 'unklar' (mindestens eine Kennung ohne Zeitschranke). 'unklar' ist ausdruecklich nicht 'nachfolge': eine fehlende Messung darf nicht wie ein Befund aussehen.\n\n(6) WAS BEWUSST OFFEN BLEIBT: Subjekte werden NICHT ueber Ketten zusammengefuehrt (Name A -> Konto 2 -> Name B -> Konto 3 ...). Eine solche Kette kann ueber zwei schwache Glieder fremde Menschen verschmelzen. Der Build MISST sie stattdessen (n_rename_bridges, max_namen_je_konto in mat_subject_map_meta, plus namentliche Auszugsliste). Entschieden wird an diesen Zahlen.\n\n(7) ERPROBT mit einer Attrappe, die genau den besprochenen Fall abbildet: ein Name, drei Generationen (zwei tote Kennungen, eine lebende). Ergebnis: Anker ist die lebende Kennung, alle drei stehen in der Kennungsliste, conflict_art='nachfolge'. Die beiden Namen eines umbenannten Kontos teilen sich eine subject_id."
-        },
-        {
-          "timestamp": "2026-08-14T22:10:55.926527+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Prepper_Build143.json"
-        }
-      ]
-    },
-    {
-      "id": "e1c9b704-58aa-4d3f-8e06-2b6f1d4a9c37",
-      "type": "improvement",
-      "title": "Ermittlungskonto muss von der Subjektbildung ausgenommen sein",
-      "affected_version": "0.1.142",
-      "reporter": "Alex",
-      "reported_at": "2026-08-14T18:40:00+00:00",
-      "prerequisites": "Hinweis Alex im Zuge von 5cb12595.",
-      "description": "Das Konto 'Ermittler' (users.id 110, gewaehlt nach dem Polizeinotruf) gehoert zum sichergestellten Bestand, ist aber kein Beschuldigter. Ohne Ausnahme wuerde es ein Subjekt der Karte und koennte als Kandidat in eine Zuordnung geraten — dann stuenden Handlungen der Ermittlung als Belege in einer Akte.\n\nAlex hat geprueft: Die 110 taucht nirgends auf ausser dort, wo sie absichtsvoll verwendet wurde. Die Gefahr ist damit heute gering, aber sie ist strukturell und gehoert abgestellt, nicht beobachtet.",
-      "expected_behavior": "Die Kennung wird von der Kandidatensuche ausgenommen und der Ausschluss ist im Ergebnis belegt.",
-      "actual_behavior": "Keine Ausnahme vorgesehen.",
-      "status": "resolved",
-      "priority": "high",
-      "severity": "minor",
-      "assigned_to": "Claude",
-      "related_to": [
-        "5cb12595-9c17-40ed-9d7f-51a5dd30b00a"
-      ],
-      "resolved_in_version": "0.1.143",
-      "target_version": "0.1.143",
-      "environment": {
-        "python_version": "3.14",
-        "database": "mariadb"
-      },
-      "tags": [
-        "Prepper",
-        "mat_subject_map",
-        "ermittlerkonto",
-        "gr1",
-        "build143"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-14T19:30:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "UMGESETZT IN BUILD 143 als BETRIEBSPARAMETER (Abschnitt 0a), nicht fest im Quelltext: Die Nummer ist eine Eigenschaft DIESES Falls, nicht des Verfahrens — ein zweiter Fall haette eine andere.\n\nDER AUSSCHLUSS IST BELEGT, nicht still: mat_subject_map_excluded fuehrt jede ausgenommene Kennung mit Grund, dem heutigen Benutzernamen und der Zahl der Belege, die dadurch nicht als Kandidat gelten. Ein Ausschluss ohne Beleg waere genau die stille Auslassung, die dieser Build sonst behebt. Zusaetzlich prueft eine Abnahmesperre, dass keine ausgeschlossene Kennung doch in einer Kennungsliste steht.\n\nERPROBT: Das Ermittlerkonto der Attrappenlage taucht in mat_subject_map_accounts nicht auf und steht mit Begruendung in mat_subject_map_excluded."
-        },
-        {
-          "timestamp": "2026-08-14T22:10:55.926555+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Prepper_Build143.json"
         }
       ]
     }
