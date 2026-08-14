@@ -17073,6 +17073,53 @@
           "comment": "Importiert aus eintraege_claude_Prepper_Build141.json"
         }
       ]
+    },
+    {
+      "id": "7c3f1a92-b45d-4e6e-a1f0-d3c8b7e25419",
+      "type": "improvement",
+      "title": "Rueckweg: Kopie ist teilbar - Abwaegung copyfile gegen os.replace",
+      "affected_version": "0.8.723",
+      "reporter": "Claude",
+      "reported_at": "2026-08-14T09:30:00+00:00",
+      "status": "open",
+      "priority": "low",
+      "severity": "minor",
+      "assigned_to": "",
+      "related_to": [
+        "69ede1c7-3fe1-47eb-9d9a-f0cf6468f7dc"
+      ],
+      "resolved_in_version": null,
+      "target_version": null,
+      "tags": [
+        "migration_fleet",
+        "rueckweg",
+        "abwaegung",
+        "produktivbetrieb"
+      ],
+      "environment": {
+        "python_version": "3.14"
+      },
+      "attachments": [],
+      "prerequisites": "Ein-/Ausgabefehler waehrend des Rueckwegs (Platte voll, Netzlaufwerk weg) - nicht gezielt herstellbar.",
+      "description": "AUSGEKLAMMERT AUS VORGANG 69ede1c7 (Build 723), damit die Abwaegung nachlesbar ist und nicht stillschweigend entschieden bleibt (Grundregel 1).\n\nDER SACHVERHALT: Der Rueckweg kopiert die Sicherung mit shutil.copyfile DIREKT auf die Zieldatei. copyfile oeffnet das Ziel mit 'wb' und LEERT es, bevor das erste Byte geschrieben ist. Ein Ein-/Ausgabefehler mitten in der Kopie hinterlaesst damit eine Datei, die weder den alten noch den neuen Stand traegt - also genau das, was der Vorgang 69ede1c7 fuer den Fall der offenen Verbindung beseitigt hat. Build 723 BESEITIGT diesen Fall nicht, sondern BENENNT ihn: Zustand 'kopierfehler', Klartext weist die Zieldatei ausdruecklich als UNBESTIMMT aus und untersagt ihre Weiterverwendung, bis sie gegen die Sicherung geprueft wurde.\n\nWARUM NICHT SCHON JETZT BEHOBEN: Der naheliegende Weg - erst in eine Nebendatei kopieren, dann os.replace() - waere unteilbar und wuerde den Fall beseitigen. Er ERSETZT aber die Datei und damit ihren Modus und ihren Eigentuemer durch die der frisch angelegten Nebendatei (umask). Auf einer versiegelten oder eng berechtigten Beweis-DB waere das eine STILLE AUSWEITUNG VON RECHTEN - ein Schaden anderer Art, und einer, den niemand bestellt hat. copyfile schreibt dagegen IN die vorhandene Datei und laesst Modus, Eigentuemer und Inode unangetastet.\n\nES IST ALSO EIN TAUSCH UND KEIN VERSEHEN: Unteilbarkeit gegen Erhalt der Rechte. Build 723 hat sich fuer den Erhalt der Rechte entschieden, weil der Fehlerfall selten und benannt ist, die Rechteausweitung dagegen bei JEDEM gelungenen Rueckweg eintraete.",
+      "expected_behavior": "Zu entscheiden ist, ob der Rueckweg auf 'Nebendatei + os.replace()' umgestellt wird und die Rechte dabei ausdruecklich uebertragen werden (os.stat vor der Kopie, os.chmod auf die Nebendatei vor dem Ersetzen; der EIGENTUEMER laesst sich ohne root nicht uebertragen - diese Luecke bliebe und waere zu bewerten). Alternativ bleibt es beim jetzigen Stand und die Abwaegung ist damit aktenkundig.",
+      "actual_behavior": "shutil.copyfile direkt auf die Zieldatei; ein Ein-/Ausgabefehler mitten in der Kopie ergibt Zustand 'kopierfehler' mit ausdruecklich unbestimmtem Dateizustand (getestet: RW07).",
+      "updates": [
+        {
+          "timestamp": "2026-08-14T09:30:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Eintrag erstellt. Ausgeklammert aus 69ede1c7, damit die Entscheidung gegen os.replace() belegt ist und nicht als Versehen erscheint. Die Begruendung steht ausserdem im Kopf von rueckweg.py an der Stelle selbst."
+        },
+        {
+          "timestamp": "2026-08-14T14:37:05.536364+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build723.json"
+        }
+      ]
     }
   ]
 }
