@@ -1,0 +1,7 @@
+bac15d0b46d5e84ddafe4aa96b83ff9b  build.json
+00ef9a23177be94eebbab6b31af9c724  issue-tracker/eintraege_claude_Build721.json
+b204422411f74d9637998de5b7580b33  management/backup/backup_executor.py
+b7904f3db184638d5cb1a754f9644d0a  management/backup/backup_planner.py
+f2da61432767620264a68449a9942191  management/help/cli_katalog.py
+00f498492c60b0406b2a3b3f475de6bd  tests/test_backup_nachzuegler.py
+a73666d70d6f646779357963656eabfb  tests/test_backup_planner.py

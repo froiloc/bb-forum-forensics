@@ -1,0 +1,108 @@
+{
+  "issues": [
+    {
+      "id": "dc63928d-9d53-4532-931e-66efd7ac03e0",
+      "type": "improvement",
+      "title": "Sicherungssatz ist nicht punktgleich und der Versatz nicht ablesbar",
+      "affected_version": "0.8.615",
+      "reporter": "Claude",
+      "reported_at": "2026-07-31T22:40:00+00:00",
+      "prerequisites": "Ein Lauf von 'backup_admin run' waehrend des laufenden Ermittlungsbetriebs",
+      "description": "Befund aus der Nachpruefung von backup_admin, angeordnet von mc am 2026-07-31. DIES IST DIE EIGENTLICHE ANTWORT AUF DIE FRAGE, OB DIE ZUSAGE 'fuer den laufenden Betrieb gebaut' TRAEGT.\n\nDER BEFUND: Die Quellen werden NACHEINANDER gesichert (backup_executor.py Z. 98-99), jede mit einer eigenen Lesetransaktion des 'VACUUM INTO'. Jede einzelne Kopie ist damit fuer sich transaktional stimmig - der SATZ als Ganzes ist es nicht. Zwischen der Sicherung der coordinator.db und der einer evidence_<uid>.db kann der Betrieb einen Fall anlegen, eine Zuweisung aendern oder eine Annotation schreiben.\n\nAus einem solchen Satz wiederhergestellt entsteht ein Zustand, den es nie gegeben hat: eine coordinator.db, die einen Fall nicht kennt, dessen evidence-Datenbank bereits Annotationen enthaelt - oder umgekehrt. Der laufende Betrieb macht die Sicherung also nicht kaputt, sondern IN SICH WIDERSPRUECHLICH, und das ist im Ergebnis dasselbe.\n\nERSCHWEREND: Der Versatz ist nicht einmal ablesbar. run_ts ist EIN Zeitstempel fuer den ganzen Lauf (backup_executor.py Z. 95, im Manifest Z. 220); es gibt keinen Zeitstempel je Datenbank. Der Satz sieht im Manifest punktgleich aus, ohne es zu sein.\n\nWAS DIE ZUSAGE TATSAECHLICH DECKT: Alle Belege im Bestand betreffen die Richtung Sicherung -> Betrieb, und dort sind sie richtig. 'VACUUM INTO' veraendert die Quelle nicht (harness/backup.py Z. 8-9), der Kontrollpunkt ist ausdruecklich nicht blockierend gewaehlt (backup_config.py Z. 17-18). Zur GEGENRICHTUNG - was der Betrieb mit der Sicherung macht - sagt der Bestand an keiner Stelle etwas.\n\nBEMERKENSWERT: Genau die noetige Bedingung steht bereits im Datenmigrationsleitfaden ('Dienste stoppen - kein offener Writer auf coordinator.db'). Nur setzt backup_admin sie nirgends durch.\n\nHINZU KOMMT EINE ZWEITE, KLEINERE LUECKE: Der Planer liest die Fallverzeichnisse EINMAL VOR dem Lauf (backup_planner.py Z. 106). Eine waehrend des Laufs neu entstehende evidence_<uid>.db wird nicht gesichert und erscheint auch nicht unter den fehlenden Dateien - dort landen nur Einzeldateien und Verzeichnisse (Z. 98, 104). Hier verschwindet ein Beleg still (Grundregel 1).",
+      "expected_behavior": "Eine Entscheidung zwischen zwei belegbaren Wegen, die mc zu treffen hat: (a) Die Sicherung laeuft im Wartungsfenster - dann ist der Satz punktgleich, und backup_admin waere in Stufe A einzuordnen und mit dem Wartungsvorbehalt zu versehen. Der Preis ist, dass eine taegliche Sicherung nicht mehr nebenher laufen kann. (b) Der Satz bleibt nicht punktgleich, wird aber ALS SOLCHER GEKENNZEICHNET: je Datenbank ein eigener Zeitstempel im Manifest, dazu ein ausdruecklicher Vermerk 'nicht punktgleich - fuer eine wiederherstellbare Sicherung ist ein ruhiger Bestand noetig'. Der Preis ist, dass die Sicherung fuer eine Vollwiederherstellung nur bedingt taugt. In beiden Faellen ist die Erfassungsluecke zu schliessen: waehrend des Laufs neu entstandene Fall-Datenbanken gehoeren mindestens in die Liste der fehlenden.",
+      "actual_behavior": "Sequentielle Sicherung ohne Satzkonsistenz; ein Zeitstempel fuer den ganzen Lauf; keine Kennzeichnung.",
+      "status": "resolved",
+      "priority": "high",
+      "severity": "major",
+      "assigned_to": "Claude",
+      "related_to": [
+        "651e6d84-7ebc-4905-ab21-9f324021ec1d",
+        "77757536-381e-491d-9c94-e1dda84fd02e",
+        "a4f16c82-73de-4b95-8e01-2c6f9b04dd37"
+      ],
+      "resolved_in_version": "0.8.721",
+      "target_version": "0.8.721",
+      "environment": {
+        "python_version": "3.14"
+      },
+      "tags": [
+        "backup",
+        "backup_admin",
+        "build721",
+        "gr1",
+        "produktivbetrieb",
+        "wartungsvorbehalt",
+        "wiederherstellung"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-07-31T22:40:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Eintrag erstellt. Der Vorgang enthaelt eine Entscheidung, die ich nicht treffe, sondern vorlege - Einzelheiten im Vermerk 'Nachpruefung_backup_admin_Betriebsvertraeglichkeit_v1_0.md'."
+        },
+        {
+          "timestamp": "2026-07-31T23:06:29.592639+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eingang_claude_Build616.json"
+        },
+        {
+          "timestamp": "2026-08-14T09:15:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "resolved",
+          "comment": "ABGESCHLOSSEN IN BUILD 721. Zwei der drei Forderungen waren seit Build 617 erfuellt; die dritte war GEBAUT, ABER UNBRAUCHBAR - das ist erst jetzt gemessen worden und der eigentliche Inhalt dieser Lieferung.\n\n(1) WAS SEIT BUILD 617 STIMMT, am Quelltext nachgesehen:\n  * je Datenbank ein eigener Zeitstempel - 'begonnen_ts'/'beendet_ts' in BackupItemResult (backup_executor.py Z. 204/205), gesetzt in _backup_one (Z. 346-353), im Manifest unter 'results'.\n  * ausdruecklicher Vermerk 'nicht punktgleich' - PUNKTGLEICH_VERMERK (Z. 125-134), im Manifest als 'punktgleich: false' samt Klartext (Z. 725-726) UND bei jedem Lauf auf der Konsole (backup_admin.py Z. 304). Der Wiederhersteller nennt die Einschraenkung ebenfalls (backup_wiederhersteller.py Z. 1003-1006).\n  * Die Entscheidung selbst hat mc am 31.07.2026 getroffen: Weg (b), Kennzeichnung statt Wartungsfenster.\n\n(2) DIE DRITTE FORDERUNG WAR DEFEKT. GEMESSEN am 14.08.2026 an einem ECHTEN Lauf mit BackupExecutor gegen Wegwerf-Bestaende unter /tmp (Python 3.14.0rc2). Waehrend des Laufs entsteht eine evidence_4711.db; gemeldet wurde:\n\n  A) include_shared_dbs=True, evidence-Verzeichnis gefuellt\n     -> ['approved_reports.db', 'evidence_4711.db']\n  B) include_shared_dbs=False, evidence-Verzeichnis gefuellt\n     -> ['approved_reports.db', 'default.db', 'evidence_4711.db',\n         'templates.db', 'translations.db']\n  C) include_shared_dbs=True, evidence-Verzeichnis beim Planen LEER\n     -> ['approved_reports.db']   -- der echte Fund FEHLT\n\n(3) DIE URSACHE steht in _nachzuegler (Fassung Build 617, Z. 693-694): die zu durchsuchenden Verzeichnisse wurden aus plan.sources abgeleitet, und 'neu' hiess 'nicht gesichert'.\n  * Daraus folgt C: ein beim Planen LEERES Fall-Verzeichnis steuert keine Quelle bei und wurde deshalb gar nicht durchsucht. Der Fund blieb aus - ausgerechnet beim ERSTEN Fall eines Verzeichnisses, also in der Lage, in der er am wichtigsten ist.\n  * Daraus folgt A/B: weil auch das Verzeichnis der coordinator.db durchsucht wurde, galt jede dort nicht gesicherte Datenbank als 'waehrend des Laufs entstanden'. approved_reports.db bei JEDEM Lauf, bei 'include_shared_dbs: false' drei weitere. EINE LISTE, DIE IMMER ETWAS MELDET, LIEST NACH DER DRITTEN WOCHE NIEMAND MEHR - der Beleg waere damit wieder still gewesen, nur auf dem umgekehrten Weg.\n\n(4) DIE BEHEBUNG: VORHER GEGEN NACHHER statt gesichert gegen nicht gesichert. Der Planer erhebt beim Lesen der Fall-Verzeichnisse eine BESTANDSAUFNAHME und legt sie in den Plan ('fall_verzeichnisse' und 'vorgefunden', backup_planner.py). Sein Blick IST der Vorher-Zeitpunkt - eine zweite Stelle dafuer waere eine zweite Wahrheit gewesen. _nachzuegler vergleicht danach den Ist-Stand der KONFIGURIERTEN Fall-Verzeichnisse gegen diese Aufnahme. 'Nachzuegler' heisst damit genau, was das Feld 'nicht_gesichert_weil_neu' verspricht: nachher da, vorher nicht.\n\n(5) DIE GETEILTEN DATENBANKEN WERDEN NICHT MEHR DURCHSUCHT. Ob default/templates/translations mitgesichert werden, entscheidet 'backup.include_shared_dbs' und nicht der Zufall eines Verzeichnisinhalts. Sie entstehen auch nicht 'waehrend eines Laufs'.\n\n(6) RUECKWAERTSVERTRAEGLICH: die beiden neuen Felder in BackupPlan haben Vorgabewerte. Ein von Hand gebauter Plan ohne Bestandsaufnahme fuehrt zu einer LEEREN Liste, nicht zu einer falschen - eine Aussage ueber 'neu' setzt einen Vorher-Stand voraus, und wo keiner erhoben wurde, ist nichts festzustellen. NZ06 haelt das fest. enumerate_sources liefert jetzt vier statt zwei Werte; das ist ein bewusster Bruch (ein optionales Feld waere eine Bestandsaufnahme gewesen, die man vergessen kann), und der einzige Aufrufer im Bestand ist plan().\n\n(7) NEUE TESTS: tests/test_backup_nachzuegler.py, 9 Faelle (NZ01-NZ09). Sie fahren einen ECHTEN Lauf und werfen die neue Datenbank ueber einen Haken an _backup_one WIRKLICH zwischen zwei Kopien ein - eine Simulation haette hier nichts bewiesen, die Frage ist gerade, was ein bereits laufender Lauf sieht. GEGENPROBE GEFAHREN: gegen den Stand 718 fallen ALLE NEUN, gegen 721 sind alle neun gruen. Dass auch NZ04 ('ein ruhiger Lauf meldet nichts') auf 718 faellt, ist der Beleg dafuer, dass die Liste dort NIE leer war.\n\n(8) DER KATALOGEINTRAG IST NACHGEZOGEN, einschliesslich eines eigenen Fehlers: In Build 717 habe ich die Warnung 'eine waehrend des Laufs entstehende Fall-Datenbank erscheint auch nicht unter den fehlenden' als ueberholt gestrichen. Fuer die Lage C traf sie bis Build 720 weiter zu. Ich habe mich auf die ANWESENHEIT von Code verlassen statt auf sein VERHALTEN. Seit dieser Lieferung ist sie zu Recht fort; die Luecke zwischen 717 und 721 steht als Kommentar an der Fundstelle in cli_katalog.py.\n\n(9) EIN BEFUND FIEL DABEI AB UND IST EIN EIGENER VORGANG: approved_reports.db - die Siegel-Datenbank - wird von backup_admin GAR NICHT gesichert. Sie ist der Grund, aus dem sie in den Messungen A/B/C ueberhaupt auftauchte. Siehe related_to.\n\n(10) REGRESSION 721: Python 3627 -> 3636 gruen, 0 rot. JavaScript 141 Dateien / 1976 Faelle gruen, unveraendert. Kein bestehender Testfall musste inhaltlich angepasst werden; in tests/test_backup_planner.py sind zwei Entpackungen von enumerate_sources auf vier Werte erweitert.\n\n(11) MIGRATIONSVORBEHALT: NICHT BERUEHRT. Kein Schema, keine Migration. Gelesen werden Verzeichnisinhalte, geschrieben wird das Manifest - eine Datei im Sicherungsverzeichnis, keine Ermittlungsdatenbank."
+        }
+      ]
+    },
+    {
+      "id": "a4f16c82-73de-4b95-8e01-2c6f9b04dd37",
+      "type": "bug",
+      "title": "Siegel-Datenbank approved_reports.db wird nicht mitgesichert",
+      "affected_version": "0.8.718",
+      "reporter": "Claude",
+      "reported_at": "2026-08-14T09:15:00+00:00",
+      "prerequisites": "Ein Lauf von 'backup_admin run' auf einer Anlage, auf der bereits Berichte freigegeben wurden.",
+      "description": "Gefunden bei der Bearbeitung von dc63928d, aufgenommen auf Weisung von Alex vom 14.08.2026. Die Datei fiel auf, WEIL die alte Nachzueglererkennung sie bei jedem Lauf als 'waehrend des Laufs entstanden' meldete - und das tat sie, weil sie nicht gesichert wird.\n\nDER BEFUND: backup_admin sichert die Datenbanken aus _PATH_KEYS (backup_admin.py Z. 77-78): coordinator_db, forensic_db_dir, evidence_db_dir, assets_db_dir, default_db, templates_db, translations_db. 'approved_reports_db' steht NICHT darin, und der Planer kennt sie folglich auch nicht. Sie ist in keinem Sicherungssatz.\n\nWAS IN DIESER DATENBANK LIEGT: die Siegel der FREIGEGEBENEN Berichte - je Bericht der kanonische Inhaltshash (management/reports/report_sealer.py, management/reports/approved_reports_db.py). Das Siegel ist der Beleg dafuer, dass GENAU DIESER Stand eines Berichts freigegeben wurde.\n\nDIE FOLGE IST NICHT DER VERLUST EINES BERICHTS, SONDERN DER VERLUST SEINES BEWEISES. Nach einer Wiederherstellung aus dem Sicherungssatz liegen die Berichte in der evidence_<uid>.db vollstaendig vor - aber es gibt keinen zentralen Nachweis mehr, dass sie in diesem Stand freigegeben waren. seal_check haette dann nichts zu pruefen. Fuer ein Verfahren, in dem Ueberpruefbarkeit die wichtigste Regel ist, wiegt das schwer.\n\nES IST NICHT MIT EINER ZEILE GETAN, und deshalb steht es hier statt in der Lieferung zu 721: 'paths.approved_reports_db' ist in config.yaml AUSKOMMENTIERT (Z. 40). management_app.py faengt das mit einem Vorgabewert './data/approved_reports.db' ab (Z. 797-804) - ein Sicherungswerkzeug darf das NICHT: es wuerde auf einen erratenen Pfad sichern und im schlechtesten Fall die falsche Datei oder gar keine erwischen, ohne dass es auffaellt. Der Eintrag gehoert zuerst in die config.yaml. Das beruehrt unmittelbar Vorgang 5a7e93b1 ('Datenbankpfade gehoeren vollstaendig in die config.yaml').\n\nNEBENBEFUND, BEWUSST GETRENNT: 'search_index_db' fehlt aus demselben Grund im Sicherungssatz. Sie ist aus dem Bestand ABLEITBAR (db/search_index_db.py legt ihre Tabellen selbst an) und meines Erachtens verzichtbar. Sie steht hier, damit die Auslassung benannt ist und nicht fuer uebersehen gehalten wird (Grundregel 1).",
+      "expected_behavior": "approved_reports.db ist Teil des taeglichen Sicherungssatzes - mit einem Pfad, der aus der config.yaml kommt und nicht erraten wird. Fehlt der Eintrag, erscheint die Datenbank in 'missing' des Plans, also sichtbar.",
+      "actual_behavior": "Die Datenbank wird von keinem Lauf erfasst. Bis Build 720 erschien sie statt dessen bei jedem Lauf faelschlich unter 'nicht_gesichert_weil_neu'; seit Build 721 erscheint sie dort zu Recht nicht mehr - und damit gar nicht mehr.",
+      "status": "open",
+      "priority": "high",
+      "severity": "major",
+      "assigned_to": "",
+      "related_to": [
+        "dc63928d-9d53-4532-931e-66efd7ac03e0",
+        "5a7e93b1-04cd-4f28-8b6a-1e2d5c96f730"
+      ],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14"
+      },
+      "tags": [
+        "backup",
+        "backup_admin",
+        "gr1",
+        "produktivbetrieb",
+        "siegel",
+        "wiederherstellung"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-14T09:15:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Eintrag erstellt auf Weisung von Alex, gefunden bei der Bearbeitung von dc63928d.\n\nZWEI DINGE SIND VOR DER BEHEBUNG ZU KLAEREN, und beide sind Entscheidungen und keine Befunde:\n\n  (1) DER PFAD. Er gehoert in die config.yaml (Z. 40, derzeit auskommentiert). Solange er dort fehlt, darf ein Sicherungswerkzeug ihn nicht erraten - 'ein erratener Pfad waere schlimmer als ein Abbruch' ist die Regel, die der CLI-Katalog bei 30 Werkzeugen woertlich begruendet. Zu entscheiden: Eintrag einkommentieren, oder die Datenbank nur dann sichern, wenn er gesetzt ist (und sonst in 'missing' auffuehren).\n\n  (2) DER RUECKWEG. Wird die Siegel-Datenbank mitgesichert, gehoert sie auch in die Betrachtung der PUNKTGLEICHHEIT: ein Satz, in dem die evidence_<uid>.db und die Siegel auseinanderliegen, kann ein Siegel enthalten, dessen Bericht noch anders aussah. Das ist dieselbe Frage wie in dc63928d, nur an einer Stelle, an der sie unmittelbar auf die Beweiskraft durchschlaegt.\n\nICH LEGE MICH BEI BEIDEM NICHT FEST. Was ich belegen kann: die Datenbank ist heute in keinem Sicherungssatz."
+        }
+      ]
+    }
+  ]
+}

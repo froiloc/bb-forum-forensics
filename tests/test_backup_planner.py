@@ -134,7 +134,10 @@ class BackupPlannerTests(unittest.TestCase):
 
     def test_bp01_enumerate_all(self):
         pl = BackupPlanner(self._paths, self._cfg())
-        sources, missing = pl.enumerate_sources()
+        # Build 721: enumerate_sources liefert seit Vorgang dc63928d vier
+        # Werte - die beiden hinteren sind die Bestandsaufnahme der
+        # Fall-Verzeichnisse (siehe tests/test_backup_nachzuegler.py).
+        sources, missing, _fall_dirs, _vorgefunden = pl.enumerate_sources()
         labels = sorted(s.label for s in sources)
         self.assertEqual(labels, [
             "assets_18", "coordinator", "default", "evidence_18",
@@ -145,7 +148,7 @@ class BackupPlannerTests(unittest.TestCase):
 
     def test_bp02_exclude_shared(self):
         pl = BackupPlanner(self._paths, self._cfg(include_shared_dbs=False))
-        sources, _ = pl.enumerate_sources()
+        sources, _, _fall_dirs, _vorgefunden = pl.enumerate_sources()
         labels = sorted(s.label for s in sources)
         self.assertEqual(labels, [
             "assets_18", "coordinator", "evidence_18", "forensic_18"])

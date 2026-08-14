@@ -2513,7 +2513,21 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "aber seit Build 617 GENANNT: eine Fall-Datenbank, die es "
                 "beim Planen noch nicht gab, steht danach im Manifest unter "
                 "'nicht_gesichert_weil_neu' und auf der Konsole. Sie fehlt "
-                "im Satz und ist beim naechsten Lauf dabei.",
+                "im Satz und ist beim naechsten Lauf dabei. DIE ERKENNUNG "
+                "WAR BIS BUILD 720 UNBRAUCHBAR und ist in Build 721 "
+                "berichtigt (Vorgang dc63928d): sie uebersah den Fund, wenn "
+                "das Fall-Verzeichnis beim Planen leer war - also "
+                "ausgerechnet beim ERSTEN Fall eines Verzeichnisses -, und "
+                "meldete dafuer bei jedem Lauf Datenbanken als neu, die "
+                "seit jeher danebenliegen und nur nicht zum Satz gehoeren "
+                "(approved_reports.db; bei 'include_shared_dbs: false' auch "
+                "default/templates/translations). Verglichen wird jetzt "
+                "VORHER GEGEN NACHHER gegen eine Bestandsaufnahme des "
+                "Planers, und gesucht wird nur in den drei "
+                "Fall-Verzeichnissen. WER MANIFESTE AUS LAEUFEN VOR BUILD "
+                "721 AUSWERTET, muss die Liste entsprechend lesen: was dort "
+                "steht, ist nicht unbedingt neu, und was fehlt, ist nicht "
+                "unbedingt nicht geschehen.",
                 # BUILD 717 - VIER UEBERHOLTE WARNUNGEN BERICHTIGT
                 # (Vorgang siehe eintraege_claude_Build717.json, Weisung
                 # Alex 13.08.2026). Sie standen unveraendert hier, waehrend
@@ -2537,10 +2551,22 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 #     626/680 (backup_pruefer.py Z. 359 und
                 #     backup_wiederhersteller.py). Ersetzt durch das, was
                 #     davon uebrig ist: sie wird nur auf VERLANGEN geprueft.
-                # (4) "erscheint auch nicht unter den fehlenden" - falsch
-                #     seit Build 617 (backup_executor._nachzuegler, Z. 682,
-                #     aufgerufen Z. 278). GESTRICHEN, weil die Warnung zwei
-                #     Zeilen darueber denselben Sachverhalt richtig darstellt.
+                # (4) "erscheint auch nicht unter den fehlenden" - GESTRICHEN,
+                #     weil die Warnung zwei Zeilen darueber denselben
+                #     Sachverhalt darstellt.
+                #
+                #     NACHTRAG BUILD 721, UND ER FAELLT AUF MEINE EIGENE
+                #     ARBEIT ZURUECK: Die Begruendung von Build 717 lautete
+                #     "falsch seit Build 617" und war zu grosszuegig. Fuer
+                #     eine Fall-Datenbank in einem beim Planen LEEREN
+                #     Verzeichnis traf die alte Warnung bis Build 720 weiter
+                #     zu - dort erschien der Fund tatsaechlich nirgends
+                #     (gemessen 14.08.2026, Vorgang dc63928d). Ich habe in
+                #     Build 717 eine Warnung gestrichen, die noch halb
+                #     stimmte, und mich dabei auf die Anwesenheit von Code
+                #     verlassen statt auf sein Verhalten. Seit Build 721 ist
+                #     sie zu Recht fort; die Luecke zwischen 717 und 721 ist
+                #     hier festgehalten, damit sie nicht unsichtbar bleibt.
                 "DER RUECKWEG IST ERPROBT, ABER NICHT AM ERNSTFALL. "
                 "'restore' ist seit Build 680 da und gefahren - gegen einen "
                 "gebauten Wegwerf-Bestand unter /tmp, nicht gegen eine "
