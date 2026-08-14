@@ -6735,14 +6735,14 @@
       "type": "improvement",
       "title": "Datenbankpfade gehoeren vollstaendig in die config.yaml",
       "affected_version": "0.8.657",
-      "target_version": "0.8.720",
-      "resolved_in_version": "0.8.720",
+      "target_version": null,
+      "resolved_in_version": null,
       "reporter": "Alex",
       "reported_at": "2026-08-02T19:00:00+00:00",
-      "status": "resolved",
+      "status": "open",
       "priority": "high",
       "severity": "major",
-      "assigned_to": "Claude",
+      "assigned_to": "",
       "related_to": [
         "60e4236e-db84-4841-af91-1ccaaeb1863c"
       ],
@@ -6763,36 +6763,16 @@
       "actual_behavior": "Drei Pfade sind nur auskommentiert dokumentiert; ihr wirksamer Vorgabewert liegt im Quelltext, teils je Aufrufer verschieden.",
       "updates": [
         {
-          "timestamp": "2026-08-02T15:58:57.008543+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Befunde_Konfig_Transport.json"
-        },
-        {
           "timestamp": "2026-08-02T19:00:00+00:00",
           "author": "Claude",
           "action": "comment",
           "comment": "Angelegt auf Wunsch mc. Belege: config.yaml Z. 26-63 (die auskommentierten vier mit Begruendung, Build 640), core/config_loader.py Z. 90-101 (Coded Defaults, acht Eintraege), management/search/index_cli.py Z. 84-91 (der halbwirksame Suchindex, Befund seit Build 641 offen). Ticket 60e4236e ist der Vorlaeufer - es hat die Pfade SICHTBAR gemacht; dieses hier fragt nach der HOHEIT. ZUR VORSICHT VERMERKT: Punkt (a) verlegt bei niemandem etwas, solange der gesetzte Wert dem bisherigen Vorgabewert entspricht - aber genau das ist beim Suchindex NICHT der Fall (Server und CLI benutzen heute verschiedene Orte). Wer das vereinheitlicht, entscheidet damit ueber einen bestehenden Index. Das gehoert vor der Umsetzung geklaert."
         },
         {
-          "timestamp": "2026-08-13T18:00:00+00:00",
-          "author": "Claude",
+          "timestamp": "2026-08-02T15:58:57.008543+00:00",
+          "author": "merge-tool",
           "action": "comment",
-          "comment": "MESSUNG VOR DER UMSETZUNG - der befuerchtete Umzug ist enger als gedacht. Die beiden Vorgabewerte des Suchindex sind bei UNVERAENDERTER config.yaml IDENTISCH: index_cli fuehrte './data/search_index.db' (STANDARD_INDEX_PFAD), der Server rechnete Path(paths.coordinator_db).parent / 'search_index.db' = './data' + '/search_index.db'. Sie laufen erst auseinander, sobald 'paths.coordinator_db' verlegt ist - also genau in dem Betrieb, fuer den die Verlegbarkeit gedacht war. Deshalb war der Fehler auf der Entwicklungsanlage unsichtbar. Fuer den verlegten Fall ist eine Meldung noetig; verschoben werden darf nichts."
-        },
-        {
-          "timestamp": "2026-08-13T19:30:00+00:00",
-          "author": "Alex",
-          "action": "comment",
-          "comment": "ENTSCHEIDUNGEN ZU DEN DREI OFFENEN PUNKTEN (13.08.2026): (1) Suchindex: Werkzeug und Server werden auf 'paths.search_index_db' ANGEGLICHEN, und ein moeglicher Umzug wird GEMELDET. (2) 'paths.migration_db' und 'paths.backup_dir' bleiben in der ausgelieferten config.yaml AUSKOMMENTIERT und werden als ausdrueckliche Ausnahme gefuehrt. (3) Die Sperre prueft BEIDES - dass jeder Schluessel in config.yaml gesetzt ist und dass es ausserhalb von core/config_loader.py keine wirksamen Pfadliterale gibt - jeweils mit benannter Ausnahmeliste."
-        },
-        {
-          "timestamp": "2026-08-14T04:30:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "UMGESETZT IN BUILD 0.8.720. Punkt fuer Punkt gegen das Ticket:\n\n(a) 'Jeder Pfad steht GESETZT in der ausgelieferten config.yaml': ERFUELLT mit den zwei unter (c) benannten Ausnahmen. 'approved_reports_db' und 'search_index_db' sind jetzt gesetzt; die uebrigen sieben waren es schon.\n\n(b) 'GENAU EIN Vorgabewert je Pfad, und der steht in core/config_loader.py': ERFUELLT. 'paths.search_index_db' ist neu in _DEFAULTS aufgenommen; STANDARD_INDEX_PFAD in management/search/index_cli.py ist ENTFALLEN. Neu ist 'coded_default(schluessel, fallback=None)' - damit ein Werkzeug den Vorgabewert HOLEN kann, statt ihn abzuschreiben. Angewandt in index_cli und annotation_stats_admin (beide fuehrten ein eigenes './data/evidence/').\n\n(c) 'Ausnahmen bleiben moeglich, aber sie werden BENANNT': ERFUELLT. 'paths.migration_db' und 'paths.backup_dir' bleiben auskommentiert; die Begruendung steht jetzt an der Stelle selbst (config.yaml) und in der Ausnahmeliste des Tests, nicht nur in diesem Ticket. Beide haben bewusst KEINEN Vorgabewert; beim Backup waere eine Vorgabe die gefaehrlichste Art von Vorgabe - eine, die irgendwohin schreibt.\n\n(d) 'EINE SPERRE, die das haelt': ERFUELLT. tests/test_konfig_pfadhoheit.py, PH01-PH06, abgeleitet aus management/db_katalog.py wie im Ticket vorgeschlagen. PH04 sucht ueber den AST und nicht ueber Zeilenmuster - die erste Fassung meldete ein Beispiel aus einem DOCSTRING als wirksames Literal.\n\nDIE HOHEITSFRAGE IST DAMIT BEANTWORTET, ABER SIE HAT EINEN PREIS, DER BENANNT GEHOERT: Auf einer Anlage mit verlegter coordinator.db AENDERT sich der Ort des Suchindex. Es wird nichts verschoben und nichts geloescht; liegt am alten Ort eine Datei und am neuen keine, melden Werkzeug und Server das im Klartext (IndexOrt.umzugsmeldung()). Die Bedingung ist absichtlich eng - liegt an beiden Orten einer, ist der neue in Gebrauch, und Reden darueber waere Rauschen. Der Index ist ein Hilfsmittel und kein Beweismittel: '--auffrischen --voll' baut ihn neu auf, es geht kein Beleg verloren.\n\nMITGEZOGEN (Gebot 'keine Aenderung ohne Anpassung in der Hilfe'): Im CLI-Katalog bleibt der Befund von Build 640 im WORTLAUT stehen und wird als erledigt ausgewiesen - ein geloeschter Befund waere von einem nie erhobenen nicht zu unterscheiden; neu dazu der Eintrag 'paths.search_index_db' bei 'index_cli'. Im Datenbank-Katalog waren die Begruendungen zu 'search_index' und 'approved_reports' durch diese Aenderung FALSCH geworden ('hat KEINEN Eintrag in config.yaml') und sind berichtigt.\n\nEIN FEHLER, DEN DER BESTEHENDE TESTBESTAND GEFANGEN HAT: Die neue Herkunftszeile ging zunaechst auch bei '--json' auf stdout - SI23b liest diese Ausgabe mit json.loads(). Sie wechselt bei '--json' jetzt auf die Fehlerausgabe und entfaellt NICHT (ein Skript soll einen umgezogenen Index nicht wie einen leeren sehen).\n\nPRUEFSTAND Build 720: 3653 Python-Testfaelle bestanden, 87 uebersprungen, 80 Subtests bestanden; JavaScript 1976 bestanden. Rot bleiben PY08/PY10 (tests/test_py4_lesend.py) - containerbedingt, PEP-701-f-String in editor/html_renderer.py Z. 349 gegen Python 3.11 der Bauumgebung; am unberuehrten origin/master (4af0323) scheitern genau dieselben zwei mit derselben Meldung."
+          "comment": "Importiert aus eintraege_claude_Befunde_Konfig_Transport.json"
         }
       ]
     },
