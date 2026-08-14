@@ -15,7 +15,10 @@
 # (Grundregel 1).
 #
 # Beleg: Bauplan B7 v1.1 §11/§7.5.3; mc 2026-07-10.
-# Version: v0.7.352 · Build: 352 · 2026-07-10
+# Build 721: Der Planer erhebt zusaetzlich eine BESTANDSAUFNAHME der
+#   Fall-Verzeichnisse (Vorgang dc63928d). Sie ist die Vorher-Aufnahme,
+#   gegen die der Executor nach dem Lauf die Nachzuegler bestimmt.
+# Version: v0.8.721 · Build: 721 · 2026-08-14
 # =============================================================================
 
 import math
@@ -54,6 +57,29 @@ class BackupPlan:
     dest_dir: str
     ok: bool
     reason: str
+    # ----------------------------------------------------------------------
+    # BUILD 721 - DIE BESTANDSAUFNAHME (Vorgang dc63928d, dritte Forderung).
+    #
+    # WOZU: Der Executor soll nach dem Lauf sagen koennen, welche
+    # Fall-Datenbank WAEHREND des Laufs entstanden ist. Dafuer braucht er
+    # einen Vorher-Stand, und den kann nur der Planer liefern - er ist die
+    # Stelle, die die Verzeichnisse VOR dem Lauf liest. Sein Blick IST der
+    # Vorher-Zeitpunkt.
+    #
+    # WARUM BEIDE FELDER: 'fall_verzeichnisse' sagt, WO nachzusehen ist, und
+    # zwar unabhaengig davon, ob dort etwas gefunden wurde. Genau daran ist
+    # die erste Fassung gescheitert: sie leitete die Verzeichnisse aus den
+    # gefundenen Quellen ab, und ein beim Planen LEERES Fall-Verzeichnis kam
+    # darin gar nicht vor - die erste Datenbank eines Verzeichnisses konnte
+    # also nie als Nachzuegler auffallen (gemessen 14.08.2026, Lage C).
+    # 'vorgefunden' sagt, WAS dort lag.
+    #
+    # VORGABEWERTE, damit jeder bestehende Aufruf von BackupPlan(...) - auch
+    # in den Tests - unveraendert gueltig bleibt. Ein Plan ohne
+    # Bestandsaufnahme fuehrt dann zu einer LEEREN Nachzueglerliste und nicht
+    # zu einer falschen; der Executor sagt das ausdruecklich.
+    fall_verzeichnisse: Tuple[str, ...] = ()
+    vorgefunden: Tuple[str, ...] = ()
 
 
 class BackupPlanner:
@@ -76,12 +102,28 @@ class BackupPlanner:
     # ------------------------------------------------------------- enumerate
     def enumerate_sources(self) -> Tuple[List[BackupSource], List[str]]:
         """
-        Alle Quell-DBs ermitteln. Rueckgabe: (sources, missing).
-        Reihenfolge: coordinator, (shared: default/templates/translations),
-        dann je Verzeichnis die '*.db' alphabetisch.
+        Alle Quell-DBs ermitteln.
+
+        Rueckgabe seit Build 721 VIER Werte:
+          (sources, missing, fall_verzeichnisse, vorgefunden)
+        Die beiden hinteren sind die Bestandsaufnahme fuer die
+        Nachzueglererkennung (Vorgang dc63928d) - siehe BackupPlan.
+
+        Reihenfolge der Quellen: coordinator, (shared:
+        default/templates/translations), dann je Verzeichnis die '*.db'
+        alphabetisch.
+
+        DIE ERWEITERUNG DER RUECKGABE IST EIN BRUCH, und zwar ein bewusster:
+        ein optionales fuenftes Feld haette die Bestandsaufnahme zu einer
+        Sache gemacht, die man vergessen kann. Sie darf man nicht vergessen -
+        ohne sie ist die Nachzueglerliste still leer. Der einzige Aufrufer im
+        Bestand ist plan() in dieser Datei.
         """
         sources: List[BackupSource] = []
         missing: List[str] = []
+        # Build 721: die Bestandsaufnahme der Fall-Verzeichnisse.
+        fall_dirs: List[str] = []
+        vorgefunden: List[str] = []
 
         # Einzel-DBs: coordinator immer; shared nur wenn konfiguriert.
         singles = [("coordinator", self._paths.get("coordinator_db"))]
@@ -98,21 +140,28 @@ class BackupPlanner:
                 missing.append("Einzel-DB '%s': %s" % (label, p))
 
         # Fallbezogene DBs aus den drei Verzeichnissen.
+        #
+        # BUILD 721: DABEI ENTSTEHT ZUGLEICH DIE BESTANDSAUFNAHME (Vorgang
+        # dc63928d). Sie ist NICHT dasselbe wie die Quellenliste - ein
+        # Verzeichnis, das erreichbar aber leer ist, steuert keine Quelle bei
+        # und gehoert trotzdem in die Liste der zu beobachtenden Orte.
         for dir_key in self._PER_UID_DIRS:
             d = self._paths.get(dir_key)
             if not d or not os.path.isdir(d):
                 missing.append("Verzeichnis '%s': %s" % (dir_key, d))
                 continue
+            fall_dirs.append(os.path.abspath(d))
             for name in sorted(os.listdir(d)):
                 if not name.endswith(".db"):
                     continue
                 fp = os.path.join(d, name)
                 if os.path.isfile(fp):
+                    vorgefunden.append(os.path.abspath(fp))
                     label = os.path.splitext(name)[0]  # 'evidence_18'
                     sources.append(
                         BackupSource(label, fp, os.path.getsize(fp)))
 
-        return sources, missing
+        return sources, missing, fall_dirs, vorgefunden
 
     # ------------------------------------------------------------- free space
     def _free_at_dest(self, dest_dir: str) -> Tuple[Optional[int], Optional[str]]:
@@ -140,26 +189,30 @@ class BackupPlanner:
     # ------------------------------------------------------------------- plan
     def plan(self) -> BackupPlan:
         """Enumeration + Vorabpruefung zu einem BackupPlan zusammenfuehren."""
-        sources, missing = self.enumerate_sources()
+        sources, missing, fall_dirs, vorgefunden = self.enumerate_sources()
         total = sum(s.size for s in sources)
         required = int(math.ceil(total * self._cfg.min_free_factor))
 
         free, err = self._free_at_dest(self._cfg.dest_dir)
         if err is not None:
             return BackupPlan(sources, missing, total, required, 0,
-                              self._cfg.dest_dir, False, err)
+                              self._cfg.dest_dir, False, err,
+                              tuple(fall_dirs), tuple(vorgefunden))
 
         if not sources:
             return BackupPlan(sources, missing, total, required, free,
                               self._cfg.dest_dir, False,
-                              "Keine Quell-Datenbanken gefunden.")
+                              "Keine Quell-Datenbanken gefunden.",
+                              tuple(fall_dirs), tuple(vorgefunden))
 
         if free < required:
             reason = ("Zu wenig Speicher am Ziel: benoetigt %d Bytes "
                       "(%.2fx von %d Bytes Quelldaten), frei %d Bytes."
                       % (required, self._cfg.min_free_factor, total, free))
             return BackupPlan(sources, missing, total, required, free,
-                              self._cfg.dest_dir, False, reason)
+                              self._cfg.dest_dir, False, reason,
+                              tuple(fall_dirs), tuple(vorgefunden))
 
         return BackupPlan(sources, missing, total, required, free,
-                          self._cfg.dest_dir, True, "")
+                          self._cfg.dest_dir, True, "",
+                          tuple(fall_dirs), tuple(vorgefunden))

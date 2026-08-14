@@ -681,28 +681,69 @@ class BackupExecutor:
     # ----------------------------------------------------------- manifest
     def _nachzuegler(self, plan: BackupPlan) -> List[str]:
         """
-        Fall-Datenbanken, die es beim Planen noch nicht gab.
+        Fall-Datenbanken, die WAEHREND des Laufs entstanden sind.
 
-        Verglichen wird gegen die Quellenliste des Plans; gesucht wird nur in
-        den Verzeichnissen, aus denen der Plan seine fallbezogenen Quellen
-        gezogen hat. Ein Fehler bei der Nachschau darf den Lauf nicht
-        umwerfen - die Sicherungen sind zu diesem Zeitpunkt bereits
-        geschrieben.
+        VORHER GEGEN NACHHER, und nicht 'gesichert gegen nicht gesichert'.
+        Verglichen wird die Bestandsaufnahme des Planers (plan.vorgefunden)
+        mit dem, was jetzt in den Fall-Verzeichnissen liegt. Ein Pfad zaehlt
+        genau dann, wenn er nachher da ist und vorher nicht war - also genau
+        das, was der Feldname 'nicht_gesichert_weil_neu' verspricht.
+
+        BUILD 721 - WARUM DAS UMGEBAUT WURDE (Vorgang dc63928d, dritte
+        Forderung). Die erste Fassung aus Build 617 leitete die zu
+        durchsuchenden Verzeichnisse aus plan.sources ab und hielt fuer 'neu',
+        was nicht gesichert worden war. Beides war falsch, und beides ist am
+        14.08.2026 an einem echten Lauf gemessen worden:
+
+          LAGE C - DER ECHTE FUND BLIEB AUS. War ein Fall-Verzeichnis beim
+          Planen LEER, steuerte es keine Quelle bei und kam in der
+          Verzeichnismenge gar nicht vor. Eine waehrend des Laufs dort
+          entstandene evidence_4711.db wurde weder gesichert noch genannt -
+          also genau der stille Verlust, den dieser Vorgang schliessen
+          sollte, und zwar ausgerechnet beim ERSTEN Fall eines
+          Verzeichnisses.
+
+          LAGEN A UND B - DAFUER MELDETE SIE FALSCHES. Weil auch das
+          Verzeichnis der coordinator.db durchsucht wurde und 'neu' hiess
+          'nicht gesichert', erschien dort jede nicht gesicherte Datenbank
+          als Nachzuegler: approved_reports.db bei JEDEM Lauf, und bei
+          'include_shared_dbs: false' zusaetzlich default.db, templates.db
+          und translations.db. Vier Falschmeldungen je Lauf. Eine Liste, die
+          immer etwas meldet, liest nach der dritten Woche niemand mehr - der
+          Beleg waere dann wieder still, nur auf dem umgekehrten Weg.
+
+        GESUCHT WIRD NUR IN DEN FALL-VERZEICHNISSEN (plan.fall_verzeichnisse,
+        aus der Konfiguration). Die geteilten Datenbanken neben der
+        coordinator.db entstehen nicht 'waehrend eines Laufs'; ob sie
+        mitgesichert werden, entscheidet 'backup.include_shared_dbs' und
+        nicht der Zufall eines Verzeichnisinhalts.
+
+        OHNE BESTANDSAUFNAHME KEINE AUSSAGE: Traegt der Plan keine
+        Fall-Verzeichnisse - etwa weil er von Hand gebaut wurde -, ist die
+        Liste leer. Das ist richtig so und keine Luecke: eine Aussage ueber
+        'neu' setzt einen Vorher-Stand voraus. Wo keiner erhoben wurde, ist
+        nichts festzustellen, und das Manifest behauptet dann auch nichts.
+
+        Ein Fehler bei der Nachschau darf den Lauf nicht umwerfen - die
+        Sicherungen sind zu diesem Zeitpunkt bereits geschrieben.
         """
-        bekannt = {os.path.abspath(s.path) for s in plan.sources}
-        verzeichnisse = {os.path.dirname(os.path.abspath(s.path))
-                         for s in plan.sources}
+        vorher = {os.path.abspath(p) for p in (plan.vorgefunden or ())}
         neu: List[str] = []
-        for d in sorted(verzeichnisse):
+        for d in sorted(set(plan.fall_verzeichnisse or ())):
             try:
                 namen = sorted(os.listdir(d))
             except OSError:
+                # Das Verzeichnis war beim Planen lesbar und ist es jetzt
+                # nicht mehr. Das ist ein Befund - aber keiner ueber
+                # Nachzuegler, und hier waere er am falschen Ort. Der Lauf
+                # selbst hat es gemerkt: die Quellen daraus stehen mit
+                # 'error' in den Ergebnissen.
                 continue
             for name in namen:
                 if not name.endswith(".db"):
                     continue
                 voll = os.path.abspath(os.path.join(d, name))
-                if voll not in bekannt and os.path.isfile(voll):
+                if voll not in vorher and os.path.isfile(voll):
                     neu.append(voll)
         return neu
 
