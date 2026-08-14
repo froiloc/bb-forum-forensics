@@ -8630,15 +8630,13 @@
       "description": "Gruppen werden fast überall nur mit der ID angegeben.",
       "expected_behavior": "In UserInfo - Gruppenänderungen, Gruppenhistorie müssen die Namen der Gruppen mitaufgelistet werden.\r\nEs soll groups.g_user_title und ersatzweise (falls das NULL ist) groups.g_title in Klammern oder als eigene Spalte ausgegeben werden.",
       "actual_behavior": "Neben der ID gibt es keinen Gruppennamen",
-      "status": "resolved",
+      "status": "open",
       "priority": "medium",
       "severity": "minor",
       "assigned_to": "Claude",
-      "related_to": [
-        "7c4f1b93-2e0a-4f6d-9b18-5a3c7d0e64f2"
-      ],
-      "resolved_in_version": "0.1.139",
-      "target_version": "0.1.139",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
       "environment": {
         "python_version": "3.14",
         "database": "forensic_<uid>.db"
@@ -8646,10 +8644,7 @@
       "tags": [
         "Gruppe",
         "Gruppenname",
-        "Prepper",
-        "PrepperBuild139",
-        "Userinfo",
-        "Userinfo-BLOB"
+        "Userinfo"
       ],
       "attachments": [],
       "updates": [
@@ -8660,14 +8655,6 @@
           "old_value": "",
           "new_value": "",
           "comment": "Issue erstellt"
-        },
-        {
-          "timestamp": "2026-08-13T21:01:08+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "BEHOBEN IN PREPPER-BUILD 0.1.139.\n\n(1) DIE FUNDSTELLE LIEGT IM PREPPER, nicht im Webserver. Die Abschnitte 'Gruppenhistorie' und 'Gruppenaenderungen' stehen im statischen BLOB static_pages['userinfo'], den stage1/phase_b_html_renderer.py in Phase B Schritt 7 erzeugt. Der Webserver liefert ihn nur aus.\n\n(2) AM QUELLTEXT NACHGESEHEN WAREN ES VIER STELLEN, nicht zwei, und keine glich der anderen:\n  * §7.1 Kopfzeile 'Gruppe (Benutzergruppe)': g_user_title + (g_id), aber OHNE Rueckfall auf g_title. Stand nur g_title in der Datenbank, sah der Ermittler 'Gruppe 5' - obwohl der Name in derselben JSON-Angabe lag und drei Zeilen tiefer bereits als title-Attribut gesetzt wurde. Ein Name, der nur im Tooltip steht, ist im Ausdruck und fuer einen Bildschirmleser nicht vorhanden.\n  * §7.5 Gruppenhistorie (_render_promotions): die nackte Kennung; die Funktion bekam den Katalog default_groups nicht einmal uebergeben.\n  * §7.11 Zeitstrahl: 'Gruppenaenderung → group_id=5'.\n  * §7.17 Gruppenaenderungen (_render_group_changes): Name + (ID), aber aus g_title. Ihr Vorgang gibt g_user_title zuerst vor - genau das war der Unterschied zur Kopfzeile DERSELBEN SEITE.\n\n(3) DESHALB EINE FASSUNG STATT VIER: _gruppen_katalog, _gruppen_name (die Reihenfolge, und nur hier), _gruppen_text (Reintext) und _gruppen_zelle (Tabellenzelle, escaped). Vier Kopien derselben Regel waren der Grund fuer diesen Vorgang; sie durch vier berichtigte Kopien zu ersetzen haette den naechsten vorbereitet. Der Webserver beantwortet dieselbe Frage in forensic_api/userinfo.py:98 ('g_ut or g_ti') schon so - damit sagen beide Renderer dasselbe.\n\n(4) FORM 'NAME (ID)' IN DERSELBEN ZELLE, Weisung Alex vom 13.08.2026. Die im Vorgang ebenfalls zugelassene eigene Spalte waere gefahrlos gewesen: gegengeprueft, ob zusaetzliche Spalten bestehende Annotationsanker verschieben koennten. Annotationen ankern ueber XPath mit Geschwisterindizes (toolbar.js:966 _xpathOf), aber nur innerhalb '#forensic-viewport'. Die Userinfo-Seite laedt toolbar.js gar nicht (Skriptliste forensic_api/userinfo.py:509-531) und hat kein forensic-viewport - in diesen BLOB zeigt kein Anker.\n\n(5) KEINE MIGRATION, KEINE NEUE ERHEBUNG. g_user_title und g_title liegen in default_groups (default.db) bereits vor - DDL phase_b_exporter.py:180, befuellt aus der Forentabelle 'groups' (Z. 1611). default.db wird nur gelesen.\n\n(6) EIN BESTEHENDER TEST WAR ZU BERICHTIGEN, und das ist der Befund und keine Anpassung an den Code: test_phase_b.py::TestPhaseBBuild057GroupChanges::test_group_name_resolved erwartete 'Mitglieder', also g_title. Er hielt damit genau den Unterschied fest, den dieser Vorgang beseitigt. Er prueft jetzt die Vorgabe UND ausdruecklich, dass der interne Titel NICHT an seiner Stelle steht.\n\n(7) NEUE REGRESSION: tests/test_gruppen_anzeige.py, 17 Faelle (GA01-GA12). GA12 faehrt einen vollstaendigen BLOB mit einer Gruppe, die NUR den internen Titel traegt - also genau den Rueckfall, an dem sich die vier Stellen vorher unterschieden - und ZAEHLT die Fundstellen des Namens, statt nur zu suchen.\n\n(8) GEGENPROBE GEFAHREN, fuenf Mutationen, jede einzeln entschaerft: Rueckfall in §7.1 entfernt, §7.5 zurueck auf die nackte Kennung, §7.11 zurueck auf 'group_id=', die Reihenfolge in _gruppen_name vertauscht, das Escaping in _gruppen_zelle entfernt. ALLE FUENF wurden erkannt, jeweils vom thematisch zustaendigen Test. __pycache__ vor jedem Lauf geleert; die Datei danach byteweise wiederhergestellt.\n\n(9) MESSUNG: 1110 Tests vor der Aenderung (deckt sich mit build.json 138), 1127 danach, je OK bei 8 uebersprungenen. Python 3.13.13.\n\n(10) WIRKUNG ERST BEIM NAECHSTEN ABZUG. Bereits abgezogene Faelle behalten ihren BLOB. Das Nachruesten des Bestandes ist auf Ihre Weisung als eigener Vorgang gefuehrt (siehe related_to) - es ersetzt INHALT in einer Datei unter Migrationsvorbehalt und gehoert nach dem Datenmigrationsleitfaden in vier Phasen mit Vieraugen-Verifikation."
         }
       ]
     },
@@ -10858,100 +10845,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Prepper_Build138.json"
-        }
-      ]
-    },
-    {
-      "id": "7c4f1b93-2e0a-4f6d-9b18-5a3c7d0e64f2",
-      "type": "improvement",
-      "title": "Nutzerinfo-BLOB im Bestand traegt noch Gruppen ohne Namen",
-      "affected_version": "0.1.139",
-      "reporter": "Claude",
-      "reported_at": "2026-08-13T21:01:08+00:00",
-      "prerequisites": "Eine forensic_<uid>.db, die VOR Prepper-Build 0.1.139 abgezogen wurde. Ihr static_pages['userinfo'] ist mit dem damaligen Renderer entstanden.",
-      "description": "Abgeleitet aus bb50a048, auf Weisung Alex vom 13.08.2026 als eigener Vorgang gefuehrt und in Build 0.1.139 ausdruecklich NICHT mitbehoben.\n\nDER STAND NACH 0.1.139: der Renderer gibt Gruppen mit Namen aus. Der Nutzerinfo-BLOB entsteht aber in Phase B Schritt 7 und liegt danach als static_pages['userinfo'] in der forensic_<uid>.db. Neue Abzuege bekommen die Namen sofort; bereits abgezogene Faelle behalten die blossen Kennungen.\n\nWAS DARAN WIEGT: es entsteht ein Unterschied zwischen alten und neuen Faellen, den spaeter niemand mehr erklaeren kann. Zwei Ermittler, die dieselbe Angabe in zwei Faellen nachschlagen, sehen Verschiedenes - ohne dass die Seite sagt, warum.\n\nDER WEG IST VORGEZEICHNET UND SCHON EINMAL GEGANGEN: migration/forensic_userinfo_blob_migration.py (Build 127) ruestet genau diesen BLOB nach. Sie arbeitet auf einer VACUUM-INTO-Kopie, legt userinfo_before.html und userinfo_after.html ab und weist mit migration/static_page_diff.py NACH, dass die primaeren Beweisdaten (pages-BLOBs, uid_*) unangetastet bleiben. Kein Byte des Originals wird angefasst; Phase 3 (Vieraugen) und Phase 4 (Produktivtausch) sind bewusst nicht automatisiert.\n\nZU BEDENKEN, BEVOR ETWAS GEBAUT WIRD: (a) Der neue BLOB wird aus dem GESAMTEN Renderer neu erzeugt und unterscheidet sich deshalb auch an anderen Stellen vom alten, wenn der Renderer seit dem Abzug fortgeschritten ist - das ist bei der Build-127-Migration schon so gewesen und dort ausdruecklich benannt. (b) Das Siegel forensic_meta.sha256 aendert sich zwangslaeufig. (c) Zu pruefen ist, ob eine einzige Nachruest-Migration fuer beide Anlaesse (Heatmap Build 127 und Gruppennamen) sinnvoller ist als eine zweite daneben - sie tun dasselbe.",
-      "expected_behavior": "Auch ein vor 0.1.139 abgezogener Fall zeigt in Nutzerinfo die Gruppennamen; die Beweisdaten bleiben nachweislich unveraendert.",
-      "actual_behavior": "Alte Faelle zeigen weiterhin blosse Kennungen, neue zeigen Namen.",
-      "status": "open",
-      "priority": "medium",
-      "severity": "minor",
-      "assigned_to": "",
-      "related_to": [
-        "bb50a048-120a-487e-b1a1-87e705fd87f1"
-      ],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "python_version": "3.14",
-        "database": "forensic_<uid>.db"
-      },
-      "tags": [
-        "Gruppenname",
-        "Migration",
-        "Prepper",
-        "Userinfo",
-        "Userinfo-BLOB"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-13T21:01:08+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Aus bb50a048 abgeleitet und auf Weisung Alex getrennt gefuehrt: eine BLOB-Nachruestung faellt unter den Migrationsvorbehalt und ist eine eigene Lieferung, kein Anhaengsel."
-        },
-        {
-          "timestamp": "2026-08-14T03:53:15.552417+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Prepper_Build139.json"
-        }
-      ]
-    },
-    {
-      "id": "f25c9a88-7ddd-4028-b0e5-60004ce28435",
-      "type": "bug",
-      "title": "testbestand.txt stempelt die Buildnummer des Laufs, nicht die der Lieferung",
-      "affected_version": "0.1.139",
-      "reporter": "Claude",
-      "reported_at": "2026-08-13T21:01:08+00:00",
-      "prerequisites": "tools/testbestand_schreiben.py wird gefahren, BEVOR build.json auf die neue Buildnummer steht. Das ist im vereinbarten Arbeitsablauf der Regelfall: die freie Buildnummer wird erst erfragt, wenn alle Tests gruen sind - die Bestandsliste muss dafuer aber schon fortgeschrieben sein, sonst faellt B03.",
-      "description": "Beim Bau von 0.1.139 aufgefallen und im selben Zug umgangen, aber nicht behoben.\n\nDER BEFUND: tools/testbestand_schreiben.py schreibt in die Kopfzeile 'Erzeugt fuer Build <N>' die Nummer, die zum Zeitpunkt des LAUFS in build.json steht. Wer die Liste fortschreibt und danach die Buildnummer setzt - also genau in der Reihenfolge, die der Arbeitsablauf verlangt -, liefert eine Liste mit der Nummer der VORIGEN Lieferung aus.\n\nGEMESSEN AM 13.08.2026: nach dem Fortschreiben stand dort 'Erzeugt fuer Build 138 am 2026-08-13 20:56 UTC. Eintraege: 1127' - die 1127 ist die Zahl aus Build 139, die 138 ist falsch.\n\nUND ES LAESST SICH MIT DEM WERKZEUG NICHT BERICHTIGEN: ein zweiter Lauf nach dem Nummernwechsel meldet 'Die Bestandsliste ist bereits aktuell' und schreibt NICHT neu - der Vergleich sieht nur die Test-IDs, nicht den Kopf. Die Datei sagt zugleich 'NICHT VON HAND PFLEGEN'. Der Ausweg in dieser Lieferung war, die Liste zu verwerfen ('git checkout') und nach dem Setzen der Nummer neu zu erzeugen - das ist ein Umweg und keine Loesung.\n\nWARUM DAS MEHR IST ALS EIN SCHOENHEITSFEHLER: der Kopf ist ein Herkunftsvermerk. Steht dort eine falsche Nummer, ist beim spaeteren Nachvollziehen nicht mehr zu erkennen, mit welcher Lieferung ein Testbestand entstanden ist - und der Vermerk sagt genau das aus (Grundregel: Ueberpruefbarkeit).",
-      "expected_behavior": "Der Kopf nennt die Buildnummer der Lieferung. Denkbar sind ein Schalter '--build N', ein erneutes Schreiben bei abweichendem Kopf oder ein Vermerk 'erzeugt am' ohne Buildnummer - welcher Weg der richtige ist, ist Teil des Vorgangs und hier nicht vorweggenommen.",
-      "actual_behavior": "Der Kopf nennt die Nummer, die beim Lauf zufaellig in build.json stand; ein zweiter Lauf berichtigt sie nicht.",
-      "status": "open",
-      "priority": "low",
-      "severity": "minor",
-      "assigned_to": "",
-      "related_to": [],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "python_version": "3.14"
-      },
-      "tags": [
-        "Nachvollziehbarkeit",
-        "Prepper",
-        "Testbestand",
-        "Werkzeug"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-13T21:01:08+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Beim Bau von 0.1.139 aufgefallen. In dieser Lieferung umgangen, indem die Liste nach dem Setzen der Buildnummer neu erzeugt wurde - der ausgelieferte Kopf nennt also richtig Build 139."
-        },
-        {
-          "timestamp": "2026-08-14T03:53:15.552441+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Prepper_Build139.json"
         }
       ]
     }
