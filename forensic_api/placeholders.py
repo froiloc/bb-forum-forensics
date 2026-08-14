@@ -30,7 +30,13 @@
 #   - Query-Definitionen lesen: templates_db (tdb.placeholder_queries).
 #
 # Beleg: Bauplan B6 v0.3 §3, Ausdefinitionsgespraech 2026-05-05
-# Version: v0.8.495 · Build: 495 · 2026-07-21
+# Version: v0.8.722 · Build: 722 · 2026-08-14
+# Build 722 (Ticket c9d24a7f): Zustandspruefung der templates.db vor
+#   resolve, refresh und cache-set. Bis Build 721 ergab eine unlesbare
+#   Quelle dort einen Vorgabewert IM BERICHTSTEXT, einen falschen
+#   Freispruch bzw. eine Abweisung, die den Platzhalter beschuldigte.
+#   Ausserdem behoben: '?uid=abc' warf ein ungefangenes ValueError, weil
+#   die Umwandlung vor ihrem eigenen try stand.
 # Build 495 (Platzhalter-Neuordnung, Slice 3): case-weite Wiederverwendung von
 #   m/o-Ermittlerwerten. GET/POST /_forensic/placeholders/cache lesen/schreiben
 #   den placeholder_cache fuer m/o-Platzhalter (Prefill/Writeback, mc-Wunsch).
@@ -155,6 +161,31 @@ class PlaceholdersEndpoint:
             )
             return
 
+        # BUILD 722 (Ticket c9d24a7f) - DER SCHWERSTE DER DREI FAELLE.
+        #
+        # GEMESSEN: Ist die templates.db nicht lesbar, gibt TemplatesDb.
+        # get_query() None zurueck (Fehler wird dort gefangen).
+        # AutoQueryResolver macht daraus STATUS_NO_QUERY (auto_query.py
+        # Z. 134-137), und replace_match() setzt daraufhin den DEFAULT-WERT
+        # in den Text ein. Der Platzhalter erscheint unter 'unresolved' -
+        # genau so, wie wenn es die Query wirklich nicht gaebe.
+        #
+        # Das ist nicht bloss eine unklare Auskunft: Der Ermittler bekommt
+        # eine Ersatzangabe IN DEN BERICHTSTEXT geschrieben und hat keinen
+        # Anlass zu pruefen, ob dort der ermittelte Wert oder ein Platzhalter-
+        # Standard steht. Ein Beleg wuerde damit still durch eine Vorgabe
+        # ersetzt (Grundregel 1).
+        #
+        # GEPRUEFT WIRD NUR, WENN ES ETWAS AUFZULOESEN GIBT. Enthaelt der Text
+        # keinen einzigen {{a:}}-Platzhalter, ist die Antwort 'Text
+        # unveraendert, nichts offen' VOLLSTAENDIG WAHR - auch bei nicht
+        # lesbarer templates.db, denn es wurde nichts uebersprungen. Ein 503
+        # waere hier ein Fehlalarm, und Fehlalarme kosten genau das
+        # Vertrauen, auf das die echte Meldung angewiesen ist.
+        if _PLACEHOLDER_RE.search(body_text) and self._quelle_nicht_lesbar(
+                handler, "POST /_forensic/placeholders/resolve"):
+            return
+
         resolved_text, unresolved, errors, cache_hits, values = \
             self._resolve_body(body_text, uid, collect_values=return_values)
 
@@ -196,6 +227,20 @@ class PlaceholdersEndpoint:
                 400, _json_err("'uid' muss eine ganze Zahl sein."),
                 content_type="application/json; charset=utf-8",
             )
+            return
+
+        # BUILD 722 (Ticket c9d24a7f): EIN FALSCHER FREISPRUCH.
+        #
+        # GEMESSEN: Ist die templates.db nicht lesbar, liefert
+        # list_queries(types=['a']) eine LEERE Liste (TemplatesDb faengt den
+        # Fehler und gibt [] zurueck, templates_db.py Z. 554). _refresh_cache
+        # laeuft dann ueber null Definitionen und meldet
+        # {"refreshed": 0, "errors": []} mit HTTP 200 - also 'gelaufen, nichts
+        # zu tun, keine Fehler'. Wer die Auffrischung anstoesst, weil ihm
+        # Werte veraltet vorkommen, bekommt die Bestaetigung, dass alles in
+        # Ordnung sei. Das ist schlimmer als keine Antwort.
+        if self._quelle_nicht_lesbar(handler,
+                                     "POST /_forensic/placeholders/refresh"):
             return
 
         refreshed, errors = self._refresh_cache(uid)
@@ -370,10 +415,31 @@ class PlaceholdersEndpoint:
         aus evidence_<uid>.db/placeholder_cache (mc-Wunsch, case-weite
         Wiederverwendung).
         """
-        uid = params.get("uid", [None])[0]
-        uid = int(uid) if uid is not None else self._context.subject_id
+        # BUILD 722 (Ticket c9d24a7f) - NEBENBEFUND, BEI DER DURCHSICHT
+        # GEMESSEN UND HIER MITBEHOBEN (Entscheidung Alex, 14.08.2026).
+        #
+        # Bis Build 721 stand hier:
+        #     uid = params.get("uid", [None])[0]
+        #     uid = int(uid) if uid is not None else self._context.subject_id
+        #     try:
+        #         uid = int(uid)
+        #     except (TypeError, ValueError):
+        #         ... 400 ...
+        #
+        # Die Umwandlung stand damit VOR dem try, der sie abfangen sollte.
+        # 'GET /_forensic/placeholders/cache?uid=abc' warf ein ungefangenes
+        # ValueError; die Ausnahme flog aus dem Handler und riss die
+        # Verbindung mit - der Browser meldete 'Failed to fetch'. Der
+        # try-Block darunter war fuer genau diesen Weg toter Code: er sah nur
+        # noch ein bereits fertiges int.
+        #
+        # Jetzt wird EINMAL umgewandelt, und zwar innerhalb des try. Fehlt
+        # der Parameter ganz, gilt weiterhin der Fall aus dem Kontext - das
+        # ist unveraendert.
+        roh = params.get("uid", [None])[0]
         try:
-            uid = int(uid)
+            uid = int(roh) if roh is not None else int(
+                self._context.subject_id)
         except (TypeError, ValueError):
             handler.send_response_body(
                 400, _json_err("'uid' muss eine ganze Zahl sein.", "BAD_PARAM"),
@@ -439,6 +505,24 @@ class PlaceholdersEndpoint:
                 400, _json_err("'uid' muss eine ganze Zahl sein.", "BAD_PARAM"),
                 content_type="application/json; charset=utf-8",
             )
+            return
+
+        # BUILD 722 (Ticket c9d24a7f): EINE IRREFUEHRENDE ABWEISUNG - UND EIN
+        # VERWORFENER ERMITTLERWERT.
+        #
+        # GEMESSEN: Ist die templates.db nicht lesbar, gibt get_query() None
+        # zurueck (Fehler wird in TemplatesDb gefangen). Die Pruefung unten
+        # macht daraus HTTP 400 'Nur bekannte m/o-Platzhalter koennen
+        # case-weit wiederverwendet werden' - eine Aussage UEBER DEN
+        # PLATZHALTER, obwohl in Wahrheit die Quelle nicht lesbar war. Der
+        # Ermittler haelt seine Eingabe fuer unzulaessig; tatsaechlich wurde
+        # sie nie geprueft und NICHT gespeichert.
+        #
+        # Deshalb steht die Zustandspruefung VOR der Abweisung: ein 503 sagt,
+        # dass nicht nachgesehen werden konnte; das 400 bleibt der Aussage
+        # vorbehalten, die es wirklich trifft.
+        if self._quelle_nicht_lesbar(handler,
+                                     "POST /_forensic/placeholders/cache"):
             return
 
         # Nur bekannte m/o-Platzhalter duerfen fallweise wiederverwendet werden.
