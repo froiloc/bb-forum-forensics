@@ -16861,6 +16861,56 @@
           "comment": "Issue erstellt"
         }
       ]
+    },
+    {
+      "id": "a4f16c82-73de-4b95-8e01-2c6f9b04dd37",
+      "type": "bug",
+      "title": "Siegel-Datenbank approved_reports.db wird nicht mitgesichert",
+      "affected_version": "0.8.718",
+      "reporter": "Claude",
+      "reported_at": "2026-08-14T09:15:00+00:00",
+      "prerequisites": "Ein Lauf von 'backup_admin run' auf einer Anlage, auf der bereits Berichte freigegeben wurden.",
+      "description": "Gefunden bei der Bearbeitung von dc63928d, aufgenommen auf Weisung von Alex vom 14.08.2026. Die Datei fiel auf, WEIL die alte Nachzueglererkennung sie bei jedem Lauf als 'waehrend des Laufs entstanden' meldete - und das tat sie, weil sie nicht gesichert wird.\n\nDER BEFUND: backup_admin sichert die Datenbanken aus _PATH_KEYS (backup_admin.py Z. 77-78): coordinator_db, forensic_db_dir, evidence_db_dir, assets_db_dir, default_db, templates_db, translations_db. 'approved_reports_db' steht NICHT darin, und der Planer kennt sie folglich auch nicht. Sie ist in keinem Sicherungssatz.\n\nWAS IN DIESER DATENBANK LIEGT: die Siegel der FREIGEGEBENEN Berichte - je Bericht der kanonische Inhaltshash (management/reports/report_sealer.py, management/reports/approved_reports_db.py). Das Siegel ist der Beleg dafuer, dass GENAU DIESER Stand eines Berichts freigegeben wurde.\n\nDIE FOLGE IST NICHT DER VERLUST EINES BERICHTS, SONDERN DER VERLUST SEINES BEWEISES. Nach einer Wiederherstellung aus dem Sicherungssatz liegen die Berichte in der evidence_<uid>.db vollstaendig vor - aber es gibt keinen zentralen Nachweis mehr, dass sie in diesem Stand freigegeben waren. seal_check haette dann nichts zu pruefen. Fuer ein Verfahren, in dem Ueberpruefbarkeit die wichtigste Regel ist, wiegt das schwer.\n\nES IST NICHT MIT EINER ZEILE GETAN, und deshalb steht es hier statt in der Lieferung zu 721: 'paths.approved_reports_db' ist in config.yaml AUSKOMMENTIERT (Z. 40). management_app.py faengt das mit einem Vorgabewert './data/approved_reports.db' ab (Z. 797-804) - ein Sicherungswerkzeug darf das NICHT: es wuerde auf einen erratenen Pfad sichern und im schlechtesten Fall die falsche Datei oder gar keine erwischen, ohne dass es auffaellt. Der Eintrag gehoert zuerst in die config.yaml. Das beruehrt unmittelbar Vorgang 5a7e93b1 ('Datenbankpfade gehoeren vollstaendig in die config.yaml').\n\nNEBENBEFUND, BEWUSST GETRENNT: 'search_index_db' fehlt aus demselben Grund im Sicherungssatz. Sie ist aus dem Bestand ABLEITBAR (db/search_index_db.py legt ihre Tabellen selbst an) und meines Erachtens verzichtbar. Sie steht hier, damit die Auslassung benannt ist und nicht fuer uebersehen gehalten wird (Grundregel 1).",
+      "expected_behavior": "approved_reports.db ist Teil des taeglichen Sicherungssatzes - mit einem Pfad, der aus der config.yaml kommt und nicht erraten wird. Fehlt der Eintrag, erscheint die Datenbank in 'missing' des Plans, also sichtbar.",
+      "actual_behavior": "Die Datenbank wird von keinem Lauf erfasst. Bis Build 720 erschien sie statt dessen bei jedem Lauf faelschlich unter 'nicht_gesichert_weil_neu'; seit Build 721 erscheint sie dort zu Recht nicht mehr - und damit gar nicht mehr.",
+      "status": "open",
+      "priority": "high",
+      "severity": "major",
+      "assigned_to": "",
+      "related_to": [
+        "dc63928d-9d53-4532-931e-66efd7ac03e0",
+        "5a7e93b1-04cd-4f28-8b6a-1e2d5c96f730"
+      ],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14"
+      },
+      "tags": [
+        "backup",
+        "backup_admin",
+        "gr1",
+        "produktivbetrieb",
+        "siegel",
+        "wiederherstellung"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-14T09:15:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Eintrag erstellt auf Weisung von Alex, gefunden bei der Bearbeitung von dc63928d.\n\nZWEI DINGE SIND VOR DER BEHEBUNG ZU KLAEREN, und beide sind Entscheidungen und keine Befunde:\n\n  (1) DER PFAD. Er gehoert in die config.yaml (Z. 40, derzeit auskommentiert). Solange er dort fehlt, darf ein Sicherungswerkzeug ihn nicht erraten - 'ein erratener Pfad waere schlimmer als ein Abbruch' ist die Regel, die der CLI-Katalog bei 30 Werkzeugen woertlich begruendet. Zu entscheiden: Eintrag einkommentieren, oder die Datenbank nur dann sichern, wenn er gesetzt ist (und sonst in 'missing' auffuehren).\n\n  (2) DER RUECKWEG. Wird die Siegel-Datenbank mitgesichert, gehoert sie auch in die Betrachtung der PUNKTGLEICHHEIT: ein Satz, in dem die evidence_<uid>.db und die Siegel auseinanderliegen, kann ein Siegel enthalten, dessen Bericht noch anders aussah. Das ist dieselbe Frage wie in dc63928d, nur an einer Stelle, an der sie unmittelbar auf die Beweiskraft durchschlaegt.\n\nICH LEGE MICH BEI BEIDEM NICHT FEST. Was ich belegen kann: die Datenbank ist heute in keinem Sicherungssatz."
+        },
+        {
+          "timestamp": "2026-08-14T12:44:36.353628+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build721.json"
+        }
+      ]
     }
   ]
 }
