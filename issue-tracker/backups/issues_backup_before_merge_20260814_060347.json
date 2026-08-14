@@ -9620,26 +9620,24 @@
       "description": "Der Zitatblock hat im Bestand ZWEI Datenmodelle, und keine Seite weiss von der anderen:\n\n  WERKZEUG  '@cychann/editorjs-quote' (deployment/build_editor_bundle.py:56)\n            erzeugt und liest  {text, type}   ('type' waehlt die Anfuehrungszeichen-Variante, gemessen: \"quotationMark\")\n  RENDERER  editor/html_renderer.py:127-151\n            rendert            {text, caption, alignment}\n            -- das Datenmodell von '@editorjs/quote', NICHT das des gebuendelten Werkzeugs. Der Docstring dort NENNT zwar '@cychann/editorjs-quote', dokumentiert aber die Felder des anderen Pakets.\n\nFOLGEN, beide gemessen am 12.08.2026:\n  (a) 'caption' und 'alignment' koennen im Komfortmodus nicht entstehen und wurden dort bis Build 704 zerstoert (Vorgang 3d7f1c84). Seit Build 704 bleiben sie erhalten - aber sie sind nur im Rohmodus bearbeitbar.\n  (b) Umgekehrt IGNORIERT der Renderer 'type'. Die im Komfortmodus gewaehlte Anfuehrungszeichen-Variante hat auf den Bericht also keinerlei Wirkung. Das ist kein Inhaltsverlust, aber eine Bedienmoeglichkeit ohne Wirkung - und die ist schlimmer als gar keine, weil sie eine Zusage macht, die niemand einloest.",
       "expected_behavior": "EIN Datenmodell fuer den Zitatblock, an dem Werkzeug, Renderer und Klartextspiegel gleichermassen haengen.",
       "actual_behavior": "Zwei Modelle. Was das eine fuehrt, wirft das andere weg, und umgekehrt.",
-      "status": "resolved",
+      "status": "open",
       "priority": "medium",
       "severity": "minor",
       "assigned_to": "Claude",
       "related_to": [
         "3d7f1c84-5a2e-4b19-8c6d-71e0f4a93b52"
       ],
-      "resolved_in_version": "0.8.719",
-      "target_version": "0.8.719",
+      "resolved_in_version": null,
+      "target_version": null,
       "environment": {
         "python_version": "3.14"
       },
       "tags": [
-        "Bericht",
-        "Datenmodell",
         "Editor.js",
         "Zitat",
-        "build719",
-        "entscheidung-offen",
-        "report_render"
+        "Datenmodell",
+        "Bericht",
+        "entscheidung-offen"
       ],
       "attachments": [],
       "updates": [
@@ -9656,14 +9654,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Build704.json"
-        },
-        {
-          "timestamp": "2026-08-13T21:30:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "BEHOBEN IN BUILD 719 NACH WEG C (Entscheidung Alex, 13.08.2026). Der Vorgang war jedoch AN DER FALSCHEN DATEI aufgehaengt; das aendert den Umfang der Behebung erheblich und gehoert deshalb an den Anfang.\n\n(1) DIE PRAEMISSE WAR UNRICHTIG - GEMESSEN AM QUELLTEXT, STAND BUILD 718. Der Vorgang nennt als 'RENDERER' die Datei editor/html_renderer.py (Z. 127-151). Diese Datei HAT KEINEN PRODUKTIVEN AUFRUFER. Ihr eigener Kopf sagt es (Z. 25): 'Kein Produktionseinsatz in AP-E4 ... Vorbereitet fuer Baustelle 6'. Baustelle 6 ist danach als report_render/ gebaut worden. Eine Suche ueber alle .py- und .js-Dateien findet als Importeure ausschliesslich tests/test_editor_renderer.py.\n\n(2) DIE WIRKLICHE KETTE eines Zitatblocks ist:\n      report_source.py Z. 222-228   liest 'text' und 'caption'\n      -> report_render/html_renderer.py  _render_quote\n      -> report_render/pdf_renderer.py   Zweig bt == 'quote'\n      -> report_render/docx_renderer.py  Zweig bt == 'quote'\n    Keine dieser vier Stellen las 'type'. WEG C ALLEIN IN editor/html_renderer.py GEFAHREN WAERE EIN FIX OHNE WIRKUNG GEWESEN - also genau das, was dieser Vorgang beanstandet. Behoben wurde deshalb die produktive Kette. Was mit dem Prototyp geschieht, ist ein eigener Vorgang (Weisung Alex).\n\n(3) EIN ZWEITER PUNKT DER BESCHREIBUNG IST ZU BERICHTIGEN: 'alignment' hat produktiv NIRGENDS eine Wirkung. Einziger Leser im ganzen Bestand ist die Datei aus (1); management/search/block_text.py Z. 88 fuehrt es ausdruecklich unter den NICHT-Textfeldern. Der im Vorgang genannte Preis von Weg A - 'vorhandene Bildunterschriften erschienen im Bericht nicht mehr' - trifft also allein 'caption'. Diese wirkt dafuer vollstaendig: HTML, PDF und DOCX rendern sie (jeder Zweig einzeln nachgesehen).\n\n(4) DIE DREI WERTE SIND JETZT BELEGT UND NICHT VERMUTET. Aus dem ausgelieferten Buendel static/editor/editor.bundle.js (Datei-MD5 laut bundle_manifest.json: 1d0b16dc7c823d7349170b9fba6b0d93):\n      QuotationMark='quotationMark', VerticalLine='verticalLine', Box='box'\n      getTypeClass: -> blockquote_type1 / _type2 / _type3, default -> _type1\n      DEFAULT_TYPE = 'quotationMark'\n    Der Vorgang nannte nur 'quotationMark' als gemessenen Wert; die beiden anderen und der Vorgabezweig waren offen.\n\n(5) DIE ZUORDNUNG STEHT AN EINER STELLE: report_render/quote_typen.py (neu). Normalisiert wird EINMAL, in report_source; die drei Renderer entscheiden nur noch, WIE eine Variante aussieht, nicht mehr, WELCHE es ist. Drei kleine Helfer in drei Renderern waeren die Wiederholung genau des Fehlers gewesen, um den es hier geht.\n\n(6) EINE SICHTBARE AENDERUNG AN ALTEN DATEN, und sie ist gewollt: Die Vorgabe ist 'quotationMark' und nicht 'verticalLine'. Ein vor Build 719 angelegtes Zitat hat kein 'type' und wird ab jetzt MITTIG dargestellt statt linksbuendig mit senkrechtem Strich. Auf dem Bildschirm des Bearbeiters sah dasselbe Zitat schon immer so aus - der Bericht wich ab. Die Paritaet zwischen Bildschirm und Bericht ist eine ausdrueckliche Zusage der Berichtsausgabe (html_renderer.py Kopf, 'Paritaet, §6'). Festgehalten in Testfall QT10.\n\n(7) KEINE MIGRATION, KEIN GEBROCHENES SIEGEL. 'type' wird gelesen, nie geschrieben (QT06 prueft den Rohbestand nach dem Lauf). Die Berichts-Siegel bleiben gueltig: ReportSealer hasht die ZEILEN aus report_blocks, nicht die gerenderte Ausgabe (report_sealer.py, 'UMFANG DES SIEGELS'). Ein bereits freigegebener Bericht sieht bei einer NEUEN Ausgabe anders aus als bei einer alten - sein Siegel bestaetigt aber weiterhin denselben Inhalt.\n\n(8) WAS DIE FORMATE KOENNEN UND WAS NICHT - benannt statt stillschweigend angeglichen: Im HTML sind die drei Varianten nachgebaut, nicht kopiert (Druckmass statt Pixel; das Anfuehrungszeichen ist ein Schriftzeichen und kein Verweis auf /icons/IconQuote.svg - der Bericht muss selbstenthaltend bleiben). Im PDF kennt reportlab keinen einseitigen Rahmen; der senkrechte Strich bleibt deshalb ein Einzug, wie er hier immer schon war. Im DOCX braucht der Kasten rohes XML (w:pBdr) und das interne Attribut '_p' von python-docx - QT13 bewacht genau das, damit ein Bruch dort auffaellt und nicht dem Ermittler.\n\n(9) EIN FUND AUS DERSELBEN FUNKTION, MITBEHOBEN auf Weisung von Alex: die Quellenangabe im Word-Export war nie kursiv. Dort stand 'd.add_paragraph(...).italic = True'; 'italic' gehoert an den LAUF, nicht an den Absatz. GEMESSEN mit python-docx 1.2.0: das Attribut steht danach auf True, [r.italic for r in p.runs] aber auf [None]. Dieselbe Fehlerfamilie wie dieser Vorgang - eine Zusage, die niemand einloest. Eigener Eintrag: siehe related_to.\n\n(10) NEUE TESTS: tests/test_quote_varianten.py, 16 Faelle (QT01-QT16). QT16 laesst EIN Dokument durch alle drei Renderer laufen und prueft, dass alle drei dieselbe Variante erkennen - der Waechter gegen genau die Spaltung, von der dieser Vorgang handelt.\n\n(11) REGRESSION 719: Python 3627 -> 3643 gruen (die 16 neuen), 0 rot. JavaScript 141 Dateien / 1976 Faelle gruen, unveraendert - es wurde kein JavaScript angefasst. Kein bestehender Testfall musste angepasst werden."
         }
       ]
     },
@@ -10962,113 +10952,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Prepper_Build139.json"
-        }
-      ]
-    },
-    {
-      "id": "3b9d5c11-84f7-4a26-b0e3-9d5a17c2f480",
-      "type": "refactoring",
-      "title": "editor/html_renderer.py: Renderer ohne Aufrufer, aber mit Belegen",
-      "affected_version": "0.8.718",
-      "reporter": "Claude",
-      "reported_at": "2026-08-13T21:30:00+00:00",
-      "prerequisites": "Keine - der Befund steht im Bestand. Nachzusehen mit einer Suche nach 'from editor.html_renderer' bzw. 'EditorHtmlRenderer' ueber alle .py- und .js-Dateien.",
-      "description": "Gefunden bei der Bearbeitung von 9c41a7e6, aufgenommen auf Weisung von Alex vom 13.08.2026.\n\nDER BEFUND: editor/html_renderer.py (511 Zeilen, elf Blockklassen plus EditorHtmlRenderer) hat keinen produktiven Aufrufer. Der Kopf der Datei sagt es selbst (Z. 25): 'Kein Produktionseinsatz in AP-E4 (dort rendert der Browser direkt). Vorbereitet fuer Baustelle 6 (serverseitiger PDF/HTML-Export).' Baustelle 6 ist dann als report_render/ gebaut worden - mit eigenen Renderern fuer HTML, PDF, DOCX und SQLite. Eine Suche ueber alle .py- und .js-Dateien findet als Importeure ausschliesslich tests/test_editor_renderer.py.\n\nDAS EIGENTLICHE PROBLEM IST NICHT DER TOTE CODE, SONDERN DIE BELEGE, DIE AUF IHN ZEIGEN. Mindestens sechs Stellen im Bestand fuehren diese Datei als Fundstelle fuer das Verhalten des Berichts:\n  * core/placeholder_syntax.py Z. 123 und Z. 155 ('wird von html_renderer.py als <cite> in den Vermerk gerendert')\n  * management/server/static/cockpit_baustein_eingabe.js Z. 76 und im Belegblock am Dateikopf\n  * userinfo/placeholder_chips.js Z. 404\n  * der Vorgang 9c41a7e6 selbst, und ueber ihn 3d7f1c84\nJEDER DIESER BELEGE IST HEUTE IRREFUEHREND: Er beschreibt richtig, was in der genannten Datei steht - aber diese Datei rendert keinen Bericht. Wer ihm folgt, prueft das falsche Bauteil. GENAU DAS IST BEI 9c41a7e6 GESCHEHEN: der Vorgang war an dieser Datei aufgehaengt, und Weg C dort gefahren waere ein Fix ohne Wirkung gewesen.\n\nEIN BELEG, DER AUF TOTEN CODE ZEIGT, IST EIN BELEG MIT VERFALLSDATUM. In einem Verfahren, in dem Ueberpruefbarkeit die wichtigste Regel ist, wiegt das schwerer als die 511 ungenutzten Zeilen.",
-      "expected_behavior": "Entweder die Datei verschwindet samt ihrer Testreihe und die sechs Belegstellen werden auf report_render/ umgehaengt - oder sie bleibt und traegt einen unuebersehbaren Vermerk, dass sie nicht der Renderer des Berichts ist. Beides ist vertretbar; ENTSCHIEDEN werden muss es.",
-      "actual_behavior": "Die Datei liegt unveraendert im Bestand, wird von 21 Testfaellen geprueft und von sechs Stellen als Beleg zitiert. Ihr eigener Hinweis auf die fehlende Produktivnutzung steht in Zeile 25 eines 33-zeiligen Kopfes und ist beim Zitieren mehrfach uebersehen worden.",
-      "status": "open",
-      "priority": "medium",
-      "severity": "minor",
-      "assigned_to": "",
-      "related_to": [
-        "9c41a7e6-2b58-4d03-a7f1-6e2b90c85fd4"
-      ],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "python_version": "3.14"
-      },
-      "tags": [
-        "Bericht",
-        "Editor.js",
-        "entscheidung-offen",
-        "gr1",
-        "nachvollziehbarkeit",
-        "report_render",
-        "toter-code"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-13T21:30:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "ZWEI WEGE, und ich lege mich ausdruecklich NICHT fest - beide haben einen Preis, den nur der Projektverantwortliche abwaegen kann:\n\n  A) ENTFERNEN. Die Datei und tests/test_editor_renderer.py fallen weg, die sechs Belegstellen werden auf report_render/ umgehaengt. Der Bestand wird um 511 Zeilen kleiner und um eine Verwechslungsmoeglichkeit aermer. PREIS: In der Datei stecken Blockklassen, die report_render/ NICHT hat (EvidenceBlock mit Anbindung an die EvidenceDb, MarkerBlock, NestedListBlock mit Rekursion). Was davon noch gebraucht wird, ist vor dem Entfernen einzeln zu pruefen - ein pauschales Loeschen waere hier der gefaehrlichere Weg.\n\n  B) KENNZEICHNEN. Die Datei bleibt, bekommt aber einen Vermerk in der ERSTEN Zeile des Kopfes und je Klasse eine Zeile: 'DIES IST NICHT DER RENDERER DES BERICHTS - siehe report_render/'. Die sechs Belegstellen werden trotzdem umgehaengt. Kleinster Eingriff, kein Verlust. PREIS: der tote Code bleibt liegen und wird beim naechsten Mal wieder mitgepflegt.\n\nIN BEIDEN FAELLEN GEHOEREN DIE SECHS BELEGSTELLEN BERICHTIGT. Das ist der eigentliche Kern und der einzige Teil, ueber den es nichts abzuwaegen gibt."
-        },
-        {
-          "timestamp": "2026-08-14T04:03:47.319736+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build719.json"
-        }
-      ]
-    },
-    {
-      "id": "5e2c8b93-1d47-4f60-a9b2-3c81e6d70f45",
-      "type": "bug",
-      "title": "Quellenangabe im Word-Export war nie kursiv",
-      "affected_version": "0.7.402",
-      "reporter": "Claude",
-      "reported_at": "2026-08-13T21:30:00+00:00",
-      "prerequisites": "Ein Bericht mit mindestens einem Zitatblock, der eine Quellenangabe traegt; Export als DOCX.",
-      "description": "Gefunden beim Umbau des Zitat-Zweigs fuer Vorgang 9c41a7e6, in derselben Funktion. Mitbehoben auf Weisung von Alex (13.08.2026).\n\nDER BEFUND: report_render/docx_renderer.py, Zweig bt == 'quote', schrieb die Quellenangabe so:\n    d.add_paragraph(f\"— {cap}\").italic = True\n'italic' ist keine Eigenschaft eines ABSATZES, sondern eines LAUFS. python-docx legt auf dem Absatzobjekt stillschweigend ein neues Attribut an, das niemand liest, und wirft dabei keinen Fehler.\n\nGEMESSEN am 13.08.2026 mit python-docx 1.2.0:\n    p = d.add_paragraph(\"— Quelle\"); p.italic = True\n    getattr(p, \"italic\")            -> True\n    [r.italic for r in p.runs]      -> [None]\nIm erzeugten word/document.xml stand an dieser Stelle kein <w:i/>.\n\nDIESELBE FEHLERFAMILIE WIE 9c41a7e6: eine Anweisung, die aussieht, als taete sie etwas, und nichts tut. Sie ist seit Build 402 im Bestand und keinem Testfall aufgefallen, weil die DOCX-Tests (DX01-DX03) den Textinhalt pruefen und nicht die Auszeichnung.\n\nKEIN INHALTSVERLUST: Die Quellenangabe STEHT im Word-Dokument, sie war nur nicht hervorgehoben. Deshalb 'minor' und nicht hoeher - im HTML- und PDF-Export ist sie ohnehin abgesetzt.",
-      "expected_behavior": "Die Quellenangabe erscheint im Word-Export kursiv, wie es die Absicht der Zeile war und wie HTML (<cite>) und PDF (kleinerer, grauer Stil) es ebenfalls tun.",
-      "actual_behavior": "Die Quellenangabe erscheint in normaler Schrift. Kein <w:i/> im erzeugten XML.",
-      "status": "resolved",
-      "priority": "low",
-      "severity": "trivial",
-      "assigned_to": "Claude",
-      "related_to": [
-        "9c41a7e6-2b58-4d03-a7f1-6e2b90c85fd4"
-      ],
-      "resolved_in_version": "0.8.719",
-      "target_version": "0.8.719",
-      "environment": {
-        "python_version": "3.14"
-      },
-      "tags": [
-        "Bericht",
-        "build719",
-        "docx",
-        "gr1",
-        "report_render",
-        "Zitat"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-13T21:30:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Eintrag erstellt auf Weisung von Alex, gefunden bei der Bearbeitung von 9c41a7e6."
-        },
-        {
-          "timestamp": "2026-08-13T21:35:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "BEHOBEN IN BUILD 719. Die Kursivstellung sitzt jetzt am Lauf:\n    quelle = d.add_paragraph()\n    quelle.add_run(f\"— {cap}\").italic = True\nAbgesichert durch QT14 in tests/test_quote_varianten.py - der Fall sucht das <w:i/> im Absatz mit der Quellenangabe und nicht im Dokument als Ganzes; sonst haette ihn jede andere kursive Stelle gruen gefaerbt.\n\nDIE ALTE ZEILE STEHT ALS KOMMENTAR AN DER FUNDSTELLE, samt der Messung. Wer in einem Jahr fragt, warum hier zwei Zeilen stehen, wo eine genuegt haette, findet die Antwort dort.\n\nMIGRATIONSVORBEHALT: nicht beruehrt. Reine Ausgabeaenderung, kein Schema, kein Schreibzugriff auf eine Datenbank."
-        },
-        {
-          "timestamp": "2026-08-14T04:03:47.319756+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build719.json"
         }
       ]
     }
