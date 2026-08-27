@@ -55,6 +55,12 @@ from report_render.auto_query import AutoQueryResolver
 # sagt an der Fundstelle, WOHER die Regel kommt.
 from report_render import quote_typen
 from report_render.quote_typen import QUOTE_TYP_FELD
+# Build 725 (Vollzitat): die vier Darstellungsvarianten der
+# Beweismittelgruppe. Wie oben als MODUL eingefuehrt - 'beleg_darstellung.
+# aus_daten' sagt an der Fundstelle, WOHER die Regel kommt.
+from report_render import beleg_darstellung
+from report_render.beleg_darstellung import GRUPPE_FELD, MODUS_FELD
+from report_render.report_document import WARN_EVIDENCE_GAP
 
 # -----------------------------------------------------------------------------
 # Die neun bekannten Blocktypen (Editor.js-Toolnamen).
@@ -95,11 +101,29 @@ class ReportSource:
         uid: int,
         username: str,
         generated_at: int,
+        forensic: Any = None,
     ) -> None:
         self._edb = evidence
         self._tdb = templates
         self._adb = assets
         self._fcon = forensic_con
+        # Build 725: der ForensicDb-Griff des Buendels - fuer die
+        # Seitenabzuege, aus denen das Vollzitat den umschliessenden Absatz
+        # holt. ALS LETZTER PARAMETER UND MIT VORGABE None, damit jeder
+        # bestehende Aufruf (alle benennen ihre Argumente ohnehin) unveraendert
+        # gueltig bleibt.
+        #
+        # WARUM DURCHGEREICHT UND NICHT HIER GEBAUT: ForensicDb() legt im
+        # Konstruktor die TEMP-VIEW 'blob_lookup' NEU an und wirft die
+        # vorhandene vorher weg (db/forensic_db.py, _setup_view). Im Webserver
+        # ist 'forensic_con' dieselbe Verbindung, ueber die gerade Seiten
+        # ausgeliefert werden - ein Berichtsexport wuerde dem
+        # Auslieferungspfad mitten im Betrieb die Sicht wegziehen.
+        self._fdb = forensic
+        #: Wird beim ersten evidence-Block im Vollzitat-Modus angelegt.
+        #: Ein Bericht kann mehrere Beweismittelgruppen enthalten; sie teilen
+        #: sich die Zwischenspeicher fuer Seitenabzuege, Namen und Quellen.
+        self._vollzitat_bauer = None
         self._uid = uid
         self._username = username
         self._generated_at = generated_at
@@ -265,13 +289,61 @@ class ReportSource:
         # evidence -> Verweise auf Annotationen; Text (falls vorhanden) aufloesen.
         elif bt == "evidence":
             rb.resolved_text, rb.resolved_text_plain = rs(data.get("text", ""))
-            # evidence_ids unveraendert im data-Feld belassen (Renderer listet sie).
+            # evidence_ids bleiben unveraendert im data-Feld stehen.
+            #
+            # BUILD 725: die im Werkzeug gewaehlte Darstellungsvariante
+            # bekommt Wirkung. Bis Build 724 las der gesamte Ausgabepfad
+            # 'display_mode' nicht - der Bericht zeigte fuer jede
+            # Beweismittelgruppe nur "Beweis-IDs: 42, 43" (Beleg und
+            # Begruendung: Kopf von report_render/beleg_darstellung.py).
+            #
+            # DIE NORMALISIERUNG GESCHIEHT HIER UND NICHT IN DEN VIER
+            # RENDERERN - dieselbe Lehre wie bei den Zitatvarianten
+            # (Vorgang 9c41a7e6): zwei Stellen, die dieselbe Frage
+            # beantworten, geben irgendwann zwei Antworten.
+            modus = beleg_darstellung.aus_daten(data)
+            rb.data[MODUS_FELD] = modus
+            self._baue_vollzitat(rb, data, doc, modus)
         else:
             # unbekannter Typ: vorhandenen 'text' defensiv aufloesen (GR1).
             if "text" in data:
                 rb.resolved_text, rb.resolved_text_plain = rs(data.get("text", ""))
 
         return rb
+
+    # ------------------------------------------------------------------
+    def _baue_vollzitat(self, rb: RenderedBlock, data: dict,
+                        doc: ReportDocument, modus: str) -> None:
+        """
+        Die Beweismittelgruppe als Vollzitat aufbereiten (Build 725).
+
+        NUR IM VOLLZITAT-MODUS. Fuer die drei uebrigen Varianten wird der
+        Seitenabzug NICHT zerlegt: das ist der teuerste Einzelschritt des
+        Berichtsaufbaus (eine Themenseite traegt bis zu 500 Beitraege), und
+        sein Ergebnis - der umschliessende Absatz - kommt dort nicht vor.
+
+        DIE WARNUNGEN WANDERN INS DOKUMENT, NICHT IN DEN BLOCK. R2 verlangt,
+        dass keine Auffaelligkeit still verschwindet; der Abschnitt "Hinweise
+        zur Erzeugung" ist die Stelle, an der ein Pruefer die
+        Vollstaendigkeitsaussage des Berichts an EINEM Ort findet. Sie
+        zusaetzlich am Beleg zu drucken wuerde die Gruppe unlesbar machen -
+        die Zuordnung leistet die Beleg-Nummer im Warnungstext.
+        """
+        if not beleg_darstellung.braucht_absatz(modus):
+            return
+
+        from report_render.vollzitat_bauer import VollzitatBauer
+
+        if self._vollzitat_bauer is None:
+            self._vollzitat_bauer = VollzitatBauer(
+                evidence=self._edb, forensic=self._fdb, con=self._fcon)
+
+        gruppe = self._vollzitat_bauer.baue(
+            data.get("evidence_ids"), data.get("group_label", ""))
+        rb.data[GRUPPE_FELD] = gruppe
+
+        for meldung in gruppe.warnungen:
+            doc.add_warning(WARN_EVIDENCE_GAP, meldung, block_id=rb.block_id)
 
     # ------------------------------------------------------------------
     def _build_image_reference(self, rb: RenderedBlock, data: dict, doc: ReportDocument, rs: Any) -> None:

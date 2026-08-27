@@ -78,6 +78,125 @@ class SupportStatusRecord:
 
 
 @dataclass(frozen=True)
+class PersonNameRecord:
+    """
+    Die Namensbestandteile einer Person aus cdb.person.
+
+    Felder:
+        system_username — SAMAccountName ($USER unter Linux)
+        display_name    — Anzeigename, immer vorhanden (NOT NULL)
+        first_name      — AD 'givenName'  (M039; None = nie befuellt)
+        last_name       — AD 'sn'         (M039; None = nie befuellt)
+        rank            — AD 'title'      (M039; None = nie befuellt,
+                          "" = im AD leer, s. Kopf von M039)
+
+    WARUM DAS NICHT IN InvestigatorRecord STEHT: Jener Datensatz beantwortet
+    die Frage "wer darf was" (die drei Rollen-Flags) und wird an mehreren
+    Stellen so verwendet. Hier geht es um die Frage "wie heisst der", und die
+    stellt der Berichtsgenerator fuer Personen, die laengst deaktiviert sein
+    koennen. Ein gemeinsamer Datensatz haette beide Fragen vermischt.
+    """
+    system_username: str
+    display_name:    str
+    first_name:      Optional[str]
+    last_name:       Optional[str]
+    rank:            Optional[str]
+
+
+#: Die drei mit M039 hinzugekommenen Spalten.
+_NAMENSSPALTEN = ("first_name", "last_name", "rank")
+
+
+def person_spalten(con: sqlite3.Connection) -> set:
+    """
+    Die tatsaechlich vorhandenen Spalten von cdb.person.
+
+    WIRD GEBRAUCHT, WEIL M039 NICHT UEBERALL ANGEWANDT SEIN MUSS. Der
+    Webserver laeuft in der VM gegen eine coordinator.db, die das Management
+    migriert - beides sind getrennte Auslieferungen und koennen zeitlich
+    auseinanderfallen. Ein SELECT auf eine fehlende Spalte waere ein
+    'no such column'-Fehler, den die Retry-Logik ausdruecklich NICHT
+    wiederholt; er wuerde den Berichtsexport abbrechen. Statt dessen wird
+    nachgesehen und der Rueckfallweg gegangen.
+
+    Ein Fehlschlag (cdb gar nicht angebunden) ergibt die leere Menge - der
+    Aufrufer entscheidet dann, nicht diese Funktion.
+    """
+    try:
+        return {r[1] for r in con.execute("PRAGMA cdb.table_info(person)")}
+    except sqlite3.Error as exc:
+        logger.warning("cdb.person nicht lesbar (%s) - keine Spalten.", exc)
+        return set()
+
+
+def lies_namensteile(
+    con: sqlite3.Connection, system_username: str
+) -> Optional[PersonNameRecord]:
+    """
+    Die Namensbestandteile EINER Person lesen - ueber eine beliebige
+    Verbindung, die cdb angebunden hat.
+
+    WARUM ALS FREIE FUNKTION UND NICHT NUR ALS METHODE VON CoordinatorDb:
+    Der Berichtsgenerator (report_render) haelt keine CoordinatorDb, sondern
+    die Buendel-Verbindung, auf der cdb als ATTACH liegt. Beide Wege sollen
+    aber DIESELBE Abfrage stellen - sonst stehen im Bericht andere Namen als
+    in der Oberflaeche. CoordinatorDb.get_person_name() ruft deshalb hierher
+    durch; die Abfrage steht genau einmal.
+
+    Rueckgabe None, wenn die Person nicht in cdb.person steht oder cdb nicht
+    angebunden ist. Das ist KEIN Fehler: 'annotations.created_by' kann ein
+    Kuerzel tragen, das aus einem anderen Verzeichnis stammt oder seit dem
+    Loeschen im AD nicht mehr gefuehrt wird. Der Aufrufer BENENNT das dann
+    (GR1) - hier wird es nur gemeldet.
+    """
+    if not system_username:
+        return None
+    vorhanden = person_spalten(con)
+    if not vorhanden:
+        return None
+    if "system_username" not in vorhanden or "display_name" not in vorhanden:
+        logger.warning(
+            "cdb.person ohne system_username/display_name - "
+            "Namensaufloesung nicht moeglich.")
+        return None
+
+    # Nur die Spalten anfordern, die es wirklich gibt (M039 evtl. nicht
+    # angewandt). Die Namen sind feste Literale aus _NAMENSSPALTEN und kein
+    # Nutzereingang - die Formatierung ist unkritisch, der Wert bleibt
+    # parametrisiert.
+    zusatz = [s for s in _NAMENSSPALTEN if s in vorhanden]
+    spalten = ["system_username", "display_name"] + zusatz
+    try:
+        row = con.execute(
+            "SELECT %s FROM cdb.person WHERE system_username = ?"
+            % ", ".join(spalten),
+            (system_username,),
+        ).fetchone()
+    except sqlite3.Error as exc:
+        logger.warning(
+            "cdb.person: Namensteile fuer %r nicht lesbar (%s).",
+            system_username, exc)
+        return None
+
+    if row is None:
+        return None
+
+    def _feld(name):
+        if name not in zusatz:
+            return None
+        wert = row[name]
+        return None if wert is None else str(wert)
+
+    return PersonNameRecord(
+        system_username=str(row["system_username"]),
+        display_name=str(row["display_name"]),
+        first_name=_feld("first_name"),
+        last_name=_feld("last_name"),
+        rank=_feld("rank"),
+    )
+
+
+@dataclass(frozen=True)
 class InvestigatorRecord:
     """
     Repräsentiert einen Eintrag aus der person-Tabelle (Rolle: Ermittler).
@@ -214,6 +333,19 @@ class CoordinatorDb:
     # ------------------------------------------------------------------
     # Ermittler-Abfragen
     # ------------------------------------------------------------------
+
+    def get_person_name(
+        self, system_username: str
+    ) -> Optional[PersonNameRecord]:
+        """
+        Die Namensbestandteile einer Person (Build 725).
+
+        Durchreichung auf lies_namensteile() - die Abfrage steht dort genau
+        einmal, damit Bericht und Oberflaeche denselben Namen zeigen. Die
+        Retry-Logik gilt auch hier: coordinator.db liegt auf einem
+        Netzlaufwerk.
+        """
+        return self._retry(lies_namensteile, self._con, system_username)
 
     def get_investigator(
         self, system_username: str

@@ -32,6 +32,12 @@ from report_render.report_document import ReportDocument, RenderedBlock
 # Vorgang 9c41a7e6: die im Werkzeug gewaehlte Zitatvariante. Normalisiert
 # wird sie in report_source; hier wird nur noch die Klasse dazu geholt.
 from report_render.quote_typen import QUOTE_TYP_FELD, css_klasse
+# Build 725 (Vollzitat): die Darstellungsvariante der Beweismittelgruppe.
+# Normalisiert wird sie in report_source; hier wird nur noch gemalt.
+from report_render import beleg_darstellung
+from report_render.beleg_darstellung import (
+    GRUPPE_FELD, MODUS_FELD, MODUS_VOLLZITAT,
+)
 
 CLASSIFICATION = "VERTRAULICH — IT-FORENSISCHES ERMITTLUNGSWERKZEUG NRW"
 
@@ -51,6 +57,8 @@ WARNING_LABELS = {
     "unordered_block":        "Block ohne Sortierungseintrag (ans Ende gestellt)",
     "unknown_block_type":     "Unbekannter Blocktyp (Inhalt nicht regulaer dargestellt)",
     "missing_image":          "Bild-Verweis nicht auffindbar",
+    # Build 725 (Vollzitat): die Beleglage selbst war unvollstaendig.
+    "evidence_gap":           "Beleglage unvollstaendig (Beweismittelgruppe)",
 }
 
 
@@ -142,6 +150,55 @@ class HtmlRenderer:
     .image-ref .lbl {{ font-weight: bold; }}
     .image-missing {{ color: #7a0000; }}
     .evidence-ref {{ border-left: 3pt solid #14532d; padding: 2pt 12pt; }}
+    /* --- Vollzitat, die vierte Darstellung einer Beweismittelgruppe
+       (Auftrag Chef-Ermittlerin 27.08.2026). Anforderung 6 verlangt, dass
+       die Gruppe "gerahmt oder anderweitig als gruppiert deutlich
+       erkennbar" ist - daher der durchgehende Rahmen um die Gruppe und ein
+       zweiter, leichterer um jede Quelle.
+       DRUCKMASS (pt), KEIN BILDSCHIRMMASS: dieselbe Ueberlegung wie bei den
+       Zitatvarianten oben. 'page-break-inside: avoid' haelt einen Unterblock
+       zusammen - ein Absatz auf Seite 4 und sein Befund auf Seite 5 waeren
+       in einer Akte schwer zu lesen. */
+    .vz-gruppe {{ border: 1.5pt solid #14532d; margin: 6pt 0 12pt;
+                  page-break-inside: avoid; }}
+    .vz-gruppe-kopf {{ font-family: Arial, sans-serif; font-size: 8.5pt;
+                  font-weight: bold; color: #fff; background: #14532d;
+                  padding: 3pt 8pt; }}
+    .vz-gruppe-kopf .vz-zaehler {{ float: right; font-weight: normal; }}
+    .vz-gruppe-label {{ font-family: Arial, sans-serif; font-size: 10pt;
+                  font-weight: bold; padding: 6pt 10pt 0; }}
+    .vz-quelle {{ border: 1pt solid #b9c7bd; margin: 6pt 10pt 0;
+                  padding-bottom: 6pt; page-break-inside: avoid; }}
+    .vz-quelle-kopf {{ font-family: Arial, sans-serif; font-size: 9.5pt;
+                  background: #eef3ef; border-bottom: 1pt solid #dbe4dd;
+                  padding: 4pt 8pt; }}
+    .vz-art {{ font-weight: bold; }}
+    .vz-meta {{ font-family: Arial, sans-serif; font-size: 8.5pt; color: #444;
+                  padding: 3pt 8pt 0; }}
+    .vz-meta .vz-k {{ color: #777; }}
+    .vz-link {{ font-family: "Courier New", monospace; font-size: 8pt;
+                  word-break: break-all; color: #14532d; }}
+    .vz-absatz {{ margin: 6pt 8pt 0; padding: 5pt 8pt; border-left: 3pt solid #ccc;
+                  line-height: 1.6; }}
+    .vz-absatz.vz-ersatz {{ border-left-style: dotted; }}
+    /* box-decoration-break: die Hinterlegung soll auch dann sauber aussehen,
+       wenn die Markierung ueber einen Zeilenumbruch laeuft. */
+    .vz-mark {{ padding: 0 1pt; box-decoration-break: clone;
+                  -webkit-box-decoration-break: clone; }}
+    .vz-nr {{ display: inline-block; min-width: 12pt; text-align: center;
+                  font-family: Arial, sans-serif; font-size: 7.5pt;
+                  font-weight: bold; border: 1pt solid #666; margin-right: 3pt; }}
+    .vz-befund {{ margin: 6pt 8pt 0; padding-left: 6pt;
+                  border-left: 2.5pt solid #ccc; font-size: 10pt; }}
+    .vz-befund-kopf {{ font-family: Arial, sans-serif; font-size: 8.5pt;
+                  color: #333; }}
+    .vz-kat {{ font-weight: bold; }}
+    .vz-notiz .vz-k {{ font-family: Arial, sans-serif; font-size: 8.5pt;
+                  color: #777; }}
+    .vz-unsicher {{ font-family: Arial, sans-serif; font-size: 8pt;
+                  color: #7a5200; }}
+    .vz-fehlt {{ font-family: Arial, sans-serif; font-size: 8.5pt;
+                  color: #7a0000; font-weight: bold; padding: 4pt 8pt; }}
     .unknown-block {{ color: #7a0000; font-family: Arial, sans-serif; font-weight: bold;
                       border: 1pt solid #7a0000; padding: 4pt 8pt; }}
     .anchors {{ font-size: 8.5pt; color: #555; margin-top: 4pt; }}
@@ -292,6 +349,22 @@ class HtmlRenderer:
         return f'<p class="para-content"><mark>{blk.resolved_text}</mark></p>'
 
     def _render_evidence(self, blk: RenderedBlock) -> str:
+        """
+        Eine Beweismittelgruppe.
+
+        BUILD 725: die im Werkzeug gewaehlte Darstellung wird gelesen. Fuer
+        'Vollzitat' wird die fertige Gruppe gezeichnet, die report_source
+        aufgebaut hat; fuer die drei uebrigen Varianten bleibt es bei der
+        bisherigen Ausgabe (Beleg-IDs). Dass jene drei im Bericht weiterhin
+        gleich aussehen, ist BENANNT und nicht vergessen - s. Kopf von
+        report_render/beleg_darstellung.py und der Vorgang dazu im
+        Aufgabenverzeichnis.
+        """
+        if blk.data.get(MODUS_FELD) == MODUS_VOLLZITAT:
+            gruppe = blk.data.get(GRUPPE_FELD)
+            if gruppe is not None:
+                return self._render_vollzitat(gruppe)
+
         ev_ids = blk.data.get("evidence_ids", [])
         ids_txt = ""
         if isinstance(ev_ids, list) and ev_ids:
@@ -299,6 +372,180 @@ class HtmlRenderer:
         body = blk.resolved_text or ""
         inner = body + (f'<div class="anchors">{ids_txt}</div>' if ids_txt else "")
         return f'<div class="evidence-ref">{inner}</div>'
+
+    # ------------------------------------------------------------------
+    def _render_vollzitat(self, gruppe) -> str:
+        """
+        Die vierte Darstellungsvariante zeichnen.
+
+        ESCAPING: Die Absatz-Fragmente (absatz.html) kommen aus dem zerlegten
+        Seitenabzug und sind von lxml neu serialisiert - sie sind BEREITS
+        HTML-sicher und werden UNVERAENDERT ausgegeben. Das ist dieselbe
+        Invariante wie bei resolved_text (s. Dateikopf). Alles uebrige -
+        Betreff, Partner, Notiz, Ermittlername, Adresse - ist Klartext aus der
+        Datenbank und geht durch _esc(). Ein Themenbetreff kann '<' enthalten;
+        ein Forum ist voll davon.
+        """
+        from core import kategorie_farben
+
+        teile = [
+            '<div class="vz-gruppe">',
+            '<div class="vz-gruppe-kopf">&#9878;&#65039; BEWEISMITTELGRUPPE '
+            '&mdash; VOLLZITAT'
+            f'<span class="vz-zaehler">{gruppe.beleg_anzahl} '
+            f'{"Beleg" if gruppe.beleg_anzahl == 1 else "Belege"} &middot; '
+            f'{gruppe.quellen_anzahl} '
+            f'{"Quelle" if gruppe.quellen_anzahl == 1 else "Quellen"}</span>'
+            '</div>',
+        ]
+        if gruppe.beschriftung:
+            teile.append('<div class="vz-gruppe-label">Belegsammlung: '
+                         f'&bdquo;{_esc(gruppe.beschriftung)}&ldquo;</div>')
+
+        for ub in gruppe.unterbloecke:
+            teile.append(self._render_vz_quelle(ub, kategorie_farben))
+
+        teile.append('</div>')
+        return "".join(teile)
+
+    # ------------------------------------------------------------------
+    def _render_vz_quelle(self, ub, kategorie_farben) -> str:
+        q = ub.quelle
+        teile = ['<div class="vz-quelle">']
+
+        # -- Kopf: Art der Quelle (Anforderung 7) --------------------------
+        if q.ist_pn:
+            art, wer = "Private Nachricht mit", q.partner
+            fehlt = "(Gespr&auml;chspartner nicht ermittelbar)"
+        else:
+            art, wer = "Beitrag zum Thema", q.betreff
+            fehlt = "(Betreff nicht ermittelbar)"
+        bezeichner = (f'&raquo;{_esc(wer)}&laquo;' if wer else fehlt)
+        teile.append(f'<div class="vz-quelle-kopf">'
+                     f'<span class="vz-art">{art}</span> {bezeichner}</div>')
+
+        # -- Metazeile: Originaldatum (Anf. 4), Link (Anf. 5) --------------
+        meta = []
+        datum = self._fmt_inhaltszeit(q.posted_ts)
+        wort = "Datum der Nachricht" if q.ist_pn else "Datum des Beitrags"
+        meta.append(f'<span class="vz-k">{wort}:</span> {_esc(datum)}')
+        if q.ist_pn and q.betreff:
+            meta.append(f'<span class="vz-k">Betreff:</span> '
+                        f'&bdquo;{_esc(q.betreff)}&ldquo;')
+        if q.verfasser:
+            meta.append(f'<span class="vz-k">Verfasser:</span> '
+                        f'{_esc(q.verfasser)}')
+        if q.post_id is not None:
+            kennwort = "Nachricht" if q.ist_pn else "Beitrag"
+            meta.append(f'<span class="vz-k">{kennwort}:</span> #{q.post_id}')
+        zeile = " &middot; ".join(meta)
+        link = q.link
+        teile.append(
+            f'<div class="vz-meta">{zeile}<br>'
+            f'<span class="vz-k">Fundstelle:</span> '
+            f'<span class="vz-link">{_esc(link) or "(keine Adresse)"}</span>'
+            f'</div>')
+
+        # -- Die Absaetze (Anforderung 2 und 3) ----------------------------
+        for absatz in ub.absaetze:
+            klasse = "vz-absatz vz-ersatz" if absatz.ersatz else "vz-absatz"
+            teile.append(f'<div class="{klasse}">{absatz.html}</div>')
+
+        # -- Die Befunde (Anforderungen 1 und 8) ---------------------------
+        for bf in ub.befunde:
+            teile.append(self._render_vz_befund(bf, kategorie_farben))
+
+        teile.append('</div>')
+        return "".join(teile)
+
+    # ------------------------------------------------------------------
+    def _render_vz_befund(self, bf, kategorie_farben) -> str:
+        # Der farbige Balken links am Befund traegt die VOLLE Kategoriefarbe,
+        # die Markierung im Absatz die aufgehellte. Beide gehoeren zusammen
+        # und sollen es auch aussehen; der Balken ist schmal genug, dass die
+        # Vollfarbe dort nicht stoert (Begruendung: Kopf von
+        # core/kategorie_farben.py).
+        rand = kategorie_farben.farbe(bf.kategorie)
+        kopf = [
+            f'<span class="vz-nr">{bf.nummer}</span>',
+            f'<span class="vz-kat">{_esc(bf.kategorie_text)}</span>',
+            f'Beleg&nbsp;#{bf.annotation_id}',
+        ]
+        if bf.ermittler:
+            kopf.append(f'Ermittler: <strong>{_esc(bf.ermittler)}</strong>')
+        else:
+            kopf.append('Ermittler: <em>nicht vermerkt</em>')
+
+        teile = [f'<div class="vz-befund" style="border-left-color: {rand};">',
+                 f'<div class="vz-befund-kopf">'
+                 f'{" &middot; ".join(kopf)}</div>']
+
+        if bf.notiz:
+            teile.append(f'<div class="vz-notiz"><span class="vz-k">Notiz:'
+                         f'</span> {_esc(bf.notiz)}</div>')
+
+        # Jeder Beleg sagt, wie sicher seine Angaben sind. Ein Absatz ueber
+        # den Wortlaut gefunden und ein aus dem Anzeigenamen zerlegter
+        # Nachname sind schwaecher als der jeweilige Sollweg - der Leser der
+        # Akte muss das sehen, ohne den Quelltext zu kennen.
+        vorbehalte = []
+        if bf.absatz_weg == "text":
+            vorbehalte.append(
+                "Absatz &uuml;ber den Wortlaut gefunden, nicht &uuml;ber den "
+                "Anker der Markierung")
+        elif bf.absatz_weg == "uebersetzung":
+            vorbehalte.append(
+                "Markierung in der maschinellen &Uuml;bersetzung; der Absatz "
+                "des Originals ist nicht ihre Umgebung")
+        elif bf.absatz_weg == "keiner":
+            vorbehalte.append("umschlie&szlig;ender Absatz nicht auffindbar")
+        if bf.name_quelle == "display_name":
+            vorbehalte.append(
+                "Nachname aus dem Anzeigenamen abgeleitet")
+        elif bf.name_quelle == "kuerzel" and bf.ermittler:
+            vorbehalte.append("nur das Benutzerk&uuml;rzel bekannt")
+        if vorbehalte:
+            teile.append('<div class="vz-unsicher">&#9888; '
+                         + "; ".join(vorbehalte) + '.</div>')
+        if bf.hinweis and bf.absatz_weg == "keiner":
+            teile.append(f'<div class="vz-fehlt">{_esc(bf.hinweis)}</div>')
+
+        teile.append('</div>')
+        return "".join(teile)
+
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _fmt_inhaltszeit(ts) -> str:
+        """
+        Die Inhaltszeit als deutsches Datum.
+
+        NICHT _fmt_ts(): jene Methode formatiert den Erzeugungszeitpunkt des
+        Berichts. Hier geht es um das Datum DES BEITRAGS - der Unterschied ist
+        die ganze Anforderung 4, und ein gemeinsamer Formatierer haette die
+        beiden Bedeutungen im Quelltext ununterscheidbar gemacht.
+        Fehlt die Zeit, wird das GESAGT und kein Platzhalterdatum gedruckt.
+
+        DIE ZEITZONE WIRD MITGEDRUCKT, und zwar nur hier. In fdb.uid_posts
+        steht ein Unix-Zeitstempel, also ein Zeitpunkt in UTC; angezeigt wird
+        er in der Zeitzone der auswertenden Maschine. Eine Tatzeitangabe in
+        einer Akte ohne Zone ist um eine oder zwei Stunden unbestimmt - bei
+        einem Alibi ist das der ganze Unterschied. '%Z' nennt die tatsaechlich
+        angewandte Zone; laeuft die VM auf UTC, steht dort UTC, und auch das
+        ist eine Aussage.
+
+        Der uebrige Bericht (Erzeugungszeitpunkt, _fmt_ts oben) druckt
+        weiterhin ohne Zone. Das ist NICHT vergessen: es ist getesteter
+        Ausgabetext an mehreren Stellen und in drei Renderern, und es geht
+        dort um einen Verwaltungszeitpunkt, nicht um eine Tatzeit. Als
+        eigener Vorgang aufgenommen.
+        """
+        if not ts:
+            return "nicht ermittelbar"
+        try:
+            zeit = datetime.fromtimestamp(int(ts)).astimezone()
+            return zeit.strftime("%d.%m.%Y, %H:%M Uhr (%Z)")
+        except (ValueError, OSError, OverflowError):
+            return "nicht ermittelbar"
 
     def _render_unknown(self, blk: RenderedBlock) -> str:
         """R3 — unbekannter Blocktyp sichtbar gemeldet, nicht uebersprungen."""
