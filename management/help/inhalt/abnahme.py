@@ -375,6 +375,44 @@ LECTORATE = Sichthilfe(
             ),
         ),
         Abschnitt(
+            "vollzitat", "Beweismittelgruppen im Vollzitat",
+            (
+                "Eine Beweismittelgruppe kann in vier Darstellungen stehen. "
+                "Die verfassende Person wählt sie; im Lektorat sehen Sie die "
+                "gewählte. Drei davon nennen die Belege knapp — als Liste, "
+                "als Tabelle oder als Zitat. Die vierte, das VOLLZITAT, gibt "
+                "jeden Beleg mit seiner Umgebung wieder.",
+                "Ein Vollzitat zeigt je Quelle EINEN Kasten: darin die Art "
+                "der Quelle („Beitrag zum Thema …“ oder „Private Nachricht "
+                "mit …“), das Datum DER QUELLE — nicht das der Markierung —, "
+                "die Fundstelle, darunter den vollständigen Absatz aus dem "
+                "gesicherten Seitenabzug mit der markierten Stelle farbig "
+                "hinterlegt, und darunter je Beleg einen Befund mit "
+                "Kategorie, Beleg-Nummer, dem Nachnamen der markierenden "
+                "Person und ihrer Notiz.",
+                "MEHRERE BELEGE AUS DEMSELBEN BEITRAG STEHEN IN EINEM KASTEN. "
+                "Quellenangabe, Datum und Fundstelle erscheinen dann genau "
+                "einmal; die kleinen Zahlen im Absatz verweisen auf die "
+                "Befunde darunter.",
+                "WORAUF SIE BEIM GEGENLESEN ACHTEN SOLLTEN: Unter einem "
+                "Befund kann ein Vorbehalt stehen — etwa dass der "
+                "umschließende Absatz nicht über den Anker der Markierung, "
+                "sondern über den Wortlaut gefunden wurde, oder dass der "
+                "Nachname aus dem Anzeigenamen abgeleitet ist. Das sind keine "
+                "Fehler, sondern Angaben zur Belegkraft. Kommt derselbe "
+                "Wortlaut im Beitrag mehrfach vor, kann ein über den Wortlaut "
+                "gefundener Absatz eine andere Fundstelle sein als die "
+                "ursprünglich markierte.",
+                "FEHLT ETWAS, STEHT ES DA. Ein Beleg ohne auffindbaren "
+                "Absatz erscheint mit der markierten Stelle allein und einer "
+                "Begründung; ein Beleg, zu dem es keine Annotation mehr gibt, "
+                "wird als fehlend ausgewiesen statt weggelassen. Alle diese "
+                "Befunde sammelt zusätzlich der Abschnitt „Hinweise zur "
+                "Erzeugung“ am Ende des Vermerks — dort steht die "
+                "Vollständigkeitsaussage an EINER Stelle.",
+            ),
+        ),
+        Abschnitt(
             "kommentare", "Kommentare schreiben und abschließen",
             (
                 "Ein Kommentar besteht aus zwei Pflichtangaben: dem TEXT, der "

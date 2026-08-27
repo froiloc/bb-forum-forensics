@@ -1621,6 +1621,131 @@ span.forensic-passive {
     font-style: normal;
 }
 
+/* --- Modus: fullquote (Vollzitat) --- Build 726 -------------------------
+   Auftrag Chef-Ermittlerin 27.08.2026, neun Anforderungen.
+
+   NACHBILDUNG DES BERICHTS, NICHT KOPIE. Die Stile hier sind fuer den
+   Bildschirm gemacht (Pixel, Bildschirmfarben); im Bericht gilt Druckmass
+   (pt), und die Regeln stehen dort in report_render/html_renderer.py. Die
+   KLASSENNAMEN sind bewusst dieselben (vz-*): das serverseitig gebaute
+   Absatz-Fragment kommt unveraendert aus demselben Bauteil, und die
+   Markierungsfarbe traegt es als Stilangabe am Element mit sich. Wer den
+   Bericht anfasst, findet hier die Entsprechung ueber den Namen.
+
+   DIE HINTERLEGUNG DER MARKIERUNG WIRD HIER NICHT GESETZT. Sie kommt vom
+   Server (style="background-color: ...") und ist die aufgehellte
+   Kategoriefarbe aus core/kategorie_farben.py. Sie hier ein zweites Mal zu
+   definieren waere die dritte Fassung derselben Tafel. */
+
+.evidence-block--mode-fullquote .vz-quelle {
+    border: 1px solid #b9c7bd;
+    border-radius: 4px;
+    background: #fcfdfc;
+    margin: 8px 0;
+    padding-bottom: 8px;
+}
+.evidence-block--mode-fullquote .vz-quelle-kopf {
+    font-size: 12.5px;
+    font-weight: 600;
+    background: #eef3ef;
+    border-bottom: 1px solid #dbe4dd;
+    padding: 6px 10px;
+    border-radius: 4px 4px 0 0;
+}
+.evidence-block--mode-fullquote .vz-meta {
+    font-size: 11px;
+    color: #546e7a;
+    padding: 5px 10px 0;
+    line-height: 1.5;
+}
+.evidence-block--mode-fullquote .vz-k { color: #90a4ae; }
+.evidence-block--mode-fullquote .vz-link {
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 10.5px;
+    color: #14532d;
+    word-break: break-all;
+    text-decoration: none;
+}
+.evidence-block--mode-fullquote .vz-link:hover { text-decoration: underline; }
+.evidence-block--mode-fullquote .vz-absatz {
+    margin: 8px 10px 0;
+    padding: 8px 10px;
+    background: #fff;
+    border-left: 3px solid #cfd8dc;
+    border-radius: 0 3px 3px 0;
+    font-size: 13px;
+    line-height: 1.65;
+    color: #212121;
+}
+/* Ersatzabsatz: es wurde KEIN umschliessender Absatz gefunden, gezeigt wird
+   nur die markierte Stelle. Die gestrichelte Kante sagt das auf einen Blick,
+   der Vorbehalt am Befund sagt es in Worten. */
+.evidence-block--mode-fullquote .vz-absatz.vz-ersatz {
+    border-left-style: dashed;
+    background: #fafafa;
+}
+.evidence-block--mode-fullquote .vz-absatz p { margin: 0 0 6px; }
+.evidence-block--mode-fullquote .vz-absatz p:last-child { margin-bottom: 0; }
+/* box-decoration-break: die Hinterlegung soll auch dann sauber aussehen,
+   wenn die Markierung ueber einen Zeilenumbruch laeuft. */
+.evidence-block--mode-fullquote .vz-mark {
+    padding: 0 1px;
+    border-radius: 2px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+}
+.evidence-block--mode-fullquote .vz-befund {
+    margin: 8px 10px 0;
+    padding-left: 8px;
+    border-left: 3px solid #cfd8dc;
+    font-size: 12.5px;
+}
+.evidence-block--mode-fullquote .vz-befund-kopf { font-size: 11px; color: #37474f; }
+.evidence-block--mode-fullquote .vz-kat { font-weight: 600; }
+.evidence-block--mode-fullquote .vz-nr {
+    display: inline-block;
+    min-width: 15px;
+    height: 15px;
+    line-height: 15px;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 700;
+    border: 1px solid #78909c;
+    border-radius: 8px;
+    margin-right: 4px;
+    color: #37474f;
+}
+.evidence-block--mode-fullquote .vz-notiz { margin-top: 2px; color: #212121; }
+.evidence-block--mode-fullquote .vz-unsicher {
+    font-size: 10.5px;
+    color: #8a6800;
+    margin-top: 2px;
+}
+/* Ausfaelle werden GEZEIGT, nicht verschwiegen (Grundregel 1). */
+.evidence-block--mode-fullquote .vz-fehlt,
+.evidence-vollzitat-laedt {
+    font-size: 12px;
+    padding: 8px 10px;
+    border-radius: 3px;
+}
+.evidence-block--mode-fullquote .vz-fehlt {
+    color: #9a1010;
+    background: #fff5f5;
+    border: 1px solid #e0b4b4;
+}
+.evidence-vollzitat-laedt { color: #78909c; font-style: italic; }
+.evidence-block--mode-fullquote .vz-warnungen {
+    margin: 10px 0 0;
+    padding: 6px 10px;
+    font-size: 11px;
+    color: #8a6800;
+    background: #fffbf0;
+    border: 1px solid #e8d9a8;
+    border-radius: 3px;
+}
+.evidence-block--mode-fullquote .vz-warnungen ul { margin: 4px 0 0 16px; padding: 0; }
+.evidence-block--mode-fullquote .vz-warnungen li { margin: 2px 0; }
+
 /* Lade-Platzhalter */
 .evidence-item--missing { opacity: 0.6; font-style: italic; font-size: 11px; }
 .evidence-item-loading  { color: #78909c; }

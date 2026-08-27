@@ -1,0 +1,68 @@
+{
+  "issues": [
+    {
+      "id": "0a5f7e34-6c81-4b29-9d07-4e2b83a615cf",
+      "type": "feature_request",
+      "title": "Vollzitat im Berichtseditor waehlbar und sichtbar",
+      "affected_version": "0.8.725",
+      "reporter": "Claude",
+      "reported_at": "2026-08-27T17:10:00+02:00",
+      "status": "resolved",
+      "priority": "high",
+      "description": "Build 725 hat das Vollzitat im BERICHT wirksam gemacht. Damit die verfassende Person sieht, was in der Akte landet, muss die Variante auch auf dem Bildschirm zur Wahl stehen und dort gezeichnet werden. Der Editor kann sie nicht selbst rechnen: der umschliessende Absatz steht im gesicherten Seitenabzug, der Themenbetreff in fdb.uid_topics, der Ermittlername in cdb.person - keine dieser Tabellen sieht er.",
+      "tags": [
+        "berichtseditor",
+        "vollzitat",
+        "beweismittelgruppe",
+        "paritaet"
+      ],
+      "severity": "enhancement",
+      "expected_behavior": "Im Zahnradmenue steht 'Vollzitat' als vierte Variante; der Block zeigt dieselbe Darstellung wie der Bericht.",
+      "resolved_in_version": "0.8.726",
+      "updates": [
+        {
+          "timestamp": "2026-08-27T17:10:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Build 726: neuer Endpunkt GET /_forensic/vollzitat (forensic_api/vollzitat.py, rein lesend, kein Lock). Er ruft denselben VollzitatBauer wie report_source - es gibt keine zweite Fassung. 7 Python-Testfaelle (VE-P01 bis VE-P07) und 11 JavaScript-Testfaelle (VE01 bis VE11)."
+        }
+      ]
+    },
+    {
+      "id": "f4b91d68-2a53-4c07-8e16-9d7c50b3a2e1",
+      "type": "improvement",
+      "title": "Vollzitat im Editor: Fortschrittshinweis bei grossen Gruppen",
+      "affected_version": "0.8.725",
+      "reporter": "Claude",
+      "reported_at": "2026-08-27T17:10:00+02:00",
+      "status": "open",
+      "priority": "low",
+      "description": "Der Editor zeigt das Vollzitat erst nach einem Serverabruf. Bei einer Gruppe mit vielen Belegen auf vielen verschiedenen Seiten dauert das sichtbar - der Server muss je Seite einen Abzug zerlegen (bis zu 500 Beitraege je Themenseite). Angezeigt wird solange 'Vollzitat wird geladen …'. Ein Hinweis auf die Zahl der Quellen oder ein Fortschritt waere freundlicher.",
+      "tags": [
+        "berichtseditor",
+        "vollzitat",
+        "bedienung"
+      ],
+      "severity": "enhancement",
+      "expected_behavior": "Der Bearbeiter weiss, dass etwas laeuft und wie lange es ungefaehr dauert."
+    },
+    {
+      "id": "7d2c6a95-8f41-40e3-b5a8-1c9e04f7b628",
+      "type": "documentation",
+      "title": "Sichtpruefung Vollzitat im Editor steht aus",
+      "affected_version": "0.8.725",
+      "reporter": "Claude",
+      "reported_at": "2026-08-27T17:10:00+02:00",
+      "status": "open",
+      "priority": "medium",
+      "description": "Build 726 ist vollstaendig automatisiert getestet (JSDOM), aber nicht in einem echten Browser gesehen worden. Offen ist insbesondere das Verhalten beim Scrollen und beim Blockwechsel: Editor.js setzt den Caret auf das erste contenteditable eines Blocks (das Relay-Div, Bugs 2.26-2.29). Der Vollzitat-Rumpf enthaelt kein contenteditable und die Beschriftungszeile darueber ist unveraendert - erwartet wird deshalb keine Aenderung. Gemessen ist es nicht.",
+      "tags": [
+        "berichtseditor",
+        "vollzitat",
+        "sichtpruefung"
+      ],
+      "severity": "minor",
+      "expected_behavior": "Eine Sichtpruefung in der VM bestaetigt oder widerlegt das."
+    }
+  ]
+}
