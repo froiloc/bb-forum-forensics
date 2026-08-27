@@ -3335,6 +3335,14 @@ class EvidenceBlock {
             display_mode:  data.display_mode  || 'list',
         };
         this._wrapper  = null;
+        // Build 726: Ergebnis von GET /_forensic/vollzitat.
+        //   null  = noch nicht geholt (loest das Holen aus)
+        //   ''    = geholt, aber leer/fehlgeschlagen (loest KEIN erneutes
+        //           Holen aus - sonst liefe bei einem Serverfehler eine
+        //           Endlosschleife aus _renderContent und _fetchVollzitat)
+        //   sonst = fertiges HTML
+        this._vollzitatHtml = null;
+        this._vollzitatIds  = '';
     }
 
     render() {
@@ -3464,7 +3472,8 @@ class EvidenceBlock {
         const label  = this._data.group_label;
         const mode   = this._data.display_mode || 'list';
         const e      = EvidenceBlock._esc;
-        const modeLabel = { list: 'Liste', table: 'Tabelle', quote: 'Zitat' }[mode] || mode;
+        const modeLabel = { list: 'Liste', table: 'Tabelle', quote: 'Zitat',
+                            fullquote: 'Vollzitat' }[mode] || mode;
 
         // Annotation-Cache befüllen
         const cache = window._evidenceAnnotationCache || new Map();
@@ -3500,6 +3509,19 @@ class EvidenceBlock {
                     <th>ID</th><th>Kat.</th><th>Markierung</th><th>Notiz</th><th>Quelle</th>
                 </tr></thead><tbody>${rows}</tbody></table>
             </div>`;
+        } else if (mode === 'fullquote') {
+            // Build 726: Das Vollzitat kann der Browser NICHT aus dem
+            // Annotations-Zwischenspeicher bauen - der umschliessende Absatz
+            // steht im gesicherten Seitenabzug, der Themenbetreff in
+            // fdb.uid_topics, der Ermittlername in cdb.person. Keine dieser
+            // Tabellen sieht der Editor. Er holt das fertige Ergebnis
+            // deshalb vom Server (GET /_forensic/vollzitat) - und zwar von
+            // DEMSELBEN Bauteil, das den Bericht baut. Bildschirm und Akte
+            // muessen dasselbe zeigen (Paritaet, §6).
+            bodyHtml = this._vollzitatHtml
+                ? `<div class="evidence-items evidence-items--fullquote">${this._vollzitatHtml}</div>`
+                : '<div class="evidence-vollzitat-laedt">Vollzitat wird geladen …</div>';
+            if (this._vollzitatHtml === null && ids.length) this._fetchVollzitat(ids);
         } else if (mode === 'quote') {
             bodyHtml = `<div class="evidence-items evidence-items--quote">${ids.map(id => this._renderAnnotationItem(id, cache)).join('')}</div>`;
         } else {
@@ -3669,16 +3691,147 @@ class EvidenceBlock {
     }
 
     /**
+     * Build 726: Das fertige Vollzitat vom Server holen.
+     *
+     * GET /_forensic/vollzitat?ids=...  — rein lesend, kein Lock.
+     *
+     * WARUM DAS ERGEBNIS UND NICHT DIE ROHDATEN GEHOLT WERDEN: Der Server
+     * baut die Gruppe mit demselben Bauteil, das sie in den Bericht setzt
+     * (report_render/vollzitat_bauer.py). Wuerde der Browser aus Rohdaten
+     * eine zweite Fassung malen, gaebe es zwei Stellen, die dieselbe Frage
+     * beantworten — und die geben irgendwann zwei Antworten. Genau daran
+     * ist der Zitatblock schon einmal zerbrochen (Vorgang 9c41a7e6).
+     *
+     * KEIN ERNEUTER VERSUCH BEI FEHLSCHLAG: _vollzitatHtml wird dann auf ''
+     * gesetzt (nicht auf null). Sonst riefe _renderContent das Holen
+     * wieder auf, dessen Fehlschlag wieder _renderContent — eine
+     * Endlosschleife, die den Editor lahmlegt und den Server flutet.
+     * Beleg: Auftrag Chef-Ermittlerin 27.08.2026.
+     */
+    async _fetchVollzitat(ids) {
+        const schluessel = ids.join(',');
+        if (this._vollzitatIds === schluessel && this._vollzitatHtml !== null) return;
+        this._vollzitatIds = schluessel;
+        _dbg('EvidenceBlock._fetchVollzitat: ids=', schluessel);
+        try {
+            const url = '/_forensic/vollzitat?ids=' + encodeURIComponent(schluessel)
+                      + '&label=' + encodeURIComponent(this._data.group_label || '');
+            const resp = await fetch(url, { headers: { 'X-Forensic-Request': 'ajax' } });
+            if (!resp.ok) {
+                console.warn('report_editor.js: /_forensic/vollzitat HTTP', resp.status);
+                this._vollzitatHtml = EvidenceBlock._vollzitatFehler(
+                    'Der Server konnte das Vollzitat nicht liefern (HTTP '
+                    + resp.status + '). Die Belege sind unversehrt; nur diese '
+                    + 'Ansicht fehlt.');
+                this._renderContent();
+                return;
+            }
+            const daten = await resp.json();
+            _dbg('EvidenceBlock._fetchVollzitat: ', daten.unterbloecke?.length,
+                 'Unterbloecke,', daten.warnungen?.length, 'Warnungen');
+            this._vollzitatHtml = EvidenceBlock._vollzitatRendern(daten);
+            this._renderContent();
+        } catch (err) {
+            console.warn('report_editor.js: /_forensic/vollzitat fehlgeschlagen:', err);
+            this._vollzitatHtml = EvidenceBlock._vollzitatFehler(
+                'Das Vollzitat konnte nicht geladen werden: ' + err);
+            this._renderContent();
+        }
+    }
+
+    /** Eine sichtbare Fehlermeldung statt einer leeren Flaeche (GR1). */
+    static _vollzitatFehler(text) {
+        const e = EvidenceBlock._esc;
+        return `<div class="vz-fehlt">&#9888; ${e(text)}</div>`;
+    }
+
+    /**
+     * Die Antwort des Servers zeichnen.
+     *
+     * ESCAPING: 'absatz.html' kommt aus dem zerlegten Seitenabzug und ist
+     * vom Server bereits serialisiert — es wird UNVERAENDERT eingesetzt
+     * (dieselbe Invariante wie im HTML-Bericht). Alles uebrige ist Klartext
+     * aus der Datenbank und geht durch _esc(): ein Themenbetreff kann '<'
+     * enthalten, und ein Forum ist voll davon.
+     */
+    static _vollzitatRendern(daten) {
+        const e = EvidenceBlock._esc;
+        const teile = [];
+        for (const ub of (daten.unterbloecke || [])) {
+            const absaetze = (ub.absaetze || []).map(a =>
+                `<div class="vz-absatz${a.ersatz ? ' vz-ersatz' : ''}">${a.html}</div>`
+            ).join('');
+            const befunde = (ub.befunde || []).map(b => {
+                const vorbehalte = [];
+                if (b.absatz_weg === 'text') vorbehalte.push('Absatz über den Wortlaut gefunden');
+                if (b.absatz_weg === 'uebersetzung') vorbehalte.push('Markierung in der Übersetzung');
+                if (b.absatz_weg === 'keiner') vorbehalte.push('umschließender Absatz nicht auffindbar');
+                if (b.name_quelle === 'display_name') vorbehalte.push('Nachname aus dem Anzeigenamen abgeleitet');
+                if (b.name_quelle === 'kuerzel' && b.ermittler) vorbehalte.push('nur das Benutzerkürzel bekannt');
+                return `<div class="vz-befund" style="border-left-color:${e(b.farbe)}">
+                    <div class="vz-befund-kopf">
+                        <span class="vz-nr">${e(b.nummer)}</span>
+                        <span class="vz-kat">${e(b.kategorie_text)}</span>
+                        &middot; Beleg&nbsp;#${e(b.annotation_id)}
+                        &middot; Ermittler: <strong>${e(b.ermittler || 'nicht vermerkt')}</strong>
+                    </div>
+                    ${b.notiz ? `<div class="vz-notiz"><span class="vz-k">Notiz:</span> ${e(b.notiz)}</div>` : ''}
+                    ${vorbehalte.length ? `<div class="vz-unsicher">&#9888; ${e(vorbehalte.join('; '))}.</div>` : ''}
+                </div>`;
+            }).join('');
+            const datum = EvidenceBlock._vollzitatDatum(ub.posted_ts);
+            const wort  = ub.ist_pn ? 'Datum der Nachricht' : 'Datum des Beitrags';
+            teile.push(`<div class="vz-quelle">
+                <div class="vz-quelle-kopf">${e(ub.bezeichnung)}</div>
+                <div class="vz-meta">
+                    <span class="vz-k">${wort}:</span> ${e(datum)}
+                    ${ub.post_id ? `&middot; <span class="vz-k">${ub.ist_pn ? 'Nachricht' : 'Beitrag'}:</span> #${e(ub.post_id)}` : ''}
+                    <br><span class="vz-k">Fundstelle:</span>
+                    <a class="vz-link" href="${e(ub.link)}" target="_blank" rel="noopener">${e(ub.link || '(keine Adresse)')}</a>
+                </div>
+                ${absaetze}${befunde}
+            </div>`);
+        }
+        // Die Warnungen stehen im Editor AM BLOCK — anders als im Bericht,
+        // wo sie in den Abschnitt "Hinweise zur Erzeugung" wandern. Auf dem
+        // Bildschirm gibt es diesen Abschnitt nicht, und der Bearbeiter soll
+        // beim Zusammenstellen SOFORT sehen, welcher Beleg unvollstaendig
+        // ist — nicht erst beim Ausdrucken der Akte.
+        const warnungen = (daten.warnungen || []).length
+            ? `<div class="vz-warnungen"><strong>Hinweise zur Beleglage:</strong><ul>`
+              + daten.warnungen.map(w => `<li>${e(w)}</li>`).join('') + '</ul></div>'
+            : '';
+        return teile.join('') + warnungen;
+    }
+
+    /** Datum der QUELLE (nicht der Annotation) in deutscher Schreibweise. */
+    static _vollzitatDatum(ts) {
+        if (!ts) return 'nicht ermittelbar';
+        try {
+            return new Date(ts * 1000).toLocaleString('de-DE', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit',
+            }) + ' Uhr';
+        } catch (_) { return 'nicht ermittelbar'; }
+    }
+
+    /**
      * Settings-Panel: Modus-Auswahl (Zahnrad-Icon in Editor.js).
      * Beleg: Bauplan B6 §4.7, Planungsgespraech 2026-05-11
      */
     renderSettings() {
         const wrapper = document.createElement('div');
         wrapper.className = 'evidence-settings';
+        // Build 726: 'Vollzitat' als vierte Variante.
+        // Beleg: Auftrag Chef-Ermittlerin 27.08.2026, neun Anforderungen.
+        // Die Reihenfolge ist die des Aufwands: von der knappen Liste zur
+        // vollstaendigen Wiedergabe. 'Vollzitat' steht deshalb zuletzt und
+        // wird NIE zur Vorgabe - der Bearbeiter waehlt es bewusst.
         const modes = [
-            { key: 'list',  label: 'Key-Value-Liste' },
-            { key: 'table', label: 'Tabelle' },
-            { key: 'quote', label: '„Zitat“' },
+            { key: 'list',      label: 'Key-Value-Liste' },
+            { key: 'table',     label: 'Tabelle' },
+            { key: 'quote',     label: '„Zitat“' },
+            { key: 'fullquote', label: 'Vollzitat' },
         ];
         modes.forEach(({ key, label }) => {
             const btn = document.createElement('div');
@@ -3688,6 +3841,9 @@ class EvidenceBlock {
             btn.addEventListener('click', (ev) => {
                 window._uevt?.(ev, 'report_editor', 'click:evidence-display-mode', { mode: key }); // B200
                 this._data.display_mode = key;
+                // Beim Wechsel AUF Vollzitat neu holen: die Belegliste kann
+                // sich seit dem letzten Holen geaendert haben.
+                if (key === 'fullquote') this._vollzitatHtml = null;
                 this._renderContent();
                 wrapper.querySelectorAll('.cdx-settings-button').forEach(b => {
                     b.classList.toggle('cdx-settings-button--active', b.dataset.key === key);

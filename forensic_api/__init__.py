@@ -26,6 +26,7 @@
 #   /_forensic/userinfo.css      (GET)        -> StaticEndpoint        [B4]
 #   /_forensic/trace_sequence    (GET)        -> TraceSequenceEndpoint  [KN-7]
 #   /_forensic/reports           (GET, POST)  -> ReportsEndpoint       [AP-E3]
+#   /_forensic/vollzitat         (GET)        -> VollzitatEndpoint     [Build 726]
 #   /_forensic/editor/block      (POST)       -> EditorBlockEndpoint   [AP-E3]
 #   /_forensic/editor/order      (POST)       -> EditorOrderEndpoint   [AP-E3]
 #   /_forensic/editor/evidence   (POST)       -> EditorEvidenceEndpoint [AP-E3]
@@ -129,6 +130,7 @@ class ForensicApi:
         self._viewport         = None
         self._static           = None
         self._annotations      = None  # [B3]
+        self._vollzitat        = None  # [Build 726]
         self._events           = None  # [B3]
         self._userinfo         = None  # [B4]
         self._userinfo_data    = None  # [B4]
@@ -368,6 +370,18 @@ class ForensicApi:
                 self._method_not_allowed(handler)
                 return
             self._get_annotations().handle(handler, params)
+            return
+
+        # /_forensic/vollzitat (GET) [Build 726]
+        # Liefert dem Berichtseditor die fertige Vollzitat-Gruppe - GENAU
+        # dieselbe, die auch in den Bericht geht (report_render.
+        # vollzitat_bauer). Rein lesend, kein Lock: es wird nichts
+        # geschrieben. Beleg: Auftrag Chef-Ermittlerin 27.08.2026.
+        if url_path == "/_forensic/vollzitat":
+            if method not in ("GET", "HEAD"):
+                self._method_not_allowed(handler)
+                return
+            self._get_vollzitat().handle(handler, params)
             return
 
         # /_forensic/events (GET, SSE) [B3]
@@ -881,6 +895,14 @@ class ForensicApi:
             from forensic_api.annotations import AnnotationsEndpoint
             self._annotations = AnnotationsEndpoint(self._bundle, self._context, self._config)
         return self._annotations
+
+    def _get_vollzitat(self):
+        """Vollzitat-Endpunkt (Build 726). Beleg: Auftrag 27.08.2026."""
+        if self._vollzitat is None:
+            from forensic_api.vollzitat import VollzitatEndpoint
+            self._vollzitat = VollzitatEndpoint(
+                self._bundle, self._context, self._config)
+        return self._vollzitat
 
     def _get_version(self):
         """Version-Endpunkt (Build 174). Beleg: Projektgespraech 2026-05-11"""
