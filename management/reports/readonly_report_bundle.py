@@ -63,6 +63,8 @@ class ReadonlyReportBundle:
                      fdb/ddb/adb/tdb); dient ReportSource als forensic_con.
         evidence   — EvidenceDb(read_only=True) auf evidence_<uid>.db (Haupt-DB).
         templates  — TemplatesDb (tdb); liefert leer, wenn templates.db fehlt.
+        forensic   — ForensicDb (fdb) fuer die Seitenabzuege (Vollzitat,
+                     Build 725); None, wenn fdb nicht anbindbar war.
         assets     — AssetsDb (adb) oder AssetsDb(None), wenn assets_<uid>.db
                      fehlt (dann liefern Asset-Lookups None -> Bild-Verweis
                      wird zu 'missing_image'-Warnung, R2).
@@ -77,6 +79,7 @@ class ReadonlyReportBundle:
         templates_db: str,
         uid: int,
         default_db: Optional[str] = None,
+        coordinator_db: Optional[str] = None,
     ) -> None:
         self._uid = int(uid)
         self._evidence_path = Path(evidence_dir) / ("evidence_%d.db" % self._uid)
@@ -84,12 +87,18 @@ class ReadonlyReportBundle:
         self._assets_path = Path(assets_dir) / ("assets_%d.db" % self._uid)
         self._templates_path = Path(templates_db)
         self._default_path = Path(default_db) if default_db else None
+        self._coordinator_path = Path(coordinator_db) if coordinator_db else None
 
         self._con: Optional[sqlite3.Connection] = None
         self.connection: Optional[sqlite3.Connection] = None
         self.evidence: Optional[EvidenceDb] = None
         self.templates: Optional[TemplatesDb] = None
         self.assets: Optional[AssetsDb] = None
+        #: Build 725: der ForensicDb-Griff wird BEHALTEN statt weggeworfen.
+        #: Er entstand hier schon vorher, nur fluechtig (zum Lesen von
+        #: forum_base_url). Das Vollzitat braucht ihn fuer die Seitenabzuege,
+        #: aus denen es den umschliessenden Absatz holt.
+        self.forensic: Optional[ForensicDb] = None
 
     # ------------------------------------------------------------------
     def open(self) -> "ReadonlyReportBundle":
@@ -117,13 +126,29 @@ class ReadonlyReportBundle:
             self._attach_ro(con, self._default_path, "ddb")       # Asset-Fallback
         adb_attached = self._attach_ro(con, self._assets_path, "adb")
         self._attach_ro(con, self._templates_path, "tdb")         # Query-Definitionen
+        # Build 725: cdb READ-ONLY. Bis dahin band dieses Buendel cdb NICHT
+        # an, der Webserver dagegen schon (db/connection_manager.py Z. 231-243).
+        #
+        # WARUM DAS EIN MANGEL WAR UND NICHT NUR EINE LUECKE: Seit dem
+        # Vollzitat steht der Ermittlername im Bericht, und der kommt aus
+        # cdb.person. Ohne diesen ATTACH zeigte DERSELBE Bericht im
+        # Management-Lektorat Kuerzel, wo der Ermittler-Export Klarnamen
+        # zeigt - zwei Fassungen einer Akte, unterschieden nur dadurch, wer
+        # sie erzeugt hat. Die Paritaetszusage im Kopf dieser Datei
+        # ("byte-identisch zum Export") waere gebrochen gewesen.
+        #
+        # READ-ONLY bleibt es auch hier: das Management schreibt ueber dieses
+        # Buendel nichts, in keine Datenbank.
+        if self._coordinator_path is not None:
+            self._attach_ro(con, self._coordinator_path, "cdb")
 
         # forum_base_url wie im Webserver aus forensic_meta lesen (Paritaet der
         # Bild-/Asset-Aufloesung). Faellt das aus (fdb fehlt/leer), sauberer
         # Rueckfall auf None -> AssetsDb sucht den Pfad unveraendert.
         forum_base_url: Optional[str] = None
         try:
-            forum_base_url = ForensicDb(con).get_forum_base_url()
+            self.forensic = ForensicDb(con)
+            forum_base_url = self.forensic.get_forum_base_url()
         except Exception as exc:  # pragma: no cover - defensiver Rueckfall
             logger.warning(
                 "ReadonlyReportBundle(uid=%d): forum_base_url nicht lesbar (%s)"

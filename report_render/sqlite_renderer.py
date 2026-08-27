@@ -133,6 +133,25 @@ class SqliteRenderer:
         if bt in ("paragraph", "header", "marker", "evidence"):
             base = blk.resolved_text_plain
             if bt == "evidence":
+                # Build 725: im Vollzitat-Modus wird der GANZE Inhalt der
+                # Gruppe gespiegelt, nicht nur die Beleg-Nummern.
+                #
+                # WARUM DAS HIER BESONDERS ZAEHLT: Diese Datenbank ist die
+                # maschinenlesbare Fassung der Akte. Wer in ihr nach einem
+                # Ortsnamen sucht, soll ihn finden - stand dort nur
+                # "Beweis-IDs: 4711, 4712", war der zitierte Beitragstext
+                # ueber die Volltextsuche unauffindbar, obwohl er im HTML-
+                # Bericht abgedruckt war. Die beiden Fassungen derselben
+                # Akte haetten verschieden viel gewusst.
+                from report_render.beleg_darstellung import (
+                    GRUPPE_FELD, MODUS_FELD, MODUS_VOLLZITAT,
+                )
+                gruppe = (blk.data.get(GRUPPE_FELD)
+                          if blk.data.get(MODUS_FELD) == MODUS_VOLLZITAT
+                          else None)
+                if gruppe is not None:
+                    from report_render.vollzitat_klartext import klartext
+                    return (base + "\n" if base else "") + klartext(gruppe)
                 ev = blk.data.get("evidence_ids", [])
                 if isinstance(ev, list) and ev:
                     base = (base + "\n" if base else "") + "Beweis-IDs: " + ", ".join(str(e) for e in ev)

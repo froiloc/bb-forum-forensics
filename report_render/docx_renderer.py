@@ -28,6 +28,10 @@ from __future__ import annotations
 import io
 
 from report_render.report_document import ReportDocument, RenderedBlock
+# Build 725 (Vollzitat): die Darstellungsvariante der Beweismittelgruppe.
+from report_render.beleg_darstellung import (
+    GRUPPE_FELD, MODUS_FELD, MODUS_VOLLZITAT,
+)
 # Vorgang 9c41a7e6: die im Werkzeug gewaehlte Zitatvariante.
 from report_render.quote_typen import (
     QUOTE_TYP_ANFUEHRUNG, QUOTE_TYP_FELD, QUOTE_TYP_KASTEN, normalisiere,
@@ -46,6 +50,8 @@ WARNING_LABELS = {
     "unordered_block":        "Block ohne Sortierungseintrag (ans Ende gestellt)",
     "unknown_block_type":     "Unbekannter Blocktyp (Inhalt nicht regulaer dargestellt)",
     "missing_image":          "Bild-Verweis nicht auffindbar",
+    # Build 725 (Vollzitat): die Beleglage selbst war unvollstaendig.
+    "evidence_gap":           "Beleglage unvollstaendig (Beweismittelgruppe)",
 }
 
 
@@ -283,13 +289,60 @@ class DocxRenderer:
             r = d.add_paragraph().add_run(blk.resolved_text_plain)
             r.bold = True
         elif bt == "evidence":
-            if blk.resolved_text_plain:
-                d.add_paragraph(blk.resolved_text_plain)
-            ev_ids = blk.data.get("evidence_ids", [])
-            if isinstance(ev_ids, list) and ev_ids:
-                d.add_paragraph("Beweis-IDs: " + ", ".join(str(e) for e in ev_ids))
+            # Build 725: die im Werkzeug gewaehlte Darstellung wirkt jetzt
+            # auch hier. 'Vollzitat' wird als Zeilenfolge gesetzt (die
+            # Zeilen baut report_render/vollzitat_klartext - EINMAL fuer
+            # DOCX, PDF und SQLite); die drei uebrigen Varianten bleiben
+            # vorerst bei der Beleg-ID-Liste, was benannt und nicht
+            # vergessen ist (Kopf von report_render/beleg_darstellung.py).
+            gruppe = (blk.data.get(GRUPPE_FELD)
+                      if blk.data.get(MODUS_FELD) == MODUS_VOLLZITAT else None)
+            if gruppe is not None:
+                self._vollzitat(d, gruppe, Pt)
+            else:
+                if blk.resolved_text_plain:
+                    d.add_paragraph(blk.resolved_text_plain)
+                ev_ids = blk.data.get("evidence_ids", [])
+                if isinstance(ev_ids, list) and ev_ids:
+                    d.add_paragraph("Beweis-IDs: "
+                                    + ", ".join(str(e) for e in ev_ids))
 
         self._anchors(d, blk, Pt)
+
+    def _vollzitat(self, d, gruppe, Pt) -> None:
+        """
+        Die Vollzitat-Gruppe als Absatzfolge.
+
+        DIE GRUPPIERUNG (Anforderung 6: "gerahmt oder anderweitig als
+        gruppiert deutlich erkennbar") wird hier NICHT durch einen Rahmen
+        hergestellt, sondern durch EINZUG und Schriftgrad. Ein echter
+        Rahmen um mehrere Absaetze verlangt in python-docx handgeschriebenes
+        XML am Absatzformat; das waere an dieser Stelle die
+        fehleranfaelligste Loesung fuer den geringsten Gewinn. Der Einzug
+        laesst dieselbe Frage - "wo faengt die Gruppe an, wo hoert sie auf"
+        - eindeutig beantworten, und die Kopfzeile nennt Beleg- und
+        Quellenzahl. Der echte Rahmen ist als eigener Vorgang aufgenommen.
+        """
+        from report_render.vollzitat_klartext import zeilen
+
+        for art, text in zeilen(gruppe):
+            p = d.add_paragraph()
+            fmt = p.paragraph_format
+            if art in ("kopf", "label"):
+                fmt.left_indent = Pt(0)
+            elif art in ("quelle",):
+                fmt.left_indent = Pt(12)
+            elif art in ("absatz",):
+                fmt.left_indent = Pt(36)
+            else:
+                fmt.left_indent = Pt(24)
+            run = p.add_run(text)
+            if art in ("kopf", "label", "quelle", "befund"):
+                run.bold = True
+            if art in ("meta", "link", "befund", "vorbehalt"):
+                run.font.size = Pt(9)
+            if art == "vorbehalt":
+                run.italic = True
 
     def _anchors(self, d, blk: RenderedBlock, Pt) -> None:
         if not blk.anchors:

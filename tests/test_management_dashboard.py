@@ -256,7 +256,8 @@ class ManagementDashboardTests(unittest.TestCase):
         # DIE FRUEHERE LUECKE 35..39 GIBT ES NICHT MEHR. Der bisherige
         # Kommentar an dieser Stelle ("die Luecke ist beabsichtigt und kein
         # Fehler") beschrieb den Stand vor der Umnummerierung M040 -> M036 und
-        # waere jetzt schlicht falsch; die Kette laeuft lueckenlos 1-38.
+        # waere jetzt schlicht falsch; die Kette laeuft lueckenlos 1-39
+        # (Build 725: M039 kam dazu).
         # Der BEFUND dazu bleibt unangetastet, wo er hingehoert:
         # management/Vermerk_Migrationsluecke_Parallelbetrieb_v0_1.md und
         # tools/diag_migrationsluecke.py (Build 544, Leitfaden §17.5).
@@ -269,9 +270,11 @@ class ManagementDashboardTests(unittest.TestCase):
         # Module in EINEM Lauf an) — IN DER VM IST ES DAS NICHT. Vor jedem
         # Einspielen verbindlich:
         #     python tools/pruefe_migrationskette.py --db <coordinator.db>
+        # Build 725: 39 kommt dazu (person.first_name/last_name/rank fuer den
+        # Ermittlernamen im Vollzitat). Rein additiv, nur coordinator.db.
         _ALLE = [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
                  19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-                 33, 34, 35, 36, 37, 38]
+                 33, 34, 35, 36, 37, 38, 39]
         self.assertEqual(self.applied,
                          sorted(_ALLE)
                          if 3 not in self.applied

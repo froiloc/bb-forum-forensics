@@ -141,10 +141,18 @@ class ExportEndpoint:
             evidence=self._bundle.evidence,
             templates=getattr(self._bundle, "templates", None),
             assets=getattr(self._bundle, "assets", None),
-            forensic_con=self._bundle.connection,   # traegt ATTACH-Alias 'fdb'/'tdb'
+            # Die Buendelverbindung traegt die ATTACH-Aliase 'fdb', 'ddb',
+            # 'adb', 'tdb' UND 'cdb' (db/connection_manager.py Z. 11-17).
+            # 'cdb' war hier bis Build 724 nicht erwaehnt, obwohl vorhanden -
+            # seit Build 725 wird es gebraucht (Ermittlername im Vollzitat).
+            forensic_con=self._bundle.connection,
             uid=uid,
             username=username,
             generated_at=int(time.time()),
+            # Build 725: der BESTEHENDE ForensicDb-Griff. Nicht neu bauen -
+            # der Konstruktor legt 'blob_lookup' neu an und wuerde dem
+            # Auslieferungspfad auf derselben Verbindung die Sicht wegziehen.
+            forensic=getattr(self._bundle, "forensic", None),
         )
 
     # ------------------------------------------------------------------

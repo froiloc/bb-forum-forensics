@@ -33,6 +33,10 @@ from report_render.report_document import ReportDocument, RenderedBlock
 from report_render.quote_typen import (
     QUOTE_TYP_ANFUEHRUNG, QUOTE_TYP_FELD, QUOTE_TYP_KASTEN, normalisiere,
 )
+# Build 725 (Vollzitat): die Darstellungsvariante der Beweismittelgruppe.
+from report_render.beleg_darstellung import (
+    GRUPPE_FELD, MODUS_FELD, MODUS_VOLLZITAT,
+)
 
 CLASSIFICATION = "VERTRAULICH — IT-FORENSISCHES ERMITTLUNGSWERKZEUG NRW"
 
@@ -47,6 +51,8 @@ WARNING_LABELS = {
     "unordered_block":        "Block ohne Sortierungseintrag (ans Ende gestellt)",
     "unknown_block_type":     "Unbekannter Blocktyp (Inhalt nicht regulaer dargestellt)",
     "missing_image":          "Bild-Verweis nicht auffindbar",
+    # Build 725 (Vollzitat): die Beleglage selbst war unvollstaendig.
+    "evidence_gap":           "Beleglage unvollstaendig (Beweismittelgruppe)",
 }
 
 
@@ -278,11 +284,20 @@ class PdfRenderer:
             mstyle = ParagraphStyle("marker", parent=body, backColor=colors.HexColor("#fff3a0"))
             story.append(Paragraph(_xml_esc(blk.resolved_text_plain), mstyle))
         elif bt == "evidence":
-            if blk.resolved_text_plain:
-                story.append(P(blk.resolved_text_plain))
-            ev = blk.data.get("evidence_ids", [])
-            if isinstance(ev, list) and ev:
-                story.append(Paragraph(_xml_esc("Beweis-IDs: " + ", ".join(str(e) for e in ev)), small))
+            # Build 725: die im Werkzeug gewaehlte Darstellung wirkt jetzt
+            # auch hier. Die Zeilen baut report_render/vollzitat_klartext -
+            # EINMAL fuer DOCX, PDF und SQLite.
+            gruppe = (blk.data.get(GRUPPE_FELD)
+                      if blk.data.get(MODUS_FELD) == MODUS_VOLLZITAT else None)
+            if gruppe is not None:
+                self._vollzitat(story, gruppe, Paragraph, body, small, colors)
+            else:
+                if blk.resolved_text_plain:
+                    story.append(P(blk.resolved_text_plain))
+                ev = blk.data.get("evidence_ids", [])
+                if isinstance(ev, list) and ev:
+                    story.append(Paragraph(_xml_esc(
+                        "Beweis-IDs: " + ", ".join(str(e) for e in ev)), small))
 
         self._anchors(story, blk, Paragraph, anchor_style)
         story.append(Spacer(1, 6))
@@ -312,6 +327,53 @@ class PdfRenderer:
             parts.append(f"Bildunterschrift: {_xml_esc(cap)}")
         # parts sind bereits XML-sicher zusammengesetzt (url/anchor via _xml_esc).
         return Paragraph("<br/>".join(parts), img_style)
+
+    def _vollzitat(self, story, gruppe, Paragraph, body, small, colors) -> None:
+        """
+        Die Vollzitat-Gruppe als Absatzfolge im PDF.
+
+        DER RAHMEN IST HIER ECHT (Anforderung 6): reportlab kennt
+        borderWidth/borderColor am Absatzstil, und ein Rahmen je Zeilenart
+        haette die Gruppe zerschnitten. Deshalb bekommt nur die KOPFZEILE
+        einen farbigen Hintergrund und jede Quellenzeile einen Rahmen - das
+        ist die Gliederung, die ein Leser braucht, ohne dass ein
+        umschliessender Kasten ueber einen Seitenumbruch hinweg gebaut
+        werden muesste (was reportlab ohne KeepInFrame nicht traegt).
+        """
+        from reportlab.lib.styles import ParagraphStyle
+        from report_render.vollzitat_klartext import zeilen
+
+        stil = {
+            "kopf": ParagraphStyle(
+                "vzkopf", parent=body, fontName="Helvetica-Bold", fontSize=9,
+                textColor=colors.white,
+                backColor=colors.HexColor("#14532D"),
+                borderPadding=3, spaceBefore=6, spaceAfter=2),
+            "label": ParagraphStyle(
+                "vzlabel", parent=body, fontName="Helvetica-Bold",
+                fontSize=10, spaceAfter=2),
+            "quelle": ParagraphStyle(
+                "vzquelle", parent=body, fontName="Helvetica-Bold",
+                fontSize=9.5, leftIndent=6, backColor=colors.HexColor("#EEF3EF"),
+                borderPadding=3, spaceBefore=4, spaceAfter=2),
+            "meta": ParagraphStyle("vzmeta", parent=small, leftIndent=10),
+            "link": ParagraphStyle("vzlink", parent=small, leftIndent=10,
+                                   fontName="Courier", fontSize=7.5),
+            "absatz": ParagraphStyle(
+                "vzabsatz", parent=body, leftIndent=20, rightIndent=6,
+                borderColor=colors.HexColor("#CCCCCC"), borderWidth=0,
+                spaceBefore=3, spaceAfter=3, leading=13),
+            "befund": ParagraphStyle(
+                "vzbefund", parent=small, fontName="Helvetica-Bold",
+                leftIndent=14, spaceBefore=3),
+            "notiz": ParagraphStyle("vznotiz", parent=body, fontSize=9.5,
+                                    leftIndent=14),
+            "vorbehalt": ParagraphStyle(
+                "vzvorbehalt", parent=small, leftIndent=14,
+                textColor=colors.HexColor("#7A5200")),
+        }
+        for art, text in zeilen(gruppe):
+            story.append(Paragraph(_xml_esc(text), stil.get(art, small)))
 
     def _anchors(self, story, blk, Paragraph, anchor_style) -> None:
         if not blk.anchors:

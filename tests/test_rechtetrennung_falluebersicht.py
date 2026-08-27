@@ -441,8 +441,20 @@ class SperrriegelTests(_MitDatenbank):
         # (a) Die Migration ist durch - das ist der eigentliche Befund.
         self.assertIsNotNone(self._cap(_NEUES_RECHT),
                              "M038 hat die Faehigkeit nicht angelegt.")
-        self.assertEqual(38, self.con.execute(
-            "SELECT MAX(version) FROM schema_migrations").fetchone()[0])
+        # Build 725: NICHT mehr gegen die feste Zahl 38 pruefen. Die Aussage
+        # dieses Tests ist "die Kette ist zuende gefahren, M038 eingeschlossen"
+        # - nicht "38 ist die letzte Migration, die es je geben wird". Mit
+        # M039 (person.first_name/last_name/rank) fiel die feste Zahl, obwohl
+        # an der geprueften Sache nichts anders war. Geprueft wird deshalb
+        # gegen den HOECHSTSTAND DER AUSGELIEFERTEN MODULE; kommt eine
+        # Migration dazu, haelt der Test weiter, bleibt aber scharf, wenn die
+        # Kette vorzeitig stehenbleibt.
+        hoechste = max(m.VERSION for m in discover(coordinator_migrations))
+        angewandt = self.con.execute(
+            "SELECT MAX(version) FROM schema_migrations").fetchone()[0]
+        self.assertEqual(hoechste, angewandt,
+                         "Die Migrationskette ist nicht zuende gefahren.")
+        self.assertGreaterEqual(angewandt, 38, "M038 ist nicht angewandt.")
 
         # (b) Der vorgefundene Grant ist UNANGETASTET. Eine Migration, die
         #     fremde, belegte Zeilen zurechtruecken wuerde, waere schlimmer

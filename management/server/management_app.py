@@ -3792,6 +3792,11 @@ class ManagementApp:
                 assets_dir=self._assets_dir,
                 templates_db=self._templates_db,
                 default_db=self._default_db,
+                # Build 725: coordinator.db READ-ONLY mit anbinden. Ohne sie
+                # blieben die Ermittlernamen im Vollzitat hier Kuerzel,
+                # waehrend der Ermittler-Export Klarnamen zeigt - dieselbe
+                # Akte in zwei Fassungen.
+                coordinator_db=self._db_path,
                 uid=uid,
             ).open()
         except FileNotFoundError as exc:
@@ -3808,6 +3813,8 @@ class ManagementApp:
                 uid=uid,
                 username=str(username),
                 generated_at=int(time.time()),   # Zeitstempel von aussen (Test/Determinismus)
+                # Build 725: Seitenabzuege fuer das Vollzitat.
+                forensic=bundle.forensic,
             )
             doc = source.build(report_id)
             body = HtmlRenderer().render(doc)
@@ -3900,6 +3907,11 @@ class ManagementApp:
                 assets_dir=self._assets_dir,
                 templates_db=self._templates_db,
                 default_db=self._default_db,
+                # Build 725: coordinator.db READ-ONLY mit anbinden. Ohne sie
+                # blieben die Ermittlernamen im Vollzitat hier Kuerzel,
+                # waehrend der Ermittler-Export Klarnamen zeigt - dieselbe
+                # Akte in zwei Fassungen.
+                coordinator_db=self._db_path,
                 uid=uid,
             ).open()
         except FileNotFoundError as exc:
@@ -4175,6 +4187,11 @@ class ManagementApp:
                 assets_dir=self._assets_dir,
                 templates_db=self._templates_db,
                 default_db=self._default_db,
+                # Build 725: coordinator.db READ-ONLY mit anbinden. Ohne sie
+                # blieben die Ermittlernamen im Vollzitat hier Kuerzel,
+                # waehrend der Ermittler-Export Klarnamen zeigt - dieselbe
+                # Akte in zwei Fassungen.
+                coordinator_db=self._db_path,
                 uid=uid,
             ).open()
         except FileNotFoundError as exc:
@@ -4191,6 +4208,8 @@ class ManagementApp:
                 uid=uid,
                 username=str(username),
                 generated_at=int(time.time()),
+                # Build 725: Seitenabzuege fuer das Vollzitat.
+                forensic=bundle.forensic,
             )
             doc = source.build(report_id)
         except NoReportError as exc:
@@ -4302,6 +4321,11 @@ class ManagementApp:
                 assets_dir=self._assets_dir,
                 templates_db=self._templates_db,
                 default_db=self._default_db,
+                # Build 725: coordinator.db READ-ONLY mit anbinden. Ohne sie
+                # blieben die Ermittlernamen im Vollzitat hier Kuerzel,
+                # waehrend der Ermittler-Export Klarnamen zeigt - dieselbe
+                # Akte in zwei Fassungen.
+                coordinator_db=self._db_path,
                 uid=uid,
             ).open()
         except FileNotFoundError as exc:

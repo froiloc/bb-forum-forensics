@@ -44,6 +44,16 @@ WARN_UNKNOWN_PLACEHOLDER    = "unknown_placeholder"     # {{...}} das dem Muster
 WARN_UNORDERED_BLOCK        = "unordered_block"         # Block ohne report_block_order-Eintrag
 WARN_UNKNOWN_BLOCK_TYPE     = "unknown_block_type"      # Blocktyp ausserhalb der 9 bekannten (B5)
 WARN_MISSING_IMAGE          = "missing_image"           # image-Verweis nicht in assets_<uid>.db
+# Build 725 (Vollzitat): alles, was beim Aufbau einer Beweismittelgruppe
+# unvollstaendig blieb - ein Beleg ohne Annotation, ein nicht auffindbarer
+# Absatz, ein fehlender Themenbetreff, ein nicht benennbarer PN-Partner.
+#
+# EINE EIGENE ART UND KEINE VERTEILUNG AUF DIE BESTEHENDEN: Diese Warnungen
+# betreffen die BELEGLAGE, nicht die Erzeugung des Dokuments. Wer eine Akte
+# prueft, liest sie anders als einen nicht aufgeloesten Platzhalter - sie
+# sagen, welche Aussage im Bericht auf welcher Grundlage steht. Sie in
+# 'unresolved_placeholder' zu werfen haette sie darin verschwinden lassen.
+WARN_EVIDENCE_GAP           = "evidence_gap"            # Beleglage unvollstaendig (Vollzitat)
 
 #: Alle gueltigen Warn-Arten (fuer Validierung/Tests).
 VALID_WARNING_KINDS: frozenset[str] = frozenset({
@@ -52,6 +62,7 @@ VALID_WARNING_KINDS: frozenset[str] = frozenset({
     WARN_UNORDERED_BLOCK,
     WARN_UNKNOWN_BLOCK_TYPE,
     WARN_MISSING_IMAGE,
+    WARN_EVIDENCE_GAP,
 })
 
 
