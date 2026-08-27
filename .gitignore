@@ -89,3 +89,6 @@ debug/test_2_91_console.js
 *.bundle
 MD5SUMS_Build*.txt
 *.orig
+*.tsv
+*.sql
+*.sql.txt
