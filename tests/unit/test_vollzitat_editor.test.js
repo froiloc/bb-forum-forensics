@@ -262,3 +262,192 @@ describe("EvidenceBlock - Vollzitat (Build 726)", () => {
         expect(el.innerHTML).toContain("evidence-items--list");
     });
 });
+
+// ===========================================================================
+// Build 727 — Befunde aus der Sichtpruefung vom 28.08.2026
+// ===========================================================================
+//
+// VE12 - ein Beleg, den es nicht mehr gibt, bekommt einen EIGENEN Kasten
+//        und KEINE erfundene Quellenart
+// VE13 - mehrere moegliche Fundstellen werden alle gezeigt und benannt
+// VE14 - eine aus dem Seitenabzug abgeleitete Beitragsnummer wird als solche
+//        ausgewiesen
+// VE15 - GEGENPROBE: eine Nummer aus der Annotation traegt den Zusatz NICHT
+
+const ANTWORT_727 = {
+    beschriftung: "Sammlung",
+    beleg_anzahl: 3, quellen_anzahl: 3, warnungen: [], abgeschnitten: 0,
+    unterbloecke: [
+        {   // (a) Beleg existiert nicht mehr
+            bezeichnung: "Beleg nicht mehr vorhanden", fehlt: true,
+            ist_pn: false, betreff: null, partner: null, posted_ts: null,
+            post_id: null, link: "", post_quelle: "keine",
+            absaetze: [],
+            befunde: [{ nummer: 1, annotation_id: 14, kategorie: "",
+                        kategorie_text: "Unbekannte Kategorie",
+                        css_klasse: "vz-cat-unbekannt", farbe: "#dfdfdf",
+                        markierung: "", notiz: "", ermittler: "",
+                        name_quelle: "kuerzel", absatz_weg: "fehlt",
+                        hinweis: "keine aktive Annotation" }],
+        },
+        {   // (b) mehrdeutiger Wortlaut
+            bezeichnung: "Beitrag zum Thema »Treffen«", fehlt: false,
+            ist_pn: false, betreff: "Treffen", partner: null,
+            posted_ts: 1710452820, post_id: null, link: "/forum/x",
+            post_quelle: "keine",
+            absaetze: [
+                { html: "<p>Erste Stelle</p>", nummern: [1], ersatz: false,
+                  moeglich: true, von_gesamt: [1, 2] },
+                { html: "<p>Zweite Stelle</p>", nummern: [1], ersatz: false,
+                  moeglich: true, von_gesamt: [2, 2] },
+            ],
+            befunde: [{ nummer: 1, annotation_id: 20, kategorie: "CAT_OTHER",
+                        kategorie_text: "SON – Sonstige", css_klasse: "x",
+                        farbe: "#cff1e7", markierung: "Bonn", notiz: "",
+                        ermittler: "KHK Muster", name_quelle: "ad_felder",
+                        absatz_weg: "text", hinweis: "kommt 2 mal vor" }],
+        },
+        {   // (c) Beitragsnummer aus dem Seitenabzug abgeleitet
+            bezeichnung: "Beitrag zum Thema »Treffen«", fehlt: false,
+            ist_pn: false, betreff: "Treffen", partner: null,
+            posted_ts: 1710452820, post_id: 1891354, link: "/forum/y#p1891354",
+            post_quelle: "seitenabzug",
+            absaetze: [{ html: "<p>Ein Absatz</p>", nummern: [1],
+                         ersatz: false, moeglich: false, von_gesamt: null }],
+            befunde: [{ nummer: 1, annotation_id: 21, kategorie: "CAT_OTHER",
+                        kategorie_text: "SON – Sonstige", css_klasse: "x",
+                        farbe: "#cff1e7", markierung: "Bonn", notiz: "",
+                        ermittler: "KHK Muster", name_quelle: "ad_felder",
+                        absatz_weg: "text", hinweis: "" }],
+        },
+    ],
+};
+
+describe("EvidenceBlock — Vollzitat, Befunde der Sichtpruefung (Build 727)", () => {
+
+    async function gezeichnet() {
+        const dom = makeDOM(spion(ANTWORT_727));
+        const el = block(dom, "fullquote", [14, 20, 21]).render();
+        await ruhe();
+        return el;
+    }
+
+    it("VE12 - ein fehlender Beleg bekommt einen eigenen Kasten", async () => {
+        const el = await gezeichnet();
+        const kasten = el.querySelector(".vz-quelle--fehlt");
+        expect(kasten).not.toBeNull();
+        expect(kasten.textContent).toContain("Beleg nicht mehr vorhanden");
+        expect(kasten.textContent).toContain("#14");
+        expect(kasten.textContent).toContain("keine aktive Annotation");
+        // KEINE erfundene Quellenart und KEIN irrefuehrender Vorbehalt.
+        expect(kasten.textContent).not.toContain("Beitrag zum Thema");
+        expect(kasten.textContent).not.toContain("Absatz nicht auffindbar");
+        expect(kasten.querySelector(".vz-meta")).toBeNull();
+    });
+
+    it("VE13 - alle moeglichen Fundstellen werden gezeigt und benannt", async () => {
+        const el = await gezeichnet();
+        const moegliche = el.querySelectorAll(".vz-absatz.vz-moeglich");
+        expect(moegliche.length).toBe(2);
+        const texte = Array.from(el.querySelectorAll(".vz-moeglich-kopf"))
+            .map(n => n.textContent.trim());
+        expect(texte).toEqual(["Mögliche Fundstelle 1 von 2",
+                               "Mögliche Fundstelle 2 von 2"]);
+    });
+
+    it("VE14 - abgeleitete Beitragsnummer wird ausgewiesen", async () => {
+        const el = await gezeichnet();
+        const metas = Array.from(el.querySelectorAll(".vz-meta"))
+            .map(n => n.textContent.replace(/\s+/g, " "));
+        const mit = metas.filter(t => t.includes("#1891354"));
+        expect(mit.length).toBe(1);
+        expect(mit[0]).toContain("aus dem Seitenabzug bestimmt");
+    });
+
+    it("VE15 - GEGENPROBE: eine Nummer aus der Annotation ohne Zusatz", async () => {
+        // Ein Test, der nicht anschlagen kann, ist kein Test: mit
+        // post_quelle='annotation' darf der Zusatz NICHT erscheinen.
+        const daten = JSON.parse(JSON.stringify(ANTWORT_727));
+        daten.unterbloecke[2].post_quelle = "annotation";
+        const dom = makeDOM(spion(daten));
+        const el = block(dom, "fullquote", [14, 20, 21]).render();
+        await ruhe();
+        expect(el.innerHTML).toContain("#1891354");
+        expect(el.innerHTML).not.toContain("aus dem Seitenabzug bestimmt");
+    });
+});
+
+// ===========================================================================
+// Build 727 — die Beitragsnummer an der Quelle (toolbar/toolbar.js)
+// ===========================================================================
+//
+// TB01 - eine Markierung in einem <article id="pNNN"> liefert NNN
+// TB02 - dasselbe fuer die PN-Ansicht (<div id="pNNN" class="blockpost">)
+// TB03 - ausserhalb eines Beitrags (Uebersichtsseite) bleibt es bei null
+// TB04 - GEGENPROBE: ohne Auswahl gibt es keine Nummer
+
+import { readFileSync as _lese } from "fs";
+
+function toolbarDOM(innenHtml) {
+    const dom = new JSDOM(
+        `<!DOCTYPE html><html><body>
+            <div id="forensic-toolbar"></div>
+            <div id="forensic-viewport">${innenHtml}</div>
+        </body></html>`,
+        { runScripts: "dangerously", url: "http://localhost" });
+    dom.window.fetch = () => Promise.resolve({ ok: false, json: () => ({}) });
+    dom.window.requestAnimationFrame = (cb) => setTimeout(cb, 0);
+    dom.window.eval(_lese("toolbar/toolbar.js", "utf-8"));
+    return dom;
+}
+
+/** Setzt die Auswahl auf den ersten Textknoten von 'sel'. */
+function waehle(dom, selektor) {
+    const el = dom.window.document.querySelector(selektor);
+    const range = dom.window.document.createRange();
+    range.selectNodeContents(el);
+    const s = dom.window.getSelection();
+    s.removeAllRanges();
+    s.addRange(range);
+}
+
+describe("MarkerToolModule._postElementVon (Build 727)", () => {
+
+    it("TB01 - Vollansicht: <article class='post' id='p1891354'>", () => {
+        const dom = toolbarDOM(
+            '<div id="brd-main"><article class="post" id="p1891354">' +
+            '<div class="postmsg"><p id="ziel">Ich fahre nach Bonn.</p>' +
+            '</div></article></div>');
+        waehle(dom, "#ziel");
+        const fn = dom.window.ForensicToolbar.config.markerHelpers.postElementVon;
+        expect(fn(null)).toBe(1891354);
+    });
+
+    it("TB02 - PN-Ansicht: <div id='p44573' class='blockpost'>", () => {
+        const dom = toolbarDOM(
+            '<div id="p44573" class="blockpost"><div class="postmsg">' +
+            '<p id="ziel">Meld dich kurz vorher.</p></div></div>');
+        waehle(dom, "#ziel");
+        const fn = dom.window.ForensicToolbar.config.markerHelpers.postElementVon;
+        expect(fn(null)).toBe(44573);
+    });
+
+    it("TB03 - ausserhalb eines Beitrags bleibt es bei null", () => {
+        // Uebersichts- und Suchseiten haben keine Beitraege. Dann faellt der
+        // Bericht auf die Ableitung aus dem Seitenabzug zurueck und BENENNT
+        // das - geraten wird nichts.
+        const dom = toolbarDOM('<div id="vf"><table><tbody><tr>' +
+            '<td id="ziel">Ein Themenlink</td></tr></tbody></table></div>');
+        waehle(dom, "#ziel");
+        const fn = dom.window.ForensicToolbar.config.markerHelpers.postElementVon;
+        expect(fn(null)).toBeNull();
+    });
+
+    it("TB04 - GEGENPROBE: ohne Auswahl keine Nummer", () => {
+        const dom = toolbarDOM(
+            '<article class="post" id="p1"><p id="ziel">Text</p></article>');
+        dom.window.getSelection().removeAllRanges();
+        const fn = dom.window.ForensicToolbar.config.markerHelpers.postElementVon;
+        expect(fn(null)).toBeNull();
+    });
+});

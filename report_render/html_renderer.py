@@ -181,6 +181,12 @@ class HtmlRenderer:
     .vz-absatz {{ margin: 6pt 8pt 0; padding: 5pt 8pt; border-left: 3pt solid #ccc;
                   line-height: 1.6; }}
     .vz-absatz.vz-ersatz {{ border-left-style: dotted; }}
+    /* Build 727: eine von mehreren moeglichen Fundstellen. Gestrichelt und
+       mit Vorspann - der Leser muss sehen, dass die Zuordnung offen ist. */
+    .vz-absatz.vz-moeglich {{ border-left-style: dashed; }}
+    .vz-moeglich-kopf {{ font-family: Arial, sans-serif; font-size: 8pt;
+                  font-weight: bold; color: #7a5200; margin-bottom: 3pt; }}
+    .vz-quelle--fehlt {{ border-style: dashed; }}
     /* box-decoration-break: die Hinterlegung soll auch dann sauber aussehen,
        wenn die Markierung ueber einen Zeilenumbruch laeuft. */
     .vz-mark {{ padding: 0 1pt; box-decoration-break: clone;
@@ -411,6 +417,13 @@ class HtmlRenderer:
     # ------------------------------------------------------------------
     def _render_vz_quelle(self, ub, kategorie_farben) -> str:
         q = ub.quelle
+        # Build 727: ein Beleg, den es nicht (mehr) gibt, bekommt eine EIGENE
+        # Darstellung - keine Quellenzeile, kein Datum, keine Fundstelle. Bis
+        # Build 726 stand dort "Beitrag zum Thema »(Betreff nicht
+        # ermittelbar)«", also eine erfundene Quellenart.
+        if q.ist_unbekannt:
+            return self._render_vz_fehlbeleg(ub)
+
         teile = ['<div class="vz-quelle">']
 
         # -- Kopf: Art der Quelle (Anforderung 7) --------------------------
@@ -437,7 +450,15 @@ class HtmlRenderer:
                         f'{_esc(q.verfasser)}')
         if q.post_id is not None:
             kennwort = "Nachricht" if q.ist_pn else "Beitrag"
-            meta.append(f'<span class="vz-k">{kennwort}:</span> #{q.post_id}')
+            # Build 727: stammt die Nummer nicht aus der Annotation, sondern
+            # ist sie aus dem Seitenabzug abgeleitet, steht das dabei. Der
+            # Leser der Akte soll sehen, worauf Betreff, Datum und
+            # Zusammenfassung beruhen.
+            herkunft = ("" if q.post_quelle != "seitenabzug"
+                        else ' <span class="vz-k">(aus dem Seitenabzug '
+                             'bestimmt)</span>')
+            meta.append(f'<span class="vz-k">{kennwort}:</span> '
+                        f'#{q.post_id}{herkunft}')
         zeile = " &middot; ".join(meta)
         link = q.link
         teile.append(
@@ -448,8 +469,18 @@ class HtmlRenderer:
 
         # -- Die Absaetze (Anforderung 2 und 3) ----------------------------
         for absatz in ub.absaetze:
-            klasse = "vz-absatz vz-ersatz" if absatz.ersatz else "vz-absatz"
-            teile.append(f'<div class="{klasse}">{absatz.html}</div>')
+            klasse = "vz-absatz"
+            if absatz.ersatz:
+                klasse += " vz-ersatz"
+            if absatz.moeglich:
+                klasse += " vz-moeglich"
+            vorspann = ""
+            if absatz.von_gesamt:
+                lauf, gesamt = absatz.von_gesamt
+                vorspann = (
+                    f'<div class="vz-moeglich-kopf">M&ouml;gliche Fundstelle '
+                    f'{lauf} von {gesamt}</div>')
+            teile.append(f'<div class="{klasse}">{vorspann}{absatz.html}</div>')
 
         # -- Die Befunde (Anforderungen 1 und 8) ---------------------------
         for bf in ub.befunde:
@@ -457,6 +488,29 @@ class HtmlRenderer:
 
         teile.append('</div>')
         return "".join(teile)
+
+    # ------------------------------------------------------------------
+    def _render_vz_fehlbeleg(self, ub) -> str:
+        """
+        Ein Beleg, zu dem es keine Annotation (mehr) gibt.
+
+        Er wird GEZEIGT (GR1: kein Beleg verschwindet still), aber ohne jede
+        Quellenangabe - denn es gibt keine. Die Begruendung steht im Kasten
+        selbst und nicht nur im Hinweisabschnitt: wer die Gruppe liest, soll
+        an Ort und Stelle sehen, dass hier nichts steht, statt einen leeren
+        Beitrag zu vermuten.
+        """
+        nummern = ", ".join("#%d" % b.annotation_id for b in ub.befunde)
+        return (
+            '<div class="vz-quelle vz-quelle--fehlt">'
+            '<div class="vz-quelle-kopf">Beleg nicht mehr vorhanden</div>'
+            f'<div class="vz-fehlt">&#9888; Zu {_esc(nummern)} gibt es in '
+            'der Beweismitteldatenbank keine aktive Annotation. Sie wurde '
+            'gel&ouml;scht oder stammt aus einer anderen '
+            'Beweismitteldatenbank. Quelle, Datum und Wortlaut sind damit '
+            'nicht bestimmbar &mdash; der Beleg wird hier ausgewiesen und '
+            'nicht &uuml;bersprungen.</div>'
+            '</div>')
 
     # ------------------------------------------------------------------
     def _render_vz_befund(self, bf, kategorie_farben) -> str:
@@ -489,7 +543,12 @@ class HtmlRenderer:
         # Nachname sind schwaecher als der jeweilige Sollweg - der Leser der
         # Akte muss das sehen, ohne den Quelltext zu kennen.
         vorbehalte = []
-        if bf.absatz_weg == "text":
+        if bf.absatz_weg == "fehlt":
+            # Build 727: kein Vorbehalt zum Absatz - es gibt gar keinen Beleg.
+            # (Erreichbar nur, wenn ein Fehlbeleg je in einem Unterblock mit
+            #  Quelle landete; der Fehlbeleg-Kasten geht diesen Weg nicht.)
+            vorbehalte = []
+        elif bf.absatz_weg == "text":
             vorbehalte.append(
                 "Absatz &uuml;ber den Wortlaut gefunden, nicht &uuml;ber den "
                 "Anker der Markierung")

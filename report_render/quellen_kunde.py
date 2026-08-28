@@ -73,9 +73,21 @@ from core.logger import get_logger
 
 logger = get_logger(__name__)
 
-#: Die beiden Quellenarten.
+#: Die Quellenarten.
 ART_BEITRAG = "beitrag"
 ART_PN = "pn"
+#: Build 727: die Quelle ist NICHT bestimmbar - der Beleg existiert nicht
+#: (mehr). Bis Build 726 bekam ein solcher Beleg ART_BEITRAG und erschien im
+#: Bericht als "Beitrag zum Thema »(Betreff nicht ermittelbar)«". Das war eine
+#: BEHAUPTUNG: niemand weiss, ob es je ein Beitrag war. In einer Akte ist eine
+#: erfundene Quellenart schlimmer als eine fehlende, weil sie glaubwuerdig
+#: aussieht (Befund aus der Sichtpruefung Alex, 28.08.2026).
+ART_UNBEKANNT = "unbekannt"
+
+#: Woher die Beitragsnummer stammt - sie wandert bis in den Bericht.
+POST_AUS_ANNOTATION = "annotation"   # annotations.post_id / element_id
+POST_AUS_SEITENABZUG = "seitenabzug"  # Vorfahr mit id="p<n>" im BLOB
+POST_KEINE = "keine"
 
 
 @dataclass
@@ -94,6 +106,8 @@ class Quelle:
         anker        - '#p<id>' oder "" - die Sprungmarke auf der Seite
         verfasser    - Benutzername des Verfassers, falls aus dem Seitenabzug
                        ablesbar; sonst None (kein Pflichtfeld, s. unten)
+        post_quelle  - POST_AUS_ANNOTATION | POST_AUS_SEITENABZUG | POST_KEINE
+                       (Build 727 - der Weg zur Beitragsnummer wird benannt)
         warnungen    - Klartextmeldungen fuer den Hinweisabschnitt (R2)
 
     'verfasser' IST BEWUSST OHNE WARNUNG: Er steht in keiner Anforderung der
@@ -111,11 +125,16 @@ class Quelle:
     seiten_url: str = ""
     anker: str = ""
     verfasser: Optional[str] = None
+    post_quelle: str = POST_KEINE
     warnungen: List[str] = field(default_factory=list)
 
     @property
     def ist_pn(self) -> bool:
         return self.art == ART_PN
+
+    @property
+    def ist_unbekannt(self) -> bool:
+        return self.art == ART_UNBEKANNT
 
     @property
     def link(self) -> str:
@@ -133,6 +152,10 @@ class Quelle:
         Beleg ohne Quellenbenennung waere fuer die Staatsanwaltschaft nicht
         zuzuordnen.
         """
+        if self.ist_unbekannt:
+            # Build 727: KEINE erfundene Quellenart. S. Kopf bei
+            # ART_UNBEKANNT.
+            return "Beleg nicht mehr vorhanden"
         if self.ist_pn:
             wer = self.partner or "(Gespraechspartner nicht ermittelbar)"
             return "Private Nachricht mit »%s«" % wer
@@ -189,6 +212,7 @@ class QuellenKunde:
         page_url: str,
         post_id: Optional[int],
         element_id: Optional[str],
+        post_quelle: str = POST_AUS_ANNOTATION,
     ) -> Quelle:
         """
         Die Quelle zu einer Annotation bestimmen.
@@ -200,8 +224,19 @@ class QuellenKunde:
         """
         from forensic_api.annotations import _is_pm_url
 
+        # Die Sprungmarke auf der Seite (Anforderung 5).
+        #
+        # BUILD 727: Sie haengt jetzt an der BEITRAGSNUMMER, nicht mehr an
+        # 'element_id'. Bei Textmarkierungen ist element_id leer (toolbar.js,
+        # Build 336) - die Fundstelle blieb deshalb die blosse Seitenadresse,
+        # und wer sie in einer Akte anklickte, landete am Seitenanfang statt
+        # am Beitrag. Beide Ansichten des Forums kennzeichnen einen Beitrag
+        # mit 'p<Nummer>' (Forenquelltext viewtopic.php und pmsnew topic.php),
+        # die Marke ist also fuer Beitraege und private Nachrichten dieselbe.
         anker = ""
-        if element_id and str(element_id).strip().startswith("p"):
+        if post_id is not None:
+            anker = "#p%d" % int(post_id)
+        elif element_id and str(element_id).strip().startswith("p"):
             anker = "#%s" % str(element_id).strip()
 
         quelle = Quelle(
@@ -211,12 +246,14 @@ class QuellenKunde:
             anker=anker,
         )
 
+        quelle.post_quelle = post_quelle if post_id is not None else POST_KEINE
         if post_id is None:
             quelle.warnungen.append(
                 "Beleg ohne Beitragsbezug: weder 'post_id' noch eine "
-                "Elementkennung der Form 'p<Nummer>'. Betreff und "
-                "Originaldatum sind damit nicht bestimmbar; die Fundstelle "
-                "bleibt die Seitenadresse.")
+                "Elementkennung der Form 'p<Nummer>', und im Seitenabzug war "
+                "der Beitrag nicht zu bestimmen. Betreff und Originaldatum "
+                "sind damit nicht bestimmbar; die Fundstelle bleibt die "
+                "Seitenadresse.")
             return quelle
 
         if quelle.ist_pn:

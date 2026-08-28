@@ -93,6 +93,7 @@
 from __future__ import annotations
 
 import copy
+import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -100,12 +101,24 @@ from core.logger import get_logger
 
 logger = get_logger(__name__)
 
+#: Die Kennung eines Beitrags im Seitenabzug: 'p<Nummer>'. Dieselbe
+#: Schreibweise, die forensic_api/annotations._ELEMENT_POST_RE fuer
+#: 'annotations.element_id' erwartet - die beiden duerfen nicht auseinander
+#: laufen, sonst bezeichnet dasselbe Muster an zwei Stellen Verschiedenes.
+_POST_KENNUNG = re.compile(r"^p(\d+)$")
+
 #: Die vier moeglichen Herkuenfte eines Absatzes. Sie wandern bis in den
 #: Bericht - siehe Kopf, "DREI WEGE".
 WEG_XPATH = "xpath"
 WEG_TEXT = "text"
 WEG_KEINER = "keiner"
 WEG_UEBERSETZUNG = "uebersetzung"
+#: Build 727: es gibt zu diesem Beleg gar keine Annotation mehr. KEIN Weg im
+#: eigentlichen Sinn - deshalb ein eigener Wert und nicht WEG_KEINER. Der
+#: Unterschied ist der zwischen "der Absatz wurde nicht gefunden" und "es gibt
+#: nichts zu finden", und im Bericht ist das der Unterschied zwischen einem
+#: Beleg mit Luecke und gar keinem Beleg.
+WEG_FEHLT = "fehlt"
 
 #: Elemente, die als "Absatz" taugen - in der Reihenfolge der Vorliebe.
 #:
@@ -147,24 +160,57 @@ class Markierung:
 
 
 @dataclass
+class Treffer:
+    """Eine einzelne Fundstelle: Absatz-Element plus Zeichenbereich darin."""
+    block: Any
+    von: int
+    bis: int
+
+
+@dataclass
 class Fundstelle:
     """
     Wo eine Markierung im Seitenabzug sitzt.
 
     Felder:
         weg        - WEG_XPATH | WEG_TEXT | WEG_KEINER | WEG_UEBERSETZUNG
-        block      - das gefundene Absatz-Element (lxml) oder None
-        von, bis   - Zeichenversaetze der Auswahl im Klartext des Absatzes
+        treffer    - ALLE Fundstellen in Dokumentreihenfolge. Auf WEG_XPATH
+                     genau eine (der Anker ist eindeutig); auf WEG_TEXT so
+                     viele, wie der Wortlaut auf der Seite vorkommt.
         text       - die markierte Stelle im Wortlaut (immer gefuellt, wenn
                      die Annotation ihn traegt - auch bei WEG_KEINER)
         hinweis    - Klartextbegruendung, wenn weg != WEG_XPATH; sonst ""
+
+    WARUM ALLE TREFFER UND NICHT NUR EINER (Weisung Alex, 28.08.2026):
+    Bis Build 726 nahm die Wortlautsuche stillschweigend den LETZTEN Treffer
+    der Seite. Kommt der Wortlaut mehrfach vor - und bei kurzen Markierungen
+    ist das der Regelfall -, stand damit womoeglich der falsche Absatz in der
+    Akte, ohne dass man es ihm ansah. Jetzt werden alle gezeigt und
+    ausdruecklich als MOEGLICHE Fundstellen bezeichnet. Lieber drei Absaetze,
+    von denen einer der richtige ist, als einer, von dem niemand weiss, ob er
+    es ist.
     """
     weg: str
-    block: Any = None
-    von: int = 0
-    bis: int = 0
+    treffer: List[Treffer] = field(default_factory=list)
     text: str = ""
     hinweis: str = ""
+
+    # -- Bequemlichkeit fuer den Regelfall (genau ein Treffer) -------------
+    @property
+    def block(self):
+        return self.treffer[0].block if self.treffer else None
+
+    @property
+    def von(self) -> int:
+        return self.treffer[0].von if self.treffer else 0
+
+    @property
+    def bis(self) -> int:
+        return self.treffer[0].bis if self.treffer else 0
+
+    @property
+    def mehrdeutig(self) -> bool:
+        return len(self.treffer) > 1
 
 
 # ---------------------------------------------------------------------------
@@ -437,8 +483,8 @@ class AbsatzFinder:
             bis = von + len(text) if text else von
         bis = min(bis, len(_klartext(block)))
 
-        return Fundstelle(weg=WEG_XPATH, block=block, von=von, bis=bis,
-                          text=text)
+        return Fundstelle(weg=WEG_XPATH, text=text,
+                          treffer=[Treffer(block=block, von=von, bis=bis)])
 
     # ------------------------------------------------------------------
     def _ueber_text(self, text: str, element_id: Optional[str]) -> Optional[Fundstelle]:
@@ -463,20 +509,51 @@ class AbsatzFinder:
             if isinstance(getattr(el, "tag", None), str)
             and el.tag in _ABSATZ_TAGS
         ]
-        # Von innen nach aussen: der KLEINSTE passende Block ist der Absatz.
-        for block in reversed(kandidaten):
+
+        # DER KLEINSTE PASSENDE BLOCK IST DER ABSATZ. 'iter()' liefert
+        # Dokumentreihenfolge, also den Vorfahren VOR seinem Nachkommen; ein
+        # Kandidat, der einen bereits gefundenen enthaelt, waere nur eine
+        # groessere Huelle um dieselbe Stelle und wird uebergangen. Ohne diese
+        # Pruefung erschiene derselbe Fund mehrfach - einmal als <p>, einmal
+        # als umgebendes <td>, <li> oder <blockquote>.
+        treffer: List[Treffer] = []
+        vergeben = []
+        for block in kandidaten:
             klartext = _klartext(block)
             pos = klartext.find(text)
-            if pos >= 0:
-                hinweis = (
-                    "Der Anker der Markierung loest im Seitenabzug nicht auf; "
-                    "der Absatz wurde ueber den Wortlaut gefunden. Kommt der "
-                    "Wortlaut im Beitrag mehrfach vor, kann dies eine andere "
-                    "Fundstelle sein als die urspruenglich markierte.")
-                return Fundstelle(weg=WEG_TEXT, block=block, von=pos,
-                                  bis=pos + len(text), text=text,
-                                  hinweis=hinweis)
-        return None
+            if pos < 0:
+                continue
+            if any(block in vorfahr.iter() for vorfahr in vergeben):
+                continue
+            # Nur der INNERSTE Block: enthaelt dieser einen weiteren
+            # Kandidaten mit demselben Wortlaut, gehoert der Fund dorthin.
+            inner = [k for k in kandidaten
+                     if k is not block and k in block.iter()
+                     and text in _klartext(k)]
+            if inner:
+                continue
+            vergeben.append(block)
+            treffer.append(Treffer(block=block, von=pos,
+                                   bis=pos + len(text)))
+
+        if not treffer:
+            return None
+
+        if len(treffer) == 1:
+            hinweis = (
+                "Der Anker der Markierung loest im Seitenabzug nicht auf; der "
+                "Absatz wurde ueber den Wortlaut gefunden. Der Wortlaut kommt "
+                "auf der Seite genau einmal vor, die Fundstelle ist damit "
+                "eindeutig.")
+        else:
+            hinweis = (
+                "Der Anker der Markierung loest im Seitenabzug nicht auf; der "
+                "Absatz wurde ueber den Wortlaut gesucht. Der Wortlaut kommt "
+                "auf der Seite %d MAL vor - alle Fundstellen sind "
+                "wiedergegeben, welche davon markiert wurde, ist nicht "
+                "entscheidbar." % len(treffer))
+        return Fundstelle(weg=WEG_TEXT, treffer=treffer, text=text,
+                          hinweis=hinweis)
 
     # ------------------------------------------------------------------
     @staticmethod
@@ -499,6 +576,35 @@ class AbsatzFinder:
                     ersatz = el
             el = el.getparent()
         return ersatz
+
+    # ------------------------------------------------------------------
+    @staticmethod
+    def post_id_von(block) -> Optional[int]:
+        """
+        Die Beitragsnummer zum gefundenen Absatz - aus dem Seitenabzug selbst.
+
+        Jeder Beitrag traegt im Forum die Kennung 'p<Nummer>' am
+        umschliessenden Element (Forenquelltext topic.php / viewtopic.php:
+        '<div id="p<?php echo $cur_post['id'] ?>" class="blockpost...">'; in
+        der Vollansicht ein '<article class="post" id="p...">').
+
+        WOZU DAS GEBRAUCHT WIRD: 'annotations.post_id' ist bei
+        Textmarkierungen leer - toolbar.js setzt sie dort bewusst nicht
+        (Build 336: "XPath-Text-Marken bleiben null, Post-Bezug via XPath").
+        Ab Build 727 schreibt die Toolbar sie mit; fuer den BESTAND bleibt
+        dieser Weg der einzige. Er wird nur als RUECKFALL benutzt und der
+        benutzte Weg wird ausgewiesen.
+
+        None, wenn kein Vorfahr eine solche Kennung traegt.
+        """
+        el = block
+        while el is not None:
+            kennung = (el.get("id") or "") if hasattr(el, "get") else ""
+            treffer = _POST_KENNUNG.match(kennung.strip())
+            if treffer:
+                return int(treffer.group(1))
+            el = el.getparent()
+        return None
 
     # ------------------------------------------------------------------
     def rendere(self, block, markierungen: Sequence[Markierung]) -> str:

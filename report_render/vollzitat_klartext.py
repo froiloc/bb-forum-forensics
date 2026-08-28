@@ -74,6 +74,10 @@ def _vorbehalte(bf) -> List[str]:
     zeigt, waere zweierlei Akte.
     """
     aus = []
+    if bf.absatz_weg == "fehlt":
+        # Build 727: kein Vorbehalt zum Absatz - es gibt gar keinen Beleg.
+        # Der Grund steht als eigene Zeile beim Unterblock.
+        return []
     if bf.absatz_weg == "text":
         aus.append("Absatz ueber den Wortlaut gefunden, nicht ueber den "
                    "Anker der Markierung")
@@ -111,6 +115,19 @@ def zeilen(gruppe) -> List[Tuple[str, str]]:
         q = ub.quelle
         aus.append(("quelle", q.bezeichnung()))
 
+        # Build 727: ein Beleg, den es nicht (mehr) gibt, bekommt KEINE
+        # Quellenzeile, kein Datum, keine Fundstelle - denn es gibt keine.
+        if q.ist_unbekannt:
+            nummern = ", ".join("#%d" % b.annotation_id for b in ub.befunde)
+            aus.append(("vorbehalt",
+                        "Zu %s gibt es in der Beweismitteldatenbank keine "
+                        "aktive Annotation. Sie wurde geloescht oder stammt "
+                        "aus einer anderen Beweismitteldatenbank. Quelle, "
+                        "Datum und Wortlaut sind nicht bestimmbar - der "
+                        "Beleg wird ausgewiesen und nicht uebersprungen."
+                        % nummern))
+            continue
+
         meta = ["%s: %s" % ("Datum der Nachricht" if q.ist_pn
                             else "Datum des Beitrags", _zeit(q.posted_ts))]
         if q.ist_pn and q.betreff:
@@ -118,8 +135,10 @@ def zeilen(gruppe) -> List[Tuple[str, str]]:
         if q.verfasser:
             meta.append("Verfasser: %s" % q.verfasser)
         if q.post_id is not None:
-            meta.append("%s: #%d" % ("Nachricht" if q.ist_pn else "Beitrag",
-                                     q.post_id))
+            herkunft = (" (aus dem Seitenabzug bestimmt)"
+                        if q.post_quelle == "seitenabzug" else "")
+            meta.append("%s: #%d%s" % ("Nachricht" if q.ist_pn else "Beitrag",
+                                       q.post_id, herkunft))
         aus.append(("meta", " · ".join(meta)))
         aus.append(("link", "Fundstelle: %s"
                     % (q.link or "(keine Adresse)")))
@@ -127,6 +146,9 @@ def zeilen(gruppe) -> List[Tuple[str, str]]:
         for absatz in ub.absaetze:
             kenn = ("[%s] " % ", ".join(str(n) for n in absatz.nummern)
                     if absatz.nummern else "")
+            if absatz.von_gesamt:
+                lauf, gesamt = absatz.von_gesamt
+                kenn += "(moegliche Fundstelle %d von %d) " % (lauf, gesamt)
             if absatz.ersatz:
                 # Kein Absatz gefunden - nur die markierte Stelle. Das wird
                 # gesagt, damit niemand den Ausschnitt fuer den ganzen

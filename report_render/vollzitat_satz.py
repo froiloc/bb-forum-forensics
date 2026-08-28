@@ -118,11 +118,18 @@ class Absatz:
                     markiert sind (in Reihenfolge des Auftretens)
         ersatz    - True, wenn KEIN Absatz gefunden wurde und statt dessen
                     nur die markierte Stelle wiedergegeben wird
+        moeglich  - True, wenn der Wortlaut auf der Seite MEHRFACH vorkommt
+                    und dieser Absatz nur EINE der moeglichen Fundstellen ist
+                    (Build 727, Weisung Alex 28.08.2026: alle zeigen statt
+                    stillschweigend eine zu waehlen)
+        von_gesamt- (Nummer, Anzahl) der moeglichen Fundstellen, sonst None
     """
     html: str
     text: str
     nummern: List[int] = field(default_factory=list)
     ersatz: bool = False
+    moeglich: bool = False
+    von_gesamt: Optional[tuple] = None
 
 
 @dataclass
@@ -138,6 +145,11 @@ class Unterblock:
     quelle: Quelle
     absaetze: List[Absatz] = field(default_factory=list)
     befunde: List[Befund] = field(default_factory=list)
+
+    @property
+    def fehlt(self) -> bool:
+        """True, wenn es zu diesem Beleg keine Annotation (mehr) gibt."""
+        return self.quelle.ist_unbekannt
 
 
 @dataclass

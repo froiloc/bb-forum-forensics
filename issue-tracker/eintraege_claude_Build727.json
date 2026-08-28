@@ -1,0 +1,169 @@
+{
+  "issues": [
+    {
+      "id": "3e91c07a-5b28-4d64-a0f3-71c6e9b4082d",
+      "type": "bug",
+      "title": "Vollzitat: post_id bei Textmarkierungen leer - fuenf Angaben fallen aus",
+      "affected_version": "0.8.726",
+      "reporter": "Alex",
+      "reported_at": "2026-08-28T14:10:00+02:00",
+      "status": "resolved",
+      "priority": "critical",
+      "description": "Sichtpruefung an einer echten Beweismittelgruppe (23 Belege, 4 Gruppen): bei ALLEN Belegen war 'post_id' leer. Kein Datenfehler - toolbar.js setzt fuer Textmarkierungen element_id UND post_id ausdruecklich auf null ('Post-Bezug via XPath', Build 336). Genau diese Markierungen sind es aber, fuer die das Vollzitat gebaut ist. Folge: kein Themenbetreff, kein Originaldatum, kein '#p'-Anker in der Fundstelle, kein PN-Gespraechspartner - und jeder Beleg in seinem eigenen Kasten, weil der Unterblock-Schluessel an der post_id haengt. Derselbe Absatz stand dreimal untereinander.",
+      "tags": [
+        "vollzitat",
+        "beweismittelgruppe",
+        "sichtpruefung",
+        "toolbar"
+      ],
+      "severity": "major",
+      "expected_behavior": "Belege desselben Beitrags in EINEM Unterblock, mit Betreff, Originaldatum und Sprungmarke.",
+      "actual_behavior": "23 Unterbloecke fuer 23 Belege, alle ohne Betreff und ohne Datum.",
+      "resolved_in_version": "0.8.727",
+      "updates": [
+        {
+          "timestamp": "2026-08-28T16:00:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Build 727, an zwei Stellen: (1) toolbar.js schreibt die post_id jetzt auch fuer Textmarkierungen mit - wirkt fuer KUENFTIGE Markierungen; (2) fuer den Bestand wird die Nummer aus dem Seitenabzug abgelesen (Vorfahr mit id='p<Nummer>'), und der benutzte Weg wird im Bericht ausgewiesen. element_id bleibt absichtlich null - sie steuert Sprungziel und Minimap. Testfaelle VZ33, VZ34, VZ38, VZ39, TB01-TB04."
+        }
+      ]
+    },
+    {
+      "id": "c8f26b41-9d03-4a57-be18-2f70a5c3491e",
+      "type": "bug",
+      "title": "Geloeschte Belege erschienen als Forenbeitrag mit fehlendem Absatz",
+      "affected_version": "0.8.726",
+      "reporter": "Alex",
+      "reported_at": "2026-08-28T14:10:00+02:00",
+      "status": "resolved",
+      "priority": "high",
+      "description": "Drei Belege (#14, #15, #17), zu denen es keine aktive Annotation mehr gibt, standen in der Gruppe als 'Beitrag zum Thema »(Betreff nicht ermittelbar)«' mit dem Vorbehalt 'umschliessender Absatz nicht auffindbar'. Beides war erfunden - es gibt weder einen Beitrag noch einen Absatz. Der wahre Grund stand im Feld 'hinweis', das die Editor-Ansicht gar nicht gezeichnet hat.",
+      "tags": [
+        "vollzitat",
+        "beweismittelgruppe",
+        "sichtpruefung",
+        "akte"
+      ],
+      "severity": "critical",
+      "expected_behavior": "Der Beleg wird ausgewiesen (GR1), aber ohne erfundene Quellenart - eine falsche Angabe ist in einer Akte schlimmer als eine fehlende, weil sie glaubwuerdig aussieht.",
+      "actual_behavior": "Drei nicht existierende Belege sahen aus wie vorhandene, deren Absatz man nur nicht gefunden hat.",
+      "resolved_in_version": "0.8.727",
+      "updates": [
+        {
+          "timestamp": "2026-08-28T16:00:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Build 727: eigene Quellenart ART_UNBEKANNT, eigener gestrichelter Kasten 'Beleg nicht mehr vorhanden' ohne Datum und Fundstelle, Grund im Klartext - in BEIDEN Ansichten. Testfaelle VZ36, VE12."
+        }
+      ]
+    },
+    {
+      "id": "6d0a34f8-1e75-42b9-8c36-b95207e1a4cd",
+      "type": "bug",
+      "title": "Wortlautsuche nahm stillschweigend den letzten Treffer der Seite",
+      "affected_version": "0.8.726",
+      "reporter": "Alex",
+      "reported_at": "2026-08-28T14:10:00+02:00",
+      "status": "resolved",
+      "priority": "high",
+      "description": "Loest der Anker nicht auf, sucht der Absatzfinder den Absatz ueber den Wortlaut. Er lief die Kandidaten rueckwaerts durch und nahm den ERSTEN Treffer von hinten - also den letzten der Seite. Kommt der Wortlaut mehrfach vor (bei kurzen Markierungen der Regelfall), stand damit womoeglich der falsche Beitrag in der Akte. Die Warnung nannte die Moeglichkeit, sagte aber nicht, ob sie eingetreten war.",
+      "tags": [
+        "vollzitat",
+        "absatzfinder"
+      ],
+      "severity": "major",
+      "expected_behavior": "Die Mehrdeutigkeit ist sichtbar, nicht nur moeglich.",
+      "resolved_in_version": "0.8.727",
+      "updates": [
+        {
+          "timestamp": "2026-08-28T16:00:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Build 727 (Entscheidung Alex): ALLE Fundstellen werden gezeigt, jede mit 'Moegliche Fundstelle x von y' und gestricheltem Rand. Bei Mehrdeutigkeit wird die post_id NICHT abgeleitet - sie waere geraten. Nebenbei behoben: verschachtelte Treffer wurden mehrfach geliefert (einmal als <p>, einmal als umgebendes <blockquote>); jetzt gilt der innerste Block. Testfaelle VZ35, VE13."
+        }
+      ]
+    },
+    {
+      "id": "f172ab59-40c8-4e13-9d02-8a6b3c50f7e4",
+      "type": "improvement",
+      "title": "Hinweisbereich: 43 Warnungszeilen fuer 23 Belege",
+      "affected_version": "0.8.726",
+      "reporter": "Alex",
+      "reported_at": "2026-08-28T14:10:00+02:00",
+      "status": "resolved",
+      "priority": "medium",
+      "description": "Zwanzigmal derselbe Satz 'ohne Beitragsbezug', siebzehnmal derselbe Satz zum Anker. Der Bereich war unlesbar, und die drei Zeilen, auf die es ankam (drei nicht mehr vorhandene Belege), gingen darin unter.",
+      "tags": [
+        "vollzitat",
+        "bericht",
+        "lesbarkeit"
+      ],
+      "severity": "minor",
+      "expected_behavior": "Gleichlautende Befunde in einer Zeile, mit allen betroffenen Beleg-Nummern.",
+      "resolved_in_version": "0.8.727",
+      "updates": [
+        {
+          "timestamp": "2026-08-28T16:00:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Build 727: 'Belege #1, #2, #3 (3 Stueck): ...'. Keine Nummer faellt weg - eine Liste, die niemand liest, weil sie zu lang ist, ist kein besserer Nachweis als eine, die fehlt. Testfall VZ37."
+        }
+      ]
+    },
+    {
+      "id": "a45e8319-6c02-4b7f-91da-3e08b26cf05a",
+      "type": "bug",
+      "title": "Vollzitat: kein einziger Markierungsanker loest im Seitenabzug auf",
+      "affected_version": "0.8.726",
+      "reporter": "Alex",
+      "reported_at": "2026-08-28T14:10:00+02:00",
+      "status": "open",
+      "priority": "high",
+      "description": "In der Sichtpruefung kam KEINER von 23 Belegen ueber den Sollweg: 17-mal wurde der Absatz ueber den Wortlaut gefunden, 3-mal gar nicht, 3-mal war es ein Fehlbeleg. Die sichtbaren Anker ('./donate[1]/div[1]/div[4]/article[29]/.../p[1]/text()[3]') sind strukturell plausibel; lxml verarbeitet ein unbekanntes Element wie <donate> gleich (nachgestellt, auch ohne schliessendes Tag). Eine Hypothese ist ausgeschlossen: die <mark>-Injektion des HighlightModule laeuft nur ohne CSS-Custom-Highlights-API und schreibt dann eine Console-Warnung. Aus der Editor-Ansicht allein ist die Ursache NICHT zu bestimmen.",
+      "tags": [
+        "vollzitat",
+        "absatzfinder",
+        "anker",
+        "diagnose"
+      ],
+      "severity": "major",
+      "expected_behavior": "Der Anker loest auf; der Absatz wird zeichengenau bestimmt und ohne Vorbehalt gedruckt.",
+      "actual_behavior": "0 von 23 - jeder Beleg traegt einen Vorbehalt.",
+      "updates": [
+        {
+          "timestamp": "2026-08-28T16:00:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Build 727 liefert ein Diagnosewerkzeug statt eines Fixes (Entscheidung Alex: erst messen, dann reparieren). tools/diag_vollzitat_anker.py geht den Anker Schritt fuer Schritt durch und nennt die Stelle des Bruchs samt dem, was dort statt dessen steht. Es unterscheidet: Bruch ganz oben (Bezugspunkt), Bruch bei zu wenigen Geschwistern (etwas hat in die Seite geschrieben), Bruch bei 'text()[n]' (Textzerlegung). WARTET AUF DIE AUSGABE AUS DER VM."
+        }
+      ]
+    },
+    {
+      "id": "b39d7c26-08fa-4e51-b7c4-1d5062a9e38b",
+      "type": "bug",
+      "title": "toolbar.js: Build-337-Waechter fehlte in _findAnnotationsAtPoint",
+      "affected_version": "0.8.726",
+      "reporter": "Alex",
+      "reported_at": "2026-08-28T14:10:00+02:00",
+      "status": "resolved",
+      "priority": "medium",
+      "description": "toolbar.js Z. 4741 prueft 'ann.postId === pid' OHNE das '&& !ann.selection', das die Schwesterstelle in Z. 4700 seit Build 337 hat. Seit Build 336 tragen Uebersetzungsmarken eine post_id - der Fall konnte also schon vorher eintreten: eine Textmarke erschien beim Ueberfahren eines ganz markierten Beitrags im Menue, auch wenn der Zeiger nicht auf ihr stand. Mit Build 727 (post_id fuer alle Textmarken) waere das der Regelfall geworden.",
+      "tags": [
+        "toolbar",
+        "annotationen"
+      ],
+      "severity": "minor",
+      "expected_behavior": "Nur echte Ganz-Post-Marken loesen das post-weite Menue aus (Build 337).",
+      "resolved_in_version": "0.8.727",
+      "updates": [
+        {
+          "timestamp": "2026-08-28T16:00:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Build 727: Waechter nachgezogen."
+        }
+      ]
+    }
+  ]
+}

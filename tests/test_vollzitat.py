@@ -667,3 +667,171 @@ class BerichtTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ===========================================================================
+# Build 727 - Befunde aus der Sichtpruefung vom 28.08.2026
+# ===========================================================================
+#
+# VZ33 - post_id aus dem Seitenabzug abgeleitet, wenn die Annotation keine hat
+# VZ34 - DIE KERNRUECKGEWINNUNG: zwei Belege ohne post_id im selben Beitrag
+#        landen wieder in EINEM Unterblock, mit Betreff und Originaldatum
+# VZ35 - mehrdeutiger Wortlaut: ALLE Fundstellen, und KEINE Ableitung
+# VZ36 - ein Beleg, den es nicht mehr gibt, bekommt keine erfundene Quellenart
+# VZ37 - gleichlautende Warnungen werden zu einer Zeile mit Belegliste
+# VZ38 - der Weg zur Beitragsnummer wird im Bericht ausgewiesen
+# VZ39 - GEGENPROBE: eine Annotation MIT post_id wird nicht abgeleitet
+
+from report_render.absatz_finder import WEG_FEHLT
+from report_render.quellen_kunde import (
+    ART_UNBEKANNT, POST_AUS_ANNOTATION, POST_AUS_SEITENABZUG,
+)
+
+
+class SichtpruefungTests(unittest.TestCase):
+    """
+    Der Auszug einer echten Beweismittelgruppe vom 28.08.2026 zeigte: bei
+    ALLEN 23 Belegen war 'post_id' leer - toolbar.js setzt sie fuer
+    Textmarkierungen bewusst nicht (Build 336). Daran fielen fuenf der neun
+    Anforderungen auf einmal.
+    """
+
+    def _bauer(self, annotationen, con=None):
+        return VollzitatBauer(evidence=_FakeEvidence(annotationen),
+                              forensic=_FakeForensic(),
+                              con=con if con is not None else _con())
+
+    def _ann_ohne_post(self, ident, text_der_markierung, kategorie="CAT_OTHER"):
+        """Eine Textmarkierung, wie die Toolbar sie bis Build 726 anlegt."""
+        a = _ann(ident, kategorie,
+                 {"xpathStart": "./laeuft/ins/leere", "offsetStart": 0,
+                  "textContent": text_der_markierung},
+                 "Notiz zu %d." % ident, "h0erm")
+        a.post_id = None
+        a.element_id = None
+        return a
+
+    # -- VZ33 --------------------------------------------------------------
+    def test_vz33_post_id_aus_dem_seitenabzug(self):
+        # 'Mein Bruder' kommt in der Vorrichtung NUR in p100 vor - die
+        # Fundstelle ist damit eindeutig und die Ableitung zulaessig.
+        annos = [self._ann_ohne_post(4711, "Mein Bruder")]
+        g = self._bauer(annos).baue([4711], "S")
+        q = g.unterbloecke[0].quelle
+        self.assertEqual(100, q.post_id,
+                         "Der Absatz sitzt in <div id='p100'> - das IST der "
+                         "Beitrag.")
+        self.assertEqual(POST_AUS_SEITENABZUG, q.post_quelle)
+        self.assertEqual("Wochenendtreffen im Sueden", q.betreff)
+        self.assertEqual(1710452820, q.posted_ts)
+        self.assertIn("#p100", q.link)
+
+    # -- VZ34 --------------------------------------------------------------
+    def test_vz34_zwei_belege_ohne_post_id_ein_unterblock(self):
+        """
+        Der eigentliche Befund: bis Build 726 bekam JEDER Beleg einen eigenen
+        Kasten, weil der Schluessel ('einzeln', beleg_id) lautete. Derselbe
+        Absatz stand dann mehrfach untereinander.
+        """
+        annos = [self._ann_ohne_post(4711, "Mein Bruder"),
+                 self._ann_ohne_post(4712, "kommt mit")]
+        g = self._bauer(annos).baue([4711, 4712], "S")
+        self.assertEqual(1, g.quellen_anzahl,
+                         "Beide Markierungen stehen im selben Beitrag und "
+                         "gehoeren in EINEN Unterblock (Anforderung 9).")
+        ub = g.unterbloecke[0]
+        self.assertEqual([1, 2], [b.nummer for b in ub.befunde])
+        self.assertEqual(1, len(ub.absaetze),
+                         "Beide Markierungen sitzen im selben Absatz - er "
+                         "darf nur EINMAL gedruckt werden.")
+        # Und BEIDE Belege sind darin hinterlegt. Gezaehlt wird ueber
+        # 'data-beleg', nicht ueber die Zahl der <span>: 'Mein Bruder' laeuft
+        # ueber die <b>-Grenze und wird deshalb in ZWEI Stuecken eingefaerbt
+        # (so gewollt, s. VZ02).
+        html = ub.absaetze[0].html
+        self.assertIn('data-beleg="1"', html)
+        self.assertIn('data-beleg="2"', html)
+        self.assertEqual("Wochenendtreffen im Sueden", ub.quelle.betreff)
+        self.assertEqual(1710452820, ub.quelle.posted_ts)
+
+    # -- VZ35 --------------------------------------------------------------
+    def test_vz35_mehrdeutiger_wortlaut(self):
+        # 'Ich fahre Samstag los, von Bad Honnef aus.' steht in BODY zweimal:
+        # einmal in p100, einmal in p101.
+        annos = [self._ann_ohne_post(4711, "Ich fahre Samstag los")]
+        g = self._bauer(annos).baue([4711], "S")
+        ub = g.unterbloecke[0]
+        self.assertEqual(2, len(ub.absaetze),
+                         "Beide moeglichen Fundstellen gehoeren gezeigt.")
+        for a in ub.absaetze:
+            with self.subTest(nummern=a.nummern):
+                self.assertTrue(a.moeglich)
+                self.assertIsNotNone(a.von_gesamt)
+        self.assertEqual([(1, 2), (2, 2)],
+                         [a.von_gesamt for a in ub.absaetze])
+        # KEINE Ableitung bei Mehrdeutigkeit - sie waere geraten.
+        self.assertIsNone(ub.quelle.post_id)
+        self.assertTrue(any("2 MAL" in w for w in g.warnungen))
+
+    # -- VZ36 --------------------------------------------------------------
+    def test_vz36_fehlbeleg_ohne_erfundene_quellenart(self):
+        g = self._bauer([]).baue([14], "S")
+        ub = g.unterbloecke[0]
+        self.assertEqual(ART_UNBEKANNT, ub.quelle.art)
+        self.assertTrue(ub.fehlt)
+        self.assertEqual("Beleg nicht mehr vorhanden", ub.quelle.bezeichnung())
+        self.assertNotIn("Beitrag zum Thema", ub.quelle.bezeichnung())
+        self.assertEqual(WEG_FEHLT, ub.befunde[0].absatz_weg)
+        # Und im Bericht steht der wahre Grund, nicht 'Absatz nicht auffindbar'.
+        html = HtmlRenderer()._render_vollzitat(g)
+        self.assertIn("Beleg nicht mehr vorhanden", html)
+        self.assertIn("keine aktive Annotation", html)
+        self.assertNotIn("Beitrag zum Thema", html)
+        self.assertNotIn("Datum des Beitrags", html)
+
+    # -- VZ37 --------------------------------------------------------------
+    def test_vz37_warnungen_werden_gebuendelt(self):
+        annos = [self._ann_ohne_post(i, "gibt es nicht") for i in (1, 2, 3)]
+        g = self._bauer(annos).baue([1, 2, 3], "S")
+        # Drei Belege, dieselbe Begruendung -> EINE Zeile mit allen Nummern.
+        # Drei Belege x zwei Begruendungen waeren SECHS Zeilen gewesen.
+        # Gebuendelt sind es ZWEI - je Begruendung eine, mit allen Nummern.
+        passend = [w for w in g.warnungen if "#1, #2, #3" in w]
+        self.assertEqual(2, len(passend),
+                         "Je Begruendung EINE Zeile mit allen Belegen; "
+                         "43 Zeilen fuer 23 Belege liest niemand.")
+        self.assertEqual(2, len(g.warnungen))
+        for zeile in passend:
+            with self.subTest(zeile=zeile[:40]):
+                self.assertIn("3 Stueck", zeile)
+        # Aber keine Beleg-Nummer faellt weg (GR1).
+        for nr in ("#1", "#2", "#3"):
+            with self.subTest(beleg=nr):
+                self.assertTrue(any(nr in w for w in g.warnungen))
+
+    # -- VZ38 --------------------------------------------------------------
+    def test_vz38_weg_zur_beitragsnummer_wird_ausgewiesen(self):
+        annos = [self._ann_ohne_post(4711, "Mein Bruder")]
+        g = self._bauer(annos).baue([4711], "S")
+        html = HtmlRenderer()._render_vollzitat(g)
+        self.assertIn("aus dem Seitenabzug bestimmt", html)
+        from report_render.vollzitat_klartext import klartext
+        self.assertIn("aus dem Seitenabzug bestimmt", klartext(g))
+
+    # -- VZ39 --------------------------------------------------------------
+    def test_vz39_gegenprobe_post_id_aus_der_annotation(self):
+        """
+        Ein Test, der nicht anschlagen kann, ist kein Test: traegt die
+        Annotation eine post_id, darf NICHT abgeleitet werden - sonst
+        koennte die Ableitung eine vorhandene Angabe ueberschreiben.
+        """
+        f = _finder()
+        annos = [_ann(4711, "CAT_LOCATION", _sel(_pfad(f, 0), 27, 37,
+                                                 "Bad Honnef"),
+                      "Notiz.", "h0erm", post_id=100)]
+        g = self._bauer(annos).baue([4711], "S")
+        q = g.unterbloecke[0].quelle
+        self.assertEqual(100, q.post_id)
+        self.assertEqual(POST_AUS_ANNOTATION, q.post_quelle)
+        html = HtmlRenderer()._render_vollzitat(g)
+        self.assertNotIn("aus dem Seitenabzug bestimmt", html)

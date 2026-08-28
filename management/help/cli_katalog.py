@@ -313,6 +313,11 @@ def _bsp(aufruf: str, wirkung: str, geprueft: str = _GEPRUEFT) -> CliBeispiel:
     return CliBeispiel(aufruf=aufruf, wirkung=wirkung, geprueft=geprueft)
 
 
+_GEPRUEFT_727 = ("Build 727, 2026-08-28, gegen einen Wegwerf-Bestand unter "
+                 "/tmp (evidence_700.db + forensic_700.db mit zwei "
+                 "Annotationen und einem Seitenabzug), Python 3.13, lxml 6.1")
+
+
 CLI_KATALOG: Tuple[CliEintrag, ...] = (
     # -------------------------------------------------------------- Fallsteuerung
     CliEintrag(
@@ -5343,6 +5348,72 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "zuruecknehmen.",
                 "Es muss aus der Wurzel des Bestands aufgerufen werden - es "
                 "biegt den Suchpfad nicht selbst zurecht.",
+            ),
+        ),
+    ),
+    CliEintrag(
+        schluessel="diag_vollzitat_anker",
+        pfad="tools/diag_vollzitat_anker.py",
+        aufruf="python tools/diag_vollzitat_anker.py --evidence <evidence_N.db> "
+               "--forensic <forensic_N.db> [--beleg N] [--grenze N] "
+               "[--ohne-wortlaut]",
+        titel="Markierungsanker im Seitenabzug pruefen",
+        gruppe="Diagnose",
+        zweck="Sagen, WARUM der Anker einer Markierung im gesicherten "
+              "Seitenabzug nicht aufloest - Schritt fuer Schritt, mit der "
+              "Stelle des Bruchs und dem, was dort statt dessen steht.",
+        art="lesend",
+        datenbanken=(
+            "evidence_<uid>.db (lesend - annotations.selection_json)",
+            "forensic_<uid>.db (lesend - pages.html, der Seitenabzug)",
+        ),
+        betrieb="Der Betrieb darf weiterlaufen. Beide Datenbanken werden mit "
+                "'mode=ro' geoeffnet - auch die Hauptverbindung; es gibt "
+                "keinen schreibfaehigen Griff auf ein Beweismittel.",
+        beleg="Nein. Es entsteht kein Eintrag im Protokollbuch - das Werkzeug "
+              "beruehrt die coordinator.db nicht.",
+        ausgabe="Klartext auf der Konsole. Er enthaelt KEINE Beitragsinhalte, "
+                "nur Baumstruktur, Kennungen und Klassennamen; der markierte "
+                "Wortlaut wird auf 40 Zeichen gekuerzt und laesst sich mit "
+                "'--ohne-wortlaut' ganz unterdruecken. Die Ausgabe darf "
+                "deshalb unveraendert weitergegeben werden.",
+        hinweis="WOZU ES DA IST: Bei der Sichtpruefung am 28.08.2026 loeste "
+                "in einer echten Beweismittelgruppe KEINER von 23 Ankern "
+                "auf; alle Absaetze wurden ueber den Wortlaut gefunden oder "
+                "gar nicht. Aus der Bildschirmansicht ist die Ursache nicht "
+                "zu bestimmen. DIESES WERKZEUG BESTIMMT SIE, statt sie zu "
+                "vermuten - und die drei Bilder, die es unterscheidet, sind "
+                "verschieden zu behandeln: bricht es GANZ OBEN, stimmt der "
+                "Bezugspunkt nicht (der <body>-Auszug); bricht es an einem "
+                "Schritt mit zu WENIGEN Geschwistern, hat der Browser dort "
+                "mehr Elemente gesehen als im Abzug stehen - dann hat "
+                "zwischen Abzug und Markierung etwas in die Seite "
+                "geschrieben; bricht es erst bei 'text()[n]', weicht die "
+                "Zerlegung des Textes ab. ES REPARIERT NICHTS. Es liefert "
+                "den Befund, auf dem eine Reparatur aufsetzen kann.",
+        konfiguration=KONFIG_KEINE,
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/diag_vollzitat_anker.py "
+                     "--evidence /daten/evidence_700.db "
+                     "--forensic /daten/forensic_700.db",
+                     "Prueft die zehn juengsten Markierungen und schliesst "
+                     "mit einer Zaehlung: 'geprueft | loesen auf | brechen | "
+                     "ohne Anker | ohne Seitenabzug'.",
+                     _GEPRUEFT_727),
+                _bsp("python tools/diag_vollzitat_anker.py "
+                     "--evidence /daten/evidence_700.db "
+                     "--forensic /daten/forensic_700.db --beleg 26",
+                     "Nur Beleg #26 - fuer die gezielte Nachschau zu einem "
+                     "Befund aus dem Bericht.",
+                     _GEPRUEFT_727),
+                _bsp("python tools/diag_vollzitat_anker.py "
+                     "--evidence /daten/evidence_700.db "
+                     "--forensic /daten/forensic_700.db --grenze 40 "
+                     "--ohne-wortlaut",
+                     "Vierzig Belege ohne jeden Inhaltsausschnitt - die "
+                     "Ausgabe ist damit ohne weitere Pruefung weitergebbar.",
+                     _GEPRUEFT_727),
             ),
         ),
     ),

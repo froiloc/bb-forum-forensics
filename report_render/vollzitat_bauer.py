@@ -78,6 +78,7 @@ from core.logger import get_logger
 from report_render.absatz_finder import (
     AbsatzFinder,
     Markierung,
+    WEG_FEHLT,
     WEG_KEINER,
     WEG_TEXT,
     WEG_UEBERSETZUNG,
@@ -85,7 +86,10 @@ from report_render.absatz_finder import (
     auswahl_text,
 )
 from report_render.ermittler_namen import ErmittlerNamen
-from report_render.quellen_kunde import ART_BEITRAG, ART_PN, QuellenKunde
+from report_render.quellen_kunde import (
+    ART_BEITRAG, ART_PN, ART_UNBEKANNT, POST_AUS_ANNOTATION,
+    POST_AUS_SEITENABZUG, QuellenKunde,
+)
 from report_render.vollzitat_satz import (
     Absatz,
     Befund,
@@ -229,13 +233,15 @@ class VollzitatBauer:
         from report_render.absatz_finder import _klartext
 
         for schluessel, block in bloecke.items():
-            for finder, element, markierungen in \
+            for finder, element, markierungen, von_gesamt in \
                     absatz_index.get(schluessel, {}).values():
                 nummern = sorted(m.nummer for m in markierungen)
                 block.absaetze.append(
                     Absatz(html=finder.rendere(element, markierungen),
                            text=_klartext(element),
-                           nummern=nummern, ersatz=False))
+                           nummern=nummern, ersatz=False,
+                           moeglich=von_gesamt is not None,
+                           von_gesamt=von_gesamt))
             # NACH DER VERWEISNUMMER SORTIEREN, nicht nach Fundzeitpunkt.
             # Ersatzabsaetze (kein Absatz gefunden) entstehen waehrend des
             # Einordnens, die echten erst hier - ohne diese Zeile stuenden
@@ -245,22 +251,84 @@ class VollzitatBauer:
             block.absaetze.sort(key=lambda a: min(a.nummern) if a.nummern else 0)
 
         gruppe.unterbloecke = list(bloecke.values())
+        gruppe.warnungen = self._buendeln(gruppe.warnungen)
         return gruppe
+
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _buendeln(warnungen: List[str]) -> List[str]:
+        """
+        Gleichlautende Warnungen zu EINER Zeile mit Belegliste zusammenfassen.
+
+        DER BEFUND (Sichtpruefung Alex, 28.08.2026): Eine echte Gruppe mit 23
+        Belegen erzeugte 43 Warnungszeilen - 20-mal dieselbe Meldung "ohne
+        Beitragsbezug", 17-mal dieselbe Meldung zum Anker. Der Hinweisbereich
+        war damit unlesbar, und die drei Zeilen, auf die es wirklich ankam
+        (drei nicht mehr vorhandene Belege), gingen darin unter.
+
+        GR1 IST DAMIT NICHT AUFGEWEICHT, sondern erst erfuellt: Kein Beleg
+        wird still uebersprungen - jede Beleg-Nummer steht weiterhin in der
+        Zeile, nur der WORTLAUT der Begruendung steht einmal statt zwanzigmal.
+        Eine Liste, die niemand liest, weil sie zu lang ist, ist kein besserer
+        Nachweis als eine, die fehlt.
+
+        Die Reihenfolge des ERSTEN Auftretens bleibt erhalten - sie folgt der
+        Reihenfolge der Belege, also der des Bearbeiters.
+        """
+        import re as _re
+
+        muster = _re.compile(r"^Beleg #(\d+): (.*)$", _re.S)
+        reihenfolge: List[str] = []
+        nummern: Dict[str, List[int]] = {}
+        einzeln: List[str] = []
+        for w in warnungen:
+            treffer = muster.match(w)
+            if not treffer:
+                # Meldungen ohne Belegbezug (fehlende Tabelle, fehlender
+                # Beleg) bleiben, wie sie sind - sie kommen ohnehin je
+                # einmal vor.
+                einzeln.append(w)
+                continue
+            nr, rumpf = int(treffer.group(1)), treffer.group(2)
+            if rumpf not in nummern:
+                nummern[rumpf] = []
+                reihenfolge.append(rumpf)
+            nummern[rumpf].append(nr)
+
+        aus: List[str] = []
+        for rumpf in reihenfolge:
+            liste = nummern[rumpf]
+            if len(liste) == 1:
+                aus.append("Beleg #%d: %s" % (liste[0], rumpf))
+            else:
+                aus.append(
+                    "Belege #%s (%d Stueck): %s"
+                    % (", #".join(str(n) for n in liste), len(liste), rumpf))
+        return aus + einzeln
 
     # ------------------------------------------------------------------
     def _fehlbeleg(self, gruppe, bloecke, beleg_id: int) -> None:
         from report_render.quellen_kunde import Quelle
         schluessel = ("fehlt", beleg_id)
-        block = Unterblock(quelle=Quelle(art=ART_BEITRAG))
+        # BUILD 727: ART_UNBEKANNT statt ART_BEITRAG. Bis Build 726 erschien
+        # ein geloeschter Beleg im Bericht als "Beitrag zum Thema »(Betreff
+        # nicht ermittelbar)«" mit dem Vorbehalt "umschliessender Absatz nicht
+        # auffindbar" - also als Forenbeitrag, dessen Absatz man nur nicht
+        # gefunden hat. Beides war erfunden: es gibt weder einen Beitrag noch
+        # einen Absatz. Eine erfundene Quellenart ist in einer Akte schlimmer
+        # als eine fehlende, weil sie glaubwuerdig aussieht.
+        block = Unterblock(quelle=Quelle(art=ART_UNBEKANNT))
         block.befunde.append(Befund(
             nummer=1, annotation_id=beleg_id,
             kategorie="", kategorie_text=kategorie_farben.UNBEKANNT_NAME,
             css_klasse=kategorie_farben.css_klasse(None),
             farbe=kategorie_farben.UNBEKANNT_HINTERLEGUNG,
             markierung="", notiz="", ermittler="",
-            name_quelle="kuerzel", absatz_weg=WEG_KEINER,
+            name_quelle="kuerzel", absatz_weg=WEG_FEHLT,
             hinweis="Zu dieser Beleg-Nummer gibt es in der "
-                    "Beweismitteldatenbank keine aktive Annotation."))
+                    "Beweismitteldatenbank keine aktive Annotation. Sie "
+                    "wurde geloescht oder stammt aus einer anderen "
+                    "Beweismitteldatenbank."))
         bloecke[schluessel] = block
         gruppe.warnungen.append(
             "Beleg #%d ist in der Beweismittelgruppe verzeichnet, in "
@@ -273,10 +341,39 @@ class VollzitatBauer:
     def _einordnen(self, gruppe, bloecke, absatz_index, beleg_id, rec) -> None:
         from forensic_api.annotations import _derive_post_id
 
+        selection = self._selection(rec)
+        finder = self._seite(rec.page_url)
+        fundstelle = finder.finde(selection, rec.element_id)
+
+        # -- Die Beitragsnummer, und der Weg dorthin ----------------------
+        #
+        # BUILD 727, DER BEFUND AUS DER SICHTPRUEFUNG (Alex, 28.08.2026): Bei
+        # ALLEN 23 Belegen einer echten Gruppe war 'post_id' leer - und das
+        # ist kein Datenfehler, sondern die dokumentierte Bauweise. toolbar.js
+        # setzt fuer Textmarkierungen element_id UND post_id ausdruecklich auf
+        # null ("Post-Bezug via XPath", Build 336). Genau diese Markierungen
+        # sind es aber, fuer die das Vollzitat gebaut ist. Die Folge war eine
+        # Kette: kein Betreff, kein Originaldatum, kein '#p'-Anker in der
+        # Fundstelle, kein PN-Partner - und, weil der Unterblock-Schluessel an
+        # der post_id haengt, JEDER BELEG IN SEINEM EIGENEN KASTEN. Fuenf der
+        # neun Anforderungen fielen an dieser einen Stelle.
+        #
+        # Ab Build 727 schreibt die Toolbar die post_id fuer Textmarkierungen
+        # mit. Fuer den BESTAND - alles, was vorher markiert wurde - hilft das
+        # nicht. Deshalb der Rueckfall: der gefundene Absatz sitzt im
+        # Seitenabzug in einem Vorfahr mit id="p<Nummer>", und der IST der
+        # Beitrag. Welcher Weg benutzt wurde, steht in quelle.post_quelle und
+        # wird ausgewiesen.
         post_id = _derive_post_id(rec)
+        post_quelle = POST_AUS_ANNOTATION
+        if post_id is None:
+            abgeleitet = self._post_aus_fund(fundstelle)
+            if abgeleitet is not None:
+                post_id, post_quelle = abgeleitet, POST_AUS_SEITENABZUG
+
         quelle = self._quellen.ermitteln(
             page_url=rec.page_url, post_id=post_id,
-            element_id=rec.element_id)
+            element_id=rec.element_id, post_quelle=post_quelle)
 
         # Der Unterblock-Schluessel - s. Kopf, "DIE ZUSAMMENFASSUNG".
         if post_id is None:
@@ -296,10 +393,6 @@ class VollzitatBauer:
                 gruppe.warnungen.append("Beleg #%d: %s" % (beleg_id, w))
 
         nummer = len(block.befunde) + 1
-
-        selection = self._selection(rec)
-        finder = self._seite(rec.page_url)
-        fundstelle = finder.finde(selection, rec.element_id)
 
         kategorie = rec.category or ""
         if not kategorie_farben.ist_bekannt(kategorie):
@@ -330,18 +423,42 @@ class VollzitatBauer:
             gruppe.warnungen.append(
                 "Beleg #%d: %s" % (beleg_id, fundstelle.hinweis))
 
-        if fundstelle.block is not None:
-            eintrag = absatz_index[schluessel].setdefault(
-                id(fundstelle.block), (finder, fundstelle.block, []))
-            eintrag[2].append(Markierung(
-                von=fundstelle.von, bis=fundstelle.bis,
-                css_klasse=befund.css_klasse, farbe=befund.farbe,
-                nummer=nummer))
-        else:
+        if not fundstelle.treffer:
             # Kein Absatz - die markierte Stelle wird ALLEIN wiedergegeben,
             # sichtbar als Ersatz gekennzeichnet. Nichts zu zeigen waere ein
             # still uebersprungener Beleg (GR1).
             block.absaetze.append(self._ersatzabsatz(befund))
+            return
+
+        # ALLE Fundstellen eintragen (Weisung Alex, 28.08.2026). Bei genau
+        # einer ist das der Regelfall; bei mehreren bekommt jede ihren eigenen
+        # Absatz und wird als MOEGLICHE Fundstelle bezeichnet.
+        gesamt = len(fundstelle.treffer)
+        for lauf, treffer in enumerate(fundstelle.treffer, 1):
+            eintrag = absatz_index[schluessel].setdefault(
+                id(treffer.block),
+                (finder, treffer.block, [],
+                 (lauf, gesamt) if gesamt > 1 else None))
+            eintrag[2].append(Markierung(
+                von=treffer.von, bis=treffer.bis,
+                css_klasse=befund.css_klasse, farbe=befund.farbe,
+                nummer=nummer))
+
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _post_aus_fund(fundstelle):
+        """
+        Die Beitragsnummer aus dem gefundenen Absatz - nur wenn eindeutig.
+
+        BEI MEHRDEUTIGEM WORTLAUT WIRD NICHTS ABGELEITET, auch dann nicht,
+        wenn die Fundstellen zufaellig im selben Beitrag liegen wuerden: die
+        Zuordnung waere geraten. Ein falscher Beitrag brachte falschen
+        Betreff, falsches Datum und falsche Gruppierung mit sich - und saehe
+        dabei vollkommen unauffaellig aus.
+        """
+        if not fundstelle.treffer or fundstelle.mehrdeutig:
+            return None
+        return AbsatzFinder.post_id_von(fundstelle.treffer[0].block)
 
     # ------------------------------------------------------------------
     @staticmethod
