@@ -101,11 +101,43 @@ from core.logger import get_logger
 
 logger = get_logger(__name__)
 
-#: Die Kennung eines Beitrags im Seitenabzug: 'p<Nummer>'. Dieselbe
-#: Schreibweise, die forensic_api/annotations._ELEMENT_POST_RE fuer
-#: 'annotations.element_id' erwartet - die beiden duerfen nicht auseinander
-#: laufen, sonst bezeichnet dasselbe Muster an zwei Stellen Verschiedenes.
-_POST_KENNUNG = re.compile(r"^p(\d+)$")
+#: Die Kennung eines Beitrags im Seitenabzug.
+#:
+#: BUILD 728: BEIDE Schreibweisen - weil die beiden Ansichten des Forums
+#: VERSCHIEDEN gebaut sind. Beleg: zwei Auszuege, uebergeben von Alex am
+#: 28.08.2026, und der Forenquelltext viewtopic0.php.
+#:
+#:   FORENBEITRAG (viewtopic) - ZWEI Kennungen mit derselben Nummer:
+#:     <article class="post" id="p1164441">      <- aeussere Kennung
+#:       <div class="blockpost">
+#:         <div class="box" id="pp1164441">      <- innere Kennung
+#:
+#:   PRIVATE NACHRICHT (pmsnew) - nur die AEUSSERE:
+#:     <div id="p120862" class="blockpost roweven">
+#:       <div class="box">                       <- KEINE Kennung!
+#:
+#: Bis Build 727 wurde nur die aeussere angenommen. Fuer die PN-Ansicht ist
+#: das genau richtig; fuer den Forenbeitrag ging es gut, weil post_id_von()
+#: aufsteigt, die innere nicht passte und der Aufstieg bis zum <article>
+#: weiterlief. Es HING aber daran, dass der <article> da ist - in der
+#: reduzierten Ansicht (Build 396) und in gallery.php gibt es nur eine
+#: Kennung. Umgekehrt genuegt die innere allein NICHT: die Weisung Alex
+#: ("Suche nach <div class='box' id='pp<post_id>'>") woertlich als einzigen
+#: Weg genommen, haette die privaten Nachrichten leer gelassen, und dort
+#: haengt an der post_id der Gespraechspartner. Der Webserver kennt die
+#: Doppelung an anderer Stelle laengst: db/forensic_db.py:291-307
+#: (_anker_muster) sucht im BLOB nach BEIDEN, belegt mit 'viewtopic0 Z.975'.
+#:
+#: Die Ziffern stehen in Gruppe 2. Gruppe 1 haelt nur fest, welche der beiden
+#: Kennungen getroffen hat - sie wird nicht ausgewertet, macht den Ausdruck
+#: aber lesbar.
+#:
+#: ACHTUNG, ABSICHTLICHER UNTERSCHIED zu forensic_api/annotations.
+#: _ELEMENT_POST_RE: JENES Muster liest 'annotations.element_id', und dort
+#: steht, was die Toolbar hineingeschrieben hat - immer die aeussere Form
+#: 'p<Nummer>'. Es bleibt deshalb eng. HIER wird der SEITENABZUG gelesen, und
+#: der traegt beide. Die beiden Muster beschreiben nicht dasselbe.
+_POST_KENNUNG = re.compile(r"^p(p?)(\d+)$")
 
 #: Die vier moeglichen Herkuenfte eines Absatzes. Sie wandern bis in den
 #: Bericht - siehe Kopf, "DREI WEGE".
@@ -586,7 +618,10 @@ class AbsatzFinder:
         Jeder Beitrag traegt im Forum die Kennung 'p<Nummer>' am
         umschliessenden Element (Forenquelltext topic.php / viewtopic.php:
         '<div id="p<?php echo $cur_post['id'] ?>" class="blockpost...">'; in
-        der Vollansicht ein '<article class="post" id="p...">').
+        der Vollansicht ein '<article class="post" id="p...">') - und in der
+        Vollansicht ZUSAETZLICH die innere Kennung 'pp<Nummer>' am
+        '<div class="box">'. Ab Build 728 trifft beides (s. _POST_KENNUNG);
+        die Nummer ist dieselbe, gleich welche zuerst erreicht wird.
 
         WOZU DAS GEBRAUCHT WIRD: 'annotations.post_id' ist bei
         Textmarkierungen leer - toolbar.js setzt sie dort bewusst nicht
@@ -602,7 +637,7 @@ class AbsatzFinder:
             kennung = (el.get("id") or "") if hasattr(el, "get") else ""
             treffer = _POST_KENNUNG.match(kennung.strip())
             if treffer:
-                return int(treffer.group(1))
+                return int(treffer.group(2))
             el = el.getparent()
         return None
 

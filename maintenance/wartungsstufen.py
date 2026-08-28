@@ -160,6 +160,25 @@ WERKZEUGE_A: Dict[str, str] = {
         "Ergebnisdatenbank. Die vorhandene Sperre --ja-backup-vorhanden "
         "FRAGT den Bediener, MISST aber nicht, ob ein Dienst die Datei "
         "gerade haelt",
+
+    # ------------------------------------------------------------------
+    # BUILD 728 - der Nachtrag der Beitragsnummer.
+    #
+    # Er schreibt in evidence_<uid>.db, also auf ein Beweismittel unter
+    # Migrationsvorbehalt - das allein ist bereits ein Stufe-A-Grund. Er
+    # sichert vorher (ohne Abschaltmoeglichkeit) und belegt in der
+    # Hash-Kette, aber er SPIELT NICHTS ZURUECK: nach einem Abbruch liegt
+    # die Sicherung da und ist von Hand einzusetzen. Genau deshalb ist die
+    # Sicherung kein Ersatz fuer die Ruhepruefung - eine Datei, die ein
+    # Dienst offen haelt, waehrend hier geschrieben wird, ist der Fall, den
+    # das Backup nicht heilt.
+    # ------------------------------------------------------------------
+    "tools/postid_nachtragen.py":
+        "--ausfuehren schreibt in evidence_<uid>.db (annotations.post_id "
+        "und evidence_audit_log) - eine Ermittler-Ergebnisdatenbank unter "
+        "Migrationsvorbehalt. Es sichert vorher und belegt in der "
+        "Hash-Kette, spielt aber nach einem Abbruch NICHT von selbst "
+        "zurueck",
 }
 
 

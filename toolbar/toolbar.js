@@ -2504,19 +2504,66 @@
 
     // -------------------------------------------------------------------------
     // Build 727: Die Beitragsnummer zur aktuellen Textmarkierung.
+    // Build 728: BEIDE Kennungen eines Beitrags werden angenommen.
     //
-    // Gesucht wird der naechste Vorfahr der Auswahl mit einer Kennung der
-    // Form 'p<Nummer>' — so kennzeichnet das Forum jeden Beitrag
-    // (viewtopic.php: '<article class="post" id="p...">'; pmsnew topic.php:
-    // '<div id="p..." class="blockpost">'). Beide Ansichten sind damit
-    // abgedeckt, ohne dass hier eine Klassenliste gepflegt werden muss.
+    // Gesucht wird der naechste Vorfahr der Auswahl, dessen Kennung einen
+    // Beitrag bezeichnet. DIE BEIDEN ANSICHTEN SIND VERSCHIEDEN GEBAUT —
+    // Beleg: zwei Auszuege, uebergeben von Alex am 28.08.2026, und der
+    // Forenquelltext viewtopic0.php:
+    //
+    //   FORENBEITRAG (viewtopic) — ZWEI Kennungen mit derselben Nummer:
+    //     <article class="post" id="p1164441">      <- aeussere Kennung
+    //       <div class="blockpost">
+    //         <h2>...</h2>
+    //         <div class="box" id="pp1164441">      <- innere Kennung
+    //           ... <div class="postmsg"><p>Text</p>
+    //
+    //   PRIVATE NACHRICHT (pmsnew) — nur die AEUSSERE:
+    //     <div id="p120862" class="blockpost roweven">
+    //       <h2>...</h2>
+    //       <div class="box">                       <- KEINE Kennung!
+    //         ... <div class="postmsg"><p>Text</p>
+    //
+    // DARAUS FOLGT, DASS BEIDE FORMEN GELTEN MUESSEN. Alex hat als Weg die
+    // innere Kennung genannt ("die Suche nach <div class='box'
+    // id='pp<post_id>'>"). Woertlich als EINZIGEN Weg genommen, waeren
+    // ausgerechnet die privaten Nachrichten leer geblieben — und dort haengt
+    // an der post_id der Gespraechspartner. Umgekehrt genuegt die aeussere
+    // allein nicht: in der reduzierten Ansicht (Build 396) und in
+    // gallery.php gibt es nur eine Kennung, und ein spaeterer Umbau des
+    // Abzugs koennte den <article> wegfallen lassen.
+    //
+    // Dieselbe Doppelung kennt der Webserver bereits an anderer Stelle:
+    // db/forensic_db.py:291-307 (_anker_muster) sucht im Seitenabzug
+    // ausdruecklich nach 'id="p<id>"' UND 'id="pp<id>"', belegt mit
+    // 'viewtopic0 Z.975'.
+    //
+    // WARUM DAS HIER NACHGEZOGEN WIRD, obwohl es schon vorher meist ging:
+    // Die Fassung aus Build 727 pruefte nur /^p\d+$/. Beim Aufstieg wird die
+    // innere Kennung ZUERST erreicht; sie passte nicht, und der Aufstieg lief
+    // weiter bis zum <article> — dort passte es. Das Ergebnis war also
+    // richtig, aber es HING DARAN, dass der aeussere Container vorhanden ist.
+    // In der reduzierten Ansicht (Nicht-Vollmitglieder, Build 396) und in
+    // gallery.php gibt es nur EINE Kennung, und ein spaeterer Umbau des
+    // Forenabzugs koennte den <article> ebenso wegfallen lassen. Die Weisung
+    // Alex vom 28.08.2026 nennt ausdruecklich die INNERE Kennung
+    // ('<div class="box" id="pp<post_id>">') als den Weg. Ab hier ist beides
+    // gleichwertig — die Nummer ist dieselbe, gleich welche Kennung trifft.
     //
     // Rueckgabe null, wenn kein solcher Vorfahr existiert (Uebersichts- und
     // Suchseiten haben keine Beitraege). Dann bleibt es wie bisher: der
     // Bericht faellt auf die Ableitung aus dem Seitenabzug zurueck und
     // benennt das.
-    // Beleg: Sichtpruefung Alex 28.08.2026; Forenquelltext topic.php.
+    // Beleg: Sichtpruefung Alex 28.08.2026; Forenquelltext viewtopic0.php,
+    //        topic.php; db/forensic_db.py:291-307.
     // -------------------------------------------------------------------------
+
+    //: 'p123' -> 123, 'pp123' -> 123. Die Ziffern stehen in Gruppe 2; Gruppe 1
+    //: haelt nur fest, WELCHE der beiden Kennungen getroffen hat. Bewusst
+    //: NICHT /^pp?\d+$/: dort waere die Zerlegung wieder Handarbeit
+    //: (substring(1) haette bei 'pp123' 'p123' geliefert und NaN ergeben).
+    var _POST_KENNUNG = /^p(p?)(\d+)$/;
+
     function _postElementVon(selObj) {
       try {
         var sel = window.getSelection();
@@ -2524,13 +2571,21 @@
         var knoten = sel.getRangeAt(0).startContainer;
         var el = (knoten && knoten.nodeType === 3) ? knoten.parentElement : knoten;
         while (el && el.nodeType === 1) {
-          var id = el.id || "";
-          if (/^p\d+$/.test(id)) {
-            var nr = parseInt(id.substring(1), 10);
-            return isNaN(nr) ? null : nr;
+          var treffer = _POST_KENNUNG.exec(el.id || "");
+          if (treffer) {
+            var nr = parseInt(treffer[2], 10);
+            if (!isNaN(nr)) {
+              _dbg("_postElementVon: Beitrag", nr, "ueber Kennung",
+                   "'" + el.id + "'", "(" + (treffer[1] ? "innere" : "aeussere")
+                   + " Kennung)");
+              return nr;
+            }
+            return null;
           }
           el = el.parentElement;
         }
+        _dbg("_postElementVon: kein Vorfahr mit Beitragskennung - die " +
+             "Seite traegt keine Beitraege (Uebersicht, Suche, Profil).");
       } catch (err) {
         _dbg("_postElementVon: Auswahl nicht auswertbar:", err);
       }
