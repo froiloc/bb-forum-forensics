@@ -136,6 +136,72 @@
           "comment": "EINE MOEGLICHKEIT AUSGESCHLOSSEN, die Ursache weiterhin nicht bestimmt. Der von Alex uebergebene PN-Auszug enthaelt ein Element, das NICHT aus dem Forum stammt, sondern von uns: <div class=\"aiw-flag-fallback aux-part\"> innerhalb des Beitragscontainers. Naheliegende Vermutung war, dass unsere eigenen Einbauten die Geschwisterzaehlung verschieben und damit die Anker brechen. DAS TRIFFT FUER DIESE BEIDEN EINBAUTEN NICHT ZU: _notAnker() haengt die Leiste mit container.appendChild() ANS ENDE (toolbar.js Z. 7009) - nachfolgende Geschwister gibt es dann keine mehr, die Indizes davor bleiben unveraendert; _injectButton() setzt seinen Eintrag mit foot.insertBefore(wrap, foot.firstChild) (Z. 7083), und 'foot' ist die Fussleiste, die in Dokumentreihenfolge NACH '.postmsg' steht. Fuer einen Anker, der in '.postmsg' endet, verschiebt sich dadurch nichts. Die Ursache liegt also anderswo; die Messung mit tools/diag_vollzitat_anker.py steht weiterhin aus."
         }
       ]
+    },
+    {
+      "id": "c4e91b76-2d38-4a05-b8e1-6f30a2c7d519",
+      "type": "bug",
+      "title": "Wortlautsuche verfehlte jede mehrzeilige Markierung (<br> vs. \\n)",
+      "affected_version": "0.8.728",
+      "reporter": "Alex",
+      "reported_at": "2026-08-28T22:00:00+02:00",
+      "status": "resolved",
+      "priority": "critical",
+      "severity": "major",
+      "description": "Alex, 28.08.2026: 'Wenn du nach dem Text gesucht hast, hast du dann beruecksichtigt, dass im BLOB \\n zu <br> aufgeloest wird? Du musst dir ansehen, wie textContent im JSON von annotation.selection_json erzeugt wird. Das muss rueckwaerts abgewickelt werden.' - ER HAT RECHT, und der Beleg steht in toolbar/toolbar.js Z. 1101: 'var text = sel.toString().trim();'. 'textContent' ist damit die GERENDERTE Auswahl und nicht der Quelltext: jedes <br> ist ein '\\n', jede Blockgrenze ebenso, und Rand-Leerraum fehlt. Bis Build 728 wurde genau dieser Text im QUELLTEXT des Absatzes gesucht (_klartext), wo an derselben Stelle NICHTS steht. GEMESSEN an einem Absatz mit drei <br>: Quelltext 'Zeile eins.Zeile zwei...', Browserbild 'Zeile eins.\\nZeile zwei...', 'Browser-Wortlaut kommt im Quelltext vor?' -> False. Jede mehrzeilige Markierung konnte damit nur verfehlt werden - und weil der Wortlaut im Bestand der einzige noch tragende Weg war, sah es aus, als fehle der Beleg. Er fehlte nicht; er wurde mit dem falschen Massstab gesucht.",
+      "expected_behavior": "Der gespeicherte Wortlaut wird in derselben Fassung gesucht, in der er entstanden ist, und der Treffer in Quelltext-Versaetze zurueckgesetzt.",
+      "actual_behavior": "In Alex' Lauf ueber 25 echte Markierungen: 4-mal 'nicht gefunden', 17-mal nur ueber den Wortlaut, 0-mal ueber den Anker.",
+      "resolved_in_version": "0.8.729",
+      "tags": [
+        "vollzitat",
+        "wortlaut",
+        "br",
+        "selection_json",
+        "toolbar"
+      ],
+      "related_to": [
+        "b7d4f2a1-0c63-4e58-9a17-2f5d8e30c941"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-08-28T22:30:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Build 729: browser_wortlaut() bildet den Text eines Absatzes so, wie Range.toString() ihn bildet (<br> und Blockgrenzen als '\\n'), UND fuehrt eine Versatztabelle mit, ueber die ein Treffer wieder in Quelltext-Versaetze zurueckgesetzt wird - die Einfaerbung arbeitet auf dem Quelltext, ein Treffer im Browserbild allein waere um die Umbrueche verschoben. Gesucht wird in drei Fassungen mit Rangfolge: woertlich, ohne Rand-Leerraum, mit gefaltetem Leerraum; die dritte markiert nur noch den ganzen Absatz und sagt das. Testfaelle BR01-BR07. Gegenprobe gefahren: mit dem Suchverfahren aus Build 728 werden BR02 und BR03 rot, BR06 bleibt gruen."
+        }
+      ]
+    },
+    {
+      "id": "8a15d3c0-7e64-4b92-a3f7-51d8c9e02b46",
+      "type": "bug",
+      "title": "Protokoll behauptete 'Anker loest nicht auf', ohne es zu messen",
+      "affected_version": "0.8.728",
+      "reporter": "Alex",
+      "reported_at": "2026-08-28T22:00:00+02:00",
+      "status": "resolved",
+      "priority": "critical",
+      "severity": "major",
+      "description": "Alex: 'Was mich extrem verstoert ist, dass XPATH nicht aufgeloest wird. Dafuer finde ich keine Erklaerung.' - Die Erklaerung liess sich aus dem Protokoll auch gar nicht gewinnen, UND DAS IST MEIN FEHLER. AbsatzFinder._ueber_xpath() gab in FUENF verschiedenen Lagen None zurueck (kein Anker in der Auswahl / Ausdruck loest nicht auf / kein Textpunkt / kein Absatz-Vorfahr / Versatz nicht im Absatz), und alle fuenf bekamen denselben Satz: 'der Anker %r loest nicht auf'. In vier davon war dieser Satz womoeglich falsch. Alex hat daraus - voellig folgerichtig - auf einen Totalausfall der Anker geschlossen; gemessen war das nicht. Eine Diagnose, die fuenf Ursachen unter einem Namen fuehrt, ist keine Diagnose (Grundregel: keine Behauptung ohne Beleg).",
+      "expected_behavior": "Jede Fundstelle nennt den gemessenen Grund; bei einem gebrochenen Anker zusaetzlich den Schritt, an dem er bricht, und was dort statt dessen steht.",
+      "actual_behavior": "25 Zeilen mit demselben unbelegten Satz.",
+      "resolved_in_version": "0.8.729",
+      "tags": [
+        "vollzitat",
+        "anker",
+        "xpath",
+        "diagnose",
+        "belegpflicht"
+      ],
+      "related_to": [
+        "9f2b8c54-73ad-41e6-a29f-05b1e7d3c860"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-08-28T22:30:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Build 729: fuenf Gruende (GRUND_OHNE_ANKER, GRUND_ANKER_BRICHT, GRUND_KEIN_PUNKT, GRUND_KEIN_BLOCK, GRUND_KEIN_VERSATZ), jeder mit Klartext, und AbsatzFinder.anker_bruchstelle() loest den Ausdruck Schritt fuer Schritt auf und nennt den Bruchpunkt samt Gegenzaehlung ('der Browser hat 9 <article> gesehen, im Abzug stehen 3'). Der Grund wandert auch in eine ERFOLGREICHE Wortlaut-Fundstelle - genau dort fehlte er. tools/postid_nachtragen.py druckt ihn je Beleg und schliesst mit einer ANKERBILANZ. Damit beantwortet der naechste Lauf die Frage, die dieser offenlassen musste. Testfaelle AN01-AN08, Gegenprobe AN06: wo der Anker traegt, darf kein Grund stehen."
+        }
+      ]
     }
   ]
 }

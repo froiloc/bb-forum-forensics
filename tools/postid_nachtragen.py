@@ -97,6 +97,7 @@ from typing import List, Optional
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from management.help import cli_epilog                      # noqa: E402
+from report_render.absatz_finder import GRUND_TEXT          # noqa: E402
 from management.maintenance.postid_nachtrag import (        # noqa: E402
     ERG_GETRAGEN,
     ERG_MEHRDEUTIG,
@@ -306,6 +307,14 @@ def _lauf(args, sag: Mitschrift) -> int:
     sag("")
     for z in befund.zeilen:
         sag("  " + z.als_protokollzeile())
+        # BUILD 729: Wenn der Sollweg nicht getragen hat, steht darunter der
+        # GEMESSENE Grund - und bei einem gebrochenen Anker der Schritt, an
+        # dem er bricht. Bis Build 728 behauptete das Protokoll pauschal, der
+        # Anker loese nicht auf; das war in fuenf verschiedenen Lagen
+        # derselbe Satz und in vier davon womoeglich falsch.
+        zusatz = z.ankerzeile()
+        if zusatz:
+            sag("  " + zusatz)
 
     # --- Was ein Mensch ansehen muss --------------------------------------
     offen = [z for z in befund.zeilen
@@ -328,6 +337,22 @@ def _lauf(args, sag: Mitschrift) -> int:
                    if weg in WEGE_RUECKFALL else ""))
     for h in befund.hinweise:
         sag("  Hinweis: %s" % h)
+
+    # BUILD 729: DIE ANKER-BILANZ. Sie ist die Antwort auf die Frage, die
+    # der Lauf von Build 728 offenlassen musste - dort stand 25-mal
+    # 'Weg=wortlaut' und kein Wort darueber, WARUM. Aus dieser Zaehlung geht
+    # hervor, ob der Sollweg an einer Stelle systematisch bricht.
+    gruende = {}
+    for z in befund.zeilen:
+        if z.anker_grund:
+            gruende[z.anker_grund] = gruende.get(z.anker_grund, 0) + 1
+    if gruende:
+        sag("")
+        sag("ANKERBILANZ - warum der Sollweg nicht getragen hat:")
+        for grund, anzahl in sorted(gruende.items(),
+                                    key=lambda p: -p[1]):
+            sag("  %-16s %6d   %s" % (grund, anzahl,
+                                      GRUND_TEXT.get(grund, "")))
 
     if befund.abgebrochen:
         sag("")

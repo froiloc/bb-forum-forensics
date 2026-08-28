@@ -5554,6 +5554,15 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "derselben Seite ist voellig regulaer. Die Gegenprobe steht "
                 "im Protokoll und entscheidet nichts - massgeblich ist der "
                 "versiegelte Seitenabzug.",
+                "DIE ANKERBILANZ AM ENDE IST DER EIGENTLICHE ERTRAG, wenn "
+                "der Rueckfall haeufig greift. Sie sagt, WARUM der Sollweg "
+                "nicht getragen hat, und bei einem gebrochenen Anker nennt "
+                "die Zeile unter dem Beleg den SCHRITT, an dem er bricht - "
+                "bricht es ganz oben, stimmt der Bezugspunkt nicht; bricht "
+                "es an einem Element, hat der Browser dort mehr gesehen als "
+                "im Abzug steht; bricht es erst bei 'text()[n]', weicht die "
+                "Zerlegung des Textes ab. Bis Build 728 stand statt dessen "
+                "in jeder Zeile derselbe unbelegte Satz.",
                 "STICHPROBE ZUERST BEI 'Weg=wortlaut' UND "
                 "'Weg=wortlaut_ein_beitrag'. Das ist der Rueckfall ueber die "
                 "Textsuche; 'Weg=anker' ist der Sollweg. Das Werkzeug listet "

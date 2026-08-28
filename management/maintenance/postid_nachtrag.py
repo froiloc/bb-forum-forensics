@@ -225,6 +225,13 @@ class Zeilenbefund:
     ergebnis: str = ERG_NICHT_GEFUNDEN
     im_paket: str = "ungeprueft"
     bemerkung: str = ""
+    #: BUILD 729 - WARUM der Ankerweg nicht getragen hat, GEMESSEN
+    #: (absatz_finder.GRUND_*), und bei GRUND_ANKER_BRICHT der Schritt, an
+    #: dem der Ausdruck bricht. Bis Build 728 stand hier nichts, und das
+    #: Protokoll behauptete pauschal, der Anker loese nicht auf - eine
+    #: Aussage, die es nicht gemessen hatte.
+    anker_grund: str = ""
+    anker_bruch: str = ""
 
     def als_protokollzeile(self) -> str:
         """Eine Zeile fuer Konsole und Protokolldatei."""
@@ -237,10 +244,31 @@ class Zeilenbefund:
                    self.im_paket,
                    self.bemerkung))
 
+    def ankerzeile(self) -> str:
+        """
+        Die Zusatzzeile zum Ankerweg - oder "" wenn der Sollweg getragen hat.
+
+        SIE IST DER EIGENTLICHE ERTRAG DES LAUFS, wenn der Rueckfall haeufig
+        greift: aus ihr geht hervor, OB der Anker bricht und WO. Ohne sie
+        blieb nur die Zaehlung 'Weg=wortlaut', und aus der laesst sich die
+        Ursache nicht ablesen.
+        """
+        if not self.anker_grund:
+            return ""
+        teile = ["Ankerweg: %s" % self.anker_grund]
+        if self.anker_bruch:
+            teile.append(self.anker_bruch)
+        return "          " + " | ".join(teile)
+
     def als_beleg(self) -> Dict[str, Any]:
         """Der Eintrag im Payload der Hash-Kette - nur Fakten, s. Klassenkopf."""
-        return {"id": self.annotation_id, "post_id": self.post_id,
-                "weg": self.weg, "art": self.art, "im_paket": self.im_paket}
+        beleg = {"id": self.annotation_id, "post_id": self.post_id,
+                 "weg": self.weg, "art": self.art, "im_paket": self.im_paket}
+        if self.anker_grund:
+            # Nur der CODE, nicht der Bruchtext: der nennt Elementnamen aus
+            # der Seite und gehoert damit ins Protokoll, nicht in die Kette.
+            beleg["anker_grund"] = self.anker_grund
+        return beleg
 
 
 @dataclass
@@ -628,6 +656,10 @@ class PostIdNachtrag:
             return None
 
         fundstelle = finder.finde(selection, r["element_id"])
+        # BUILD 729: der GEMESSENE Grund wandert mit, auch wenn der Wortlaut
+        # danach getragen hat. Genau dann ist er die Auskunft, die fehlte.
+        z.anker_grund = getattr(fundstelle, "anker_grund", "") or ""
+        z.anker_bruch = getattr(fundstelle, "anker_bruch", "") or ""
         if not fundstelle.treffer:
             z.ergebnis = ERG_NICHT_GEFUNDEN
             z.bemerkung = (fundstelle.hinweis
