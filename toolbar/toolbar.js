@@ -2502,6 +2502,41 @@
   // ===========================================================================
   var MarkerToolModule = (function () {
 
+    // -------------------------------------------------------------------------
+    // Build 727: Die Beitragsnummer zur aktuellen Textmarkierung.
+    //
+    // Gesucht wird der naechste Vorfahr der Auswahl mit einer Kennung der
+    // Form 'p<Nummer>' — so kennzeichnet das Forum jeden Beitrag
+    // (viewtopic.php: '<article class="post" id="p...">'; pmsnew topic.php:
+    // '<div id="p..." class="blockpost">'). Beide Ansichten sind damit
+    // abgedeckt, ohne dass hier eine Klassenliste gepflegt werden muss.
+    //
+    // Rueckgabe null, wenn kein solcher Vorfahr existiert (Uebersichts- und
+    // Suchseiten haben keine Beitraege). Dann bleibt es wie bisher: der
+    // Bericht faellt auf die Ableitung aus dem Seitenabzug zurueck und
+    // benennt das.
+    // Beleg: Sichtpruefung Alex 28.08.2026; Forenquelltext topic.php.
+    // -------------------------------------------------------------------------
+    function _postElementVon(selObj) {
+      try {
+        var sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return null;
+        var knoten = sel.getRangeAt(0).startContainer;
+        var el = (knoten && knoten.nodeType === 3) ? knoten.parentElement : knoten;
+        while (el && el.nodeType === 1) {
+          var id = el.id || "";
+          if (/^p\d+$/.test(id)) {
+            var nr = parseInt(id.substring(1), 10);
+            return isNaN(nr) ? null : nr;
+          }
+          el = el.parentElement;
+        }
+      } catch (err) {
+        _dbg("_postElementVon: Auswahl nicht auswertbar:", err);
+      }
+      return null;
+    }
+
     function toggleCategory(catId) {
       var current = _state.activeCategory;
       ForensicToolbar._setState({
@@ -2524,15 +2559,38 @@
       sel.removeAllRanges();
 
       // Annotation erstellen
+      // Build 727: AUCH XPath-Text-Marken bekommen jetzt die post_id.
+      //
+      // BIS BUILD 726 BLIEB SIE NULL — "Post-Bezug via XPath" (Build 336,
+      // Option B). Das war fuer die Toolbar richtig: sie loest den XPath im
+      // lebenden DOM auf und braucht die Nummer nicht. Fuer die AUSWERTUNG
+      // ist es nicht richtig. Die Sichtpruefung einer echten
+      // Beweismittelgruppe am 28.08.2026 ergab: bei ALLEN 23 Belegen war
+      // post_id leer, und daran fielen im Vollzitat fuenf Angaben auf einmal
+      // — Themenbetreff, Originaldatum des Beitrags, der '#p'-Anker der
+      // Fundstelle, der PN-Gespraechspartner und die Zusammenfassung
+      // mehrerer Belege desselben Beitrags in EINEN Unterblock. Der Bericht
+      // kann den XPath nicht auflösen; er hat kein DOM.
+      //
+      // ELEMENT_ID BLEIBT NULL, und das ist kein Versehen: sie steuert die
+      // Sprungziele (Z. 1937) und die Minimap-Position (Z. 5525). Waere sie
+      // gesetzt, spraenge eine Textmarkierung auf den ganzen Beitrag statt
+      // auf die markierte Stelle — eine sichtbare Verschlechterung fuer
+      // einen Gewinn, den die post_id allein schon bringt.
+      //
+      // KEINE GANZ-POST-MARKIERUNG: _isWholePostMark() verlangt post_id UND
+      // KEINE selection (Build 337). Eine Textmarkierung hat eine selection
+      // und bleibt deshalb eine Textmarkierung — Post-Rahmen und
+      // post-weites Hover-Menue bleiben aus.
+      var postElFuerMarke = _postElementVon(selObj);
       var ann = AnnotationStoreModule.createAnnotation(
         activeCat,
         _state.currentUrl,
-        null,  // element_id: wird über XPath abgedeckt
+        null,  // element_id: bewusst null — s. oben
         selObj,
-        // Build 336 (Option B): Uebersetzungs-Marken bekommen die post_id-Spalte
-        // gesetzt (direkt abfragbare Post-Verknuepfung, report-freundlich);
-        // XPath-Text-Marken bleiben null (Post-Bezug via XPath).
-        (selObj && selObj.target === "translation") ? selObj.postId : null
+        (selObj && selObj.target === "translation")
+          ? selObj.postId
+          : postElFuerMarke
       );
 
       // Build 334: Markierungen in KI-Uebersetzungen automatisch mit
@@ -2560,6 +2618,11 @@
 
     return {
       toggleCategory: toggleCategory,
+      // Build 727: fuer vitest freigelegt (Muster:
+      // ForensicToolbar.config.translationHelpers). Die Beitragsnummer einer
+      // Textmarkierung ist die Angabe, an der im Vollzitat fuenf weitere
+      // haengen - sie gehoert unter einen Test und nicht unter eine Annahme.
+      _test: { postElementVon: _postElementVon },
     };
   })();
 
@@ -4738,7 +4801,13 @@
           var pid = parseInt((postEl.id || "").substring(1), 10);
           if (!isNaN(pid)) {
             _state.annotations.forEach(function (ann) {
-              if (ann.postId === pid) {
+              // Build 727: derselbe Waechter wie in Z. 4700 (Build 337) —
+              // NUR echte Ganz-Post-Marken. Er fehlte hier. Seit Build 336
+              // tragen Uebersetzungs-Marken eine post_id, seit Build 727
+              // ALLE Textmarken; ohne den Waechter erschienen sie beim
+              // Ueberfahren eines markierten Beitrags im Menue, auch wenn
+              // der Zeiger gar nicht auf ihnen steht.
+              if (ann.postId === pid && !ann.selection) {
                 // Nur wenn noch nicht aus mark-Suche vorhanden
                 var alreadyFound = false;
                 found.forEach(function (a) { if (a === ann) alreadyFound = true; });
@@ -7164,6 +7233,11 @@
   // Test-Oberflaeche fuer vitest freilegen (Muster: ForensicToolbar.config.levenshtein
   // in test_levenshtein.test.js — echte Funktionen testen, keine Stubs).
   ForensicToolbar.config.translationHelpers = TranslationModule._test;
+  // Build 727: dieselbe Freilegung fuer die Beitragsnummer einer
+  // Textmarkierung. An dieser einen Angabe haengen im Vollzitat fuenf
+  // weitere (Betreff, Datum, Sprungmarke, PN-Partner, Zusammenfassung) -
+  // sie gehoert unter einen Test.
+  ForensicToolbar.config.markerHelpers = MarkerToolModule._test;
 
   var PMSTableOrganizerModule = (function () {
     // Beleg: §21.2 Bauplan (Selektoren verifiziert gegen aiw_pmsnew_new.html)

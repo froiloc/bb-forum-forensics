@@ -405,11 +405,30 @@ LECTORATE = Sichthilfe(
                 "ursprünglich markierte.",
                 "FEHLT ETWAS, STEHT ES DA. Ein Beleg ohne auffindbaren "
                 "Absatz erscheint mit der markierten Stelle allein und einer "
-                "Begründung; ein Beleg, zu dem es keine Annotation mehr gibt, "
-                "wird als fehlend ausgewiesen statt weggelassen. Alle diese "
-                "Befunde sammelt zusätzlich der Abschnitt „Hinweise zur "
-                "Erzeugung“ am Ende des Vermerks — dort steht die "
-                "Vollständigkeitsaussage an EINER Stelle.",
+                "Begründung. Ein Beleg, zu dem es keine Annotation mehr gibt, "
+                "steht in einem EIGENEN, gestrichelten Kasten mit der "
+                "Überschrift „Beleg nicht mehr vorhanden“ — er bekommt keine "
+                "Quellenzeile, kein Datum und keine Fundstelle, weil es keine "
+                "gibt. Alle diese Befunde sammelt zusätzlich der Abschnitt "
+                "„Hinweise zur Erzeugung“ am Ende des Vermerks — dort steht "
+                "die Vollständigkeitsaussage an EINER Stelle. Gleichlautende "
+                "Befunde stehen dort in EINER Zeile mit allen betroffenen "
+                "Beleg-Nummern; keine Nummer fällt dabei weg.",
+                "MEHRERE MÖGLICHE FUNDSTELLEN. Wurde der Absatz über den "
+                "Wortlaut gesucht und kommt dieser Wortlaut auf der Seite "
+                "mehrfach vor, werden ALLE Fundstellen gezeigt, jede mit der "
+                "Überschrift „Mögliche Fundstelle x von y“ und gestricheltem "
+                "Rand. Welche davon markiert wurde, ist dann nicht "
+                "entscheidbar — und genau das soll man sehen, statt eine "
+                "beliebige davon für die richtige zu halten.",
+                "WOHER DIE BEITRAGSNUMMER STAMMT. Hinter der Beitrags- bzw. "
+                "Nachrichtennummer kann „(aus dem Seitenabzug bestimmt)“ "
+                "stehen. Das heißt: die Markierung selbst trug keine "
+                "Beitragsnummer, sie ist aus dem gesicherten Seitenabzug "
+                "abgelesen worden. Die Angabe ist damit nicht schwächer, aber "
+                "sie beruht auf einem zweiten Schritt — und der gehört "
+                "genannt. Bei neueren Markierungen entfällt der Zusatz: dort "
+                "trägt die Markierung die Nummer selbst.",
             ),
         ),
         Abschnitt(

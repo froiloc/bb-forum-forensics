@@ -3758,14 +3758,48 @@ class EvidenceBlock {
         const e = EvidenceBlock._esc;
         const teile = [];
         for (const ub of (daten.unterbloecke || [])) {
-            const absaetze = (ub.absaetze || []).map(a =>
-                `<div class="vz-absatz${a.ersatz ? ' vz-ersatz' : ''}">${a.html}</div>`
-            ).join('');
+            // Build 727: Ein Beleg, den es nicht (mehr) gibt, bekommt eine
+            // EIGENE Darstellung - keine Quellenzeile, kein Datum, keine
+            // Fundstelle. Bis Build 726 stand hier "Beitrag zum Thema
+            // »(Betreff nicht ermittelbar)«" mit dem Vorbehalt
+            // "umschließender Absatz nicht auffindbar": beides erfunden, und
+            // beides sah glaubwürdig aus. Der wahre Grund stand im Feld
+            // 'hinweis', das diese Ansicht gar nicht gezeichnet hat.
+            if (ub.fehlt) {
+                const nummern = (ub.befunde || [])
+                    .map(b => '#' + b.annotation_id).join(', ');
+                teile.push(`<div class="vz-quelle vz-quelle--fehlt">
+                    <div class="vz-quelle-kopf">Beleg nicht mehr vorhanden</div>
+                    <div class="vz-fehlt">&#9888; Zu ${e(nummern)} gibt es in
+                    der Beweismitteldatenbank keine aktive Annotation. Sie
+                    wurde gelöscht oder stammt aus einer anderen
+                    Beweismitteldatenbank. Quelle, Datum und Wortlaut sind
+                    damit nicht bestimmbar &mdash; der Beleg wird hier
+                    ausgewiesen und nicht übersprungen.</div>
+                </div>`);
+                continue;
+            }
+            // Build 727: mehrere MÖGLICHE Fundstellen werden alle gezeigt
+            // und als solche bezeichnet (Weisung Alex, 28.08.2026). Vorher
+            // nahm die Wortlautsuche stillschweigend den letzten Treffer der
+            // Seite - bei kurzen Markierungen also womöglich den falschen.
+            const absaetze = (ub.absaetze || []).map(a => {
+                const kl = 'vz-absatz'
+                    + (a.ersatz ? ' vz-ersatz' : '')
+                    + (a.moeglich ? ' vz-moeglich' : '');
+                const kopf = a.von_gesamt
+                    ? `<div class="vz-moeglich-kopf">Mögliche Fundstelle ${e(a.von_gesamt[0])} von ${e(a.von_gesamt[1])}</div>`
+                    : '';
+                return `<div class="${kl}">${kopf}${a.html}</div>`;
+            }).join('');
             const befunde = (ub.befunde || []).map(b => {
                 const vorbehalte = [];
                 if (b.absatz_weg === 'text') vorbehalte.push('Absatz über den Wortlaut gefunden');
                 if (b.absatz_weg === 'uebersetzung') vorbehalte.push('Markierung in der Übersetzung');
                 if (b.absatz_weg === 'keiner') vorbehalte.push('umschließender Absatz nicht auffindbar');
+                // 'fehlt' bekommt KEINEN Absatz-Vorbehalt - es gibt gar
+                // keinen Beleg; der Grund steht im Kasten darüber.
+                if (b.absatz_weg === 'fehlt') vorbehalte.length = 0;
                 if (b.name_quelle === 'display_name') vorbehalte.push('Nachname aus dem Anzeigenamen abgeleitet');
                 if (b.name_quelle === 'kuerzel' && b.ermittler) vorbehalte.push('nur das Benutzerkürzel bekannt');
                 return `<div class="vz-befund" style="border-left-color:${e(b.farbe)}">
@@ -3785,7 +3819,7 @@ class EvidenceBlock {
                 <div class="vz-quelle-kopf">${e(ub.bezeichnung)}</div>
                 <div class="vz-meta">
                     <span class="vz-k">${wort}:</span> ${e(datum)}
-                    ${ub.post_id ? `&middot; <span class="vz-k">${ub.ist_pn ? 'Nachricht' : 'Beitrag'}:</span> #${e(ub.post_id)}` : ''}
+                    ${ub.post_id ? `&middot; <span class="vz-k">${ub.ist_pn ? 'Nachricht' : 'Beitrag'}:</span> #${e(ub.post_id)}${ub.post_quelle === 'seitenabzug' ? ' <span class="vz-k">(aus dem Seitenabzug bestimmt)</span>' : ''}` : ''}
                     <br><span class="vz-k">Fundstelle:</span>
                     <a class="vz-link" href="${e(ub.link)}" target="_blank" rel="noopener">${e(ub.link || '(keine Adresse)')}</a>
                 </div>

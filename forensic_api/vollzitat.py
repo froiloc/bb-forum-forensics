@@ -139,6 +139,12 @@ class VollzitatEndpoint:
                 {
                     "bezeichnung": ub.quelle.bezeichnung(),
                     "ist_pn": ub.quelle.ist_pn,
+                    # Build 727: ein Beleg, den es nicht (mehr) gibt. Der
+                    # Bildschirm zeigte ihn bis Build 726 als gewoehnlichen
+                    # Forenbeitrag mit fehlendem Absatz - eine erfundene
+                    # Quellenart mit glaubwuerdigem Aussehen.
+                    "fehlt": ub.quelle.ist_unbekannt,
+                    "post_quelle": ub.quelle.post_quelle,
                     "betreff": ub.quelle.betreff,
                     "partner": ub.quelle.partner,
                     "posted_ts": ub.quelle.posted_ts,
@@ -146,7 +152,9 @@ class VollzitatEndpoint:
                     "link": ub.quelle.link,
                     "absaetze": [
                         {"html": a.html, "nummern": a.nummern,
-                         "ersatz": a.ersatz}
+                         "ersatz": a.ersatz, "moeglich": a.moeglich,
+                         "von_gesamt": list(a.von_gesamt) if a.von_gesamt
+                                       else None}
                         for a in ub.absaetze
                     ],
                     "befunde": [
