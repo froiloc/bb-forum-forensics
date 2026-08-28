@@ -448,6 +448,21 @@ LECTORATE = Sichthilfe(
                 "zuordnen — etwa weil derselbe Wortlaut in mehreren "
                 "Beiträgen vorkommt —, bleibt die Nummer leer, und der Beleg "
                 "erscheint weiter mit dem Vorbehalt. Geraten wird nichts.",
+                "DER VORBEHALT SAGT JETZT, WORAN ES LAG. Steht unter einem "
+                "Befund, dass der Absatz über den Wortlaut statt über die "
+                "Markierung gefunden wurde, folgt seit Neuestem der Grund "
+                "dafür — und zwar ein festgestellter, kein vermuteter: ob die "
+                "Markierung gar keine Positionsangabe trägt, ob die Angabe "
+                "im gesicherten Seitenabzug ins Leere zeigt, oder an welcher "
+                "Stelle sie das tut. Vorher stand dort in allen diesen Fällen "
+                "derselbe Satz, und man konnte ihm nicht ansehen, welcher "
+                "der Fälle vorlag. FÜR DAS GEGENLESEN heißt das: Der "
+                "Vorbehalt ist weiterhin ein Hinweis zur Belegkraft und kein "
+                "Fehler — aber er ist jetzt nachprüfbar. Häufen sich "
+                "gleichlautende Gründe über viele Belege hinweg, gehört das "
+                "der Betriebsseite gemeldet; das deutet auf eine Ursache in "
+                "der Sicherung der Seiten hin und nicht auf die Arbeit der "
+                "markierenden Person.",
             ),
         ),
         Abschnitt(
