@@ -200,7 +200,11 @@ class AnkergrundTests(unittest.TestCase):
         self.assertEqual(GRUND_ANKER_BRICHT, fund.anker_grund)
         self.assertIn("Schritt 2", fund.anker_bruch)
         self.assertIn("p[9]", fund.anker_bruch)
-        self.assertIn("im Abzug stehen 1", fund.anker_bruch)
+        self.assertIn("im Abzug stehen nur 1", fund.anker_bruch)
+        # BUILD 731: Die Zahl allein genuegt nicht - der Abzug muss auch
+        # BENENNEN, was dort steht. Genau das fehlte in Alex' Lauf, in dem
+        # 25-mal "Browser 4, Abzug 2" stand, ohne zu sagen, welche zwei.
+        self.assertIn("Im Abzug steht dort: <p>", fund.anker_bruch)
 
     # --- AN02 --------------------------------------------------------------
     def test_an02_der_bruch_ganz_oben_wird_als_solcher_benannt(self):

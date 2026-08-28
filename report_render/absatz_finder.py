@@ -484,6 +484,31 @@ def browser_wortlaut(wurzel) -> Tuple[str, List[int]]:
     return ("".join(aus), versaetze)
 
 
+def _benenne(elemente, grenze: int = 8) -> str:
+    """
+    Eine Elementfolge knapp benennen: '<div#brd-head.pun>, <div#brd-main>'.
+
+    NUR GERUEST, NIE INHALT. Kennung und Klassenname stammen aus der
+    Forensoftware und beschreiben den Seitenaufbau; ein Beitragstext steht
+    nie darin. Die Ausgabe bleibt damit ohne weitere Pruefung weitergebbar -
+    dieselbe Zusage wie bei tools/diag_vollzitat_anker.py.
+    """
+    teile = []
+    for el in elemente[:grenze]:
+        name = str(getattr(el, "tag", "?"))
+        kennung = (el.get("id") or "") if hasattr(el, "get") else ""
+        klasse = (el.get("class") or "") if hasattr(el, "get") else ""
+        stueck = "<" + name
+        if kennung:
+            stueck += "#" + kennung
+        if klasse:
+            stueck += "." + ".".join(klasse.split()[:2])
+        teile.append(stueck + ">")
+    if len(elemente) > grenze:
+        teile.append("... (%d weitere)" % (len(elemente) - grenze))
+    return ", ".join(teile)
+
+
 def _falte(s: str) -> str:
     """Leerraum zu je einem Leerzeichen - die Faltung, die auch CSS macht."""
     return re.sub(r"\s+", " ", s).strip()
@@ -753,19 +778,31 @@ class AbsatzFinder:
                        if isinstance(getattr(k, "tag", None), str)
                        and k.tag == marke]
             if gleiche:
-                return ("Schritt %d von %d bricht bei %r: der Browser hat %d "
-                        "Elemente <%s> gesehen, im Abzug stehen %d. "
-                        "Aufgeloest bis %s. Zwischen Abzug und Markierung ist "
-                        "an dieser Stelle etwas in die Seite geschrieben "
-                        "worden." % (nr, len(schritte), schritt, wunsch,
-                                     marke, len(gleiche), bisher))
-            vorhanden = sorted({str(k.tag) for k in knoten
-                                if isinstance(getattr(k, "tag", None), str)})
+                # BUILD 731: NICHT NUR ZAEHLEN, SONDERN BENENNEN.
+                #
+                # Alex' Lauf vom 28.08.2026 ergab 25-mal denselben Bruch an
+                # derselben Stelle - und die blosse Zahl ("Browser 4, Abzug
+                # 2") liess offen, WELCHE zwei Elemente der Abzug hat. Genau
+                # das ist aber die Angabe, mit der sich der Abzug in einem
+                # Handgriff gegen das halten laesst, was der Browser zeigt.
+                # Kennung und Klasse sind Geruestangaben, keine Inhalte; die
+                # Ausgabe bleibt damit ohne weitere Pruefung weitergebbar.
+                return ("Schritt %d von %d bricht bei %r: der Anker verlangt "
+                        "das %d. <%s>, im Abzug stehen nur %d. Aufgeloest bis "
+                        "%s. Im Abzug steht dort: %s. Der Browser hatte an "
+                        "dieser Stelle also MEHR <%s> als der Abzug - "
+                        "entweder ist zwischen Abzug und Markierung etwas in "
+                        "die Seite geschrieben worden, oder der verglichene "
+                        "Abzug ist nicht der, den der Ermittler gesehen hat."
+                        % (nr, len(schritte), schritt, wunsch, marke,
+                           len(gleiche), bisher, _benenne(gleiche), marke))
+            alle = [k for k in knoten
+                    if isinstance(getattr(k, "tag", None), str)]
             return ("Schritt %d von %d bricht bei %r: an dieser Stelle gibt "
-                    "es im Abzug ueberhaupt kein <%s> (vorhanden: %s). "
-                    "Aufgeloest bis %s.%s"
+                    "es im Abzug ueberhaupt kein <%s>. Im Abzug steht dort: "
+                    "%s. Aufgeloest bis %s.%s"
                     % (nr, len(schritte), schritt, marke,
-                       ", ".join(vorhanden[:8]) or "nichts", bisher,
+                       _benenne(alle) or "nichts", bisher,
                        "  BRICHT GANZ OBEN - der Bezugspunkt stimmt nicht."
                        if nr == 1 else ""))
         return "alle Schritte loesen auf"

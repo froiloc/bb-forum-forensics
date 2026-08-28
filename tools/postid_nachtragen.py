@@ -90,6 +90,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import re
 import sys
 from pathlib import Path
 from typing import List, Optional
@@ -121,6 +122,10 @@ from management.maintenance.postid_nachtrag import (        # noqa: E402
 #:       denselben Sachverhalt verschieden melden, waeren in einem Skript
 #:       nicht auseinanderzuhalten.
 #:   4 - die Sicherung ist fehlgeschlagen; es wurde nichts angefasst
+#: Der bis zum Bruch aufgeloeste Teil des Ankers, aus dem
+#: Bruchtext gelesen.
+_PFAD_MUSTER = re.compile(r"Aufgeloest bis (\.[^\s.]*(?:\[\d+\])?(?:/[^\s./]+\[\d+\])*)")
+
 CODE_OK = 0
 CODE_OFFEN = 1
 CODE_ABBRUCH = 2
@@ -255,6 +260,74 @@ def _vorbehalt(evidence: Path, data_dir: str, sag: Mitschrift):
     return None
 
 
+def _gegenprobe_browser(befund, sag: Mitschrift) -> None:
+    """
+    Die andere Haelfte des Abgleichs: was der BROWSER an derselben Stelle hat.
+
+    WARUM DAS WERKZEUG DAS NICHT SELBST KANN: Es liest den Abzug. Was der
+    Browser daraus gemacht hat, sieht nur der Browser - und genau die
+    Differenz ist die Frage. Das Werkzeug liefert deshalb den fertigen
+    Einzeiler fuer die Entwicklerkonsole und sagt, wann, wo und was zu
+    beobachten ist (Projektgebot zum Browser-Debugging: erst
+    Console-Ausgabe anfordern, dann fixen).
+
+    ES WERDEN NUR GERUESTANGABEN AUSGEGEBEN - Tag, Kennung, Klasse. Kein
+    Beitragstext, weder hier noch drueben.
+    """
+    # Der haeufigste Bruchpfad ist der aussagekraeftigste: bricht es bei
+    # allen Belegen an derselben Stelle, ist die Ursache strukturell und
+    # nicht eine Eigenheit einzelner Markierungen.
+    pfade = {}
+    for z in befund.zeilen:
+        if not z.anker_bruch:
+            continue
+        # Der aufgeloeste Teil steht als './donate[1]/div[1]' im Bruchtext.
+        # Ein einfaches split('.') zerlegt ihn falsch - der Pfad BEGINNT mit
+        # einem Punkt. Deshalb ein Muster statt einer Trennung.
+        marke = _PFAD_MUSTER.search(z.anker_bruch)
+        if not marke:
+            continue
+        pfad = marke.group(1)
+        pfade[pfad] = pfade.get(pfad, 0) + 1
+    if not pfade:
+        return
+    haeufigster, anzahl = max(sorted(pfade.items()),
+                              key=lambda p: p[1])
+
+    sag("")
+    sag("-" * 78)
+    sag("SO GLEICHEN WIR AB (Browserseite - das Werkzeug kann sie nicht sehen)")
+    sag("")
+    sag("  Der Bruch sitzt bei %d von %d Belegen an DERSELBEN Stelle: %s"
+        % (anzahl, len(befund.zeilen), haeufigster))
+    sag("  Was der Abzug dort hat, steht oben je Beleg ('Im Abzug steht")
+    sag("  dort: ...'). Was der BROWSER dort hat, sagt dieser Einzeiler.")
+    sag("")
+    sag("  WANN:  Nachdem eine der betroffenen Seiten im Ermittlungsfenster")
+    sag("         geladen ist - also genau so, wie beim Markieren.")
+    sag("  WO:    Entwicklerkonsole des Ermittlungsfensters (F12).")
+    sag("  WAS:   Die Liste, die er ausgibt, gegen die Abzug-Liste halten.")
+    sag("")
+    sag("  var vp = document.getElementById('forensic-viewport');")
+    sag("  var ziel = document.evaluate(%r, vp, null, 9, null)"
+        % haeufigster)
+    sag("            .singleNodeValue || vp;")
+    sag("  copy('PFAD %s -> ' + (ziel === vp ? '(nicht aufloesbar, "
+        "Viewport)' : 'ok') + '\\n' + Array.from(ziel.children)"
+        % haeufigster)
+    sag("    .map((e,i) => (i+1) + ': <' + e.tagName.toLowerCase()")
+    sag("     + (e.id ? '#'+e.id : '')")
+    sag("     + (e.className ? '.'+String(e.className).trim()"
+        ".split(/\\s+/).slice(0,2).join('.') : '') + '>'")
+    sag("    ).join('\\n'));")
+    sag("")
+    sag("  ZU BEOBACHTEN: Stehen dort MEHR Elemente als im Abzug, ist")
+    sag("  zwischen Abzug und Markierung etwas in die Seite geschrieben")
+    sag("  worden - dann nenne mir bitte die zusaetzlichen. Sind es")
+    sag("  DIESELBEN, dann stimmt der verglichene Abzug nicht, und die")
+    sag("  Ursache liegt bei der Seitenaufloesung, nicht am Anker.")
+
+
 def _lauf(args, sag: Mitschrift) -> int:
     evidence = Path(args.evidence)
     forensic = Path(args.forensic)
@@ -353,6 +426,7 @@ def _lauf(args, sag: Mitschrift) -> int:
                                     key=lambda p: -p[1]):
             sag("  %-16s %6d   %s" % (grund, anzahl,
                                       GRUND_TEXT.get(grund, "")))
+        _gegenprobe_browser(befund, sag)
 
     if befund.abgebrochen:
         sag("")

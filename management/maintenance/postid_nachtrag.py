@@ -738,20 +738,41 @@ class PostIdNachtrag:
         """
         if not url or self._con_blob is None:
             return None
+        # BUILD 731 - FEHLER IN MEINEM EIGENEN WERKZEUG, gefunden beim
+        # Nachgehen von Alex' Ankerbefund.
+        #
+        # 'fdb.pages' fuehrt zu DERSELBEN Adresse bis zu ZWEI Abzuege: den
+        # gewoehnlichen (method='GET') und den einer Formularabsendung
+        # (method='POST' - das Ergebnis einer Umfrageabstimmung; Beleg
+        # db/forensic_db.py:415-436 und der dortige Kopf, "Projektgespraech
+        # 2026-04-19"). Der AUSLIEFERUNGSPFAD nimmt ausdruecklich den
+        # GET-Abzug: get_page(url, method='GET'). MEINE ABFRAGEN TATEN DAS
+        # NICHT - ohne Filter und ohne ORDER BY entscheidet SQLite, welche
+        # Zeile 'LIMIT 1' erwischt.
+        #
+        # WAS DAS ANRICHTET: Der Ermittler hat den GET-Abzug im Browser
+        # gesehen und seinen Anker dagegen gerechnet. Bekam der Nachtrag den
+        # POST-Abzug, verglich er den Anker mit einer ANDEREN Seite - und
+        # meldete pflichtgemaess, der Anker loese nicht auf. Die Meldung waere
+        # richtig gewesen und die Diagnose trotzdem falsch.
+        #
+        # Ob das Alex' Befund erklaert, ist damit NICHT gesagt - es ist eine
+        # Fehlerquelle weniger, mehr behaupte ich nicht.
         for sql, parameter in (
-            ("SELECT html FROM fdb.pages WHERE url_canonical = ? LIMIT 1",
-             (url,)),
+            ("SELECT html FROM fdb.pages WHERE url_canonical = ? "
+             "AND method = 'GET' LIMIT 1", (url,)),
             ("SELECT p.html FROM fdb.pages p JOIN fdb.page_aliases a "
-             "ON a.page_id = p.id WHERE a.url_raw = ? LIMIT 1", (url,)),
+             "ON a.page_id = p.id WHERE a.url_raw = ? AND p.method = 'GET' "
+             "LIMIT 1", (url,)),
             # Die Adressen im Paket koennen die vollstaendige Onion-Adresse
             # tragen, annotations.page_url dagegen nur den Pfad
             # (_make_blob_lookup_sql entfernt den Vorspann ueber REPLACE).
             # Deshalb zuletzt der Vergleich auf das Ende.
-            ("SELECT html FROM fdb.pages WHERE url_canonical LIKE ? LIMIT 1",
-             ("%" + url,)),
+            ("SELECT html FROM fdb.pages WHERE url_canonical LIKE ? "
+             "AND method = 'GET' LIMIT 1", ("%" + url,)),
             ("SELECT p.html FROM fdb.pages p JOIN fdb.page_aliases a "
-             "ON a.page_id = p.id WHERE a.url_raw LIKE ? LIMIT 1",
-             ("%" + url,)),
+             "ON a.page_id = p.id WHERE a.url_raw LIKE ? "
+             "AND p.method = 'GET' LIMIT 1", ("%" + url,)),
         ):
             try:
                 zeile = self._con_blob.execute(sql, parameter).fetchone()
