@@ -450,4 +450,103 @@ describe("MarkerToolModule._postElementVon (Build 727)", () => {
         const fn = dom.window.ForensicToolbar.config.markerHelpers.postElementVon;
         expect(fn(null)).toBeNull();
     });
+
+    // -----------------------------------------------------------------------
+    // Build 728 — die INNERE Kennung.
+    //
+    // viewtopic0.php vergibt an ineinanderliegenden Elementen DESSELBEN
+    // Beitrags zwei Kennungen: aussen 'p<id>' am <article>, innen 'pp<id>'
+    // am <div class="box">. Beim Aufstieg wird die innere ZUERST erreicht.
+    // Build 727 pruefte nur /^p\d+$/ — die innere passte nicht, der Aufstieg
+    // lief bis zum <article> weiter, und das Ergebnis war richtig. Es hing
+    // aber daran, dass der <article> da ist. Weisung Alex 28.08.2026 nennt
+    // ausdruecklich die innere Kennung; die Doppelung ist im Webserver seit
+    // langem bekannt (db/forensic_db.py:307).
+    // -----------------------------------------------------------------------
+
+    it("TB05 - beide Kennungen zugleich: dieselbe Nummer, kein NaN", () => {
+        const dom = toolbarDOM(
+            '<article class="post" id="p1891354"><div class="blockpost">' +
+            '<div class="box" id="pp1891354"><div class="postmsg">' +
+            '<p id="ziel">Ich fahre nach Bonn.</p>' +
+            '</div></div></div></article>');
+        waehle(dom, "#ziel");
+        const fn = dom.window.ForensicToolbar.config.markerHelpers.postElementVon;
+        // Die INNERE wird zuerst erreicht. Bis Build 727 wurde sie
+        // uebersprungen; jetzt trifft sie — die Nummer muss dieselbe sein.
+        expect(fn(null)).toBe(1891354);
+    });
+
+    it("TB06 - NUR die innere Kennung: bis Build 727 blieb es bei null", () => {
+        const dom = toolbarDOM(
+            '<div class="box" id="pp5150"><div class="postmsg">' +
+            '<p id="ziel">Kein article darum herum.</p></div></div>');
+        waehle(dom, "#ziel");
+        const fn = dom.window.ForensicToolbar.config.markerHelpers.postElementVon;
+        expect(fn(null)).toBe(5150);
+    });
+
+    // -----------------------------------------------------------------------
+    // TB08/TB09 — DIE BEIDEN ECHTEN AUFBAUTEN.
+    //
+    // Uebergeben von Alex am 28.08.2026, gekuerzt und ohne Inhalte, in der
+    // Schachtelung unveraendert. Sie sind VERSCHIEDEN, und darauf kommt es an:
+    //
+    //   Forenbeitrag:      <article id="p<N>"> … <div class="box" id="pp<N>">
+    //                      -> beide Kennungen, die INNERE zuerst erreicht
+    //   Private Nachricht: <div id="p<N>" class="blockpost"> … <div class="box">
+    //                      -> die '.box' hat dort GAR KEINE Kennung
+    //
+    // Haette man Alex' Weisung ("Suche nach <div class='box' id='pp<post_id>'>")
+    // als EINZIGEN Weg genommen, waeren die privaten Nachrichten leer
+    // geblieben — und dort haengt am post_id der Gespraechspartner.
+    // -----------------------------------------------------------------------
+
+    it("TB08 - echter Forenbeitrag (viewtopic): innere Kennung trifft", () => {
+        const dom = toolbarDOM(
+            '<article class="post" style="" id="p1164441">' +
+            '<div class="blockpost"><h2><strong>POSTER</strong></h2>' +
+            '<div class="box" id="pp1164441"><div class="inbox">' +
+            '<div class="postbody"><div class="postleft"><dl>' +
+            '<dd><span>Posts: 114</span></dd></dl></div>' +
+            '<div class="postright"><div class="postmsg">' +
+            '<p id="ziel">Der Zug faehrt ab Hauptbahnhof.</p>' +
+            '</div></div></div></div></div></div></article>');
+        waehle(dom, "#ziel");
+        const fn = dom.window.ForensicToolbar.config.markerHelpers.postElementVon;
+        expect(fn(null)).toBe(1164441);
+    });
+
+    it("TB09 - echte private Nachricht (pmsnew): '.box' OHNE Kennung", () => {
+        const dom = toolbarDOM(
+            '<div class="block2col"><div class="block">' +
+            '<h2>TITEL DER UNTERHALTUNG</h2></div></div>' +
+            '<div id="p120862" class="blockpost roweven contains_traces">' +
+            '<h2><span><span class="conr">#2</span>' +
+            '<a href="pmsnew.php?mdl=topic&amp;pid=120862#p120862">' +
+            'Mon., 26.04.2021 20:36:03</a></span></h2>' +
+            '<div class="box"><div class="inbox"><div class="postbody">' +
+            '<div class="postleft"><dl><dt><strong>INHABER</strong></dt>' +
+            '</dl></div><div class="postright"><div class="postmsg">' +
+            '<p id="ziel">Ich bin ab Freitag in Koeln.</p>' +
+            '</div></div></div></div></div>' +
+            '<div class="aiw-flag-fallback aux-part"></div></div>');
+        waehle(dom, "#ziel");
+        const fn = dom.window.ForensicToolbar.config.markerHelpers.postElementVon;
+        // Die kennungslose '.box' darf den Aufstieg weder abbrechen noch
+        // selbst eine Nummer liefern — die Nummer steht nur aussen.
+        expect(fn(null)).toBe(120862);
+    });
+
+    it("TB07 - GEGENPROBE: 'ppp7' und 'post12' sind KEINE Beitraege", () => {
+        // Ohne diese Probe waere TB05/TB06 auch mit einem Muster gruen, das
+        // jede Kennung mit 'p' und Ziffern annimmt — und dann waere jedes
+        // beliebige Element im Forum ein Beitrag.
+        const dom = toolbarDOM(
+            '<div id="ppp7"><div id="post12">' +
+            '<p id="ziel">Weder das eine noch das andere.</p></div></div>');
+        waehle(dom, "#ziel");
+        const fn = dom.window.ForensicToolbar.config.markerHelpers.postElementVon;
+        expect(fn(null)).toBeNull();
+    });
 });

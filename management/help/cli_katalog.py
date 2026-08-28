@@ -317,6 +317,11 @@ _GEPRUEFT_727 = ("Build 727, 2026-08-28, gegen einen Wegwerf-Bestand unter "
                  "/tmp (evidence_700.db + forensic_700.db mit zwei "
                  "Annotationen und einem Seitenabzug), Python 3.13, lxml 6.1")
 
+_GEPRUEFT_728 = ("Build 728, 2026-08-28, gegen einen Wegwerf-Bestand unter "
+                 "/tmp (evidence_700.db mit sieben Annotationen und "
+                 "Hash-Kette, forensic_700.db mit einem Seitenabzug aus drei "
+                 "Beitraegen), Python 3.13, lxml 6.1")
+
 
 CLI_KATALOG: Tuple[CliEintrag, ...] = (
     # -------------------------------------------------------------- Fallsteuerung
@@ -5414,6 +5419,149 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "Vierzig Belege ohne jeden Inhaltsausschnitt - die "
                      "Ausgabe ist damit ohne weitere Pruefung weitergebbar.",
                      _GEPRUEFT_727),
+            ),
+        ),
+    ),
+    CliEintrag(
+        schluessel="postid_nachtragen",
+        pfad="tools/postid_nachtragen.py",
+        aufruf="python tools/postid_nachtragen.py --evidence <evidence_N.db> "
+               "--forensic <forensic_N.db> [--ausfuehren --operator <Kuerzel>] "
+               "[--protokoll <Datei>] [--nur-anker] [--auch-ersetzte] "
+               "[--beleg N] [--grenze N]",
+        titel="Beitragsnummer zu Markierungen nachtragen",
+        gruppe="Migration und Reparatur",
+        zweck="In 'annotations' die Spalte 'post_id' dort fuellen, wo sie "
+              "leer ist - mit der Nummer, die im gesicherten Seitenabzug an "
+              "dem Beitrag steht, in dem die Markierung sitzt.",
+        # 'schreibend' und NICHT 'gemischt': gemischt sind Werkzeuge mit
+        # einem eigenen LESENDEN Unterbefehl. Dieses hier hat keine
+        # Unterbefehle - die Trockenuebung ist die Vorgabe DESSELBEN
+        # Befehls, kein zweiter Befehl. Es als 'gemischt' zu fuehren hiesse,
+        # dem Katalog eine Unterscheidung zu behaupten, die es nicht gibt.
+        art="schreibend",
+        datenbanken=(
+            "evidence_<uid>.db (LESEND in der Trockenuebung, SCHREIBEND mit "
+            "--ausfuehren - annotations.post_id und evidence_audit_log)",
+            "forensic_<uid>.db (lesend, mode=ro - pages.html, der "
+            "Seitenabzug; auch im scharfen Lauf)",
+        ),
+        betrieb="Der scharfe Lauf braucht ein Wartungsfenster oder die "
+                "Bestaetigung von Hand (Wartungsvorbehalt Stufe A). Die "
+                "Trockenuebung darf jederzeit laufen - sie oeffnet auch die "
+                "Beweismitteldatenbank mit 'mode=ro'.",
+        beleg="Ja - in der Hash-Kette 'evidence_audit_log' INNERHALB der "
+              "evidence_<uid>.db, Ereignis 'annotation_postid_backfilled'. "
+              "Er nennt jede geaenderte Beleg-Nummer, die eingetragene "
+              "Beitragsnummer und den Weg, auf dem sie gefunden wurde. "
+              "Aenderung und Beleg stehen in EINER Transaktion: entweder "
+              "beides oder nichts. Die coordinator.db wird nicht beruehrt.",
+        ausgabe="Klartext auf der Konsole: je gepruefter Annotation eine "
+                "Zeile mit Beleg-Nummer, Art, Ergebnis, eingetragener "
+                "Nummer, Weg und Gegenprobe; danach die Zaehlung. "
+                "'--protokoll' schreibt DIESELBEN Zeilen zusaetzlich in eine "
+                "Datei. Der markierte Wortlaut steht NICHT in der Ausgabe.",
+        hinweis="WOZU ES DA IST: 'annotations.post_id' blieb bei "
+                "Textmarkierungen leer - die Toolbar setzte sie dort "
+                "ausdruecklich nicht, weil sie den Bezug ueber den "
+                "XPath-Anker im lebenden DOM aufloest. Der Bericht hat kein "
+                "DOM. An der Nummer haengen im Vollzitat fuenf Angaben auf "
+                "einmal: Themenbetreff, Originaldatum, die Sprungmarke der "
+                "Fundstelle, der Gespraechspartner einer privaten Nachricht "
+                "und die Zusammenfassung mehrerer Belege desselben Beitrags. "
+                "Bei der Sichtpruefung einer echten Beweismittelgruppe "
+                "fehlten sie bei allen 23 Belegen. Seither schreibt die "
+                "Toolbar die Nummer beim Markieren mit; fuer alles, was "
+                "vorher markiert wurde, ist dieses Werkzeug da. "
+                "ES RAET NICHTS: kommt der markierte Wortlaut in mehreren "
+                "verschiedenen Beitraegen vor, bleibt das Feld leer und der "
+                "Fall wird zur Klaerung von Hand ausgewiesen. Eine "
+                "vorhandene Nummer wird NIE ueberschrieben; weicht sie vom "
+                "Seitenabzug ab, ist das ein Befund und keine "
+                "Aufraeumarbeit. Geaendert wird ausschliesslich diese eine "
+                "Spalte - Wortlaut, Kategorie, Notiz, Verfasser und Zeit der "
+                "Annotation bleiben unberuehrt.",
+        konfiguration=KONFIG_KEINE,
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/postid_nachtragen.py "
+                     "--evidence /tmp/evidence_700.db "
+                     "--forensic /tmp/forensic_700.db",
+                     "Trockenuebung ueber sechs Annotationen: vier "
+                     "'wuerde eingetragen' (einmal ueber den Anker, zweimal "
+                     "ueber den Wortlaut, einmal aus einer Uebersetzung), "
+                     "einmal 'mehrdeutig', einmal 'nicht gefunden'. Es wurde "
+                     "nichts geschrieben. Rueckgabewert 1, weil ein Fall "
+                     "offenblieb.",
+                     _GEPRUEFT_728),
+                _bsp("python tools/postid_nachtragen.py "
+                     "--evidence /tmp/evidence_700.db "
+                     "--forensic /tmp/forensic_700.db "
+                     "--ausfuehren --operator mmuster "
+                     "--protokoll /tmp/nachtrag_700.log",
+                     "Scharfer Lauf: Sicherung "
+                     "'evidence_700.db.vor-postid-nachtrag-<Zeit>.bak' "
+                     "angelegt, vier Nachtraege eingetragen, EIN Eintrag in "
+                     "der Hash-Kette mit allen vier Beleg-Nummern; "
+                     "verify_chain() danach 'Kette in Ordnung'. Der zweite "
+                     "Lauf schrieb nichts mehr und haengte auch keinen "
+                     "zweiten Eintrag an.",
+                     _GEPRUEFT_728),
+                _bsp("python tools/postid_nachtragen.py "
+                     "--evidence /tmp/evidence_700.db "
+                     "--forensic /tmp/forensic_700.db --nur-anker",
+                     "Nur der Sollweg: zwei Zeilen 'wuerde eingetragen', "
+                     "zwei 'Rueckfall abgeschaltet'. Die abgeschalteten "
+                     "verschwinden nicht - sie stehen mit der Nummer da, die "
+                     "sie bekommen haetten.",
+                     _GEPRUEFT_728),
+                _bsp("python tools/postid_nachtragen.py "
+                     "--evidence /tmp/evidence_700.db "
+                     "--forensic /tmp/forensic_700.db --beleg 7",
+                     "Eine einzelne Beleg-Nummer - auch dann, wenn sie schon "
+                     "eine post_id traegt. Im Versuch stand dort 9999, der "
+                     "Abzug nannte 4711; gemeldet als 'Widerspruch', "
+                     "geaendert wurde nichts.",
+                     _GEPRUEFT_728),
+            ),
+            exit_codes=(
+                (0, "durchgelaufen, nichts blieb offen"),
+                (1, "durchgelaufen, aber mehrdeutige Faelle oder "
+                    "Widersprueche sind von Hand zu klaeren"),
+                (2, "nicht zustande gekommen (Datei fehlt, keine Hash-Kette, "
+                    "Abbruch mit Rollback)"),
+                (3, "der Wartungsvorbehalt hat den scharfen Lauf nicht "
+                    "freigegeben"),
+                (4, "die Sicherung ist fehlgeschlagen - es wurde nichts "
+                    "angefasst"),
+            ),
+            warnungen=(
+                "OHNE '--ausfuehren' GESCHIEHT NICHTS. Das ist Absicht und "
+                "kein Versehen: der scharfe Lauf ist ein eigener Handgriff. "
+                "Wer nur die Trockenuebung faehrt und die Zaehlung sieht, "
+                "hat noch nichts geaendert.",
+                "ES GIBT KEIN '--no-backup'. Ohne erfolgreiche Sicherung "
+                "wird nicht geschrieben. Die Sicherung wird auch NICHT von "
+                "selbst zurueckgespielt - nach einem Abbruch liegt sie da "
+                "und ist von Hand einzusetzen.",
+                "FEHLT DIE HASH-KETTE (evidence-Migration M003 nicht "
+                "angewandt), bricht der Lauf ab, statt unbelegt zu "
+                "schreiben. Abhilfe: 'python3 tools/migrate-dbs.py --db "
+                "evidence --subject-id <uid> --apply'.",
+                "'im Paket: nein' IST KEIN MANGEL. Die uid-Tabellen des "
+                "Pakets fuehren nur die Beitraege des untersuchten "
+                "Benutzers; eine Markierung im Beitrag eines anderen Nutzers "
+                "derselben Seite ist voellig regulaer. Die Gegenprobe steht "
+                "im Protokoll und entscheidet nichts - massgeblich ist der "
+                "versiegelte Seitenabzug.",
+                "STICHPROBE ZUERST BEI 'Weg=wortlaut' UND "
+                "'Weg=wortlaut_ein_beitrag'. Das ist der Rueckfall ueber die "
+                "Textsuche; 'Weg=anker' ist der Sollweg. Das Werkzeug listet "
+                "die Rueckfaelle am Ende eigens auf.",
+                "Die Laufzeit haengt an der Zahl VERSCHIEDENER Seiten, nicht "
+                "an der Zahl der Markierungen: jede Seite wird einmal "
+                "zerlegt, und eine Themenseite kann bis zu 500 Beitraege "
+                "tragen.",
             ),
         ),
     ),

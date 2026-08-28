@@ -300,6 +300,45 @@ class EventType:
     TATZEIT_SET: str = "tatzeit_set"
     TATZEIT_CLEARED: str = "tatzeit_cleared"
 
+    # --- Build 728: Nachtrag der Beitragsnummer (annotations.post_id) --------
+    #   AUCH DIESER WERT STEHT IN DER EVIDENCE-KETTE, nicht in
+    #   coordinator.audit_log — aus demselben Grund wie TATZEIT_SET: der
+    #   fachliche Write geht nach evidence_<uid>.db, und nur in DERSELBEN
+    #   Datei committen Write und Beleg gemeinsam oder gar nicht.
+    #
+    #   WAS ER BEZEUGT: tools/postid_nachtragen.py hat in 'annotations' die
+    #   Spalte 'post_id' dort gefuellt, wo sie leer war. Die Nummer wird NICHT
+    #   erfunden, sondern aus dem gesicherten Seitenabzug gelesen (der
+    #   Markierungsanker aus selection_json fuehrt auf einen Absatz, dessen
+    #   Vorfahr die Beitragskennung traegt). Die Annotation selbst — Wortlaut,
+    #   Kategorie, Notiz, Verfasser, Zeit — bleibt unberuehrt.
+    #
+    #   EIN EINTRAG JE LAUF, nicht je Annotation. Der Lauf ist die Handlung;
+    #   die einzelnen Zeilen sind sein Ergebnis und stehen VOLLSTAENDIG im
+    #   Payload (Grundregel 1: kein Beleg wird still uebersprungen). Ein
+    #   Eintrag je Annotation haette bei einem Bestand von einigen tausend
+    #   Markierungen die Kette mit Zeilen gefuellt, die alle dasselbe
+    #   Ereignis meinen.
+    #
+    #   WARUM ES KEINE MIGRATION IST und deshalb nicht MIGRATION_APPLIED
+    #   heisst: Eine Migration aendert das SCHEMA; die Spalte gibt es seit
+    #   Version 0.6.013. Hier werden DATEN nachgetragen. Ausserdem erreicht
+    #   der MigrationRunner den Seitenabzug gar nicht — er ruft up(con) mit
+    #   EINER Verbindung (management/migrations/runner.py), und
+    #   tools/migrate-dbs.py reicht die zugehoerige forensic_<uid>.db nicht
+    #   durch (fall_anwenden(), Z. 302-334); er uebergibt dem Runner auch
+    #   kein AuditLog, es entstuende also gar kein Beleg.
+    #
+    #   SENSIBILITAETSREGEL wie M018/M022 und TATZEIT_SET: im Payload stehen
+    #   nur FAKTEN (annotations.id, die eingetragene Nummer, der Weg, auf dem
+    #   sie gefunden wurde, die Art der Quelle, Zaehlungen, die Pfade von
+    #   Datenbank und Sicherung) — NIEMALS der markierte Wortlaut, niemals
+    #   die Notiz des Ermittlers und niemals die Seitenadresse. Der Wortlaut
+    #   ist der Inhalt eines Beitrags aus einem Verfahren nach §§ 176, 184b
+    #   StGB; im unveraenderlichen Protokoll hat er nichts zu suchen. Er
+    #   steht in der Annotation, und die bleibt ja gerade unveraendert.
+    ANNOTATION_POSTID_BACKFILLED: str = "annotation_postid_backfilled"
+
     # --- AP-3C (Build 540): QS-Stichprobe -----------------------------------
     #   QS_SAMPLE_DRAWN: EINE Ziehung. Der Payload traegt AUSSCHLIESSLICH die
     #   Angaben, die sie NACHRECHENBAR machen — Verfahren, KEIM, Groesse der
@@ -456,6 +495,9 @@ class EventType:
             # coordinator.audit_log (s. Kommentar bei der Definition).
             TATZEIT_SET,
             TATZEIT_CLEARED,
+            # Build 728 — geschrieben in evidence_audit_log, nicht in
+            # coordinator.audit_log (s. Kommentar bei der Definition).
+            ANNOTATION_POSTID_BACKFILLED,
             # Build 540 (AP-3C) — QS-Stichprobe, geschrieben in
             # coordinator.audit_log ueber CoordinatorWriter.
             QS_SAMPLE_DRAWN,

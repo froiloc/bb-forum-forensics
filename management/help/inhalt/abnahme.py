@@ -429,6 +429,25 @@ LECTORATE = Sichthilfe(
                 "sie beruht auf einem zweiten Schritt — und der gehört "
                 "genannt. Bei neueren Markierungen entfällt der Zusatz: dort "
                 "trägt die Markierung die Nummer selbst.",
+                "DER ZUSATZ KANN AUCH GANZ VERSCHWINDEN. Für ältere "
+                "Markierungen lässt sich die Beitragsnummer nachträglich aus "
+                "dem gesicherten Seitenabzug in die Beweismitteldatenbank "
+                "eintragen; die Betriebsseite hat dafür ein eigenes Werkzeug. "
+                "Ist das geschehen, trägt die Markierung die Nummer wie eine "
+                "neue, und der Zusatz entfällt. Fachlich ändert sich dadurch "
+                "NICHTS an den Belegen: der Wortlaut, die Kategorie, die "
+                "Notiz, die markierende Person und die Zeit bleiben, wie sie "
+                "waren — es wird nur nachgetragen, aus welchem Beitrag die "
+                "Stelle stammt. Sichtbar wird der Unterschied dort, wo die "
+                "Nummer gebraucht wird: Themenbetreff, Datum der Quelle, "
+                "Sprungmarke der Fundstelle, Gesprächspartner einer privaten "
+                "Nachricht — und daran, dass mehrere Belege desselben "
+                "Beitrags nun in EINEM Kasten stehen statt in mehreren.",
+                "WAS SICH DABEI NICHT KLÄREN LÄSST, BLEIBT OFFEN. Lässt sich "
+                "eine Markierung im Seitenabzug keinem einzelnen Beitrag "
+                "zuordnen — etwa weil derselbe Wortlaut in mehreren "
+                "Beiträgen vorkommt —, bleibt die Nummer leer, und der Beleg "
+                "erscheint weiter mit dem Vorbehalt. Geraten wird nichts.",
             ),
         ),
         Abschnitt(
