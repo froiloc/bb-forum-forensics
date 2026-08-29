@@ -89,7 +89,7 @@
    *  fuer die Messung genuegen die ersten - die Aufbauten wiederholen sich. */
   var MAX_BEITRAEGE = 12;
 
-  var AUSGABE = { version: "sonde_annotation_metadaten v1 (Build 732)",
+  var AUSGABE = { version: "sonde_annotation_metadaten v2 (Build 733)",
                   zeit: new Date().toISOString(),
                   anonymisiert: ANON };
 
@@ -282,6 +282,9 @@
   // zerlegten Bestandteile aus. Was die Zone ist, ist eine eigene Frage und
   // wird nicht geraten - eine Tatzeit mit falscher Zone ist um Stunden falsch.
 
+  /** Der zuletzt verworfene 'title'-Text - nur zur Anzeige. */
+  var LETZTER_TITLE = null;
+
   var ZEIT_MUSTER = /(\d{1,2})\.(\d{1,2})\.(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/;
 
   function zerlegeZeit(s) {
@@ -333,11 +336,20 @@
       name: "T4_title_attribut",
       zweck: "GEGENPROBE: das title-Attribut ist RELATIV und darf NICHT taugen",
       lauf: function (behaelter) {
+        // MESSUNG ALEX 29.08.2026: liefert "Original Poster", "4 years ago",
+        // "Report a problem" - nie ein Datum. Die Gegenprobe hat damit
+        // bestaetigt, dass 'title' untauglich ist.
+        //
+        // BIS v1 GAB DIESER ZWEIG EIN OBJEKT ZURUECK, und die Zaehlung fuehrte
+        // ihn als TREFFER (4 von 4). Eine Gegenprobe, die als Erfolg zaehlt,
+        // verdirbt genau die Quote, wegen der es sie gibt. Jetzt: null, und
+        // der gefundene Text steht getrennt daneben.
         var e = behaelter.querySelector("[title]");
         if (!e) return null;
         var z = zerlegeZeit(e.getAttribute("title"));
-        return z ? z : { roh: e.getAttribute("title"),
-                         hinweis: "kein Datum - relativ, wie erwartet" };
+        if (z) return z;
+        LETZTER_TITLE = e.getAttribute("title");
+        return null;
       }
     }
   ];
@@ -359,9 +371,19 @@
       zweck: "viewtopic: Linktext im Kopf ('Re: …')",
       imBeitrag: true,
       lauf: function (behaelter) {
+        // MESSUNG ALEX 29.08.2026: der ERSTE Link mit 'viewtopic.php' im Kopf
+        // ist auf seiner Seite der DAUERLINK, dessen Text die Beitragsnummer
+        // ist ("#721583"). v1 lieferte deshalb die Nummer statt des Betreffs.
+        // Jetzt werden alle Links des Kopfes durchgesehen und die
+        // uebersprungen, deren Text nur aus '#' und Ziffern besteht.
         var h2 = behaelter.querySelector("h2");
-        var a = h2 ? h2.querySelector("a[href*='viewtopic.php']") : null;
-        return a ? txt(a) : null;
+        if (!h2) return null;
+        var links = h2.querySelectorAll("a[href*='viewtopic.php']");
+        for (var i = 0; i < links.length; i++) {
+          var t = txt(links[i]);
+          if (t && !/^#?\d+$/.test(t)) return t;
+        }
+        return null;
       }
     },
     {
@@ -396,6 +418,23 @@
           if (!beitragBehaelter(alle[i])) {
             return txt(alle[i]);
           }
+        }
+        return null;
+      }
+    },
+    {
+      name: "S6_themenbetreff_ohne_nummer",
+      zweck: "wie S4, aber ohne den angehaengten '#<Zahl>' (MESSUNG Alex: "
+             + "S4 lieferte 'Titel? #99999')",
+      imBeitrag: false,
+      lauf: function () {
+        var vp = viewport();
+        if (!vp) return null;
+        var alle = vp.querySelectorAll("h2");
+        for (var i = 0; i < alle.length; i++) {
+          if (beitragBehaelter(alle[i])) continue;
+          var t = txt(alle[i]).replace(/\s*#\d+\s*$/, "").trim();
+          if (t) return t;
         }
         return null;
       }
@@ -620,6 +659,12 @@
     if (ziel) {
       d.kinder_an_der_bruchstelle = kinder(ziel);
       d.anzahl_div = ziel.querySelectorAll(":scope > div").length;
+      // NUR die <div> - so zaehlt auch XPath 'div[n]'. Alex' Anker verlangt
+      // div[3] (PN) bzw. div[4] (Forum); ohne diese Liste laesst sich nicht
+      // sagen, WELCHES div das ist.
+      d.nur_divs = Array.prototype.map.call(
+        ziel.querySelectorAll(":scope > div"), function (k, i) {
+          return "div[" + (i + 1) + "]: " + beschreibe(k); });
     }
     // Und die erste Ebene darunter, falls der Pfad anders liegt.
     var erstes = vp.firstElementChild;

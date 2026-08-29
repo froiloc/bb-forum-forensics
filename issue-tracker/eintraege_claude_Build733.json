@@ -1,0 +1,63 @@
+{
+  "issues": [
+    {
+      "id": "9d4b1c37-02fa-4e58-b6d1-73c8095ae214",
+      "type": "bug",
+      "title": "Sonde v1: Gegenprobe T4 zaehlte als Treffer, S1 nahm den Dauerlink",
+      "affected_version": "0.8.732",
+      "reporter": "Alex",
+      "reported_at": "2026-08-29T11:00:00+02:00",
+      "status": "resolved",
+      "priority": "high",
+      "severity": "major",
+      "description": "Alex' Messung vom 29.08.2026 (Themenseite viewtopic.php?pid=721598, vier Beitraege) deckt zwei Fehler in der Sonde selbst auf. (1) T4 ist die GEGENPROBE zum Zeitstempel: das 'title'-Attribut ist relativ und darf nicht taugen. Es lieferte erwartungsgemaess 'Original Poster', '4 years ago' und 'Report a problem' - aber weil mein Zweig ein Objekt statt null zurueckgab, fuehrte die Zaehlung es als TREFFER (4 von 4). Eine Gegenprobe, die als Erfolg zaehlt, verdirbt genau die Trefferquote, wegen der es sie gibt. (2) S1 sollte den Betreff aus dem Kopflink holen und lieferte '#999999' - also die Beitragsnummer. Auf Alex' Seite ist der erste 'viewtopic.php'-Link im Kopf der DAUERLINK, dessen Text die Nummer ist.",
+      "expected_behavior": "Die Gegenprobe zaehlt als Fehlschlag; der Betrefflink liefert den Betreff.",
+      "actual_behavior": "T4 4/4 mit Unsinnswerten, S1 4/4 mit der Nummer.",
+      "resolved_in_version": "0.8.733",
+      "tags": [
+        "sonde",
+        "messung",
+        "gegenprobe",
+        "eigener-fehler"
+      ],
+      "related_to": [
+        "7c2ad3f9-8e15-4b60-92a7-4d6e0138cb5a"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-08-29T11:20:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Sonde v2: T4 gibt jetzt null zurueck, wenn kein Datum darin steht (der verworfene Text wird getrennt gemerkt). S1 geht alle Kopflinks durch und ueberspringt die, deren Text nur aus '#' und Ziffern besteht. Neu dazu S6 - wie S4, aber ohne den angehaengten '#<Zahl>'; Alex' Messung zeigte S4 als 'Titel? #99999'. Gegen beide echten Aufbauten probegelaufen: T4 jetzt 0/1 statt 1/1, S1 liefert den Betreff, S6 greift auf der PN-Seite."
+        }
+      ]
+    },
+    {
+      "id": "f13e7a95-4c8b-42d0-91e6-58ba03c7d6f2",
+      "type": "documentation",
+      "title": "Schritt-fuer-Schritt-Anleitung fuer die ausstehende Messung",
+      "affected_version": "0.8.733",
+      "reporter": "Alex",
+      "reported_at": "2026-08-29T11:00:00+02:00",
+      "status": "resolved",
+      "priority": "high",
+      "description": "Alex: 'Ich benoetige von dir eine detaillierte Schritt fuer Schritt Anleitung. Das ganze ist gerade etwas zu verwirrend fuer mich.' - Berechtigt: ich habe ueber sechs Builds hinweg vier Baustellen nebeneinander gefuehrt (post_id beim Anlegen, Nachtrag fuer den Bestand, Wortlautsuche, Ankerbruch) und in jeder Uebergabe alle vier erwaehnt. Die Anleitung fuehrt genau EINE Baustelle zu Ende und nennt die uebrigen nur noch als 'spaeter'.",
+      "expected_behavior": "-",
+      "actual_behavior": "-",
+      "resolved_in_version": "0.8.733",
+      "tags": [
+        "dokumentation",
+        "anleitung",
+        "arbeitsweise"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-08-29T11:20:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Abgelegt als claude/Anleitung_Messung_Annotationsmetadaten.md. Sechs nummerierte Schritte, dazu was Alex' erste Messung bereits entschieden hat (post_id und Zeitstempel: erledigt) und was noch fehlt (LAUF B/C mit stehender Auswahl, sowie die PN-Seite). Die Ankerfrage steht ausdruecklich als GETRENNTE Baustelle am Ende, mit dem einen Befund, der aus lauf_d folgt: der Browser hat unter div#wrap fuenf <div> und an dritter Stelle ein <style>, der Abzug nur zwei <div>. Gemessen ist, dass gewoehnliches CSS die Zerlegung NICHT sprengt - nur ein nicht geschlossenes <style> tut es. Bewiesen ist das noch nicht; dafuer muesste man in den Abzug sehen."
+        }
+      ]
+    }
+  ]
+}
