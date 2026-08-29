@@ -89,7 +89,7 @@
    *  fuer die Messung genuegen die ersten - die Aufbauten wiederholen sich. */
   var MAX_BEITRAEGE = 12;
 
-  var AUSGABE = { version: "sonde_annotation_metadaten v2 (Build 733)",
+  var AUSGABE = { version: "sonde_annotation_metadaten v3 (Build 734)",
                   zeit: new Date().toISOString(),
                   anonymisiert: ANON };
 
@@ -288,10 +288,31 @@
   var ZEIT_MUSTER = /(\d{1,2})\.(\d{1,2})\.(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/;
 
   function zerlegeZeit(s) {
-    var t = ZEIT_MUSTER.exec(String(s || ""));
+    var roh = String(s || "");
+    var t = ZEIT_MUSTER.exec(roh);
     if (!t) return null;
+    // ---------------------------------------------------------------------
+    // BEFUND ALEX 29.08.2026, UND ES IST EIN FEHLER VON MIR: v2 gab in 'roh'
+    // die GANZE Zeichenkette zurueck, aus der das Datum stammt. Bei T1/T2 ist
+    // das nur das Datum selbst - bei T3 ist es der KOMPLETTE Kopftext, und
+    // der traegt den Benutzernamen. In Alex' Ausgabe stand deshalb ein
+    // Klarname unanonymisiert.
+    //
+    // Ich hatte Zeitstempel pauschal als 'nicht anonymisierungsbeduerftig'
+    // eingestuft und dabei uebersehen, dass ein Verfahren mehr liefert als
+    // den Zeitstempel. Die Zusage 'die Ausgabe darf unveraendert
+    // weitergegeben werden' war damit nicht eingehalten.
+    //
+    // AB v3: 'roh' traegt NUR die getroffene Datumsangabe. Die Quelle geht
+    // als Laenge, Fingerabdruck und verdeckte Fassung mit - das genuegt, um
+    // zu erkennen, ob zwei Verfahren dieselbe Stelle gelesen haben.
+    // ---------------------------------------------------------------------
+    var umfeld = Anon.wert(roh);
     return {
-      roh: String(s).trim(),
+      roh: t[0],
+      quelle_laenge: umfeld.laenge,
+      quelle_fp: umfeld.fp,
+      quelle_verdeckt: umfeld.text,
       tag: +t[1], monat: +t[2], jahr: +t[3],
       stunde: +t[4], minute: +t[5], sekunde: t[6] ? +t[6] : 0,
       iso_ohne_zone: t[3] + "-" + ("0" + t[2]).slice(-2) + "-"
@@ -348,7 +369,7 @@
         if (!e) return null;
         var z = zerlegeZeit(e.getAttribute("title"));
         if (z) return z;
-        LETZTER_TITLE = e.getAttribute("title");
+        LETZTER_TITLE = Anon.wert(e.getAttribute("title"));
         return null;
       }
     }
