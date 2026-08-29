@@ -418,6 +418,128 @@ class EintraegeTests(unittest.TestCase):
                             "und die Datei neu erzeugen."
                             % (feld, len(fundstellen)))
 
+    # IT09 -------------------------------------------------------------------
+    def test_it09_keine_id_aus_einer_frueher_gelieferten_eingangsdatei(self):
+        """
+        IT09 (Build 731) - DER WAECHTER, DER IM BAUCONTAINER UEBERHAUPT
+        ANSCHLAGEN KANN.
+
+        DER ANLASS: Derselbe Fehler ist ZWEIMAL hintereinander ausgeliefert
+        worden (Build 730 und Build 731). Beide Male war die Ursache
+        dieselbe: die Eingangsdatei des Vorbuilds wurde UMBENANNT und um
+        neue Vorgaenge ergaenzt, statt eine neue Datei anzulegen. Die darin
+        schon enthaltenen Vorgaenge waren beim Empfaenger laengst
+        eingemischt; mit '--auto-resolve source' waere ihre
+        merge-tool-Historie lautlos verschwunden.
+
+        WARUM IT03 DAS HIER NICHT FANGEN KANN - und das ist der Grund,
+        warum es IT09 braucht: IT03 misst gegen
+        issue-tracker/data/issues.json. Diese Datei ist im Entwicklungsbaum
+        der Stand vom Auslieferungstag; die merge-tool-Eintraege entstehen
+        erst auf der Anlage des Empfaengers beim Einmischen. Im
+        Baucontainer sind die betroffenen Vorgaenge deshalb schlicht NICHT
+        im Bestand, IT03 ueberspringt sie als 'neu' und bleibt gruen. Der
+        Fehler faellt erst beim Empfaenger auf - also zu spaet.
+
+        WAS IT09 STATT DESSEN MISST: die GIT-HISTORIE der Eingangsdateien.
+        Eine Vorgangs-ID, die in einer FRUEHER ausgelieferten
+        'eintraege_claude_Build*.json' schon einmal stand, darf in der
+        aktuellen nicht wieder auftauchen. Das ist genau das Muster
+        'umbenannt statt neu angelegt', und es ist ohne den Bestand des
+        Empfaengers pruefbar.
+
+        DIE REGEL IN EINEM SATZ: Eine Eingangsdatei wird einmal geschrieben
+        und nie umbenannt; ein neuer Build legt eine neue Datei an, und in
+        die kommt ausschliesslich, was in diesem Build entstanden ist.
+        """
+        import subprocess
+
+        def git(*argumente):
+            return subprocess.run(["git"] + list(argumente), cwd=str(WURZEL),
+                                  capture_output=True, text=True, timeout=120)
+
+        muster = "issue-tracker/eintraege_claude_Build*.json"
+        try:
+            # '--diff-filter=AM' ist HIER DER PUNKT und nicht Beiwerk: ohne
+            # ihn liefert 'git log -1' den Commit, in dem die Datei GELOESCHT
+            # wurde (beim Umbenennen ist das der juengste), und 'git show'
+            # findet sie dort nicht mehr. Der erste Entwurf dieses Falls ist
+            # genau daran gescheitert - er blieb gruen, obwohl der Fehler
+            # nachgestellt war. Ein Waechter, der einen stillen Zweig hat,
+            # ist keiner.
+            historie = git("log", "--all", "--pretty=format:%H",
+                           "--name-only", "--diff-filter=AM", "--", muster)
+        except (OSError, subprocess.SubprocessError) as exc:
+            self.skipTest("git nicht verfuegbar: %s" % exc)
+        if historie.returncode != 0:
+            self.skipTest("kein git-Baum: %s" % historie.stderr.strip()[:120])
+
+        # Ausgabe: Commit-Zeile, dann die in ihm geaenderten Dateien.
+        # Sie kommt in umgekehrter Zeitfolge - der ERSTE Treffer je Datei ist
+        # damit ihr juengster Stand, in dem es sie noch gab.
+        neuester = {}
+        commit = ""
+        for zeile in historie.stdout.splitlines():
+            zeile = zeile.strip()
+            if not zeile:
+                continue
+            if "/" not in zeile and len(zeile) == 40:
+                commit = zeile
+                continue
+            neuester.setdefault(zeile, commit)
+
+        aktuell = {p.name for p in _eintragsdateien()}
+        gepruefte_dateien = 0
+        alte_ids = {}
+        for name, commit in neuester.items():
+            kurz = Path(name).name
+            # Eine Datei, die noch im Baum liegt, IST die aktuelle Lieferung
+            # und darf ihre eigenen IDs natuerlich fuehren.
+            if kurz in aktuell or not commit:
+                continue
+            inhalt = git("show", "%s:%s" % (commit, name))
+            if inhalt.returncode != 0:
+                continue
+            try:
+                daten = json.loads(inhalt.stdout)
+            except ValueError:
+                continue
+            gepruefte_dateien += 1
+            for e in daten.get("issues") or []:
+                alte_ids.setdefault(e.get("id"), kurz)
+
+        # GEGENPROBE IM TEST SELBST: Findet die Erhebung ueberhaupt etwas,
+        # dann sagt ein leeres Ergebnis unten wirklich "keine Wiederholung".
+        # Findet sie nichts, sagt es nur "nicht nachgesehen" - und das ist
+        # etwas anderes.
+        if not alte_ids:
+            self.skipTest(
+                "In der Historie dieses Baums liegt keine frueher "
+                "ausgelieferte Eingangsdatei (%d Dateien gelesen). Es gibt "
+                "nichts zu vergleichen." % gepruefte_dateien)
+
+        wiederholt = []
+        for pfad in _eintragsdateien():
+            for e in _lade(pfad)["issues"]:
+                herkunft = alte_ids.get(e["id"])
+                if herkunft:
+                    wiederholt.append(
+                        "%s steht in %s UND stand schon in %s"
+                        % (e["id"][:8], pfad.name, herkunft))
+
+        self.assertEqual(
+            [], wiederholt,
+            "Diese Vorgaenge werden ein ZWEITES Mal ausgeliefert:\n  %s\n\n"
+            "Beim Empfaenger sind sie laengst eingemischt und tragen dort "
+            "einen merge-tool-Eintrag. Mit '--auto-resolve source' "
+            "verschwaende diese Historie lautlos (das ist der Fall, den "
+            "IT03 beim Empfaenger meldet - hier kann er es nicht, s. "
+            "Docstring).\n\n"
+            "BEHEBUNG: Die Eingangsdatei dieses Builds darf NUR die in "
+            "diesem Build neu entstandenen Vorgaenge enthalten. Eine "
+            "Eingangsdatei wird einmal geschrieben und nie umbenannt."
+            % "\n  ".join(wiederholt))
+
 
 if __name__ == "__main__":
     unittest.main()

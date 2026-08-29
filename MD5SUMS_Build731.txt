@@ -1,4 +1,4 @@
-f0399de6deab59e905e096311e7c59fa  build.json
+705de14eecfcdae849158a5fab0673de  build.json
 673abd39475236a9afcade34abf8880c  core/kategorie_farben.py
 930ac5645cc3e4ae9ba6852e6a93dbfc  db/coordinator_db.py
 3096b6d3ecf9f703e1b5c2d437f77a11  forensic_api/__init__.py
@@ -7,7 +7,7 @@ febf696b531409399ecc08665200fe74  forensic_api/export.py
 e01ef1fa2dffd9bcf19e3b6a87fc38d8  issue-tracker/eintraege_claude_Build725.json
 d53eefb34bee04f95354902b2ccb6d47  issue-tracker/eintraege_claude_Build726.json
 c22ac86502a9fc7f89f24ca3890e1cbb  issue-tracker/eintraege_claude_Build727.json
-0ca0091b869aa019b1b7e4321786d0f3  issue-tracker/eintraege_claude_Build731.json
+5a27c90a2099c615f505505cc0ab29e2  issue-tracker/eintraege_claude_Build731.json
 a6532b6387716ad167972fd1380a4021  maintenance/wartungsstufen.py
 b141fc6686f934511d02a96253e81de9  management/audit/event_types.py
 ff0bdefdf9b285752dddab3d5ca4e45c  management/help/cli_katalog.py
@@ -30,6 +30,7 @@ e7658e5add2ab3f7502b00bcfc2bf8bf  report_render/vollzitat_bauer.py
 5425477a7f7e269779092895c9531749  report_render/vollzitat_klartext.py
 b03881f5dfce37c54db9821e5e79c80c  report_render/vollzitat_satz.py
 28ff3ff5f2919dcd9fef46d98cd4c477  tests/hilfe_fehlliste_stand.json
+9c8e1e03b2a951f1bfcedba7bb6e873a  tests/test_issue_tracker_eintraege.py
 c401aa2b00cecd7768aa41ae71cd1f61  tests/test_kategorie_farben.py
 eeb567ef9cb136eca564984bc3f7185c  tests/test_m039_migration.py
 721b86fe6d1d421b08fcd735e3cb6d54  tests/test_management_dashboard.py

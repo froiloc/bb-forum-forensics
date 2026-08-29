@@ -1,100 +1,6 @@
 {
   "issues": [
     {
-      "id": "c4e91b76-2d38-4a05-b8e1-6f30a2c7d519",
-      "type": "bug",
-      "title": "Wortlautsuche verfehlte jede mehrzeilige Markierung (<br> gegen Zeilenumbruch)",
-      "affected_version": "0.8.728",
-      "reporter": "Alex",
-      "reported_at": "2026-08-28T22:00:00+02:00",
-      "status": "resolved",
-      "priority": "critical",
-      "severity": "major",
-      "description": "Alex, 28.08.2026: 'Wenn du nach dem Text gesucht hast, hast du dann beruecksichtigt, dass im BLOB ein Zeilenumbruch zu <br> aufgeloest wird? Du musst dir ansehen, wie textContent im JSON von annotation.selection_json erzeugt wird. Das muss rueckwaerts abgewickelt werden.' - ER HAT RECHT, und der Beleg steht in toolbar/toolbar.js Z. 1101: 'var text = sel.toString().trim();'. 'textContent' ist damit die GERENDERTE Auswahl und nicht der Quelltext: jedes <br> ist ein Zeilenumbruch, jede Blockgrenze ebenso, und Rand-Leerraum fehlt. Bis Build 728 wurde genau dieser Text im QUELLTEXT des Absatzes gesucht (_klartext), wo an derselben Stelle NICHTS steht. GEMESSEN an einem Absatz mit drei <br>: Quelltext 'Zeile eins.Zeile zwei...', Browserbild 'Zeile eins.' + Umbruch + 'Zeile zwei...', 'Browser-Wortlaut kommt im Quelltext vor?' -> False. Jede mehrzeilige Markierung konnte damit nur verfehlt werden - und weil der Wortlaut im Bestand der einzige noch tragende Weg war, sah es aus, als fehle der Beleg. Er fehlte nicht; er wurde mit dem falschen Massstab gesucht.",
-      "expected_behavior": "Der gespeicherte Wortlaut wird in derselben Fassung gesucht, in der er entstanden ist, und der Treffer in Quelltext-Versaetze zurueckgesetzt.",
-      "actual_behavior": "In Alex' Lauf ueber 25 echte Markierungen: 4-mal 'nicht gefunden', 17-mal nur ueber den Wortlaut, 0-mal ueber den Anker.",
-      "resolved_in_version": "0.8.729",
-      "tags": [
-        "vollzitat",
-        "wortlaut",
-        "br",
-        "selection_json",
-        "toolbar"
-      ],
-      "related_to": [
-        "b7d4f2a1-0c63-4e58-9a17-2f5d8e30c941"
-      ],
-      "updates": [
-        {
-          "timestamp": "2026-08-28T22:30:00+02:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Build 729: browser_wortlaut() bildet den Text eines Absatzes so, wie Range.toString() ihn bildet (<br> und Blockgrenzen als Umbruch), UND fuehrt eine Versatztabelle mit, ueber die ein Treffer wieder in Quelltext-Versaetze zurueckgesetzt wird - die Einfaerbung arbeitet auf dem Quelltext, ein Treffer im Browserbild allein waere um die Umbrueche verschoben. Gesucht wird in drei Fassungen mit Rangfolge: woertlich, ohne Rand-Leerraum, mit gefaltetem Leerraum; die dritte markiert nur noch den ganzen Absatz und sagt das. Testfaelle BR01-BR07. Gegenprobe gefahren: mit dem Suchverfahren aus Build 728 werden BR02 und BR03 rot, BR06 bleibt gruen."
-        }
-      ]
-    },
-    {
-      "id": "8a15d3c0-7e64-4b92-a3f7-51d8c9e02b46",
-      "type": "bug",
-      "title": "Protokoll behauptete 'Anker loest nicht auf', ohne es zu messen",
-      "affected_version": "0.8.728",
-      "reporter": "Alex",
-      "reported_at": "2026-08-28T22:00:00+02:00",
-      "status": "resolved",
-      "priority": "critical",
-      "severity": "major",
-      "description": "Alex: 'Was mich extrem verstoert ist, dass XPATH nicht aufgeloest wird. Dafuer finde ich keine Erklaerung.' - Die Erklaerung liess sich aus dem Protokoll auch gar nicht gewinnen, UND DAS IST MEIN FEHLER. AbsatzFinder._ueber_xpath() gab in FUENF verschiedenen Lagen None zurueck (kein Anker in der Auswahl / Ausdruck loest nicht auf / kein Textpunkt / kein Absatz-Vorfahr / Versatz nicht im Absatz), und alle fuenf bekamen denselben Satz: 'der Anker %r loest nicht auf'. In vier davon war dieser Satz womoeglich falsch. Alex hat daraus - voellig folgerichtig - auf einen Totalausfall der Anker geschlossen; gemessen war das nicht. Eine Diagnose, die fuenf Ursachen unter einem Namen fuehrt, ist keine Diagnose (Grundregel: keine Behauptung ohne Beleg).",
-      "expected_behavior": "Jede Fundstelle nennt den gemessenen Grund; bei einem gebrochenen Anker zusaetzlich den Schritt, an dem er bricht, und was dort statt dessen steht.",
-      "actual_behavior": "25 Zeilen mit demselben unbelegten Satz.",
-      "resolved_in_version": "0.8.729",
-      "tags": [
-        "vollzitat",
-        "anker",
-        "xpath",
-        "diagnose",
-        "belegpflicht"
-      ],
-      "related_to": [
-        "9f2b8c54-73ad-41e6-a29f-05b1e7d3c860"
-      ],
-      "updates": [
-        {
-          "timestamp": "2026-08-28T22:30:00+02:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Build 729: fuenf Gruende (GRUND_OHNE_ANKER, GRUND_ANKER_BRICHT, GRUND_KEIN_PUNKT, GRUND_KEIN_BLOCK, GRUND_KEIN_VERSATZ), jeder mit Klartext, und AbsatzFinder.anker_bruchstelle() loest den Ausdruck Schritt fuer Schritt auf und nennt den Bruchpunkt samt Gegenzaehlung ('der Browser hat 9 <article> gesehen, im Abzug stehen 3'). Der Grund wandert auch in eine ERFOLGREICHE Wortlaut-Fundstelle - genau dort fehlte er. tools/postid_nachtragen.py druckt ihn je Beleg und schliesst mit einer ANKERBILANZ. Damit beantwortet der naechste Lauf die Frage, die dieser offenlassen musste. Testfaelle AN01-AN08, Gegenprobe AN06: wo der Anker traegt, darf kein Grund stehen."
-        }
-      ]
-    },
-    {
-      "id": "2f7c04e8-91b5-4d63-a7f0-3ce85d1962af",
-      "type": "documentation",
-      "title": "Prozessfehler: Build 729 wurde nach dem letzten Testlauf geaendert",
-      "affected_version": "0.8.729",
-      "reporter": "Alex",
-      "reported_at": "2026-08-28T23:10:00+02:00",
-      "status": "resolved",
-      "priority": "high",
-      "description": "In Alex' Regressionslauf fielen drei Faelle aus tests/test_issue_tracker_eintraege.py: IT03 (Historie ginge beim Einmischen verloren) und zweimal IT08 (Backslash+n als Text). BEIDES WAR IN MEINER LIEFERUNG UND HAETTE HIER AUFFALLEN MUESSEN - IT08 schlaegt auch im Baucontainer an, nachgeprueft. Es fiel nicht auf, WEIL ICH DIE REIHENFOLGE VERLETZT HABE: der vollstaendige Lauf 'python run_tests.py' lief um 21:40 und war gruen; die Tracker-Datei habe ich danach geaendert (21:47), umbenannt und um 21:52 gebaut - ohne erneuten Lauf. Der Aufruf von tools/bundle_bauen.sh bekam ausserdem nur zwei Testdateien als Regressionsbefehl statt der ganzen Suite; damit konnte der eingebaute Regressionsschritt den Fehler auch nicht mehr fangen. Grundregel 2 sagt: jede Versionsnummer muss ein lauffaehiges, GETESTETES System sein. Build 729 war das nicht.",
-      "expected_behavior": "Nach der LETZTEN Aenderung laeuft die vollstaendige Suite, und erst danach wird gebaut; der Regressionsschritt des Bauskripts bekommt die ganze Suite.",
-      "actual_behavior": "Gebaut nach einer Aenderung, die kein Lauf mehr gesehen hat.",
-      "resolved_in_version": "0.8.730",
-      "tags": [
-        "prozess",
-        "regression",
-        "issue-tracker",
-        "eigener-fehler"
-      ],
-      "updates": [
-        {
-          "timestamp": "2026-08-28T23:30:00+02:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Build 730: (1) Die vier Vorgaenge aus Build 728 sind aus der Eingangsdatei ENTFERNT - Alex hat sie bereits eingemischt (sein Bestand traegt zu jedem einen merge-tool-Eintrag vom 28.08.2026 21:06:50). Sie erneut zu liefern haette mit '--auto-resolve source' genau diese Eintraege geloescht. Eine Eingangsdatei enthaelt nur, was NEU ist. (2) Die Zeichenfolge Backslash+n steht jetzt in Worten statt in Anfuehrungszeichen; IT08 unterscheidet zu Recht 'klebt am Satz' von 'steht frei im Satz'. (3) Vor dem Bau lief die vollstaendige Suite, und tools/bundle_bauen.sh bekam sie diesmal als Regressionsbefehl uebergeben."
-        }
-      ]
-    },
-    {
       "id": "6b3e97a2-58d1-4c07-9e46-a20f7d1c8354",
       "type": "bug",
       "title": "Nachtrag las den POST-Abzug statt des GET-Abzugs",
@@ -155,6 +61,37 @@
           "author": "Claude",
           "action": "comment",
           "comment": "Build 731 bringt die fehlende Haelfte des Abgleichs. (1) Die Bruchmeldung ZAEHLT nicht mehr nur, sie BENENNT: 'Im Abzug steht dort: <div#brd-head>, <div#brd-main>' - Tag, Kennung, Klasse, keine Inhalte, die Ausgabe bleibt weitergebbar. (2) Der Lauf schliesst mit einem fertigen Einzeiler fuer die Entwicklerkonsole, der DIESELBE Stelle im Browser abfragt, samt Angabe wann, wo und was zu beobachten ist (Projektgebot zum Browser-Debugging). Damit steht die eine Liste neben der anderen, und die Frage entscheidet sich an Daten statt an Vermutungen: MEHR Elemente im Browser -> es wird etwas in die Seite geschrieben; DIESELBEN Elemente -> der verglichene Abzug ist der falsche."
+        }
+      ]
+    },
+    {
+      "id": "3ab6d802-47f1-4e59-9c2d-08b71fe5a934",
+      "type": "documentation",
+      "title": "Wiederholter Fehler: Eingangsdatei erneut umbenannt statt neu angelegt",
+      "affected_version": "0.8.731",
+      "reporter": "Alex",
+      "reported_at": "2026-08-29T01:00:00+02:00",
+      "status": "resolved",
+      "priority": "high",
+      "description": "IT03 ist ein zweites Mal gefallen, mit derselben Ursache wie in Build 730 und eine Ebene spaeter. Alex hatte die drei Vorgaenge aus Build 730 eingemischt (merge-tool-Eintraege vom 28.08.2026 22:51:49); ich habe die Datei danach in 'eintraege_claude_Build731.json' UMBENANNT und zwei neue Vorgaenge angehaengt. Damit standen die drei bereits eingemischten erneut darin, ohne ihre merge-tool-Historie - mit '--auto-resolve source' waeren genau diese Eintraege lautlos verschwunden. DAS BESONDERS AERGERLICHE DARAN: Ich hatte den Satz 'Umbenennen ist keine Fortschreibung' in der Uebergabe zu Build 730 selbst geschrieben und ihn einen Build spaeter nicht befolgt. Der Waechter hat es beide Male gefangen; verlassen darf man sich darauf nicht.",
+      "expected_behavior": "Jeder Build legt eine EIGENE Eingangsdatei an, die ausschliesslich die in diesem Build neu entstandenen Vorgaenge enthaelt.",
+      "actual_behavior": "Die Datei des Vorbuilds wurde umbenannt und ergaenzt; bereits eingemischte Vorgaenge waren erneut enthalten.",
+      "resolved_in_version": "0.8.731",
+      "tags": [
+        "prozess",
+        "issue-tracker",
+        "eigener-fehler",
+        "wiederholung"
+      ],
+      "related_to": [
+        "2f7c04e8-91b5-4d63-a7f0-3ce85d1962af"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-08-29T01:15:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Behoben unter derselben Buildnummer 731, auf Weisung von Alex. Die Eingangsdatei fuehrt jetzt nur die drei in Build 731 neu entstandenen Vorgaenge. FESTE REGEL FUER KUENFTIGE BUILDS, damit es kein drittes Mal gibt: eine Eingangsdatei wird EINMAL geschrieben und NIE umbenannt. Ein neuer Build legt eine neue Datei an, und in die kommt ausschliesslich, was in diesem Build entstanden ist. Der Grund, warum es im Baucontainer nicht auffaellt, ist bekannt und nicht behebbar: IT03 misst gegen issue-tracker/data/issues.json, und die dortige Fassung ist die vom 27.08.2026 - die merge-tool-Eintraege entstehen erst auf Alex' Anlage. IT03 kann hier also gar nicht anschlagen. DESHALB GIBT ES JETZT IT09: er misst nicht gegen den Bestand des Empfaengers, sondern gegen die GIT-HISTORIE der Eingangsdateien - eine Vorgangs-ID, die in einer frueher ausgelieferten Datei schon stand, darf in der aktuellen nicht wieder auftauchen. Das ist genau das Muster 'umbenannt statt neu angelegt' und ohne fremden Bestand pruefbar. Gegenprobe gefahren: mit den drei wieder eingesetzten Vorgaengen wird IT09 rot und nennt alle drei; ohne sie bleibt er gruen. Der erste Entwurf von IT09 blieb uebrigens gruen, obwohl der Fehler nachgestellt war - er holte den juengsten Commit zur Datei, und das ist beim Umbenennen der, in dem sie GELOESCHT wurde; 'git show' fand sie dort nicht und der Zweig uebersprang still. Behoben mit '--diff-filter=AM'."
         }
       ]
     }
