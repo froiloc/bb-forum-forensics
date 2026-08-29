@@ -1,0 +1,66 @@
+{
+  "issues": [
+    {
+      "id": "e5f81b04-3d27-4a96-b1c8-70e42fa9d635",
+      "type": "bug",
+      "title": "post_id bleibt leer: _postElementVon liest die geloeschte Auswahl",
+      "affected_version": "0.8.727",
+      "reporter": "Alex",
+      "reported_at": "2026-08-29T10:00:00+02:00",
+      "status": "in_progress",
+      "priority": "critical",
+      "severity": "blocker",
+      "description": "Alex, 29.08.2026: 'Weder wird die Post-ID beim Erstellen der Annotation mit erfasst, noch ist das Script fuer bestehende Annotationen in der Lage ueber den XPATH den Auszug im BLOB zu finden.' - ER HAT RECHT, und die Ursache steht im Schreibpfad: MarkerToolModule._onMouseUp() loescht die Auswahl in Z. 2614 ('sel.removeAllRanges()') und ruft erst in Z. 2640 '_postElementVon(selObj)'. Diese Funktion liest die Auswahl aber ueber window.getSelection() ERNEUT - zu diesem Zeitpunkt ist sel.rangeCount gleich 0, sie gibt null zurueck, und post_id bleibt leer. DER CODE AUS BUILD 727 KANN IN DIESER REIHENFOLGE NIE ETWAS LIEFERN. Bestaetigt durch Alex' Lauf vom 29.08.2026: die neu hinzugekommene Annotation #31 hat ebenfalls keine post_id, obwohl sie nach dem Einspielen von Build 727ff entstanden ist.\n\nWARUM ES DIE TESTS NICHT GEFANGEN HABEN, und das ist der eigentliche Mangel: TB01-TB09 rufen _postElementVon DIREKT mit gesetzter Auswahl auf. Sie pruefen das Stueck, nicht den Weg. Ein gruener Test ueber eine Funktion, die im Betrieb nie unter diesen Bedingungen laeuft, ist kein Nachweis.",
+      "expected_behavior": "Beim Anlegen einer Annotation stehen post_id, Zeitstempel des Beitrags und Betreff in selection_json bzw. in den Feldern der Annotation.",
+      "actual_behavior": "post_id ist bei jeder Textmarkierung null.",
+      "resolved_in_version": null,
+      "target_version": null,
+      "tags": [
+        "toolbar",
+        "post_id",
+        "annotation",
+        "eigener-fehler",
+        "blocker"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-08-29T10:30:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Build 732 liefert ZUERST die Messung und noch keinen Fix - auf Weisung von Alex ('substanziell und vollstaendig messen, statt im Trueben zu fischen'). debug/sonde_annotation_metadaten.js misst an der laufenden Anlage, welche Verfahren post_id, Zeitstempel und Betreff liefern, und weist in LAUF C den Fehler nach, statt ihn zu behaupten: dieselbe Auswahl, zweimal durch die ausgelieferte Hilfsfunktion - einmal mit stehender Auswahl, einmal nach removeAllRanges(). Gegen die echte toolbar.js im Probelauf gemessen: 1164441 bzw. null. Der Fix ist eine Umstellung zweier Zeilen; er kommt zusammen mit Zeitstempel und Betreff in EINER Aenderung, sobald die Messung vorliegt."
+        }
+      ]
+    },
+    {
+      "id": "7c2ad3f9-8e15-4b60-92a7-4d6e0138cb5a",
+      "type": "improvement",
+      "title": "Sonde: Verfahren fuer post_id, Zeitstempel und Betreff messen",
+      "affected_version": "0.8.731",
+      "reporter": "Alex",
+      "reported_at": "2026-08-29T10:00:00+02:00",
+      "status": "resolved",
+      "priority": "high",
+      "description": "Weisung Alex: 'Bitte erstelle einen Testmechanismus in einem Script, dass verschiedene Methoden ausprobiert. Du kannst gern an realen Daten testen, aber dann bestehe ich darauf, dass du die Inhalte von Worten in Textpassagen anonymisierst.' Umgesetzt als debug/sonde_annotation_metadaten.js (IIFE, 'use strict', ausgabelastig, ausfuehrlich kommentiert). Sechs Verfahren fuer post_id, vier fuer den Zeitstempel, fuenf fuer den Betreff - jedes einzeln ausgewiesen, mit Trefferquote je Verfahren. Freitext wird verdeckt (Buchstaben zu 'x', Ziffern zu '9'), Laenge und Fingerabdruck bleiben; damit ist erkennbar, ob zwei Verfahren DENSELBEN Wert gefunden haben, ohne dass der Wert sichtbar wird. Beitragsnummern, Zeitstempel und Geruestangaben bleiben offen - sie sind der Messgegenstand.",
+      "expected_behavior": "Die Wahl des Verfahrens haengt an Messwerten.",
+      "actual_behavior": "-",
+      "resolved_in_version": "0.8.732",
+      "tags": [
+        "sonde",
+        "devtools",
+        "messung",
+        "anonymisierung"
+      ],
+      "related_to": [
+        "e5f81b04-3d27-4a96-b1c8-70e42fa9d635"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-08-29T10:30:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Die Sonde ist gegen BEIDE echten Aufbauten aus Alex' Auszuegen probegelaufen (jsdom). Dabei hat sie einen Fehler IN SICH SELBST aufgedeckt: 'closest(\"article, div.blockpost, div[id^=p]\")' trifft in der viewtopic-Ansicht zuerst auf <div class=box id=pp...>, und darin steht der <h2> nicht - er ist dessen Geschwister. Zeit und Betreff kamen deshalb als null zurueck, obwohl beide auf der Seite standen. Wer daraus geschlossen haette, die Angaben seien nicht zu holen, haette sich am eigenen Werkzeug geirrt. Behoben durch beitragBehaelter(), das aufsteigt und den AEUSSERSTEN Treffer nimmt."
+        }
+      ]
+    }
+  ]
+}
