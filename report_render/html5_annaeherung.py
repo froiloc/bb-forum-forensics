@@ -31,6 +31,16 @@
 #       Browser zaehlt ihn folglich nie mit. libxml2 haengt ihn als
 #       gewoehnliche Kinder ein.
 #
+#   (3) AUSSTEHENDE ENDTAGS — DAS IST DER FALL, DER ALEX' ANKER BRICHT.
+#       Trifft ein Endtag auf ein Element, das offen ist, aber nicht obenauf
+#       liegt, schliesst HTML5 die darueberliegenden Elemente mit
+#       ("pop until X popped"). libxml2 meldet die Abweichung und LAESST SIE
+#       OFFEN - alles Folgende landet darin. Belegt am echten Bestand
+#       (Diagnoselauf 30.08.2026): '#page-body' stand im Abzug INNERHALB von
+#       '#page-header'. Nachgestellt mit genau den beiden gemeldeten
+#       Fehlern aus einem <li>, in dem ein <div> offen blieb.
+#       s. schliesse_offene() weiter unten.
+#
 #   BEIDES IST GEMESSEN, nicht angenommen. Am 30.08.2026 wurden zehn
 #   Konstrukte gegen Chromium gehalten (Playwright, 'innerHTML' auf einen
 #   <div> - also genau der Weg, den das Ermittlungsfenster geht) und gegen
@@ -78,13 +88,13 @@
 #   nachzuruesten ist eine Entscheidung ueber die Abhaengigkeiten des
 #   Systems und keine, die nebenbei in einer Fehlersuche faellt.
 #
-# Version: 0.8.737 - Build 737
+# Version: 0.8.742 - Build 742
 # =============================================================================
 
 from __future__ import annotations
 
 import re
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 #: Elemente, deren Inhalt im Browser NICHT als Markup im Baum landet.
 #:
@@ -147,6 +157,13 @@ def annaehern(html: str) -> Tuple[str, List[str]]:
 
     neu = _ROHTEXT_MUSTER.sub(_ersetze, text)
 
+    # ZWEITER SCHRITT (Build 742): ausstehende Endtags nachziehen. Er steht
+    # NACH dem Leeren der Rohtext-Elemente, und die Reihenfolge ist nicht
+    # beliebig: was in einem <noscript> steht, ist im Browser Text und darf
+    # den Stapel offener Elemente gar nicht erst erreichen. Zuerst leeren,
+    # dann zaehlen.
+    neu, nachgezogen = schliesse_offene(neu)
+
     # DREI ZAHLEN, NICHT ZWEI. 'geschlossen und geleert', 'geschlossen und
     # schon leer' und 'ohne schliessendes Gegenstueck' sind drei verschiedene
     # Lagen, und nur die erste ist ein Eingriff. Sie in einer Zahl
@@ -175,6 +192,7 @@ def annaehern(html: str) -> Tuple[str, List[str]]:
                 "nachzusehen" % ohne_ende)
         befunde.append("; ".join(teile) + ".")
 
+    befunde.extend(nachgezogen)
     return neu, befunde
 
 
@@ -209,3 +227,201 @@ def rohtext_stellen(html: str) -> List[Tuple[int, str, bool]]:
             r"track|wbr)\b", inhalt, re.IGNORECASE))
         heraus.append((m.start(), m.group(2).lower(), (auf - leere) == zu))
     return heraus
+
+
+# =============================================================================
+# Zweite Annaeherung: ausstehende Endtags nachziehen (Build 742)
+# =============================================================================
+#
+# DAS PROBLEM, BEWIESEN UND NACHGESTELLT
+#
+#   Alex' Diagnoselauf vom 30.08.2026 (Build 741) zeigt am echten Bestand:
+#   '#page-body' steht im zerlegten Abzug INNERHALB von '#page-header', und
+#   '#page-footer' noch eine Ebene tiefer. Das Fehlerprotokoll nennt:
+#
+#     ERR_TAG_NAME_MISMATCH: Opening and ending tag mismatch: li and div
+#     ERR_TAG_NAME_MISMATCH: Opening and ending tag mismatch: ul and div
+#
+#   NACHGESTELLT am 30.08.2026 mit genau diesen beiden Meldungen, in dieser
+#   Reihenfolge, aus einem einzigen Konstrukt:
+#
+#     <div id="page-header"><ul><li><div class="a">x</li></ul></div>
+#
+#   Ein <div> bleibt innerhalb eines <li> offen. Dann kommt das '</li>'.
+#
+#   WAS DER BROWSER TUT: HTML5 sagt fuer ein Endtag, dessen Element zwar auf
+#   dem Stapel steht, aber nicht obenauf liegt: die darueberliegenden
+#   Elemente werden GESCHLOSSEN und mitgeschoben ("pop until X popped").
+#   Das offene <div> wird also beendet, und alles Folgende steht wieder auf
+#   der richtigen Ebene.
+#
+#   WAS libxml2 TUT: es meldet die Abweichung - und laesst das <div> offen.
+#   Alles Folgende landet darin, jedes weitere Geschwister eine Ebene tiefer.
+#   Das ist die Kaskade, die Alex' Anker seit Wochen bricht.
+#
+#   GEMESSEN gegen Chromium (Playwright, innerHTML auf einen <div> - der Weg
+#   des Ermittlungsfensters) am 30.08.2026, fuenf Konstrukte:
+#
+#     Konstrukt                              Browser   libxml2   nach Fix
+#     ---------------------------------------------------------------------
+#     <li> mit offenem <div>                 direkt      tief      direkt
+#     <li> mit zwei offenen <div>            direkt      tief      direkt
+#     <dd> mit offenem <div>                 direkt      tief      direkt
+#     <td> mit offenem <div>                 direkt      tief      direkt
+#     heil (nichts offen)                    direkt      direkt    direkt
+#
+#   'direkt' heisst: '#page-body' ist unmittelbares Kind von '#wrap' - so,
+#   wie der Anker es verlangt.
+#
+# WAS DIESE FUNKTION TUT UND WAS NICHT
+#
+#   SIE FUEGT NUR ENDTAGS EIN. Sie entfernt nichts, sie ordnet nichts um,
+#   sie beruehrt keinen Text und kein Attribut. Trifft ein Endtag auf ein
+#   Element, das zwar offen ist, aber nicht obenauf liegt, werden die
+#   darueberliegenden Endtags DAVOR eingesetzt - genau das, was HTML5
+#   vorschreibt und libxml2 auslaesst.
+#
+#   SIE IST KEIN HTML5-ZERLEGER. Sie bildet EINE Regel nach, nicht den
+#   ganzen Baumaufbau. Die bekannten Grenzen stehen weiter unten bei
+#   BEKANNTE GRENZEN - sie gehoeren gelesen, bevor jemand sich auf diese
+#   Funktion mehr verlaesst, als sie traegt.
+#
+#   DER ABZUG BLEIBT UNBERUEHRT. Hier wird eine Zeichenkette bearbeitet;
+#   forensic_<uid>.db wird nur gelesen. Was getan wurde, steht in der
+#   Befundliste und gehoert in den Vermerk.
+# =============================================================================
+
+#: Elemente ohne Inhalt - sie kommen nie auf den Stapel.
+LEERE_ELEMENTE = frozenset({
+    "area", "base", "br", "col", "embed", "hr", "img", "input", "link",
+    "meta", "param", "source", "track", "wbr",
+})
+
+#: Elemente, deren Inhalt Rohtext ist. Ihr Inneres wird beim Zaehlen
+#: uebersprungen - dort steht kein Markup, auch wenn es so aussieht.
+#: <noscript> und <template> stehen hier NICHT: um die kuemmert sich
+#: annaehern() bereits, und doppelt behandeln waere doppelt riskant.
+ROHTEXT_INHALT = frozenset({"script", "style", "textarea", "title"})
+
+#: Welches Element wird durch den Beginn welches Elements implizit beendet?
+#: NUR die Faelle, die BEIDE Zerleger ohnehin gleich behandeln - hier steht
+#: kein Eingriff, sondern die Nachbildung, damit der Stapel dieser Funktion
+#: dasselbe sieht wie libxml2. Waere er anders, saetzte sie Endtags an
+#: Stellen ein, an denen libxml2 gar kein offenes Element hat.
+IMPLIZIT_BEENDET = {
+    "li": {"li"},
+    "dd": {"dd", "dt"},
+    "dt": {"dd", "dt"},
+    "option": {"option"},
+    "tr": {"tr", "td", "th"},
+    "td": {"td", "th"},
+    "th": {"td", "th"},
+    "thead": {"tbody", "tfoot", "thead", "tr", "td", "th"},
+    "tbody": {"tbody", "tfoot", "thead", "tr", "td", "th"},
+    "tfoot": {"tbody", "tfoot", "thead", "tr", "td", "th"},
+}
+
+_TOKEN = re.compile(
+    r"<!--.*?-->"                                  # Kommentar
+    r"|<![^>]*>"                                   # Doctype und Verwandte
+    r"|</\s*([A-Za-z][^\s>/]*)\s*>"                # Endtag        -> Gruppe 1
+    r"|<\s*([A-Za-z][^\s>/]*)"                     # Starttag      -> Gruppe 2
+    r"((?:\"[^\"]*\"|'[^']*'|[^>\"'])*?)(/?)\s*>",  # Attribute, Schraegstrich
+    re.DOTALL)
+
+#: Obergrenze fuer den Stapel. Eine Seite mit 500 Beitraegen hat viele
+#: Ebenen, aber keine tausend; laeuft der Stapel darueber, stimmt etwas
+#: anderes nicht, und dann wird lieber NICHTS getan als etwas Falsches.
+STAPEL_GRENZE = 500
+
+
+def schliesse_offene(html: str) -> Tuple[str, List[str]]:
+    """
+    Ausstehende Endtags nachziehen - die Regel, die libxml2 auslaesst.
+
+    Rueckgabe: (bearbeiteter Text, Liste der Befunde im Klartext).
+
+    Trifft ein Endtag auf ein Element, das offen ist, aber nicht obenauf
+    liegt, werden die Endtags der darueberliegenden Elemente DAVOR
+    eingesetzt. Nichts wird entfernt, nichts umgestellt.
+    """
+    text = str(html or "")
+    if not text:
+        return text, []
+
+    heraus: List[str] = []
+    stapel: List[str] = []
+    befunde: List[str] = []
+    eingesetzt: Dict[str, int] = {}
+    stelle = 0
+    laenge = len(text)
+
+    while stelle < laenge:
+        treffer = _TOKEN.search(text, stelle)
+        if treffer is None:
+            heraus.append(text[stelle:])
+            break
+        heraus.append(text[stelle:treffer.start()])
+        marke_zu = treffer.group(1)
+        marke_auf = treffer.group(2)
+        stelle = treffer.end()
+
+        if marke_zu:
+            name = marke_zu.lower()
+            if name in stapel:
+                # HTML5: alles ueber dem Element schliessen, dann es selbst.
+                # GENAU DAS laesst libxml2 aus - und genau daran bricht der
+                # Anker.
+                while stapel and stapel[-1] != name:
+                    offen = stapel.pop()
+                    heraus.append("</%s>" % offen)
+                    eingesetzt[offen] = eingesetzt.get(offen, 0) + 1
+                if stapel:
+                    stapel.pop()
+            # Steht das Element gar nicht offen, bleibt das Endtag stehen -
+            # es zu entfernen waere ein Eingriff ohne Not.
+            heraus.append(treffer.group(0))
+            continue
+
+        if marke_auf:
+            name = marke_auf.lower()
+            heraus.append(treffer.group(0))
+            if name in LEERE_ELEMENTE or treffer.group(4) == "/":
+                continue
+            if name in ROHTEXT_INHALT:
+                # Inhalt ueberspringen: dort steht kein Markup, auch wenn es
+                # danach aussieht. Ein '</div>' in einer Zeichenkette im
+                # Skript darf den Stapel nicht anfassen.
+                ende = re.search(r"</\s*%s\s*>" % re.escape(name),
+                                 text[stelle:], re.IGNORECASE)
+                if ende:
+                    heraus.append(text[stelle:stelle + ende.end()])
+                    stelle += ende.end()
+                continue
+            # Implizite Beendigung nachbilden, damit der Stapel dasselbe
+            # sieht wie libxml2.
+            beendet = IMPLIZIT_BEENDET.get(name)
+            if beendet and stapel and stapel[-1] in beendet:
+                stapel.pop()
+            if len(stapel) >= STAPEL_GRENZE:
+                befunde.append(
+                    "Der Stapel offener Elemente hat %d erreicht - die "
+                    "Nachbildung bricht ab und laesst den Rest UNVERAENDERT. "
+                    "Lieber nichts tun als etwas Falsches."
+                    % STAPEL_GRENZE)
+                heraus.append(text[stelle:])
+                return "".join(heraus), befunde
+            stapel.append(name)
+            continue
+
+        heraus.append(treffer.group(0))
+
+    if eingesetzt:
+        teile = ", ".join("%d x </%s>" % (n, m)
+                          for m, n in sorted(eingesetzt.items()))
+        befunde.append(
+            "Ausstehende Endtags nachgezogen (%s). Der Browser schliesst "
+            "diese Elemente von selbst, der serverseitige Zerleger nicht - "
+            "ohne den Nachzug landet alles Folgende INNERHALB des offen "
+            "gebliebenen Elements." % teile)
+    return "".join(heraus), befunde

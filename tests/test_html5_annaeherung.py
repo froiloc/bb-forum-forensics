@@ -197,3 +197,74 @@ def test_HA10_gegenprobe_ohne_noscript_traegt_der_anker_schon_roh():
     assert finder._wurzel.xpath(anker)
     assert finder.annaeherungsbefunde == [], \
         "und die Annaeherung darf hier NICHTS getan haben"
+
+
+# ---------------------------------------------------------------------------
+# Build 742 - ausstehende Endtags nachziehen
+# ---------------------------------------------------------------------------
+#
+# GEMESSEN gegen Chromium am 30.08.2026 (Playwright, innerHTML auf einen
+# <div> - der Weg des Ermittlungsfensters), 18 Konstrukte:
+#   6 geheilt, 12 unveraendert richtig, 0 durch den Eingriff verschlechtert.
+
+from report_render.html5_annaeherung import schliesse_offene
+
+
+def test_HA11_der_fall_aus_dem_echten_bestand():
+    # DAS KONSTRUKT AUS ALEX' ABZUG, nachgestellt: ein <div> bleibt in einem
+    # <li> offen. libxml2 meldet dafuer GENAU die beiden Fehler aus seinem
+    # Lauf ('li and div', 'ul and div') und laesst das <div> offen - alles
+    # Folgende landet darin. Der Browser schliesst es.
+    body = _seite('<div id="page-header"><ul><li><div class="a">x</li></ul></div>')
+    assert _kinder_unter_wrap(body) == ["brdleft", "page-header"]
+    neu, befunde = annaehern(body)
+    assert _kinder_unter_wrap(neu) == ["brdleft", "page-header", "style",
+                                       "div", "page-body", "page-footer"]
+    assert any("Endtags nachgezogen" in b for b in befunde)
+
+
+def test_HA12_auch_dd_und_mehrere_ebenen():
+    for kopf in ('<div id="page-header"><dl><dd><div class="a">x</dd></dl></div>',
+                 '<div id="page-header"><ul><li><div><div><span>x</li></ul></div>'):
+        body = _seite(kopf)
+        assert len(_kinder_unter_wrap(body)) == 2, kopf
+        neu, _ = annaehern(body)
+        assert len(_kinder_unter_wrap(neu)) == 6, kopf
+
+
+def test_HA13_gegenprobe_am_heilen_abzug_wird_nichts_eingesetzt():
+    # Ein Werkzeug, das immer etwas einsetzt, setzt irgendwann etwas
+    # Falsches ein. Auf der ueberwiegenden Zahl der Seiten muss es nichts tun.
+    heil = _seite('<div id="page-header"><ul><li><div class="a">x</div></li></ul></div>')
+    neu, befunde = schliesse_offene(heil)
+    assert neu == heil
+    assert befunde == []
+
+
+def test_HA14_gegenprobe_script_inhalt_bleibt_unangetastet():
+    # Ein '</div>' in einer Zeichenkette im Skript ist KEIN Endtag. Wer es
+    # mitzaehlt, repariert an Stellen, an denen nichts kaputt ist - und
+    # macht damit heile Seiten kaputt.
+    quelle = '<div id="h"><script>var s = "</div>";</script><p>x</p></div>'
+    neu, befunde = schliesse_offene(quelle)
+    assert neu == quelle
+    assert befunde == []
+
+
+def test_HA15_gegenprobe_fremdes_endtag_bleibt_stehen():
+    # Ein Endtag zu einem gar nicht offenen Element wird NICHT entfernt.
+    # Es zu entfernen waere ein Eingriff ohne Not, und jeder Eingriff kann
+    # etwas kaputt machen.
+    quelle = '<p>x</p></section>'
+    neu, befunde = schliesse_offene(quelle)
+    assert neu == quelle
+    assert befunde == []
+
+
+def test_HA16_jeder_eingriff_wird_benannt():
+    # GRUNDREGEL 1: nichts still tun. Was eingesetzt wurde und wie oft,
+    # gehoert in den Vermerk.
+    _neu, befunde = schliesse_offene('<ul><li><div class="a">x</li></ul>')
+    assert befunde
+    assert "</div>" in befunde[0]
+    assert "1 x" in befunde[0]
