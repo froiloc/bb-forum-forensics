@@ -411,6 +411,20 @@ function waehle(dom, selektor) {
     s.addRange(range);
 }
 
+/**
+ * Der Startknoten der stehenden Auswahl.
+ *
+ * BUILD 735 - WARUM DIESE HILFE JETZT NOETIG IST: '_postElementVon' bekommt
+ * den Knoten seit Build 735 UEBERGEBEN und schlaegt ihn nicht mehr selbst
+ * ueber 'window.getSelection()' nach. Das war die Ursache dafuer, dass
+ * Build 727 im Betrieb nie einen Wert lieferte - der einzige Aufrufweg
+ * loeschte die Auswahl vorher. Die Tests hier bilden den neuen Vertrag ab.
+ */
+function startknoten(dom) {
+    const s = dom.window.getSelection();
+    return s.rangeCount ? s.getRangeAt(0).startContainer : null;
+}
+
 describe("MarkerToolModule._postElementVon (Build 727)", () => {
 
     it("TB01 - Vollansicht: <article class='post' id='p1891354'>", () => {
@@ -420,7 +434,7 @@ describe("MarkerToolModule._postElementVon (Build 727)", () => {
             '</div></article></div>');
         waehle(dom, "#ziel");
         const fn = dom.window.ForensicToolbar.config.markerHelpers.postElementVon;
-        expect(fn(null)).toBe(1891354);
+        expect(fn(startknoten(dom))).toBe(1891354);
     });
 
     it("TB02 - PN-Ansicht: <div id='p44573' class='blockpost'>", () => {
@@ -429,7 +443,7 @@ describe("MarkerToolModule._postElementVon (Build 727)", () => {
             '<p id="ziel">Meld dich kurz vorher.</p></div></div>');
         waehle(dom, "#ziel");
         const fn = dom.window.ForensicToolbar.config.markerHelpers.postElementVon;
-        expect(fn(null)).toBe(44573);
+        expect(fn(startknoten(dom))).toBe(44573);
     });
 
     it("TB03 - ausserhalb eines Beitrags bleibt es bei null", () => {
@@ -440,7 +454,7 @@ describe("MarkerToolModule._postElementVon (Build 727)", () => {
             '<td id="ziel">Ein Themenlink</td></tr></tbody></table></div>');
         waehle(dom, "#ziel");
         const fn = dom.window.ForensicToolbar.config.markerHelpers.postElementVon;
-        expect(fn(null)).toBeNull();
+        expect(fn(startknoten(dom))).toBeNull();
     });
 
     it("TB04 - GEGENPROBE: ohne Auswahl keine Nummer", () => {
@@ -448,6 +462,10 @@ describe("MarkerToolModule._postElementVon (Build 727)", () => {
             '<article class="post" id="p1"><p id="ziel">Text</p></article>');
         dom.window.getSelection().removeAllRanges();
         const fn = dom.window.ForensicToolbar.config.markerHelpers.postElementVon;
+        // Ohne Auswahl gibt es keinen Startknoten - und ohne Startknoten
+        // keine Nummer. Seit Build 735 ist genau das der Vertrag: die
+        // Funktion RAET nicht, wenn ihr nichts uebergeben wird.
+        expect(fn(startknoten(dom))).toBeNull();
         expect(fn(null)).toBeNull();
     });
 
@@ -474,7 +492,7 @@ describe("MarkerToolModule._postElementVon (Build 727)", () => {
         const fn = dom.window.ForensicToolbar.config.markerHelpers.postElementVon;
         // Die INNERE wird zuerst erreicht. Bis Build 727 wurde sie
         // uebersprungen; jetzt trifft sie — die Nummer muss dieselbe sein.
-        expect(fn(null)).toBe(1891354);
+        expect(fn(startknoten(dom))).toBe(1891354);
     });
 
     it("TB06 - NUR die innere Kennung: bis Build 727 blieb es bei null", () => {
@@ -483,7 +501,7 @@ describe("MarkerToolModule._postElementVon (Build 727)", () => {
             '<p id="ziel">Kein article darum herum.</p></div></div>');
         waehle(dom, "#ziel");
         const fn = dom.window.ForensicToolbar.config.markerHelpers.postElementVon;
-        expect(fn(null)).toBe(5150);
+        expect(fn(startknoten(dom))).toBe(5150);
     });
 
     // -----------------------------------------------------------------------
@@ -514,7 +532,7 @@ describe("MarkerToolModule._postElementVon (Build 727)", () => {
             '</div></div></div></div></div></div></article>');
         waehle(dom, "#ziel");
         const fn = dom.window.ForensicToolbar.config.markerHelpers.postElementVon;
-        expect(fn(null)).toBe(1164441);
+        expect(fn(startknoten(dom))).toBe(1164441);
     });
 
     it("TB09 - echte private Nachricht (pmsnew): '.box' OHNE Kennung", () => {
@@ -535,7 +553,7 @@ describe("MarkerToolModule._postElementVon (Build 727)", () => {
         const fn = dom.window.ForensicToolbar.config.markerHelpers.postElementVon;
         // Die kennungslose '.box' darf den Aufstieg weder abbrechen noch
         // selbst eine Nummer liefern — die Nummer steht nur aussen.
-        expect(fn(null)).toBe(120862);
+        expect(fn(startknoten(dom))).toBe(120862);
     });
 
     it("TB07 - GEGENPROBE: 'ppp7' und 'post12' sind KEINE Beitraege", () => {
@@ -547,6 +565,6 @@ describe("MarkerToolModule._postElementVon (Build 727)", () => {
             '<p id="ziel">Weder das eine noch das andere.</p></div></div>');
         waehle(dom, "#ziel");
         const fn = dom.window.ForensicToolbar.config.markerHelpers.postElementVon;
-        expect(fn(null)).toBeNull();
+        expect(fn(startknoten(dom))).toBeNull();
     });
 });

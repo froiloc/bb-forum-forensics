@@ -1,0 +1,205 @@
+{
+  "issues": [
+    {
+      "id": "5f0c1a72-9b34-4d18-8e26-1c7a0b93de4f",
+      "type": "bug",
+      "title": "post_id blieb leer: _postElementVon las die bereits geloeschte Auswahl",
+      "affected_version": "0.8.734",
+      "reporter": "Alex",
+      "reported_at": "2026-08-30T09:00:00+02:00",
+      "status": "resolved",
+      "priority": "critical",
+      "severity": "major",
+      "prerequisites": "Ermittlungsfenster, aktive Kategorie, Textmarkierung in einem Beitrag (viewtopic oder pmsnew).",
+      "description": "MarkerToolModule._onMouseUp rief _postElementVon ERST NACH sel.removeAllRanges() auf, und _postElementVon nahm sein Argument gar nicht entgegen, sondern las die Auswahl ueber window.getSelection() erneut. Zu diesem Zeitpunkt war sie geloescht, rangeCount war 0, und die Funktion gab null zurueck. Die Aenderungen aus Build 727 und 728 konnten in dieser Reihenfolge nie einen Wert liefern. Belegt durch LAUF C der Sonde auf vier Seiten (viewtopic 725304/null, pmsnew 65684/null, viewtopic 63858/null, viewtopic 703593/null) und durch Alex' Feststellung, dass auch die nach dem Einspielen neu entstandene Annotation #31 ohne post_id war.",
+      "expected_behavior": "Jede Textmarkierung in einem Beitrag traegt dessen Beitragsnummer.",
+      "actual_behavior": "post_id war bei JEDER Textmarkierung leer, auch nach Build 727/728.",
+      "resolved_in_version": "0.8.735",
+      "tags": [
+        "toolbar",
+        "annotation",
+        "post-id",
+        "eigener-fehler",
+        "reihenfolge"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-08-30T10:30:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Behoben in Build 735. Der Startknoten wird jetzt VOR removeAllRanges() festgehalten und an _postElementVon UEBERGEBEN; die Funktion schlaegt die Auswahl nicht mehr selbst nach. Damit ist die Abhaengigkeit von der Aufrufreihenfolge nicht nur behoben, sondern nicht mehr formulierbar."
+        }
+      ]
+    },
+    {
+      "id": "a13d6c85-7e42-4f09-b5d1-3806ea27bc94",
+      "type": "bug",
+      "title": "TB01-TB09 prueften das Stueck statt den Weg und blieben deshalb gruen",
+      "affected_version": "0.8.734",
+      "reporter": "Claude",
+      "reported_at": "2026-08-30T09:10:00+02:00",
+      "status": "resolved",
+      "priority": "high",
+      "severity": "major",
+      "description": "Die Testfaelle zu Build 727/728 riefen _postElementVon DIREKT mit gesetzter Auswahl auf. Sie konnten deshalb nicht bemerken, dass der einzige Aufrufweg die Auswahl vorher loescht. Ein gruener Test ueber eine Funktion, die im Betrieb nie unter diesen Bedingungen laeuft, ist kein Nachweis. Das ist der eigentliche Mangel, nicht die Reihenfolge zweier Zeilen: Ohne ihn waere der Fehler in Build 727 aufgefallen und nicht erst sieben Builds spaeter am lebenden Bestand.",
+      "expected_behavior": "Mindestens ein Testfall fuehrt einen echten Markierungsvorgang durch den ausgelieferten mouseup-Listener und prueft die entstandene Annotation.",
+      "actual_behavior": "Alle Testfaelle prueften die Hilfsfunktion isoliert.",
+      "resolved_in_version": "0.8.735",
+      "tags": [
+        "tests",
+        "regressionstest",
+        "eigener-fehler",
+        "toolbar"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-08-30T10:35:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Neu: tests/unit/test_annotation_metadaten.test.js, Gruppe TB10-TB16. Sie ruesten die Toolbar wie im Betrieb (aktive Kategorie, page:loaded), setzen eine echte Auswahl und loesen ein echtes mouseup aus. GEGENPROBE GEFAHREN: mit der Reihenfolge aus Build 734 wieder eingesetzt werden TB10, TB11, TB12 und TB13 rot; mit einem stillgelegten _postElementVon wird TB15 rot. Ein Testfall, der mit dem nachgestellten Fehler gruen bleibt, ist wertlos - diese Lehre stammt aus IT09."
+        }
+      ]
+    },
+    {
+      "id": "c72b98e0-4a51-4d3c-9f68-b2051e7ad3f6",
+      "type": "feature_request",
+      "title": "Zeitstempel und Betreff werden beim Markieren miterfasst",
+      "affected_version": "0.8.734",
+      "reporter": "Alex",
+      "reported_at": "2026-08-30T09:15:00+02:00",
+      "status": "resolved",
+      "priority": "high",
+      "severity": "major",
+      "description": "Der Bericht kann Zeitstempel und Betreff eines Beitrags nicht nachtraeglich holen - er hat kein DOM, sondern nur den Seitenabzug und den XPath. Beide stehen aber im Augenblick des Markierens im lebenden DOM. Weisung Alex vom 29.08.2026: post_id, Timestamp und Subject sollen mit in den JSON einfliessen.",
+      "expected_behavior": "Jede neue Textmarkierung traegt Beitragsnummer, Zeitstempel und Betreff mit der jeweiligen Herkunftsangabe.",
+      "actual_behavior": "Nur die markierte Stelle wurde gesichert.",
+      "resolved_in_version": "0.8.735",
+      "tags": [
+        "toolbar",
+        "annotation",
+        "metadaten",
+        "vollzitat"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-08-30T10:40:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Neues PostMetaModule in toolbar/toolbar.js. Die Werte gehen als Unterknoten 'meta' in selection_json - KEINE neuen Spalten, damit der Migrationsvorbehalt fuer evidence_<uid>.db unberuehrt bleibt. Alte Marken haben kein 'meta'; jeder Leser muss sein Fehlen aushalten. Der annotate-Endpoint reicht zusaetzliche Felder unveraendert durch (issubset auf die Pflichtfelder); tests/test_annotation_metadaten_transport.py haelt genau das fest, damit eine spaetere Verschaerfung zur Weissliste nicht unbemerkt die Metadaten aller neuen Belege kappt."
+        }
+      ]
+    },
+    {
+      "id": "e4a70d16-2c89-4b53-a017-96d84f2b0e75",
+      "type": "improvement",
+      "title": "Betreff haengt an der Ansicht, nicht an einer Rueckfallkette",
+      "affected_version": "0.8.734",
+      "reporter": "Claude",
+      "reported_at": "2026-08-30T09:20:00+02:00",
+      "status": "resolved",
+      "priority": "high",
+      "severity": "major",
+      "description": "Die Sondenmessung vom 29.08.2026 ergab auf der PN-Seite fuer die drei Betreffs-Verfahren S3, S4 und S6 DREI VERSCHIEDENE Werte: S4 leer (Fingerabdruck 811c9dc5 = leere Zeichenkette), S6 sieben Zeichen, S3 vier Zeichen. Nur S3 trifft den von Alex am 28.08.2026 belegten Aufbau div.block2col > div.block > h2. Eine Rueckfallkette 'S6, sonst S3' haette auf jeder PN-Seite still den falschen Betreff eingetragen - falsch, zuversichtlich und unauffaellig. Genau die Art Fehler, die in einer Akte niemandem auffaellt.",
+      "expected_behavior": "Die Wahl des Verfahrens haengt an der Ansicht (viewtopic gegen pmsnew), die in der Adresse steht.",
+      "actual_behavior": "Ohne diese Erkenntnis waere eine Kette gebaut worden.",
+      "resolved_in_version": "0.8.735",
+      "tags": [
+        "toolbar",
+        "annotation",
+        "betreff",
+        "pn",
+        "messung"
+      ],
+      "related_to": [
+        "c72b98e0-4a51-4d3c-9f68-b2051e7ad3f6"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-08-30T10:45:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "viewtopic: Themenbetreff ueber S6, Beitragsbetreff ueber S2 - in der Messung trugen beide auf zwei verschiedenen Themen denselben Fingerabdruck (33fb820c und 076ee3a1) und bestaetigen einander. pmsnew: Titel ueber S3, ein Beitragsbetreff existiert dort nicht und wird deshalb auch nicht ersatzweise gesucht. Der Testfall MD11 ist die Gegenprobe: er stellt fest, dass S6 auf einer PN-Seite einen ANDEREN Wert liefert als S3."
+        }
+      ]
+    },
+    {
+      "id": "0b6e3f94-8d27-41ca-95b8-7e3105af2d68",
+      "type": "improvement",
+      "title": "Beitragsnummer wird gegengeprueft; bei Widerspruch wird nichts geschrieben",
+      "affected_version": "0.8.734",
+      "reporter": "Claude",
+      "reported_at": "2026-08-30T09:25:00+02:00",
+      "status": "resolved",
+      "priority": "medium",
+      "severity": "minor",
+      "description": "Die Beitragsnummer laesst sich aus zwei unabhaengigen Quellen lesen: aus der Elementkennung (P1) und aus dem Linkziel des Dauerlinks (P3). Beide trafen in der Messung 4/4 und 6/6 und sind die einzigen, die in beiden Ansichten tragen. An der Beitragsnummer haengen im Vollzitat fuenf weitere Angaben - Themenbetreff, Datum der Quelle, Sprungmarke, PN-Gespraechspartner und die Zusammenfassung mehrerer Belege in EINEN Unterblock.",
+      "expected_behavior": "Stimmen beide Quellen ueberein, wird die Nummer als doppelt belegt vermerkt. Widersprechen sie einander, bleibt die Spalte leer.",
+      "actual_behavior": "Es gab nur eine Quelle und keine Gegenprobe.",
+      "resolved_in_version": "0.8.735",
+      "tags": [
+        "toolbar",
+        "annotation",
+        "post-id",
+        "belegkraft"
+      ],
+      "related_to": [
+        "c72b98e0-4a51-4d3c-9f68-b2051e7ad3f6"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-08-30T10:50:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Der breitere Weg aus Build 728 (der auch die innere Kennung 'pp<n>' annimmt) bleibt als Rueckfall erhalten - in der reduzierten Ansicht fuer Nicht-Vollmitglieder und in gallery.php gibt es nur diese eine Kennung, dort liefert P1 nichts. ABER NICHT BEI WIDERSPRUCH: ist die Nummer strittig, darf sie auch nicht ueber den Rueckfall doch noch in die Akte gelangen. TB16 ist die Gegenprobe dazu. Ein Beinahe-Unfall aus der Messung ist damit ebenfalls ausgeschlossen: im Kopf der PN-Beitraege steht '#5' - die laufende Nummer in der Unterhaltung, nicht die Beitragsnummer. Ein Verfahren ueber die sichtbare Nummer steht deshalb gar nicht erst zur Wahl."
+        }
+      ]
+    },
+    {
+      "id": "9d21c507-6b48-4e70-83af-5c19b0e6f742",
+      "type": "documentation",
+      "title": "Zeitstempel ohne Zonenangabe - die Zone des Forums ist nicht erhoben",
+      "affected_version": "0.8.735",
+      "reporter": "Claude",
+      "reported_at": "2026-08-30T09:30:00+02:00",
+      "status": "open",
+      "priority": "medium",
+      "severity": "major",
+      "description": "Der beim Markieren gesicherte Zeitstempel traegt bewusst KEINE Zeitzone und wird nicht in eine Epoch-Zahl umgerechnet. Das Forum rendert in der Zone seiner Einstellung; welche das war, ist bislang nicht festgestellt. Eine Tatzeit in der falschen Zone ist um Stunden falsch. Gesichert werden deshalb der Rohtext und die zerlegten Bestandteile, aus denen sich verlustfrei umrechnen laesst, sobald die Zone belegt ist.",
+      "expected_behavior": "Die Zone wird an einer belegbaren Quelle festgestellt - etwa an der Forenkonfiguration im beschlagnahmten Bestand oder an einem Beitrag mit unabhaengig bekannter Uhrzeit.",
+      "actual_behavior": "Die Zone ist unbekannt und wird nicht geraten.",
+      "tags": [
+        "zeitzone",
+        "tatzeit",
+        "offen",
+        "belegkraft"
+      ],
+      "related_to": [
+        "c72b98e0-4a51-4d3c-9f68-b2051e7ad3f6"
+      ]
+    },
+    {
+      "id": "f80a4b3d-1e67-4c92-ab05-2d7e94136c8b",
+      "type": "documentation",
+      "title": "Offen: Ankerbruch im Seitenabzug - #page-body fehlt an erwarteter Stelle",
+      "affected_version": "0.8.735",
+      "reporter": "Claude",
+      "reported_at": "2026-08-30T09:35:00+02:00",
+      "status": "open",
+      "priority": "high",
+      "severity": "major",
+      "description": "LAUF D der Sonde zeigt im Browser unter donate > div#wrap fuenf div-Elemente, an vierter Stelle #page-body - genau das, was die gespeicherten Anker verlangen. Im gesicherten Seitenabzug stehen an derselben Stelle nur ZWEI div. Die Anker sind also RICHTIG; der Bruch liegt in der Zerlegung des Abzugs, nicht in den Daten. Die Vermutung, ein nicht geschlossenes <style> im Rumpf verschlucke die folgenden Geschwister, ist durch die PN-Seite widerlegt: sie hat gar kein <style> und ihre Anker brechen identisch.",
+      "expected_behavior": "Der Grund fuer den Bruch wird an EINER lesenden Abfrage im Abzug festgestellt, nicht vermutet.",
+      "actual_behavior": "26 Anker loesen serverseitig nicht auf, obwohl sie im Browser tragen. Das ist eine Auswertungsschwaeche, kein Datenverlust.",
+      "tags": [
+        "anker",
+        "xpath",
+        "seitenabzug",
+        "offen",
+        "baustelle-2"
+      ],
+      "related_to": [
+        "5f0c1a72-9b34-4d18-8e26-1c7a0b93de4f"
+      ]
+    }
+  ]
+}
