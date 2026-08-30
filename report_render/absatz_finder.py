@@ -825,15 +825,37 @@ class AbsatzFinder:
                 # Handgriff gegen das halten laesst, was der Browser zeigt.
                 # Kennung und Klasse sind Geruestangaben, keine Inhalte; die
                 # Ausgabe bleibt damit ohne weitere Pruefung weitergebbar.
+                # BUILD 743: DIE URSACHENLISTE IST KUERZER GEWORDEN, und das
+                # gehoert in die Meldung.
+                #
+                # Bis Build 742 nannte sie zwei Moeglichkeiten und verschwieg
+                # die haeufigste: dass die ZERLEGUNG des Abzugs die Elemente
+                # falsch ablegt. Genau daran lagen in Alex' Bestand ALLE 29
+                # Brueche - libxml2 zog ausstehende Endtags nicht nach, und
+                # jedes folgende Geschwister rutschte eine Ebene tiefer.
+                #
+                # Seit Build 742 ist das behoben (report_render/
+                # html5_annaeherung.py). Wer diese Meldung JETZT liest, hat es
+                # mit einem anderen Fall zu tun - und die Meldung soll ihn
+                # nicht auf die bereits ausgeraeumte Faehrte schicken.
+                #
+                # WAS UEBRIG BLEIBT, sind zwei Lagen, und sie sind an der
+                # Zusatzangabe unten zu unterscheiden: eine FOLGESEITE (der
+                # Ermittler war auf Seite 2, verglichen wird Seite 1) und ein
+                # SPAETER NEU GEZOGENER Abzug (die Seite hat sich zwischen
+                # Markierung und Sicherung geaendert).
                 return ("Schritt %d von %d bricht bei %r: der Anker verlangt "
                         "das %d. <%s>, im Abzug stehen nur %d. Aufgeloest bis "
-                        "%s. Im Abzug steht dort: %s. Der Browser hatte an "
-                        "dieser Stelle also MEHR <%s> als der Abzug - "
-                        "entweder ist zwischen Abzug und Markierung etwas in "
-                        "die Seite geschrieben worden, oder der verglichene "
-                        "Abzug ist nicht der, den der Ermittler gesehen hat."
+                        "%s. Im Abzug steht dort: %s.%s Die Zerlegung scheidet "
+                        "als Ursache aus - sie ist seit Build 742 an die "
+                        "Browser-Regeln angeglichen, und der Anker loest bis "
+                        "hierher auf. Bleibt zweierlei: der Ermittler war auf "
+                        "einer ANDEREN SEITE des Themas als der verglichene "
+                        "Abzug, oder der Abzug ist SPAETER neu gezogen worden "
+                        "als die Markierung."
                         % (nr, len(schritte), schritt, wunsch, marke,
-                           len(gleiche), bisher, _benenne(gleiche), marke))
+                           len(gleiche), bisher, _benenne(gleiche),
+                           self._seitenlage(marke, wunsch, len(gleiche))))
             alle = [k for k in knoten
                     if isinstance(getattr(k, "tag", None), str)]
             return ("Schritt %d von %d bricht bei %r: an dieser Stelle gibt "
@@ -844,6 +866,48 @@ class AbsatzFinder:
                        "  BRICHT GANZ OBEN - der Bezugspunkt stimmt nicht."
                        if nr == 1 else ""))
         return "alle Schritte loesen auf"
+
+    # ------------------------------------------------------------------
+    def _seitenlage(self, marke: str, wunsch: int, da: int) -> str:
+        """
+        Bei einem Bruch an einem Beitragsschritt: was sagt die SEITE selbst?
+
+        BUILD 743. Bricht der Anker daran, dass er den 29. <article> verlangt
+        und der Abzug nur zwei hat, sind zwei Lagen zu unterscheiden - und
+        die Seite traegt die Angaben, mit denen das geht:
+
+          * WIE VIELE Beitraege hat die Seite INSGESAMT? Steht die Zahl im
+            Bereich des Ankers, ist der Abzug eine andere Seite des Themas;
+            deckt sie sich mit dem, was an der Bruchstelle steht, ist es
+            dieselbe Seite in anderem Zustand.
+          * WELCHE Beitragsnummern stehen darin? Zwei niedrige Nummern in
+            einem Thema, dessen Markierungen fuenfstellige tragen, sprechen
+            fuer eine andere Seite.
+
+        DIE ANGABE DEUTET NICHT, sie zaehlt. Was daraus folgt, entscheidet
+        die Sichtpruefung - hier wird nur zusammengetragen, was ohne
+        Vermutung zu haben ist.
+        """
+        if marke != "article" or self._wurzel is None:
+            return ""
+        try:
+            alle = self._wurzel.xpath("//article")
+        except Exception:                     # pragma: no cover - defensiv
+            return ""
+        nummern = []
+        for el in alle:
+            treffer = _POST_KENNUNG.match(str(el.get("id") or ""))
+            if treffer:
+                nummern.append(int(treffer.group(2)))
+        if not alle:
+            return ""
+        auszug = ", ".join(str(n) for n in nummern[:6])
+        if len(nummern) > 6:
+            auszug += ", ..."
+        return (" Die ganze Seite traegt %d <article>%s. Der Anker verlangt "
+                "den %d." % (len(alle),
+                             (" (Nummern: %s)" % auszug) if auszug else "",
+                             wunsch))
 
     # ------------------------------------------------------------------
     def _ueber_xpath(self, selection: Any, text: str) -> Optional[Fundstelle]:
