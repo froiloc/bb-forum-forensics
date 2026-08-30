@@ -121,6 +121,30 @@
         "7d520e94-1a63-4c78-b2e5-83f0c1a479db",
         "e6a91b78-35d0-4f24-9c81-4b7e02a5d316"
       ]
+    },
+    {
+      "id": "0b6d34f1-58a7-4e29-9c30-7f21ea8b45d6",
+      "type": "bug",
+      "title": "CK02 rot: seite_ausleiten.py ohne Katalogeintrag im Bestand",
+      "affected_version": "0.8.747",
+      "reporter": "Alex",
+      "reported_at": "2026-08-31T15:00:00+02:00",
+      "status": "resolved",
+      "priority": "high",
+      "severity": "major",
+      "description": "Alex' Regressionslauf auf integration/747: 'CliKatalogError: Werkzeuge im Bestand OHNE Katalogeintrag: seite_ausleiten.py'. URSACHE, UND SIE IST MEINE: ich habe das Werkzeug fuer die Gegenprobe im Browser als Einzeldatei ausserhalb der Lieferung uebergeben ('nicht Teil der Lieferung'). Es landete im Wurzelverzeichnis des Webservers, und CK02 scannt genau dort. DER WAECHTER HAT RECHT - ein Werkzeug, von dem niemand weiss, ist im Betrieb dasselbe wie keines, nur gefaehrlicher, weil es trotzdem laufen kann. Die Annahme 'ein Einzelwerkzeug braucht keine Aufnahme' war falsch: sobald es in der VM liegt, ist es Bestand. ABHILFE: das Werkzeug ist jetzt tools/seite_ausleiten.py mit Katalogeintrag, Epilog, Herkunftsnachweis und acht Tests (SA01-SA08). Es ist rein lesend (Wartungsstufe C) und deshalb NICHT in management/maintenance/wartungsstufen.py aufgenommen - diese Liste haelt schreibende Werkzeuge; ein Eintrag dort haette WS02 rot gemacht (Lehre aus Build 737).",
+      "expected_behavior": "Jedes Werkzeug im Bestand hat einen Katalogeintrag.",
+      "actual_behavior": "Es hat einen - ab dieser Fassung von Build 747.",
+      "resolved_in_version": "0.8.747",
+      "tags": [
+        "waechter",
+        "cli-katalog",
+        "werkzeug",
+        "regression"
+      ],
+      "related_to": [
+        "8c25b0d7-4e13-4a69-9f82-71d604ae3b95"
+      ]
     }
   ]
 }

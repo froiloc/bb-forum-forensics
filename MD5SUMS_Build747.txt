@@ -1,5 +1,5 @@
 78feb3d011604ac01062f2ee34022e5f  browserprobe_tmp.mjs
-ccb323333780272532bc6accac34e5bf  build.json
+f8e1e46378a7622a8e305fe76b93c61d  build.json
 673abd39475236a9afcade34abf8880c  core/kategorie_farben.py
 930ac5645cc3e4ae9ba6852e6a93dbfc  db/coordinator_db.py
 e718360fcd9faaaf37380931f6f69530  debug/sonde_annotation_metadaten.js
@@ -26,10 +26,10 @@ da01e33fed74c5ce01f13fbcee449b6f  issue-tracker/eintraege_claude_Build742.json
 534d34afbe0e6eb7a566f1464d94f17a  issue-tracker/eintraege_claude_Build744.json
 0b53e44f95e20f2aa365c644a5af17e0  issue-tracker/eintraege_claude_Build745.json
 34db358267c92fc492fb135181c1ce35  issue-tracker/eintraege_claude_Build746.json
-1313db22f510baf32d9e4f55864f3c2f  issue-tracker/eintraege_claude_Build747.json
+c467263cfaa6b2703877da0c882334c7  issue-tracker/eintraege_claude_Build747.json
 a6532b6387716ad167972fd1380a4021  maintenance/wartungsstufen.py
 b141fc6686f934511d02a96253e81de9  management/audit/event_types.py
-4f498ed3ffd277b19362c372048abbfc  management/help/cli_katalog.py
+e9e47dad4fc23791482c258d027d6e97  management/help/cli_katalog.py
 5195675a05a4d0603f61d55375fa56af  management/help/inhalt/abnahme.py
 c85b0344fdd5a0fece85ff9c4e9420d1  management/maintenance/anker_diagnose.py
 20407b8fc78648c59e541a182111773f  management/maintenance/laufkopf.py
@@ -63,6 +63,7 @@ eeb567ef9cb136eca564984bc3f7185c  tests/test_m039_migration.py
 721b86fe6d1d421b08fcd735e3cb6d54  tests/test_management_dashboard.py
 8b8de3ecc5558ac643a6862410123f38  tests/test_postid_nachtrag.py
 b7b185c3e7ec134481a910745618a077  tests/test_rechtetrennung_falluebersicht.py
+7e567b1afedb47af3909a18718be029b  tests/test_seite_ausleiten.py
 4a926b7d00d783098a245b4b13f9ac4f  tests/test_vollzitat.py
 3552b2ab401912f38d328e9d9bb31bdc  tests/test_vollzitat_endpunkt.py
 ff7127d3def07bda2d3e634113579abb  tests/test_wortlaut_browserbild.py
@@ -72,5 +73,6 @@ ff7127d3def07bda2d3e634113579abb  tests/test_wortlaut_browserbild.py
 70049e5866b3a31d2b012503343eb5dc  tools/anker_diagnose.py
 f5f6f8c062b40b5f758ac5c690687cb8  tools/diag_vollzitat_anker.py
 981c071d5553bbed502dc68c777b2e14  tools/postid_nachtragen.py
+904f442296a2d4401f03d31d50239bd2  tools/seite_ausleiten.py
 8e562267247c5b03af54260c84a7177f  userinfo/report_editor.js
 21d9854b8bfb111200245a39b32a5c74  userinfo/userinfo.css
