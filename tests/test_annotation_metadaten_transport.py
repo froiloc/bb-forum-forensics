@@ -27,6 +27,10 @@
 #       gueltig
 # ME05  Umlaute und Nicht-Latein ueberstehen den Weg (das Forum ist
 #       mehrsprachig, UTF-8)
+# ME06  Build 736: 'eroeffner': null ueberlebt den Weg als null und wird
+#       NICHT zu false - der Unterschied zwischen 'nicht der Eroeffner' und
+#       'darueber sagt die Seite nichts' ist der zwischen einem Befund und
+#       einem Fehlschluss
 #
 # Beleg: forensic_api/annotate.py (Selektionspruefung); toolbar/toolbar.js
 #        (PostMetaModule, Build 735); claude/Analyse_Sondenmessung_29082026.md
@@ -55,7 +59,15 @@ META_VIEWTOPIC = {
     "betreff": "Re: Ein Thema über Bonn",
     "betreffWeg": "S2",
     "themenbetreff": "Ein Thema über Bonn",
-    "themenbetreffWeg": "S6",
+    "themenbetreffWeg": "S6a",
+    # Build 736: Befunde der SEITE. 'eroeffner' kennt DREI Zustaende -
+    # true, false und null (= unbekannt, weil die Seite keinen
+    # Moderationshinweis traegt). Dass 'null' den Weg unveraendert uebersteht,
+    # ist keine Nebensache: wuerde es unterwegs zu 'false', stuende in der
+    # Akte eine Verneinung, fuer die es keinen Beleg gibt.
+    "moderation": True,
+    "eroeffner": True,
+    "eroeffnerQuelle": "OP-Kennzeichen im Moderationshinweis",
     "hinweise": [],
 }
 
@@ -104,7 +116,8 @@ def test_ME01_meta_kommt_unveraendert_an():
     # Und die Herkunft jedes Wertes ist mitgereist. Ein Wert ohne Herkunft
     # ist in einer Akte nicht ueberpruefbar (Grundregel 1).
     assert gespeichert["meta"]["zeitWeg"] == "T1"
-    assert gespeichert["meta"]["themenbetreffWeg"] == "S6"
+    assert gespeichert["meta"]["themenbetreffWeg"] == "S6a"
+    assert gespeichert["meta"]["eroeffnerQuelle"] == "OP-Kennzeichen im Moderationshinweis"
 
 
 def test_ME02_die_spalte_post_id_bleibt_unberuehrt():
@@ -159,3 +172,30 @@ def test_ME05_umlaute_und_nichtlatein_ueberstehen_den_weg():
     # Und zwar als Zeichen, nicht als \\u-Fluchtfolge — sonst waere der Wert
     # zwar wiederherstellbar, in einer Sichtpruefung des JSON aber unlesbar.
     assert "Grüße" in kwargs["selection_json"]
+
+
+def test_ME06_unbekannte_eroeffnerschaft_bleibt_unbekannt():
+    # DREI ZUSTAENDE, NICHT ZWEI. Ohne Moderationshinweis rendert das Forum
+    # keinen Kasten, und die Seite sagt ueber die Eroeffnerschaft NICHTS.
+    # Wuerde 'null' unterwegs zu 'false', stuende in jedem Beleg einer
+    # gewoehnlichen Seite eine Verneinung ohne Beleg - ein entlastender
+    # Schluss, den niemand gezogen hat.
+    #
+    # Diese Probe misst den Transport, nicht die Erhebung: json.dumps macht
+    # aus None ein JSON-null, und json.loads macht daraus wieder None. Genau
+    # das soll festgehalten sein, damit eine spaetere Normalisierung
+    # ("leere Werte vereinheitlichen") hier anschlaegt.
+    meta = dict(META_VIEWTOPIC)
+    meta["moderation"] = False
+    meta["eroeffner"] = None
+    meta["eroeffnerQuelle"] = None
+    meta["hinweise"] = ["keine Moderationsanzeige - die Seite sagt ueber die "
+                        "Eroeffnerschaft NICHTS (nicht: sie verneint sie)"]
+    ep, bundle = _endpoint()
+    _post(ep, {"page_url": "/forum/viewtopic.php?id=1",
+               "category": "CAT_OTHER", "selection": _selektion(meta)})
+    kwargs = bundle.evidence.save_annotation.call_args.kwargs
+    gespeichert = json.loads(kwargs["selection_json"])
+    assert gespeichert["meta"]["eroeffner"] is None
+    assert gespeichert["meta"]["eroeffner"] is not False
+    assert "sagt ueber die" in gespeichert["meta"]["hinweise"][0]

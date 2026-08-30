@@ -33,7 +33,10 @@
 #                       "stunde":8,"minute":14,"sekunde":0},
 #         "zeitWeg": "T1",
 #         "betreff": "Re: ...", "betreffWeg": "S2",
-#         "themenbetreff": "...", "themenbetreffWeg": "S6",
+#         "themenbetreff": "...", "themenbetreffWeg": "S6a"|"S6b",
+#         "moderation": false,          (Build 736)
+#         "eroeffner": true|false|null, (Build 736 — null heisst UNBEKANNT)
+#         "eroeffnerQuelle": "...",
 #         "hinweise": []
 #       }
 #     }
@@ -70,8 +73,28 @@
 #   reisen mit, damit spaeter verlustfrei umgerechnet werden kann, sobald
 #   die Zone belegt ist.
 #
+#   ZU 'eroeffner' (Build 736): DREI ZUSTAENDE, NICHT ZWEI. Traegt ein Thema
+#   fuer den angemeldeten Benutzer Moderationsrechte, rendert das Forum unter
+#   der Titelzeile einen Hinweiskasten, und darin erscheint '<b>OP</b>' genau
+#   dann, wenn diese Person das Thema EROEFFNET hat. Daraus folgt:
+#     true   Kasten vorhanden UND OP-Kennzeichen darin
+#     false  Kasten vorhanden, kein OP-Kennzeichen
+#     null   kein Kasten -> die Seite sagt darueber NICHTS
+#   'null' darf beim Auswerten NIEMALS wie 'false' behandelt werden. Ohne
+#   Moderationsrechte wird der Kasten gar nicht erst gerendert; aus seinem
+#   Fehlen auf fehlende Eroeffnerschaft zu schliessen, waere ein entlastender
+#   Schluss ohne Beleg.
+#
+#   WESSEN EROEFFNERSCHAFT? Der Kasten spricht den ANGEMELDETEN Benutzer an
+#   ('You have moderation permisions in this thread.'). Wer das im
+#   gesicherten Abzug ist, haengt daran, unter welcher Sitzung die Seite
+#   geholt wurde — UND DAS IST NICHT ERHOBEN. Der Wert ist deshalb ein Befund
+#   der SEITE und noch keine Aussage ueber den Beschuldigten. Die Zuordnung
+#   gehoert geklaert, bevor die Angabe in einen Vermerk geht.
+#
 #   Beleg: claude/Analyse_Sondenmessung_29082026.md (Trefferquoten der
 #          Verfahren aus zwei Sondenlaeufen vom 29.08.2026);
+#          Auszug Alex 30.08.2026 (Moderationslink und OP-Kennzeichen);
 #          toolbar/toolbar.js -> PostMetaModule.
 #   Response: 200 {"id": <annotation_id>, "status": "ok"}
 #

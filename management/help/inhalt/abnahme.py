@@ -492,6 +492,33 @@ LECTORATE = Sichthilfe(
                 "— eine Tatzeit in der falschen Zone ist um Stunden falsch. "
                 "Sobald die Zone belegt ist, lässt sich aus dem Gesicherten "
                 "verlustfrei umrechnen.",
+                "DER BETREFF ENTHÄLT KEINE ZUSÄTZE MEHR. In der Titelzeile "
+                "eines Themas kann neben dem Titel noch anderes stehen: die "
+                "Themennummer und, wenn im betreffenden Thema "
+                "Moderationsrechte bestanden, ein zusätzlicher Link in "
+                "eckigen Klammern. Diese Zusätze gehören nicht zum Betreff "
+                "und werden nicht mehr mitgeschrieben. Sollte Ihnen in einem "
+                "Vermerk dennoch ein Betreff mit einer eckigen Klammer oder "
+                "einer angehängten Nummer auffallen, ist das ein Befund für "
+                "die Betriebsseite — er deutet auf eine Titelzeile hin, die "
+                "anders gebaut ist als die bisher bekannten.",
+                "OB JEMAND DAS THEMA ERÖFFNET HAT, KANN JETZT MIT "
+                "DOKUMENTIERT WERDEN — und diese Angabe kennt DREI Zustände, "
+                "nicht zwei: ja, nein und UNBEKANNT. Das Forum zeigte einen "
+                "Hinweis auf Moderationsrechte nur dort, wo solche bestanden, "
+                "und nur in diesem Hinweis stand die Kennzeichnung als "
+                "Eröffner. Wo es den Hinweis nicht gab, sagt die Seite über "
+                "die Eröffnerschaft SCHLICHT NICHTS. Behandeln Sie ein "
+                "„unbekannt“ deshalb niemals wie ein „nein“ — das wäre eine "
+                "Feststellung ohne Grundlage, und zwar eine entlastende.",
+                "NOCH UNGEKLÄRT IST DABEI, AUF WEN SICH DIESE ANGABE "
+                "BEZIEHT. Der Hinweis des Forums sprach den jeweils "
+                "angemeldeten Benutzer an. Unter welchem Zugang die "
+                "gesicherten Seiten geholt wurden, ist bislang nicht "
+                "festgestellt. Die Angabe ist deshalb vorerst ein Befund "
+                "ÜBER DIE SEITE und noch keine Aussage über die beschuldigte "
+                "Person. Verwenden Sie sie in einem Vermerk erst, wenn die "
+                "Betriebsseite diese Zuordnung geklärt hat.",
             ),
         ),
         Abschnitt(

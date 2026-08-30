@@ -2746,15 +2746,113 @@
       return t || null;
     }
 
+    // -------------------------------------------------------------------------
+    // BUILD 736: DIE TITELZEILE TRAEGT MEHR ALS DEN TITEL.
+    //
+    // Beleg: Auszug Alex vom 30.08.2026. Hat der angemeldete Benutzer in
+    // einem Thema Moderationsrechte, steht in derselben <h2> ein zusaetzlicher
+    // Link in eckigen Klammern:
+    //
+    //   <h2 class="topic-title" id="_vt_mfywoc">
+    //     <span><a href="viewtopic.php?id=31351">TITEL DES THEMAS</a></span>
+    //     <span> [ <a href="viewtopic.php?id=31351"
+    //                style="color:red">Moderate</a> ]</span>
+    //     <span style="float:right;…">#31351</span>
+    //   </h2>
+    //
+    // BIS BUILD 735 LAS S6 DEN TEXT DER GANZEN <h2> und schnitt nur die
+    // angehaengte Nummer ab. Bei einem Thema mit Moderationsrechten waere
+    // daraus 'TITEL DES THEMAS [ Moderate ]' geworden — ein Betreff, der so
+    // nirgends steht, und der in einem Vermerk als Themenbezeichnung
+    // erschienen waere. In Alex' Messung vom 29.08.2026 fiel es nicht auf,
+    // weil auf den beiden gemessenen Seiten keine Moderationsrechte bestanden.
+    // Genau daran zeigt sich die Grenze einer Messung an zwei Seiten: sie
+    // belegt, was sie gesehen hat, und nicht, was es sonst noch gibt.
+    //
+    // DER TITEL WIRD DESHALB STRUKTURELL GEHOLT, NICHT AUS DEM TEXT: der
+    // erste Link der Titelzeile, der weder der Moderationslink noch eine
+    // reine Nummernanzeige ist. Das ist unabhaengig davon, WIE VIELE
+    // Zusaetze die Zeile traegt, und es kommt ohne die Annahme aus, dass sie
+    // am Ende stehen.
+    //
+    // KEIN VERFAHREN UEBER DAS WORT 'Moderate'. Das Forum ist mehrsprachig
+    // (Erkenntnis zum Fall Nr. 2); der Linktext kann uebersetzt sein. Erkannt
+    // wird der Moderationslink an zwei sprachunabhaengigen Merkmalen: seine
+    // <span> ist von eckigen Klammern eingefasst, und er traegt 'color:red'.
+    // Eines von beiden genuegt.
+    // -------------------------------------------------------------------------
+
+    //: Eine reine Nummernanzeige ('#31351' oder '31351'). Solche Linktexte
+    //: sind Dauerlinks und Nummernanzeigen, nie der Titel.
+    var _NUR_NUMMER = /^#?\d+$/;
+
     /**
-     * S6 — der Themenbetreff aus dem Seitenkopf, OHNE die angehaengte
-     * Nummer. Nur viewtopic.
+     * Ist dieser Link der Moderationslink der Titelzeile?
      *
-     * Die Messung ergab fuer S4 (dasselbe ohne die Bereinigung) 'Titel?
-     * #99999' — die Beitragsnummer klebte hinten dran. Sie wird abgeschnitten.
-     * Der Fingerabdruck von S6 stimmte in der Messung mit dem von S2 des
-     * Eroeffnungsbeitrags ueberein (33fb820c bzw. 076ee3a1 auf zwei
-     * verschiedenen Themen) — zwei unabhaengige Wege, derselbe Wert.
+     * Sprachunabhaengig, weil das Forum mehrsprachig ist. Geprueft werden
+     * die beiden Merkmale aus Alex' Auszug vom 30.08.2026; eines genuegt,
+     * damit ein spaeteres Wegfallen der Farbangabe (oder der Klammern) den
+     * Titel nicht sofort verfaelscht.
+     */
+    function istModerationsLink(a) {
+      if (!a) return false;
+      var eltern = a.parentElement;
+      // '[ Moderate ]' — der Text der umgebenden <span> ist eingefasst.
+      var eingefasst = !!eltern && /^\[[\s\S]*\]$/.test(_txt(eltern));
+      var rot = /color\s*:\s*red/i.test(a.getAttribute("style") || "");
+      return eingefasst || rot;
+    }
+
+    /**
+     * Den Titel aus einer Kopfzeile holen. Zwei Wege, in dieser Reihenfolge:
+     *
+     *   S6a  der erste taugliche Link — strukturell und damit unabhaengig
+     *        von Zusaetzen und deren Reihenfolge. Der Regelfall.
+     *   S6b  der bereinigte Text der Zeile — nur, wenn es keinen Link gibt.
+     *        Dann muessen die bekannten Zusaetze abgeschnitten werden, und
+     *        das ist die schwaechere Annahme: sie setzt voraus, dass sie am
+     *        ENDE stehen. Deshalb steht dieser Weg hinten und wird als
+     *        eigener Weg ausgewiesen — im Vermerk ist erkennbar, welcher
+     *        der beiden gegriffen hat.
+     */
+    function titelAusKopf(h2) {
+      if (!h2) return null;
+      var links = h2.querySelectorAll("a");
+      for (var i = 0; i < links.length; i++) {
+        if (istModerationsLink(links[i])) continue;
+        var t = _txt(links[i]);
+        if (!t || _NUR_NUMMER.test(t)) continue;
+        return { text: t, weg: "S6a" };
+      }
+      var rein = _saeubereKopfzeile(_txt(h2));
+      return rein ? { text: rein, weg: "S6b" } : null;
+    }
+
+    /**
+     * Die bekannten Zusaetze einer Titelzeile abschneiden.
+     * Zweimal nach der Nummer gesucht, weil sie vor ODER hinter der
+     * eckigen Klammer stehen kann — welche Reihenfolge das Forum waehlt,
+     * ist an einem einzigen Auszug nicht zu belegen.
+     */
+    function _saeubereKopfzeile(s) {
+      return String(s || "")
+        .replace(/\s*#\d+\s*$/, "")            // die angehaengte Nummer
+        .replace(/\s*\[[^\[\]]*\]\s*$/, "")    // '[ Moderate ]'
+        .replace(/\s*#\d+\s*$/, "")            // Nummer, falls sie davor stand
+        .trim();
+    }
+
+    /**
+     * S6 — der Themenbetreff aus dem Seitenkopf. Nur viewtopic.
+     *
+     * Gibt { text, weg } zurueck oder null. Der Weg wandert mit in den
+     * Vermerk: 'S6a' ist der strukturelle, 'S6b' der bereinigte Text.
+     *
+     * Der Fingerabdruck von S6 stimmte in der Messung vom 29.08.2026 mit
+     * dem von S2 des Eroeffnungsbeitrags ueberein (33fb820c bzw. 076ee3a1
+     * auf zwei verschiedenen Themen) — zwei unabhaengige Wege, derselbe
+     * Wert. Beide Seiten trugen keine Moderationsrechte; fuer diesen Fall
+     * gilt die Bestaetigung also, fuer den anderen steht sie aus.
      */
     function betreffS6() {
       var vp = _viewport();
@@ -2762,10 +2860,95 @@
       var alle = vp.querySelectorAll("h2");
       for (var i = 0; i < alle.length; i++) {
         if (beitragBehaelter(alle[i])) continue;   // Beitragskoepfe ueberspringen
-        var t = _txt(alle[i]).replace(/\s*#\d+\s*$/, "").trim();
+        var t = titelAusKopf(alle[i]);
         if (t) return t;
       }
       return null;
+    }
+
+    // -------------------------------------------------------------------------
+    // BUILD 736: MODERATIONSRECHTE UND EROEFFNERSCHAFT
+    //
+    // Beleg: Auszug Alex vom 30.08.2026. Unter der Titelzeile steht bei
+    // bestehenden Moderationsrechten ein Hinweiskasten:
+    //
+    //   <div style="background:lightyellow;border-left:2px solid orange;…">
+    //     <small><i>You have moderation permisions in this thread.
+    //       (<a href="viewtopic.php?id=30200"><b>OP</b></a>)</i></small>
+    //   </div>
+    //
+    // Das '<b>OP</b>' erscheint NUR, wenn die Person das Thema eroeffnet hat
+    // ('original poster'). Das ist eine ermittlungsrelevante Angabe: sie
+    // sagt, dass ein Konto nicht nur beigetragen, sondern das Thema
+    // AUFGEMACHT hat.
+    //
+    // ES GIBT DREI ZUSTAENDE, NICHT ZWEI, und die Unterscheidung ist
+    // entscheidend:
+    //
+    //   true   der Hinweiskasten ist da UND traegt das OP-Kennzeichen
+    //   false  der Hinweiskasten ist da und traegt es NICHT
+    //   null   es gibt gar keinen Hinweiskasten — die Seite sagt ueber die
+    //          Eroeffnerschaft dann NICHTS
+    //
+    // 'null' darf niemals zu 'false' werden. Ohne Moderationsrechte wird der
+    // Kasten gar nicht erst gerendert; aus seinem Fehlen zu schliessen, die
+    // Person habe das Thema nicht eroeffnet, waere ein Fehlschluss — und in
+    // einem Vermerk ein entlastender Schluss ohne Beleg.
+    //
+    // WESSEN RECHTE, WESSEN EROEFFNERSCHAFT? Der Kasten spricht den
+    // ANGEMELDETEN Benutzer an ('You have …'). Wer das im gesicherten Abzug
+    // ist, haengt daran, unter welcher Sitzung die Seite geholt wurde — und
+    // DAS IST HIER NICHT ERHOBEN. Der Wert wird deshalb als Befund der SEITE
+    // gefuehrt und nicht als Aussage ueber den Beschuldigten. Die Zuordnung
+    // gehoert geklaert, bevor die Angabe in einen Vermerk geht; sie steht als
+    // eigener Vorgang im Tracker.
+    // -------------------------------------------------------------------------
+
+    //: Genau 'OP', nichts sonst. Absichtlich ohne 'i'-Kennzeichen: 'op' oder
+    //: 'Op' waere im Fliesstext ein gewoehnliches Wortfragment.
+    var _OP_KENNZEICHEN = /^OP$/;
+
+    /**
+     * Moderationsanzeige und Eroeffnerkennzeichen der Seite.
+     * Gibt { moderation, eroeffner, quelle } zurueck.
+     */
+    function moderationsBefund() {
+      var leer = { moderation: false, eroeffner: null, quelle: null };
+      var vp = _viewport();
+      if (!vp) return leer;
+
+      // (1) Gibt es den Moderationslink in einer Kopfzeile ausserhalb der
+      //     Beitraege? Er ist das Merkmal, an dem der Hinweiskasten haengt.
+      var modLink = null;
+      var koepfe = vp.querySelectorAll("h2");
+      for (var i = 0; i < koepfe.length && !modLink; i++) {
+        if (beitragBehaelter(koepfe[i])) continue;
+        var links = koepfe[i].querySelectorAll("a");
+        for (var j = 0; j < links.length; j++) {
+          if (istModerationsLink(links[j])) { modLink = links[j]; break; }
+        }
+      }
+      if (!modLink) return leer;
+
+      // (2) NUR DANN nach dem OP-Kennzeichen suchen. Ohne Moderationsanzeige
+      //     gibt es keinen Kasten, und ein irgendwo auf der Seite fett
+      //     gesetztes 'OP' waere dann kein Kennzeichen, sondern Zufall.
+      var fett = vp.querySelectorAll("b, strong");
+      for (var k = 0; k < fett.length; k++) {
+        if (beitragBehaelter(fett[k])) continue;   // nicht im Beitragstext
+        if (_OP_KENNZEICHEN.test(_txt(fett[k]))) {
+          return {
+            moderation: true,
+            eroeffner: true,
+            quelle: "OP-Kennzeichen im Moderationshinweis"
+          };
+        }
+      }
+      return {
+        moderation: true,
+        eroeffner: false,
+        quelle: "Moderationshinweis ohne OP-Kennzeichen"
+      };
     }
 
     /**
@@ -2810,6 +2993,12 @@
         betreffWeg:       null,
         themenbetreff:    null,
         themenbetreffWeg: null,
+        // Build 736: Befunde der SEITE, nicht Aussagen ueber den
+        // Beschuldigten — wessen Sitzung den Abzug erzeugt hat, ist nicht
+        // erhoben (s. moderationsBefund).
+        moderation:       false,
+        eroeffner:        null,   // true | false | null — null heisst UNBEKANNT
+        eroeffnerQuelle:  null,
         hinweise:         []
       };
 
@@ -2869,11 +3058,34 @@
         // Wert (Fingerabdruck 353e0d45 gegen 369526b8 bei S3).
       } else {
         var s6 = betreffS6();
-        if (s6) { meta.themenbetreff = s6; meta.themenbetreffWeg = "S6"; }
-        else { meta.hinweise.push("kein Themenbetreff im Seitenkopf"); }
+        if (s6) {
+          meta.themenbetreff    = s6.text;
+          meta.themenbetreffWeg = s6.weg;   // 'S6a' strukturell, 'S6b' bereinigt
+          if (s6.weg === "S6b") {
+            // Der schwaechere Weg. Er setzt voraus, dass die Zusaetze am ENDE
+            // der Zeile stehen — an einem einzigen Auszug nicht zu belegen.
+            meta.hinweise.push("Themenbetreff aus dem bereinigten Zeilentext "
+              + "(kein Titellink vorhanden)");
+          }
+        } else { meta.hinweise.push("kein Themenbetreff im Seitenkopf"); }
         var s2 = betreffS2(behaelter);
         if (s2) { meta.betreff = s2; meta.betreffWeg = "S2"; }
         else { meta.hinweise.push("kein Beitragsbetreff (<h3>) im Beitrag"); }
+      }
+
+      // ---- Build 736: Moderationsanzeige und Eroeffnerkennzeichen ----------
+      // Nur in der Themenansicht: der Hinweiskasten gehoert zu viewtopic.
+      // Auf PN-Seiten bleibt 'eroeffner' null — und null heisst UNBEKANNT,
+      // nicht 'nein'.
+      if (meta.ansicht !== ANSICHT_PN) {
+        var mb = moderationsBefund();
+        meta.moderation      = mb.moderation;
+        meta.eroeffner       = mb.eroeffner;
+        meta.eroeffnerQuelle = mb.quelle;
+        if (!mb.moderation) {
+          meta.hinweise.push("keine Moderationsanzeige - die Seite sagt "
+            + "ueber die Eroeffnerschaft NICHTS (nicht: sie verneint sie)");
+        }
       }
 
       _dbg("PostMetaModule.metadatenVon:", JSON.stringify(meta));
@@ -2893,9 +3105,13 @@
         postIdP3:         postIdP3,
         zerlegeZeit:      zerlegeZeit,
         zeitVon:          zeitVon,
-        betreffS2:        betreffS2,
-        betreffS3:        betreffS3,
-        betreffS6:        betreffS6
+        betreffS2:          betreffS2,
+        betreffS3:          betreffS3,
+        betreffS6:          betreffS6,
+        // Build 736
+        titelAusKopf:       titelAusKopf,
+        istModerationsLink: istModerationsLink,
+        moderationsBefund:  moderationsBefund
       }
     };
   })();

@@ -50,7 +50,10 @@ import { readFileSync as _lese } from "fs";
  */
 const SEITE_VIEWTOPIC = `
 <div id="brd-main">
-  <div class="linkst"><h2><span>Ein Thema über Bonn #721598</span></h2></div>
+  <h2 class="topic-title" id="_vt_mfywoc">
+    <span><a href="viewtopic.php?id=31351" id="_vt_x30jty">Ein Thema über Bonn</a></span>
+    <span style="float:right;font-size: smaller;color:grey">#721598</span>
+  </h2>
 
   <article class="post" id="p721598">
     <div class="blockpost">
@@ -83,6 +86,63 @@ const SEITE_VIEWTOPIC = `
     </div>
   </article>
 </div>`;
+
+/**
+ * THEMENSEITE MIT MODERATIONSRECHTEN (viewtopic).
+ *
+ * ECHT — Auszug Alex vom 30.08.2026, gekuerzt, Schachtelung unveraendert.
+ * Zwei Dinge kommen hier hinzu, die es auf den am 29.08. gemessenen Seiten
+ * nicht gab:
+ *
+ *   1. In der Titelzeile steht ein zweiter Link in eckigen Klammern
+ *      ('[ Moderate ]'). Wer den Betreff aus dem TEXT der Zeile nimmt,
+ *      bekommt ihn mitgeliefert.
+ *   2. Darunter steht der Moderationshinweis, und darin erscheint
+ *      '<b>OP</b>' — aber NUR, wenn die Person das Thema eroeffnet hat.
+ *
+ * Die Kennungen '_vt_...' und die Nummer im OP-Link stehen so im Auszug.
+ * Dass der OP-Link auf eine ANDERE id zeigt als das Thema, ist uebernommen
+ * und nicht gedeutet — wofuer diese zweite Nummer steht, ist nicht erhoben.
+ */
+const SEITE_VIEWTOPIC_MOD = `
+<div id="page-body" role="main">
+  <h2 class="topic-title" id="_vt_mfywoc">
+    <span><a href="viewtopic.php?id=31351" id="_vt_x30jty">TITLE OF THE TOPIC</a></span>
+    <span> [ <a href="viewtopic.php?id=31351" style="color:red" id="_vt_ysls96">Moderate</a> ]</span>
+    <span style="float:right;font-size: smaller;color:grey">#31351</span>
+  </h2>
+  <div style="background:lightyellow;border-left:2px solid orange;padding:0 5px">
+    <small><i>You have moderation permisions in this thread.
+      (<a href="viewtopic.php?id=30200" id="_vt_rwi6no"><b>OP</b></a>)</i></small>
+  </div>
+
+  <article class="post" id="p800100">
+    <div class="blockpost">
+      <h2><span>
+        <a href="viewtopic.php?pid=800100#p800100">#800100</a>
+        <i><i title="2 years ago">Tue., 03.01.2023 11:05:00</i></i>
+      </span></h2>
+      <div class="box" id="pp800100"><div class="inbox"><div class="postbody">
+        <div class="postright">
+          <h3>TITLE OF THE TOPIC</h3>
+          <div class="postmsg"><p id="ziel1">Erster Beitrag im Thema.</p></div>
+        </div>
+      </div></div></div>
+    </div>
+  </article>
+</div>`;
+
+/**
+ * DIESELBE SEITE OHNE DAS OP-KENNZEICHEN.
+ *
+ * Moderationsrechte ja, Eroeffnerschaft nein. NACHGESTELLT: der Auszug vom
+ * 30.08.2026 zeigt nur den Fall MIT '<b>OP</b>'. Alex' Angabe dazu lautet,
+ * das Kennzeichen erscheine 'dann, und nur dann', wenn die Person das Thema
+ * eroeffnet hat — der andere Fall ist daraus abgeleitet und hier bewusst als
+ * ABLEITUNG gekennzeichnet, nicht als Beleg.
+ */
+const SEITE_VIEWTOPIC_MOD_OHNE_OP = SEITE_VIEWTOPIC_MOD
+    .replace('(<a href="viewtopic.php?id=30200" id="_vt_rwi6no"><b>OP</b></a>)', '');
 
 /**
  * PRIVATE NACHRICHT (pmsnew) — ein Beitrag.
@@ -276,18 +336,20 @@ describe("PostMetaModule — die Verfahren einzeln (Build 735)", () => {
 
     // -- Betreff -------------------------------------------------------------
 
-    it("MD10 - viewtopic: S6 ohne angehaengte Nummer, S2 mit 'Re:'", () => {
+    it("MD10 - viewtopic: S6 nimmt den Titellink, S2 den Beitragsbetreff", () => {
         const dom = toolbarDOM(SEITE_VIEWTOPIC);
         const m = meta(dom);
-        // S6 schneidet die angehaengte Nummer ab. Die Messung ergab fuer das
-        // unbereinigte Verfahren 'Titel? #99999'.
-        expect(m.betreffS6()).toBe("Ein Thema über Bonn");
+        // Build 736: S6 holt den Titel STRUKTURELL — der erste taugliche
+        // Link der Zeile. Die Nummernanzeige '#721598' ist ein eigener
+        // <span> und kommt gar nicht erst in Betracht.
+        expect(m.betreffS6().text).toBe("Ein Thema über Bonn");
+        expect(m.betreffS6().weg).toBe("S6a");
         const b1 = m.beitragBehaelter(markiere(dom, "#ziel1"));
         const b2 = m.beitragBehaelter(markiere(dom, "#ziel2"));
         // S2 des EROEFFNUNGSbeitrags == S6. Zwei unabhaengige Wege, ein Wert
         // — in der Messung an zwei verschiedenen Themen bestaetigt
         // (Fingerabdruecke 33fb820c und 076ee3a1).
-        expect(m.betreffS2(b1)).toBe(m.betreffS6());
+        expect(m.betreffS2(b1)).toBe(m.betreffS6().text);
         expect(m.betreffS2(b2)).toBe("Re: Ein Thema über Bonn");
     });
 
@@ -300,7 +362,97 @@ describe("PostMetaModule — die Verfahren einzeln (Build 735)", () => {
         const dom = toolbarDOM(SEITE_PMSNEW);
         const m = meta(dom);
         expect(m.betreffS3()).toBe("Bonn");
-        expect(m.betreffS6()).not.toBe(m.betreffS3());
+        // Auf den TEXT vergleichen, nicht auf das Objekt: ein Objekt ist nie
+        // gleich einer Zeichenkette, und die Probe waere immer gruen — also
+        // wertlos.
+        expect(m.betreffS6().text).not.toBe(m.betreffS3());
+    });
+
+    // -- Build 736: Moderationslink und Eroeffnerkennzeichen -----------------
+
+    it("MD15 - der Moderationslink wird sprachunabhaengig erkannt", () => {
+        // KEIN VERFAHREN UEBER DAS WORT 'Moderate'. Das Forum ist
+        // mehrsprachig; der Linktext kann uebersetzt sein. Erkannt wird an
+        // der eckigen Klammer der umgebenden <span> ODER an 'color:red'.
+        const dom = toolbarDOM(SEITE_VIEWTOPIC_MOD);
+        const m = meta(dom);
+        const d = dom.window.document;
+        const titel = d.querySelector("#_vt_x30jty");
+        const mod = d.querySelector("#_vt_ysls96");
+        expect(m.istModerationsLink(mod)).toBe(true);
+        // GEGENPROBE: der TITELLINK darf nicht als Moderationslink gelten —
+        // sonst faellt genau die Angabe weg, um die es geht.
+        expect(m.istModerationsLink(titel)).toBe(false);
+        // Und jedes der beiden Merkmale traegt fuer sich: ein uebersetzter
+        // Linktext ohne Farbangabe wird an der Klammer erkannt.
+        const dom2 = toolbarDOM(
+            '<h2><span><a href="viewtopic.php?id=9">Der Titel</a></span>' +
+            '<span> [ <a href="viewtopic.php?id=9" id="mod2">Moderieren</a> ]</span></h2>');
+        expect(meta(dom2).istModerationsLink(
+            dom2.window.document.querySelector("#mod2"))).toBe(true);
+    });
+
+    it("MD16 - der Betreff traegt den Moderationszusatz NICHT", () => {
+        // DAS IST DER FEHLER, DEN ALEX AM 30.08.2026 GEFUNDEN HAT. Bis
+        // Build 735 wurde der TEXT der Titelzeile genommen; daraus waere
+        // 'TITLE OF THE TOPIC [ Moderate ]' geworden — ein Betreff, der so
+        // nirgends steht und in einem Vermerk als Themenbezeichnung
+        // erschienen waere.
+        const dom = toolbarDOM(SEITE_VIEWTOPIC_MOD);
+        const s6 = meta(dom).betreffS6();
+        expect(s6.text).toBe("TITLE OF THE TOPIC");
+        expect(s6.weg).toBe("S6a");
+        expect(s6.text).not.toContain("Moderate");
+        expect(s6.text).not.toContain("[");
+        expect(s6.text).not.toContain("#31351");
+    });
+
+    it("MD17 - ohne Titellink wird der Zeilentext bereinigt (S6b)", () => {
+        // Der schwaechere Weg, und er wird als solcher ausgewiesen: er setzt
+        // voraus, dass die Zusaetze am ENDE stehen. Beide Reihenfolgen
+        // werden abgeschnitten, weil an einem einzigen Auszug nicht zu
+        // belegen ist, welche das Forum waehlt.
+        const m1 = meta(toolbarDOM(
+            '<h2 class="topic-title">Ein Titel ohne Link [ Moderate ] #4711</h2>'));
+        expect(m1.betreffS6()).toEqual(
+            { text: "Ein Titel ohne Link", weg: "S6b" });
+        const m2 = meta(toolbarDOM(
+            '<h2 class="topic-title">Ein Titel ohne Link #4711 [ Moderate ]</h2>'));
+        expect(m2.betreffS6().text).toBe("Ein Titel ohne Link");
+    });
+
+    it("MD18 - Eroeffnerschaft: drei Zustaende, und keiner wird geraten", () => {
+        // OHNE DIESE UNTERSCHEIDUNG WAERE DIE ANGABE GEFAEHRLICH. Der
+        // Hinweiskasten erscheint nur bei Moderationsrechten. Aus seinem
+        // Fehlen zu schliessen, die Person habe das Thema nicht eroeffnet,
+        // waere ein entlastender Schluss ohne Beleg.
+        const mit = meta(toolbarDOM(SEITE_VIEWTOPIC_MOD)).moderationsBefund();
+        expect(mit.moderation).toBe(true);
+        expect(mit.eroeffner).toBe(true);
+
+        const ohneOp = meta(toolbarDOM(SEITE_VIEWTOPIC_MOD_OHNE_OP))
+            .moderationsBefund();
+        expect(ohneOp.moderation).toBe(true);
+        expect(ohneOp.eroeffner).toBe(false);
+
+        // GEGENPROBE: keine Moderationsanzeige -> UNBEKANNT, nicht 'nein'.
+        const ohne = meta(toolbarDOM(SEITE_VIEWTOPIC)).moderationsBefund();
+        expect(ohne.moderation).toBe(false);
+        expect(ohne.eroeffner).toBeNull();
+    });
+
+    it("MD19 - GEGENPROBE: ein fettes 'OP' im Beitrag zaehlt nicht", () => {
+        // Ohne diese Probe waere MD18 auch mit einer Suche gruen, die
+        // irgendein <b>OP</b> auf der Seite als Kennzeichen nimmt — und dann
+        // machte ein Beitrag, der ueber 'den OP' schreibt, den Verfasser zum
+        // Themeneroeffner. In einem Vermerk waere das eine erfundene
+        // Zuschreibung.
+        const dom = toolbarDOM(SEITE_VIEWTOPIC_MOD_OHNE_OP.replace(
+            '<p id="ziel1">Erster Beitrag im Thema.</p>',
+            '<p id="ziel1">Frag doch mal den <b>OP</b> danach.</p>'));
+        const b = meta(dom).moderationsBefund();
+        expect(b.moderation).toBe(true);
+        expect(b.eroeffner).toBe(false);
     });
 
     // -- post_id -------------------------------------------------------------
@@ -438,7 +590,7 @@ describe("MarkerToolModule — der WEG durch _onMouseUp (Build 735)", () => {
         // 'Re: …'. Beide zu erheben kostet nichts und laesst die Wahl der
         // Darstellung offen.
         expect(m.themenbetreff).toBe("Ein Thema über Bonn");
-        expect(m.themenbetreffWeg).toBe("S6");
+        expect(m.themenbetreffWeg).toBe("S6a");
         expect(m.betreff).toBe("Re: Ein Thema über Bonn");
         expect(m.betreffWeg).toBe("S2");
         // KEINE Zonenangabe im Namen und keine im Wert — die Zone des Forums
@@ -461,6 +613,47 @@ describe("MarkerToolModule — der WEG durch _onMouseUp (Build 735)", () => {
         expect(m.themenbetreffWeg).toBe("S3");
         expect(m.betreff).toBeNull();
         expect(m.zeitWeg).toBe("T2");
+    });
+
+    it("TB17 - Weg mit Moderationsrechten: sauberer Betreff, OP erkannt", () => {
+        // Der Weg durch _onMouseUp auf der Seite aus Alex' Auszug vom
+        // 30.08.2026. Geprueft wird, was in der Annotation LANDET — nicht,
+        // was eine Hilfsfunktion isoliert zurueckgibt.
+        const dom = toolbarDOM(SEITE_VIEWTOPIC_MOD);
+        const ann = markiereUeberDenWeg(dom, "#ziel1",
+                                        "/forum/viewtopic.php?id=31351");
+        const m = ann.selection.meta;
+        expect(m.themenbetreff).toBe("TITLE OF THE TOPIC");
+        expect(m.themenbetreffWeg).toBe("S6a");
+        expect(m.moderation).toBe(true);
+        expect(m.eroeffner).toBe(true);
+        expect(m.eroeffnerQuelle).toContain("OP-Kennzeichen");
+        // Und der Zusatz taucht NIRGENDS in der Nutzlast auf.
+        expect(JSON.stringify(m)).not.toContain("Moderate");
+    });
+
+    it("TB18 - GEGENPROBE: ohne Hinweiskasten bleibt die Eroeffnerschaft offen", () => {
+        // null heisst UNBEKANNT. Waere hier 'false' zu lesen, stuende in
+        // jedem Beleg einer gewoehnlichen Seite eine Verneinung, fuer die es
+        // keinen Beleg gibt — und ein Vermerk wuerde sie wiedergeben.
+        const dom = toolbarDOM(SEITE_VIEWTOPIC);
+        const ann = markiereUeberDenWeg(dom, "#ziel1",
+                                        "/forum/viewtopic.php?pid=721598");
+        const m = ann.selection.meta;
+        expect(m.moderation).toBe(false);
+        expect(m.eroeffner).toBeNull();
+        expect(m.hinweise.join(" ")).toContain("sagt");
+    });
+
+    it("TB19 - pmsnew: die Eroeffnerfrage stellt sich dort nicht", () => {
+        // Der Hinweiskasten gehoert zur Themenansicht. Auf PN-Seiten wird
+        // gar nicht erst gesucht — und das Ergebnis ist UNBEKANNT, nicht
+        // 'nein'.
+        const dom = toolbarDOM(SEITE_PMSNEW);
+        const ann = markiereUeberDenWeg(dom, "#ziel1",
+                                        "/forum/pmsnew.php?mdl=topic&tid=91");
+        expect(ann.selection.meta.eroeffner).toBeNull();
+        expect(ann.selection.meta.moderation).toBe(false);
     });
 
     it("TB15 - reduzierte Ansicht: NUR 'pp<n>' - der breitere Weg faengt es auf", () => {
