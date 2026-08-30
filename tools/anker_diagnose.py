@@ -200,7 +200,11 @@ def main(argv=None) -> int:
                 m("      ... (%d weitere)" % (len(s.fehlerprotokoll) - 12))
             m("   M5 Wo die bekannten Kennungen WIRKLICH stehen:")
             for zeile in s.verortung:
-                m("      %s" % zeile)
+                m("      %s" % zeile.replace("\n", "\n   "))
+            if s.quelltext:
+                m("   M6 Die Quelltextzeilen, die der Zerleger genannt hat:")
+                for zeile in s.quelltext:
+                    m("      %s" % zeile)
             if s.rohtext:
                 m("   M3 %s" % s.rohtext)
             for zeile in s.annaeherung:
@@ -266,7 +270,11 @@ def _urteil(z) -> str:
         "ist.\n"
         "  M5 sagt, ob '#page-body' im Baum TIEFER steht (verschluckt) oder "
         "GANZ FEHLT, obwohl es im Quelltext steht (weggelassen). Das sind "
-        "zwei verschiedene Ursachen mit zwei verschiedenen Abhilfen."
+        "zwei verschiedene Ursachen mit zwei verschiedenen Abhilfen. Die "
+        "KETTE nennt dabei das Element, das es aufgenommen hat.\n"
+        "  M6 zeigt die Quelltextzeilen, die der Zerleger in M4 genannt hat "
+        "- verdeckt, aber mit vollstaendigem Geruest. Erst daran laesst sich "
+        "der Konstrukt nachstellen."
         % (z["belege"] - z["lxml_traegt"], z["belege"]))
 
 

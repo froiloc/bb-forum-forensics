@@ -158,6 +158,26 @@ def verdecke_tag(tag: str) -> str:
                   _attribut, roh)
 
 
+def verdecke_tag_folge(zeile: str) -> str:
+    """
+    Eine ganze Quelltextzeile verdecken: jedes Tag durch verdecke_tag(), alles
+    dazwischen (Fliesstext) durch verdecke_text().
+
+    BUILD 741. Ohne diese Funktion muesste man entweder die Zeile im Klartext
+    zeigen - und damit die Zusage brechen, dass die Ausgabe weitergebbar ist -
+    oder auf die Zeile verzichten und weiter raten.
+    """
+    heraus, stelle = [], 0
+    for m in re.finditer(r"<[^>]*>", str(zeile or "")):
+        if m.start() > stelle:
+            heraus.append(verdecke_text(zeile[stelle:m.start()]))
+        heraus.append(verdecke_tag(m.group(0)))
+        stelle = m.end()
+    if stelle < len(zeile or ""):
+        heraus.append(verdecke_text(zeile[stelle:]))
+    return "".join(heraus)
+
+
 # =============================================================================
 # Ein Baum, zwei Zerlegungen - eine gemeinsame Sicht darauf
 # =============================================================================
@@ -248,6 +268,23 @@ class Sicht:
 
     def eltern(self, knoten):
         raise NotImplementedError
+
+    def kette_von(self, knoten) -> str:
+        """
+        Die Vorfahrenkette als BENANNTE Folge: 'div#wrap > div#page-header >
+        div.inbox > div#page-body'.
+
+        BUILD 741. Der Pfad ('div[2]/div[2]') sagt, WO ein Element steht; die
+        Kette sagt, WER es aufgenommen hat. Erst damit ist die Stelle im
+        Quelltext wiederzufinden - und genau danach wird gesucht, wenn ein
+        Element tiefer steht als erwartet.
+        """
+        teile: List[str] = []
+        aktuell = knoten
+        while aktuell is not None and aktuell is not self.wurzel:
+            teile.append(self.benenne(aktuell))
+            aktuell = self.eltern(aktuell)
+        return " > ".join(reversed(teile)) if teile else "(Wurzel)"
 
     def mit_kennung(self, kennung: str):
         """Den Knoten mit dieser Kennung suchen. None, wenn es ihn nicht gibt."""
@@ -425,6 +462,8 @@ class Seitenbefund:
     fehlerprotokoll: List[str] = field(default_factory=list)
     #: M5 (Build 739) - wo die bekannten Kennungen WIRKLICH stehen.
     verortung: List[str] = field(default_factory=list)
+    #: M6 (Build 741) - die Quelltextzeilen, die der Zerleger genannt hat.
+    quelltext: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -668,8 +707,13 @@ class AnkerDiagnose:
                            ("id='%s'" % kennung) in body
             el = roh_sicht.mit_kennung(kennung)
             if el is not None:
-                s.verortung.append("#%-12s Baum: %s"
-                                   % (kennung, roh_sicht.pfad_von(el)))
+                # BUILD 741: nicht nur der Pfad, sondern die BENANNTE Kette.
+                # 'div[2]/div[2]' sagt, WO etwas steht; die Kette sagt, WER
+                # es dorthin genommen hat - und das ist die Angabe, mit der
+                # sich die Stelle im Quelltext wiederfinden laesst.
+                s.verortung.append("#%-12s Baum: %s\n%18s Kette: %s"
+                                   % (kennung, roh_sicht.pfad_von(el), "",
+                                      roh_sicht.kette_von(el)))
             elif im_quelltext:
                 s.verortung.append(
                     "#%-12s STEHT IM QUELLTEXT, FEHLT IM BAUM - der Zerleger "
@@ -678,7 +722,24 @@ class AnkerDiagnose:
                 s.verortung.append("#%-12s weder im Quelltext noch im Baum"
                                    % kennung)
 
-        # -- M6 GESTRICHEN, und der Grund gehoert hierher -------------------
+        # -- M6: die Quelltextzeilen, die der Zerleger genannt hat ---------
+        #
+        # BUILD 741. Das Fehlerprotokoll nennt Zeile und Spalte
+        # ('<string>:92:8'). Ohne die Zeile SELBST ist das eine Zahl; mit ihr
+        # ist es ein Konstrukt, das man nachstellen und pruefen kann.
+        #
+        # WARUM DAS NOETIG WURDE: Ich habe nach dem ersten Protokoll sechs
+        # Konstrukte mit nicht geschlossenem <li> gegen einen Browser und
+        # gegen libxml2 gehalten - libxml2 verarbeitet sie ALLE richtig. Die
+        # Meldung 'li and div' allein genuegt also nicht, um den Fall
+        # nachzustellen. Was fehlt, ist die Zeile.
+        #
+        # VERDECKT: Textknoten und alle nicht freigegebenen Attributwerte.
+        # Tagnamen, 'id', 'class' und 'style' bleiben offen - sie sind der
+        # Messgegenstand und tragen keinen Fallbezug.
+        s.quelltext = self._quelltextzeilen(body, s.fehlerprotokoll)
+
+        # -- M6-Entwurf GESTRICHEN, und der Grund gehoert hierher -----------
         #
         # Der Entwurf hatte eine dritte Messung: an eine wachsende
         # Anfangsstrecke des Quelltextes eine Sonde anhaengen und suchen, ab
@@ -761,6 +822,44 @@ class AnkerDiagnose:
             if a is None and c is None:
                 break
         return s
+
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _quelltextzeilen(body: str, protokoll: Sequence[str]) -> List[str]:
+        """
+        Zu jeder Fehlermeldung mit Zeilenangabe die Zeile selbst - verdeckt.
+
+        Die Zeilenzaehlung stammt vom Zerleger. Er bekommt den Rumpf mit
+        einem kuenstlichen <div> davor; die Zaehlung kann deshalb um eine
+        Zeile verschoben sein. Deswegen werden ZWEI Zeilen davor und EINE
+        danach mitgegeben - und die Verschiebung wird benannt statt
+        stillschweigend hingenommen.
+        """
+        zeilen = body.split("\n")
+        heraus: List[str] = []
+        gesehen = set()
+        for eintrag in protokoll:
+            m = re.search(r":(\d+):(\d+):", str(eintrag))
+            if not m:
+                continue
+            nr = int(m.group(1))
+            if nr in gesehen:
+                continue
+            gesehen.add(nr)
+            heraus.append("--- Meldung bei Zeile %s, Spalte %s ---"
+                          % (m.group(1), m.group(2)))
+            for i in range(max(1, nr - 2), min(len(zeilen), nr + 1) + 1):
+                heraus.append("%6d | %s" % (i, verdecke_tag_folge(zeilen[i - 1])))
+            if len(gesehen) >= 4:
+                break
+        if not heraus:
+            heraus.append("Keine Fehlermeldung mit Zeilenangabe - nichts zu "
+                          "zeigen.")
+        else:
+            heraus.append("(Die Zeilenzaehlung stammt vom Zerleger und kann "
+                          "um eine Zeile verschoben sein - er bekommt ein "
+                          "kuenstliches <div> vorangestellt.)")
+        return heraus
 
     # ------------------------------------------------------------------
     def _sichten(self, url: str):
