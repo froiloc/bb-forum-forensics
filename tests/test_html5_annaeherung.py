@@ -268,3 +268,156 @@ def test_HA16_jeder_eingriff_wird_benannt():
     assert befunde
     assert "</div>" in befunde[0]
     assert "1 x" in befunde[0]
+
+
+# ---------------------------------------------------------------------------
+# Build 745 - der Geltungsbereich, und das Einsatzprotokoll
+#
+# DER SCHADEN, DEN DIESE TESTS FESTHALTEN, WAR MEINER. Die Fassung aus
+# Build 742 suchte das Element zu einem Endtag im GANZEN Stapel. HTML5 sucht
+# nur innerhalb des Geltungsbereichs und verwirft das Endtag, wenn es das
+# Element bis zur naechsten Grenze (<table>, <td>, <th>, <caption>, ...)
+# nicht findet.
+#
+# GEMESSEN am 30.08.2026 an Alex' Bestand: roh standen ALLE 500 <article>
+# unter '#page-body', nach meiner Annaeherung nur noch 2 - 498 waren nach
+# '#wrap' herausgefallen. Nachgestellt mit einem verirrten '</div>' in einer
+# Tabellenzelle und gegen Chromium gehalten:
+#
+#   Browser              3 <article>, alle 3 unter #page-body
+#   libxml2 roh          3 <article>, alle 3 unter #page-body   (richtig)
+#   libxml2 + Build 742  3 <article>, nur 1 unter #page-body     (falsch)
+#   libxml2 + Build 745  3 <article>, alle 3 unter #page-body   (richtig)
+#
+# HA17  ein '</div>' in einer Zelle schliesst KEIN <div> ausserhalb der Zelle
+# HA18  GEGENPROBE: dasselbe '</div>' INNERHALB der Zelle wirkt weiterhin -
+#       der Geltungsbereich darf nicht zu eng sein, sonst heilt gar nichts
+# HA19  '</li>' zieht weiterhin nach (Build 742 bleibt wirksam) - <ul> ist
+#       zwar Grenze fuer </li>, aber erst UNTERHALB des <li>
+# HA20  im_geltungsbereich() unmittelbar: hinter einer Grenze NEIN, davor JA
+# HA21  das Einsatzprotokoll nennt Element, Ausloeser und Quelltextzeile
+# HA22  ohne Nachzug an einem Element mit Kennung wird auch keiner benannt
+# ---------------------------------------------------------------------------
+
+from report_render.html5_annaeherung import (                     # noqa: E402
+    annaehern_mit_protokoll, im_geltungsbereich,
+    schliesse_offene_mit_protokoll)
+
+
+#: Alex' Bild, nachgestellt: ein verirrtes '</div>' in einer Tabellenzelle
+#: mitten im ersten Beitrag. Ohne den Geltungsbereich schliesst es
+#: '#page-body' und wirft alle folgenden Beitraege heraus.
+_ZELLE_MIT_STREUNENDEM_DIV = (
+    '<donate><div id="wrap"><div id="page-body">'
+    '<article class="post" id="p1"><table><tr><td>x</div></td></tr></table>'
+    '</article><article class="post" id="p2">c</article>'
+    '<article class="post" id="p3">d</article></div>'
+    '<div id="page-footer">F</div></div></donate>')
+
+
+def _artikel_unter_body(text: str):
+    wurzel = lxml_html.fragment_fromstring(text, create_parent="div")
+    body = wurzel.xpath("//*[@id='page-body']")
+    artikel = wurzel.xpath("//article")
+    if not body:
+        return len(artikel), 0
+    return len(artikel), len([a for a in artikel if a.getparent() is body[0]])
+
+
+def test_HA17_endtag_in_einer_zelle_reicht_nicht_darueber_hinaus():
+    # DER BROWSER LIEFERT HIER 3 VON 3 (gemessen mit Chromium, Playwright,
+    # innerHTML auf einen <div> - der Weg des Ermittlungsfensters).
+    gesamt, unter = _artikel_unter_body(_ZELLE_MIT_STREUNENDEM_DIV)
+    assert (gesamt, unter) == (3, 3), "roh ist der Baum hier heil"
+    neu, _befunde = annaehern(_ZELLE_MIT_STREUNENDEM_DIV)
+    assert _artikel_unter_body(neu) == (3, 3), \
+        "die Annaeherung darf #page-body NICHT aufreissen"
+
+
+def test_HA18_gegenprobe_innerhalb_der_zelle_wirkt_der_nachzug_weiter():
+    # OHNE DIESE PROBE waere HA17 auch mit einem Geltungsbereich gruen, der
+    # so eng ist, dass ueberhaupt nichts mehr nachgezogen wird - und dann
+    # waere der Fix aus Build 742 still wieder ausgebaut.
+    quelle = '<td><ul><li><div class="a">x</li></ul></td>'
+    neu, befunde = schliesse_offene(quelle)
+    assert "</div>" in neu
+    assert befunde and "</div>" in befunde[0]
+
+
+def test_HA19_li_zieht_weiterhin_nach():
+    # <ul> ist Grenze fuer '</li>' - aber die Suche trifft das <li> vorher.
+    # Waere die Reihenfolge vertauscht, fiele der Fix aus Build 742 aus.
+    body = _seite('<div id="page-header"><ul><li><div class="a">x</li></ul></div>')
+    assert _kinder_unter_wrap(body) == ["brdleft", "page-header"]
+    neu, _ = annaehern(body)
+    assert _kinder_unter_wrap(neu) == ["brdleft", "page-header", "style",
+                                       "div", "page-body", "page-footer"]
+
+
+def test_HA20_der_geltungsbereich_endet_an_den_genannten_elementen():
+    # Der Stapel traegt Tupel (Tagname, Kennzeichen, hat_id).
+    def s(*namen):
+        return [(n, n, False) for n in namen]
+    # 'div' liegt VOR der Grenze - erreichbar.
+    assert im_geltungsbereich(s("div", "span"), "div") is True
+    # 'div' liegt HINTER einer Zellengrenze - nicht erreichbar.
+    assert im_geltungsbereich(s("div", "table", "tr", "td", "span"),
+                              "div") is False
+    # Die Grenze selbst ist erreichbar - sonst schloesse kein '</td>' mehr.
+    assert im_geltungsbereich(s("div", "table", "tr", "td", "span"),
+                              "td") is True
+    # 'p' hat <button> als zusaetzliche Grenze, 'div' nicht.
+    assert im_geltungsbereich(s("p", "button", "span"), "p") is False
+    assert im_geltungsbereich(s("div", "button", "span"), "div") is True
+    # 'li' hat <ul> als zusaetzliche Grenze.
+    assert im_geltungsbereich(s("li", "ul", "li", "span"), "li") is True
+    assert im_geltungsbereich(s("li", "ul", "span"), "li") is False
+
+
+def test_HA21_das_einsatzprotokoll_nennt_element_ausloeser_und_zeile():
+    # DIE ZAEHLUNG '2 x </div>' SAGTE NICHT, WELCHES. Genau daran ist die
+    # Verortung am 30.08.2026 gescheitert: EIN einziger Nachzug hatte
+    # '#page-body' geschlossen, und ohne seine Stelle war er nicht
+    # nachzustellen.
+    quelle = ('<ul>\n'
+              '<li><div id="kasten" class="a b c">x</li>\n'
+              '</ul>')
+    _neu, befunde, nachzuege = schliesse_offene_mit_protokoll(quelle)
+    assert len(nachzuege) == 1
+    n = nachzuege[0]
+    assert n.kennzeichen == "div#kasten.a.b", n.kennzeichen
+    assert n.marke == "div"
+    assert n.ausloeser == "</li>"
+    assert n.zeile == 2, n.zeile
+    assert n.mit_kennung is True
+    text = "\n".join(befunde)
+    assert "Zeile 2: </li> hat div#kasten.a.b mitgeschlossen" in text, text
+
+
+def test_HA22_gegenprobe_ohne_kennung_wird_keiner_benannt():
+    # Ein nachgezogenes </span> im Beitragskopf verschiebt nichts, was ein
+    # Anker verlangt - davon gibt es Hunderte. Sie einzeln zu melden hiesse,
+    # die eine Zeile, auf die es ankommt, in Rauschen zu ertraenken. Ihre
+    # ZAHL steht weiterhin in der Zeile davor (Grundregel 1).
+    _neu, befunde, nachzuege = schliesse_offene_mit_protokoll(
+        '<ul><li><div class="a">x</li></ul>')
+    assert len(nachzuege) == 1
+    assert nachzuege[0].mit_kennung is False
+    text = "\n".join(befunde)
+    assert "MIT KENNUNG" not in text, text
+    assert "1 x </div>" in text, text
+
+
+def test_HA23_das_protokoll_traegt_keinen_text_und_keine_fremden_attribute():
+    # Das Protokoll geht in den Vermerk und ist damit weitergebbar. Offen
+    # sind Tagname, 'id' und 'class'; 'href' und 'title' NICHT - dort
+    # koennen Benutzernamen stehen.
+    quelle = ('<ul><li><div id="k" class="a" title="Klarname Mueller" '
+              'href="/profile.php?id=155955">Beitragstext'
+              '<span>x</li></ul>')
+    _neu, befunde, nachzuege = schliesse_offene_mit_protokoll(quelle)
+    text = "\n".join(befunde) + " " + " ".join(n.kennzeichen for n in nachzuege)
+    assert "Mueller" not in text, text
+    assert "155955" not in text, text
+    assert "Beitragstext" not in text, text
+    assert "div#k.a" in text, text

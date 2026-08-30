@@ -66,7 +66,7 @@
 #   1  Fachfehler (Datei fehlt, Datenbank nicht lesbar)
 #   2  Aufruffehler (fehlende oder unbrauchbare Argumente)
 #
-# Version: 0.8.744 - Build 744 (M7 ergaenzt)
+# Version: 0.8.745 - Build 745 (M7, M8)
 # =============================================================================
 
 from __future__ import annotations
@@ -204,6 +204,15 @@ def main(argv=None) -> int:
             if s.quelltext:
                 m("   M6 Die Quelltextzeilen, die der Zerleger genannt hat:")
                 for zeile in s.quelltext:
+                    m("      %s" % zeile)
+            if s.nachzug_quelltext:
+                # M8 steht direkt hinter M6: beide zeigen Quelltext, und der
+                # Leser soll die beiden Herkuenfte nebeneinander haben -
+                # M6 nennt, was der ZERLEGER beanstandet hat, M8 was die
+                # ANNAEHERUNG selbst getan hat.
+                m("   M8 Wo die ANNAEHERUNG ein Element mit Kennung "
+                  "mitgeschlossen hat:")
+                for zeile in s.nachzug_quelltext:
                     m("      %s" % zeile)
             if s.verteilung_marke:
                 # M7 steht VOR M3: wenn ein Anker bricht, ist die Frage
