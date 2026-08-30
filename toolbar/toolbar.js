@@ -2866,91 +2866,6 @@
       return null;
     }
 
-    // -------------------------------------------------------------------------
-    // BUILD 736: MODERATIONSRECHTE UND EROEFFNERSCHAFT
-    //
-    // Beleg: Auszug Alex vom 30.08.2026. Unter der Titelzeile steht bei
-    // bestehenden Moderationsrechten ein Hinweiskasten:
-    //
-    //   <div style="background:lightyellow;border-left:2px solid orange;…">
-    //     <small><i>You have moderation permisions in this thread.
-    //       (<a href="viewtopic.php?id=30200"><b>OP</b></a>)</i></small>
-    //   </div>
-    //
-    // Das '<b>OP</b>' erscheint NUR, wenn die Person das Thema eroeffnet hat
-    // ('original poster'). Das ist eine ermittlungsrelevante Angabe: sie
-    // sagt, dass ein Konto nicht nur beigetragen, sondern das Thema
-    // AUFGEMACHT hat.
-    //
-    // ES GIBT DREI ZUSTAENDE, NICHT ZWEI, und die Unterscheidung ist
-    // entscheidend:
-    //
-    //   true   der Hinweiskasten ist da UND traegt das OP-Kennzeichen
-    //   false  der Hinweiskasten ist da und traegt es NICHT
-    //   null   es gibt gar keinen Hinweiskasten — die Seite sagt ueber die
-    //          Eroeffnerschaft dann NICHTS
-    //
-    // 'null' darf niemals zu 'false' werden. Ohne Moderationsrechte wird der
-    // Kasten gar nicht erst gerendert; aus seinem Fehlen zu schliessen, die
-    // Person habe das Thema nicht eroeffnet, waere ein Fehlschluss — und in
-    // einem Vermerk ein entlastender Schluss ohne Beleg.
-    //
-    // WESSEN RECHTE, WESSEN EROEFFNERSCHAFT? Der Kasten spricht den
-    // ANGEMELDETEN Benutzer an ('You have …'). Wer das im gesicherten Abzug
-    // ist, haengt daran, unter welcher Sitzung die Seite geholt wurde — und
-    // DAS IST HIER NICHT ERHOBEN. Der Wert wird deshalb als Befund der SEITE
-    // gefuehrt und nicht als Aussage ueber den Beschuldigten. Die Zuordnung
-    // gehoert geklaert, bevor die Angabe in einen Vermerk geht; sie steht als
-    // eigener Vorgang im Tracker.
-    // -------------------------------------------------------------------------
-
-    //: Genau 'OP', nichts sonst. Absichtlich ohne 'i'-Kennzeichen: 'op' oder
-    //: 'Op' waere im Fliesstext ein gewoehnliches Wortfragment.
-    var _OP_KENNZEICHEN = /^OP$/;
-
-    /**
-     * Moderationsanzeige und Eroeffnerkennzeichen der Seite.
-     * Gibt { moderation, eroeffner, quelle } zurueck.
-     */
-    function moderationsBefund() {
-      var leer = { moderation: false, eroeffner: null, quelle: null };
-      var vp = _viewport();
-      if (!vp) return leer;
-
-      // (1) Gibt es den Moderationslink in einer Kopfzeile ausserhalb der
-      //     Beitraege? Er ist das Merkmal, an dem der Hinweiskasten haengt.
-      var modLink = null;
-      var koepfe = vp.querySelectorAll("h2");
-      for (var i = 0; i < koepfe.length && !modLink; i++) {
-        if (beitragBehaelter(koepfe[i])) continue;
-        var links = koepfe[i].querySelectorAll("a");
-        for (var j = 0; j < links.length; j++) {
-          if (istModerationsLink(links[j])) { modLink = links[j]; break; }
-        }
-      }
-      if (!modLink) return leer;
-
-      // (2) NUR DANN nach dem OP-Kennzeichen suchen. Ohne Moderationsanzeige
-      //     gibt es keinen Kasten, und ein irgendwo auf der Seite fett
-      //     gesetztes 'OP' waere dann kein Kennzeichen, sondern Zufall.
-      var fett = vp.querySelectorAll("b, strong");
-      for (var k = 0; k < fett.length; k++) {
-        if (beitragBehaelter(fett[k])) continue;   // nicht im Beitragstext
-        if (_OP_KENNZEICHEN.test(_txt(fett[k]))) {
-          return {
-            moderation: true,
-            eroeffner: true,
-            quelle: "OP-Kennzeichen im Moderationshinweis"
-          };
-        }
-      }
-      return {
-        moderation: true,
-        eroeffner: false,
-        quelle: "Moderationshinweis ohne OP-Kennzeichen"
-      };
-    }
-
     /**
      * S3 — der Titel der Unterhaltung, nur pmsnew.
      * Aufbau belegt durch Alex am 28.08.2026:
@@ -2961,6 +2876,229 @@
       var h2 = vp ? vp.querySelector(".block2col .block > h2") : null;
       var t = _txt(h2);
       return t || null;
+    }
+
+    // -------------------------------------------------------------------------
+    // BUILD 738: WER IST DER EROEFFNER, WER IST ANGEMELDET, WER DARF MODERIEREN
+    //
+    // BEFUND ALEX 30.08.2026 - UND ER BERICHTIGT MEIN MODELL AUS BUILD 736.
+    //
+    // Ich hatte aus EINEM Auszug geschlossen, der Moderationslink in der
+    // Titelzeile zeige Moderationsrechte an und das '<b>OP</b>' im
+    // Hinweiskasten die Eroeffnerschaft. Alex' zweiter Auszug (Thema 168221)
+    // widerlegt beides: dort HAT der angemeldete Benutzer Moderationsrechte,
+    // aber die Titelzeile traegt KEINEN Moderationslink und es gibt KEINEN
+    // Hinweiskasten. Die Rechte zeigen sich statt dessen am Beitrag selbst -
+    // als Aufklappmenue mit Verweisen auf 'moderate.php'.
+    //
+    // DAS IST DIE ZWEITE LEHRE DERSELBEN ART IN ZWEI TAGEN: ein Merkmal, das
+    // auf EINER Seite mit einer Eigenschaft zusammenfaellt, ist deshalb noch
+    // nicht ihr Anzeiger. Bei den Betreffsverfahren hat die Messung an zwei
+    // Seiten das gefangen; hier hat es Alex gefangen.
+    //
+    // WAS STATT DESSEN GILT - und es ist erheblich mehr wert als das, was ich
+    // gebaut hatte:
+    //
+    //   (1) DER EROEFFNER STEHT AM BEITRAG. Im Kopf des Eroeffnungsbeitrags
+    //       steht vor dem Verfassernamen
+    //           <a class="op" href="?id=30200" title="Original Poster">OP</a>
+    //       Das ist eine Aussage UEBER DEN VERFASSER DIESES BEITRAGS und
+    //       nicht ueber den angemeldeten Benutzer. Sie steht auf JEDER
+    //       Themenseite und ist damit immer zu haben - nicht nur dort, wo
+    //       jemand zufaellig Moderationsrechte hat.
+    //
+    //   (2) DER VERFASSER IST IDENTIFIZIERBAR. Direkt daneben steht
+    //           <a href="user.php?id=3837243">NAME</a>
+    //       Damit traegt jede Markierung kuenftig die BENUTZERNUMMER des
+    //       Verfassers - die Angabe, um die es in diesem Projekt geht.
+    //
+    //   (3) DAS SCRAPING-KONTO STEHT IM SEITENKOPF. Weisung Alex 30.08.2026:
+    //           <li id="username_logged_in">…<span class="username">NAME</span>
+    //           …<a href="/forum/login/logout.php?action=out&id=155955&…">
+    //       Der Name steht im <span class="username">, die Benutzernummer im
+    //       Abmeldelink. Das beantwortet die Frage, die ich in Build 736
+    //       offenlassen musste: Alle 'Du'-Aussagen der Seite - der
+    //       Hinweiskasten, die Moderationsmenues - beziehen sich auf DIESES
+    //       Konto und nicht auf den Beschuldigten. Ab jetzt steht es an jeder
+    //       Markierung, statt aus dem Zusammenhang erschlossen werden zu
+    //       muessen.
+    //
+    //   (4) MODERATIONSRECHTE ZEIGEN SICH AM BEITRAG. Ein Aufklappmenue mit
+    //       Verweisen auf 'moderate.php' im Fuss des Beitrags heisst: das
+    //       angemeldete Konto darf diesen Beitrag moderieren. Erkannt wird am
+    //       LINKZIEL und nicht am Wort 'Moderate' - das Forum ist
+    //       mehrsprachig.
+    //
+    // DIE FELDER AUS BUILD 736 SIND UMBENANNT und nicht bloss ergaenzt:
+    // 'eroeffner' hiess dort "das angemeldete Konto hat das Thema eroeffnet"
+    // und heisst jetzt nichts mehr - die Angabe zerfaellt in zwei, die
+    // verschiedene Dinge sagen. Einen Namen weiterzuverwenden, dessen
+    // Bedeutung sich geaendert hat, ist die zuverlaessigste Art, einen
+    // Auswertungsfehler zu erzeugen. Annotationen aus Build 736/737 tragen
+    // die alten Namen; ein Leser, der sie nicht kennt, findet sie schlicht
+    // nicht - und das ist besser, als etwas Falsches zu finden.
+    //
+    // Beleg: Auszuege Alex 30.08.2026 (Thema 31351 mit Hinweiskasten und
+    //        OP-Kennzeichen; Thema 168221 mit Moderationsmenue ohne
+    //        Hinweiskasten und mit OP-Kennzeichen an einem FREMDEN Beitrag);
+    //        Weisung Alex zum Scraping-Konto.
+    // -------------------------------------------------------------------------
+
+    //: Der Verweis auf die Benutzerseite: 'user.php?id=3837243'.
+    var _BENUTZER_LINK = /[?&]id=(\d+)/;
+
+    /**
+     * Das Kennzeichen des Themeneroeffners im Kopf EINES Beitrags.
+     *
+     * Drei Merkmale, jedes fuer sich ausreichend - das Forum ist
+     * mehrsprachig, und der Linktext koennte uebersetzt sein:
+     *   - die Klasse 'op' (strukturell, sprachunabhaengig)
+     *   - das Titelattribut 'Original Poster'
+     *   - der Linktext, wenn er genau 'OP' ist
+     *
+     * Gesucht wird AUSSCHLIESSLICH im <h2> des Beitrags. Ein 'OP' im
+     * Beitragstext ist ein gewoehnliches Wort - wer darueber schreibt, wird
+     * dadurch nicht zum Themeneroeffner.
+     */
+    function eroeffnerkennzeichenIn(behaelter) {
+      var h2 = behaelter ? behaelter.querySelector("h2") : null;
+      if (!h2) return null;
+      var links = h2.querySelectorAll("a");
+      for (var i = 0; i < links.length; i++) {
+        var a = links[i];
+        var klasse = typeof a.className === "string" ? a.className : "";
+        if (/(^|\s)op(\s|$)/.test(klasse)) return a;
+        if ((a.getAttribute("title") || "") === "Original Poster") return a;
+        if (_txt(a) === "OP") return a;
+      }
+      return null;
+    }
+
+    /**
+     * Verfasser eines Beitrags: Nummer und Name aus dem Verweis auf die
+     * Benutzerseite im Kopf.
+     *
+     * Der ERSTE 'user.php?id='-Verweis im <h2> ist der Verfasser; die
+     * weiteren Verweise des Kopfes zeigen auf Meldeformular, Bewertung und
+     * private Nachricht. Der Aufbau ist belegt durch den Auszug vom
+     * 30.08.2026.
+     */
+    function verfasserVon(behaelter) {
+      var h2 = behaelter ? behaelter.querySelector("h2") : null;
+      var a = h2 ? h2.querySelector("a[href*='user.php']") : null;
+      if (!a) return { uid: null, name: null };
+      var t = _BENUTZER_LINK.exec(a.getAttribute("href") || "");
+      return {
+        uid: t ? parseInt(t[1], 10) : null,
+        name: _txt(a) || null
+      };
+    }
+
+    /**
+     * Darf das angemeldete Konto diesen Beitrag moderieren?
+     *
+     * Erkannt am LINKZIEL 'moderate.php' und nicht am Wort 'Moderate': das
+     * Forum ist mehrsprachig (Erkenntnis zum Fall Nr. 2), und ein
+     * uebersetzter Menuetext wuerde die Angabe still verlieren.
+     */
+    function moderationAmBeitrag(behaelter) {
+      return !!(behaelter && behaelter.querySelector("a[href*='moderate.php']"));
+    }
+
+    /**
+     * Das Konto, unter dem die Seite geholt wurde.
+     *
+     * WARUM DAS IN DIE AKTE GEHOERT: Alles, was die Seite in der zweiten
+     * Person sagt - der Hinweis auf Moderationsrechte, die Menuepunkte
+     * 'Loeschen' und 'Bearbeiten' -, bezieht sich auf DIESES Konto. Ohne die
+     * Angabe waere jede solche Zeile im Vermerk zweideutig, und die
+     * naheliegende Fehldeutung ist die schlimmste: sie schriebe dem
+     * Beschuldigten Rechte zu, die das Ermittlungskonto hatte.
+     *
+     * Aufbau belegt durch Alex am 30.08.2026:
+     *   <li id="username_logged_in">…<span class="username">NAME</span>
+     *   …<a href="…logout.php?action=out&id=155955&csrf_hash=…">
+     */
+    function angemeldetesKonto() {
+      var vp = _viewport();
+      var kasten = vp ? vp.querySelector("#username_logged_in") : null;
+      if (!kasten) return { name: null, uid: null };
+      var name = _txt(kasten.querySelector(".username")) || null;
+      var ab = kasten.querySelector("a[href*='logout.php']");
+      var uid = null;
+      if (ab) {
+        var t = _BENUTZER_LINK.exec(ab.getAttribute("href") || "");
+        if (t) uid = parseInt(t[1], 10);
+      }
+      return { name: name, uid: uid };
+    }
+
+    /**
+     * Der Themeneroeffner der ganzen Seite: derjenige Beitrag, dessen Kopf
+     * das OP-Kennzeichen traegt.
+     *
+     * Auf der ersten Seite eines Themas ist das der Eroeffnungsbeitrag. Auf
+     * Folgeseiten kann er fehlen - dann bleibt die Angabe null, und null
+     * heisst UNBEKANNT und nicht 'niemand'.
+     */
+    function themeneroeffner() {
+      var vp = _viewport();
+      if (!vp) return { uid: null, name: null, gefunden: false };
+      var koepfe = vp.querySelectorAll("h2");
+      for (var i = 0; i < koepfe.length; i++) {
+        var behaelter = beitragBehaelter(koepfe[i]);
+        if (!behaelter) continue;
+        if (eroeffnerkennzeichenIn(behaelter)) {
+          var v = verfasserVon(behaelter);
+          return { uid: v.uid, name: v.name, gefunden: true };
+        }
+      }
+      return { uid: null, name: null, gefunden: false };
+    }
+
+    /**
+     * Der Hinweiskasten unter der Titelzeile - er sagt WENIGER, als ich in
+     * Build 736 angenommen habe.
+     *
+     * Er erscheint nach Alex' Auszug vom 30.08.2026 (Thema 31351) mit dem
+     * Wortlaut "You have moderation permisions in this thread. (OP)". Auf
+     * Thema 168221 hat das angemeldete Konto ebenfalls Moderationsrechte -
+     * dort gibt es ihn NICHT. Er ist also NICHT der Anzeiger fuer
+     * Moderationsrechte; was ihn genau ausloest, ist NICHT erhoben.
+     *
+     * Was er sagt, wenn er da ist: das angemeldete Konto hat in diesem
+     * Thema Rechte, und das '(OP)' darin heisst, dass es das Thema eroeffnet
+     * hat. Beides bezieht sich auf das SCRAPING-KONTO. Er wird deshalb
+     * getrennt gefuehrt und nicht mit den Angaben zum Beitragsverfasser
+     * vermischt - das war der Fehler in Build 736.
+     */
+    function themenhinweisKasten() {
+      var vp = _viewport();
+      if (!vp) return { vorhanden: false, kontoIstEroeffner: null };
+      // Der Kasten haengt an der Titelzeile: eine <span> mit dem
+      // Moderationslink in eckigen Klammern gehoert dazu. Erkannt wird er
+      // ueber diesen Link, weil sein TEXT uebersetzt sein kann.
+      var modLink = null;
+      var koepfe = vp.querySelectorAll("h2");
+      for (var i = 0; i < koepfe.length && !modLink; i++) {
+        if (beitragBehaelter(koepfe[i])) continue;
+        var links = koepfe[i].querySelectorAll("a");
+        for (var j = 0; j < links.length; j++) {
+          if (istModerationsLink(links[j])) { modLink = links[j]; break; }
+        }
+      }
+      if (!modLink) return { vorhanden: false, kontoIstEroeffner: null };
+      // NUR DANN nach dem Kennzeichen suchen. Ohne den Kasten gibt es kein
+      // Kennzeichen, und ein fett gesetztes 'OP' irgendwo auf der Seite
+      // waere dann Zufall und kein Befund.
+      var fett = vp.querySelectorAll("b, strong");
+      for (var k = 0; k < fett.length; k++) {
+        if (beitragBehaelter(fett[k])) continue;
+        if (_txt(fett[k]) === "OP") {
+          return { vorhanden: true, kontoIstEroeffner: true };
+        }
+      }
+      return { vorhanden: true, kontoIstEroeffner: false };
     }
 
     /**
@@ -2993,12 +3131,34 @@
         betreffWeg:       null,
         themenbetreff:    null,
         themenbetreffWeg: null,
-        // Build 736: Befunde der SEITE, nicht Aussagen ueber den
-        // Beschuldigten — wessen Sitzung den Abzug erzeugt hat, ist nicht
-        // erhoben (s. moderationsBefund).
-        moderation:       false,
-        eroeffner:        null,   // true | false | null — null heisst UNBEKANNT
-        eroeffnerQuelle:  null,
+        // ---- Build 738: WER - und zwar getrennt nach WEM -----------------
+        //
+        // DIE FELDER AUS BUILD 736 SIND ENTFALLEN und nicht bloss umbenannt.
+        // 'eroeffner' hiess dort "das angemeldete Konto hat das Thema
+        // eroeffnet" und war aus EINEM Auszug geschlossen; Alex' zweiter
+        // Auszug vom 30.08.2026 widerlegt das Modell. Einen Namen
+        // weiterzuverwenden, dessen Bedeutung sich geaendert hat, ist die
+        // zuverlaessigste Art, einen Auswertungsfehler zu erzeugen. Ein
+        // Leser, der die alten Namen sucht, findet sie jetzt schlicht nicht
+        // - und das ist besser, als etwas Falsches zu finden.
+        //
+        // DREI VERSCHIEDENE PERSONEN, DREI GRUPPEN VON FELDERN. Sie
+        // durcheinanderzubringen ist die gefaehrlichste Verwechslung in
+        // diesem Modul: sie schriebe dem Beschuldigten Rechte oder Taten
+        // des Ermittlungskontos zu.
+        //
+        // der VERFASSER dieses Beitrags:
+        autorUid:          null,
+        autorName:         null,
+        autorIstEroeffner: null,   // true | false | null = UNBEKANNT
+        // der EROEFFNER des Themas (seitenweit gesucht):
+        eroeffnerUid:      null,
+        eroeffnerName:     null,
+        // das KONTO, unter dem der Abzug geholt wurde:
+        kontoName:         null,
+        kontoUid:          null,
+        kontoIstEroeffner: null,   // nur aus dem Hinweiskasten, sonst null
+        kontoDarfModerieren: null, // an DIESEM Beitrag
         hinweise:         []
       };
 
@@ -3073,19 +3233,55 @@
         else { meta.hinweise.push("kein Beitragsbetreff (<h3>) im Beitrag"); }
       }
 
-      // ---- Build 736: Moderationsanzeige und Eroeffnerkennzeichen ----------
-      // Nur in der Themenansicht: der Hinweiskasten gehoert zu viewtopic.
-      // Auf PN-Seiten bleibt 'eroeffner' null — und null heisst UNBEKANNT,
-      // nicht 'nein'.
-      if (meta.ansicht !== ANSICHT_PN) {
-        var mb = moderationsBefund();
-        meta.moderation      = mb.moderation;
-        meta.eroeffner       = mb.eroeffner;
-        meta.eroeffnerQuelle = mb.quelle;
-        if (!mb.moderation) {
-          meta.hinweise.push("keine Moderationsanzeige - die Seite sagt "
-            + "ueber die Eroeffnerschaft NICHTS (nicht: sie verneint sie)");
+      // ---- Build 738: Verfasser, Eroeffner, Konto --------------------------
+      //
+      // DAS KONTO WIRD IN BEIDEN ANSICHTEN ERHOBEN: der Seitenkopf mit
+      // '#username_logged_in' steht auch auf PN-Seiten, und die Frage, unter
+      // welchem Zugang ein Abzug entstanden ist, stellt sich dort genauso.
+      var konto = angemeldetesKonto();
+      meta.kontoName = konto.name;
+      meta.kontoUid  = konto.uid;
+      if (!konto.name && !konto.uid) {
+        meta.hinweise.push("kein angemeldetes Konto im Seitenkopf - unter "
+          + "welchem Zugang der Abzug entstand, sagt diese Seite nicht");
+      }
+
+      // Verfasser und Eroeffnerschaft gibt es nur in der Themenansicht.
+      // Private Nachrichten haben kein OP-Kennzeichen und keinen Verweis auf
+      // die Benutzerseite im Kopf; dort bleiben die Felder null, und null
+      // heisst UNBEKANNT - nicht 'nein' und nicht 'niemand'.
+      if (meta.ansicht !== ANSICHT_PN && behaelter) {
+        var v = verfasserVon(behaelter);
+        meta.autorUid  = v.uid;
+        meta.autorName = v.name;
+        if (v.uid === null) {
+          meta.hinweise.push("kein Verweis auf die Benutzerseite im "
+            + "Beitragskopf - der Verfasser ist hier nicht zu bestimmen");
         }
+
+        // Das OP-Kennzeichen steht AM BEITRAG und sagt etwas ueber DESSEN
+        // VERFASSER. Es steht auf jeder Themenseite, auf der der
+        // Eroeffnungsbeitrag zu sehen ist - unabhaengig davon, ob irgendwer
+        // Moderationsrechte hat. Genau das hatte ich in Build 736 falsch.
+        meta.autorIstEroeffner = !!eroeffnerkennzeichenIn(behaelter);
+
+        var e = themeneroeffner();
+        meta.eroeffnerUid  = e.uid;
+        meta.eroeffnerName = e.name;
+        if (!e.gefunden) {
+          // Auf Folgeseiten eines Themas ist der Eroeffnungsbeitrag nicht
+          // dabei. Dann ist die Angabe UNBEKANNT, und aus 'kein Kennzeichen
+          // auf dieser Seite' zu schliessen, der Markierte sei nicht der
+          // Eroeffner, waere ein Fehlschluss - deshalb wird sie in diesem
+          // Fall zurueckgenommen.
+          meta.autorIstEroeffner = null;
+          meta.hinweise.push("kein OP-Kennzeichen auf dieser Seite - der "
+            + "Eroeffnungsbeitrag ist hier nicht zu sehen (Folgeseite). "
+            + "UNBEKANNT, nicht 'nein'");
+        }
+
+        meta.kontoDarfModerieren = moderationAmBeitrag(behaelter);
+        meta.kontoIstEroeffner = themenhinweisKasten().kontoIstEroeffner;
       }
 
       _dbg("PostMetaModule.metadatenVon:", JSON.stringify(meta));
@@ -3111,7 +3307,13 @@
         // Build 736
         titelAusKopf:       titelAusKopf,
         istModerationsLink: istModerationsLink,
-        moderationsBefund:  moderationsBefund
+        // Build 738
+        eroeffnerkennzeichenIn: eroeffnerkennzeichenIn,
+        verfasserVon:           verfasserVon,
+        moderationAmBeitrag:    moderationAmBeitrag,
+        angemeldetesKonto:      angemeldetesKonto,
+        themeneroeffner:        themeneroeffner,
+        themenhinweisKasten:    themenhinweisKasten
       }
     };
   })();

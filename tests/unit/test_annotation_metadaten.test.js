@@ -133,16 +133,74 @@ const SEITE_VIEWTOPIC_MOD = `
 </div>`;
 
 /**
- * DIESELBE SEITE OHNE DAS OP-KENNZEICHEN.
+ * THEMENSEITE, AUF DER DAS KONTO MODERIEREN DARF, ABER NICHT EROEFFNER IST.
  *
- * Moderationsrechte ja, Eroeffnerschaft nein. NACHGESTELLT: der Auszug vom
- * 30.08.2026 zeigt nur den Fall MIT '<b>OP</b>'. Alex' Angabe dazu lautet,
- * das Kennzeichen erscheine 'dann, und nur dann', wenn die Person das Thema
- * eroeffnet hat — der andere Fall ist daraus abgeleitet und hier bewusst als
- * ABLEITUNG gekennzeichnet, nicht als Beleg.
+ * ECHT - Auszug Alex vom 30.08.2026, Thema 168221, gekuerzt, Schachtelung
+ * unveraendert. Er BERICHTIGT das Modell aus Build 736 in drei Punkten:
+ *
+ *   1. Die Titelzeile traegt KEINEN Moderationslink, und es gibt KEINEN
+ *      Hinweiskasten - obwohl das angemeldete Konto sehr wohl moderieren
+ *      darf. Der Link war also nie der Anzeiger fuer Moderationsrechte.
+ *   2. Die Rechte zeigen sich AM BEITRAG: ein Aufklappmenue mit Verweisen
+ *      auf 'moderate.php' im Fuss.
+ *   3. Das OP-Kennzeichen steht IM KOPF DES BEITRAGS und sagt etwas ueber
+ *      dessen VERFASSER - hier ueber einen anderen Nutzer als das
+ *      angemeldete Konto.
+ *
+ * Der Seitenkopf mit '#username_logged_in' ist aus Alex' erstem Auszug
+ * derselben Nachricht uebernommen. Die Namen sind Platzhalter; die Nummern
+ * stehen so im Auszug.
  */
-const SEITE_VIEWTOPIC_MOD_OHNE_OP = SEITE_VIEWTOPIC_MOD
-    .replace('(<a href="viewtopic.php?id=30200" id="_vt_rwi6no"><b>OP</b></a>)', '');
+const SEITE_VIEWTOPIC_OP_FREMD = `
+<div id="brd-main">
+  <div id="page-header">
+    <ul><li id="username_logged_in" class="rightside" data-skip-responsive="true">
+      <div class="header-profile dropdown-container">
+        <a href="/forum/profile.php" class="header-avatar dropdown-trigger"><span class="username">Ermittler</span></a>
+        <div class="dropdown hidden"><ul class="dropdown-contents" role="menu">
+          <li><a href="/forum/profile.php" title="Profile" role="menuitem">Profile</a></li>
+          <li><a href="/forum/login/logout.php?action=out&amp;id=155955&amp;csrf_hash=74894d72" title="Logout" role="menuitem">Exit</a></li>
+        </ul></div>
+      </div>
+    </li></ul>
+  </div>
+
+  <div id="page-body" role="main">
+    <h2 class="topic-title" id="_vt_b5ekop">
+      <span><a href="viewtopic.php?id=168221" id="_vt_asw7n3">I paid didn't get in?</a></span>
+      <span style="float:right;font-size: smaller;color:grey">#168221</span>
+    </h2>
+
+    <article class="post" style="" id="p1690431">
+      <div class="blockpost firstpost blockpost1">
+        <h2 id="_vt_jwhurd">
+          <strong style="margin-left:15px"><a class="op" href="?id=30200" title="Original Poster">OP</a><a href="user.php?id=3837243">Username_Of_The_Thread_Starter</a></strong>
+          <span><ul class="post-buttons"><li><a href="/forum/misc.php?report=1690431" title="Report a problem" class="button icon-button report-icon"><span>Report a problem</span></a></li></ul></span>
+          <span>
+            <a href="/forum/viewtopic.php?pid=1690431#p1690431" id="_vt_g80tf4">I paid didn't get in?</a>
+            <i><i title="2 years ago">Tue., 05.12.2023 13:04:34</i></i><i style="float:right;color:#bbb;">#1690431</i>
+          </span>
+        </h2>
+        <div class="box" id="pp1690431"><div class="inbox"><div class="postbody">
+          <div class="postleft"><dl><dd><span>Beiträge: 10</span></dd></dl></div>
+          <div class="postright">
+            <h3>I paid didn't get in?</h3>
+            <div class="postmsg"><p id="ziel1">TEXT OF THE POST</p></div>
+          </div>
+        </div></div>
+        <div class="inbox"><div class="postfoot"><div class="postfootright"><ul>
+          <span><div class="dropup"><button class="dropbtn1" style="color:red">Moderate</button>
+            <div class="dropup-content"><ul>
+              <li><a href="moderate.php?action=punish&amp;fid=368&amp;id=168221&amp;pid=1690431&amp;hash=3b150ec0">Punish</a></li>
+              <li><a href="moderate.php?pid=1690431&amp;fid=368&amp;action=blockThumb">BlockThumb</a></li>
+            </ul></div>
+          </div></span>
+        </ul></div></div></div>
+        </div>
+      </div>
+    </article>
+  </div>
+</div>`;
 
 /**
  * PRIVATE NACHRICHT (pmsnew) — ein Beitrag.
@@ -421,38 +479,82 @@ describe("PostMetaModule — die Verfahren einzeln (Build 735)", () => {
         expect(m2.betreffS6().text).toBe("Ein Titel ohne Link");
     });
 
-    it("MD18 - Eroeffnerschaft: drei Zustaende, und keiner wird geraten", () => {
-        // OHNE DIESE UNTERSCHEIDUNG WAERE DIE ANGABE GEFAEHRLICH. Der
-        // Hinweiskasten erscheint nur bei Moderationsrechten. Aus seinem
-        // Fehlen zu schliessen, die Person habe das Thema nicht eroeffnet,
-        // waere ein entlastender Schluss ohne Beleg.
-        const mit = meta(toolbarDOM(SEITE_VIEWTOPIC_MOD)).moderationsBefund();
-        expect(mit.moderation).toBe(true);
-        expect(mit.eroeffner).toBe(true);
-
-        const ohneOp = meta(toolbarDOM(SEITE_VIEWTOPIC_MOD_OHNE_OP))
-            .moderationsBefund();
-        expect(ohneOp.moderation).toBe(true);
-        expect(ohneOp.eroeffner).toBe(false);
-
-        // GEGENPROBE: keine Moderationsanzeige -> UNBEKANNT, nicht 'nein'.
-        const ohne = meta(toolbarDOM(SEITE_VIEWTOPIC)).moderationsBefund();
-        expect(ohne.moderation).toBe(false);
-        expect(ohne.eroeffner).toBeNull();
+    it("MD18 - das OP-Kennzeichen steht AM BEITRAG, nicht am Konto", () => {
+        // BERICHTIGUNG ZU BUILD 736. Dort hatte ich aus EINEM Auszug
+        // geschlossen, das Kennzeichen sage etwas ueber den angemeldeten
+        // Benutzer. Alex' zweiter Auszug zeigt es an einem FREMDEN Beitrag:
+        // es sagt etwas ueber dessen VERFASSER.
+        const dom = toolbarDOM(SEITE_VIEWTOPIC_OP_FREMD);
+        const m = meta(dom);
+        const b = m.beitragBehaelter(markiere(dom, "#ziel1"));
+        expect(m.eroeffnerkennzeichenIn(b)).not.toBeNull();
+        expect(m.verfasserVon(b)).toEqual(
+            { uid: 3837243, name: "Username_Of_The_Thread_Starter" });
+        // GEGENPROBE: ein Beitrag OHNE Kennzeichen darf keines bekommen.
+        const dom2 = toolbarDOM(SEITE_VIEWTOPIC);
+        const m2 = meta(dom2);
+        const b2 = m2.beitragBehaelter(markiere(dom2, "#ziel1"));
+        expect(m2.eroeffnerkennzeichenIn(b2)).toBeNull();
     });
 
-    it("MD19 - GEGENPROBE: ein fettes 'OP' im Beitrag zaehlt nicht", () => {
+    it("MD19 - GEGENPROBE: ein 'OP' im Beitragstext zaehlt nicht", () => {
         // Ohne diese Probe waere MD18 auch mit einer Suche gruen, die
-        // irgendein <b>OP</b> auf der Seite als Kennzeichen nimmt — und dann
-        // machte ein Beitrag, der ueber 'den OP' schreibt, den Verfasser zum
-        // Themeneroeffner. In einem Vermerk waere das eine erfundene
+        // irgendein 'OP' auf der Seite als Kennzeichen nimmt - und dann
+        // machte ein Beitrag, der ueber 'den OP' schreibt, seinen Verfasser
+        // zum Themeneroeffner. In einem Vermerk waere das eine erfundene
         // Zuschreibung.
-        const dom = toolbarDOM(SEITE_VIEWTOPIC_MOD_OHNE_OP.replace(
-            '<p id="ziel1">Erster Beitrag im Thema.</p>',
-            '<p id="ziel1">Frag doch mal den <b>OP</b> danach.</p>'));
-        const b = meta(dom).moderationsBefund();
-        expect(b.moderation).toBe(true);
-        expect(b.eroeffner).toBe(false);
+        const dom = toolbarDOM(SEITE_VIEWTOPIC_OP_FREMD.replace(
+            '<a class="op" href="?id=30200" title="Original Poster">OP</a>', '')
+            .replace('<p id="ziel1">TEXT OF THE POST</p>',
+                     '<p id="ziel1">Frag doch mal den <b>OP</b> danach.</p>'));
+        const m = meta(dom);
+        const b = m.beitragBehaelter(markiere(dom, "#ziel1"));
+        expect(m.eroeffnerkennzeichenIn(b)).toBeNull();
+        expect(m.themeneroeffner().gefunden).toBe(false);
+    });
+
+    it("MD20 - das Scraping-Konto steht im Seitenkopf", () => {
+        // WESSEN RECHTE, WESSEN 'DU'? Alles, was die Seite in der zweiten
+        // Person sagt, bezieht sich auf DIESES Konto. Ohne die Angabe waere
+        // jede solche Zeile im Vermerk zweideutig - und die naheliegende
+        // Fehldeutung ist die schlimmste: sie schriebe dem Beschuldigten
+        // Rechte zu, die das Ermittlungskonto hatte.
+        //
+        // Die Benutzernummer steht im Abmeldelink (Weisung Alex 30.08.2026).
+        const m = meta(toolbarDOM(SEITE_VIEWTOPIC_OP_FREMD));
+        expect(m.angemeldetesKonto()).toEqual(
+            { name: "Ermittler", uid: 155955 });
+        // GEGENPROBE: ohne den Seitenkopf wird nichts geraten.
+        const m2 = meta(toolbarDOM(SEITE_VIEWTOPIC));
+        expect(m2.angemeldetesKonto()).toEqual({ name: null, uid: null });
+    });
+
+    it("MD21 - Moderationsrechte werden am LINKZIEL erkannt, nicht am Wort", () => {
+        // Das Forum ist mehrsprachig (Erkenntnis zum Fall Nr. 2). Ein
+        // Verfahren ueber das Wort 'Moderate' verloere die Angabe auf jeder
+        // uebersetzten Seite - still, und deshalb unbemerkt.
+        const dom = toolbarDOM(SEITE_VIEWTOPIC_OP_FREMD);
+        const m = meta(dom);
+        const b = m.beitragBehaelter(markiere(dom, "#ziel1"));
+        expect(m.moderationAmBeitrag(b)).toBe(true);
+        // Und mit uebersetztem Menuetext genauso:
+        const dom2 = toolbarDOM(
+            SEITE_VIEWTOPIC_OP_FREMD.replace(/>Moderate</g, ">Moderieren<"));
+        const m2 = meta(dom2);
+        expect(m2.moderationAmBeitrag(
+            m2.beitragBehaelter(markiere(dom2, "#ziel1")))).toBe(true);
+        // GEGENPROBE: ein Beitrag ohne Moderationsmenue.
+        const dom3 = toolbarDOM(SEITE_VIEWTOPIC);
+        const m3 = meta(dom3);
+        expect(m3.moderationAmBeitrag(
+            m3.beitragBehaelter(markiere(dom3, "#ziel1")))).toBe(false);
+    });
+
+    it("MD22 - der Themeneroeffner wird seitenweit gefunden", () => {
+        const m = meta(toolbarDOM(SEITE_VIEWTOPIC_OP_FREMD));
+        expect(m.themeneroeffner()).toEqual(
+            { uid: 3837243, name: "Username_Of_The_Thread_Starter",
+              gefunden: true });
     });
 
     // -- post_id -------------------------------------------------------------
@@ -615,45 +717,88 @@ describe("MarkerToolModule — der WEG durch _onMouseUp (Build 735)", () => {
         expect(m.zeitWeg).toBe("T2");
     });
 
-    it("TB17 - Weg mit Moderationsrechten: sauberer Betreff, OP erkannt", () => {
-        // Der Weg durch _onMouseUp auf der Seite aus Alex' Auszug vom
-        // 30.08.2026. Geprueft wird, was in der Annotation LANDET — nicht,
-        // was eine Hilfsfunktion isoliert zurueckgibt.
-        const dom = toolbarDOM(SEITE_VIEWTOPIC_MOD);
+    it("TB17 - Weg: Verfasser, Eroeffnerschaft und Konto landen im JSON", () => {
+        // Der Weg durch _onMouseUp auf Alex' Auszug vom 30.08.2026
+        // (Thema 168221). Geprueft wird, was in der Annotation LANDET.
+        const dom = toolbarDOM(SEITE_VIEWTOPIC_OP_FREMD);
         const ann = markiereUeberDenWeg(dom, "#ziel1",
-                                        "/forum/viewtopic.php?id=31351");
+                                        "/forum/viewtopic.php?id=168221");
         const m = ann.selection.meta;
-        expect(m.themenbetreff).toBe("TITLE OF THE TOPIC");
+        expect(m.themenbetreff).toBe("I paid didn't get in?");
         expect(m.themenbetreffWeg).toBe("S6a");
-        expect(m.moderation).toBe(true);
-        expect(m.eroeffner).toBe(true);
-        expect(m.eroeffnerQuelle).toContain("OP-Kennzeichen");
-        // Und der Zusatz taucht NIRGENDS in der Nutzlast auf.
-        expect(JSON.stringify(m)).not.toContain("Moderate");
+        // DER VERFASSER - die Angabe, um die es in diesem Projekt geht.
+        expect(m.autorUid).toBe(3837243);
+        expect(m.autorName).toBe("Username_Of_The_Thread_Starter");
+        expect(m.autorIstEroeffner).toBe(true);
+        expect(m.eroeffnerUid).toBe(3837243);
+        // DAS KONTO - und es ist NICHT der Verfasser. Genau diese
+        // Unterscheidung hat mir in Build 736 gefehlt.
+        expect(m.kontoName).toBe("Ermittler");
+        expect(m.kontoUid).toBe(155955);
+        expect(m.kontoUid).not.toBe(m.autorUid);
+        expect(m.kontoDarfModerieren).toBe(true);
+        // Kein Hinweiskasten auf dieser Seite -> UNBEKANNT, nicht 'nein'.
+        expect(m.kontoIstEroeffner).toBeNull();
     });
 
-    it("TB18 - GEGENPROBE: ohne Hinweiskasten bleibt die Eroeffnerschaft offen", () => {
-        // null heisst UNBEKANNT. Waere hier 'false' zu lesen, stuende in
-        // jedem Beleg einer gewoehnlichen Seite eine Verneinung, fuer die es
-        // keinen Beleg gibt — und ein Vermerk wuerde sie wiedergeben.
+    it("TB18 - GEGENPROBE: ohne OP-Kennzeichen wird nichts zugeschrieben", () => {
+        // null heisst UNBEKANNT. Stuende hier 'false', truege jeder Beleg
+        // einer gewoehnlichen Seite eine Verneinung, fuer die es keinen
+        // Beleg gibt - und ein Vermerk gaebe sie wieder.
         const dom = toolbarDOM(SEITE_VIEWTOPIC);
         const ann = markiereUeberDenWeg(dom, "#ziel1",
                                         "/forum/viewtopic.php?pid=721598");
         const m = ann.selection.meta;
-        expect(m.moderation).toBe(false);
-        expect(m.eroeffner).toBeNull();
-        expect(m.hinweise.join(" ")).toContain("sagt");
+        expect(m.autorIstEroeffner).toBeNull();
+        expect(m.eroeffnerUid).toBeNull();
+        expect(m.kontoName).toBeNull();
+        expect(m.kontoDarfModerieren).toBe(false);
+        expect(m.hinweise.join(" ")).toContain("UNBEKANNT");
     });
 
-    it("TB19 - pmsnew: die Eroeffnerfrage stellt sich dort nicht", () => {
-        // Der Hinweiskasten gehoert zur Themenansicht. Auf PN-Seiten wird
-        // gar nicht erst gesucht — und das Ergebnis ist UNBEKANNT, nicht
-        // 'nein'.
-        const dom = toolbarDOM(SEITE_PMSNEW);
+    it("TB19 - GEGENPROBE: ein zweiter Beitrag ist NICHT der Eroeffner", () => {
+        // Ohne diese Probe waere TB17 auch mit einer Fassung gruen, die
+        // 'autorIstEroeffner' pauschal auf true setzt, sobald es auf der
+        // Seite IRGENDWO ein OP-Kennzeichen gibt. Dann waere jeder
+        // Mitschreiber eines Themas dessen Eroeffner.
+        const zweiter = SEITE_VIEWTOPIC_OP_FREMD.replace(
+            "</article>",
+            '</article>'
+            + '<article class="post" id="p1690999"><div class="blockpost">'
+            + '<h2><strong><a href="user.php?id=9911">Ein_Anderer</a></strong>'
+            + '<span><i><i title="2 years ago">Wed., 06.12.2023 09:00:00</i></i>'
+            + '</span></h2>'
+            + '<div class="box" id="pp1690999"><div class="postright">'
+            + '<h3>Re: I paid didn\'t get in?</h3>'
+            + '<div class="postmsg"><p id="ziel2">Mir ging es genauso.</p>'
+            + '</div></div></div></div></article>');
+        const dom = toolbarDOM(zweiter);
+        const ann = markiereUeberDenWeg(dom, "#ziel2",
+                                        "/forum/viewtopic.php?id=168221");
+        const m = ann.selection.meta;
+        expect(m.autorUid).toBe(9911);
+        expect(m.autorIstEroeffner).toBe(false);
+        // Der Eroeffner der SEITE bleibt der erste Beitrag - beides steht
+        // nebeneinander und wird nicht verwechselt.
+        expect(m.eroeffnerUid).toBe(3837243);
+        // Und dieser Beitrag traegt kein Moderationsmenue.
+        expect(m.kontoDarfModerieren).toBe(false);
+    });
+
+    it("TB20 - der Hinweiskasten sagt etwas ueber das KONTO", () => {
+        // Alex' erster Auszug (Thema 31351): Hinweiskasten mit '(OP)'. Er
+        // sagt, dass das ANGEMELDETE KONTO das Thema eroeffnet hat - nicht,
+        // dass der Verfasser des markierten Beitrags es tat. Die beiden
+        // Angaben stehen getrennt nebeneinander.
+        const dom = toolbarDOM(SEITE_VIEWTOPIC_MOD);
         const ann = markiereUeberDenWeg(dom, "#ziel1",
-                                        "/forum/pmsnew.php?mdl=topic&tid=91");
-        expect(ann.selection.meta.eroeffner).toBeNull();
-        expect(ann.selection.meta.moderation).toBe(false);
+                                        "/forum/viewtopic.php?id=31351");
+        const m = ann.selection.meta;
+        expect(m.kontoIstEroeffner).toBe(true);
+        // Der Beitrag dieser Seite traegt KEIN OP-Kennzeichen im Kopf -
+        // also bleibt die Aussage ueber den VERFASSER unbekannt.
+        expect(m.autorIstEroeffner).toBeNull();
+        expect(m.themenbetreff).toBe("TITLE OF THE TOPIC");
     });
 
     it("TB15 - reduzierte Ansicht: NUR 'pp<n>' - der breitere Weg faengt es auf", () => {
