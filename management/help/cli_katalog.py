@@ -317,6 +317,12 @@ _GEPRUEFT_727 = ("Build 727, 2026-08-28, gegen einen Wegwerf-Bestand unter "
                  "/tmp (evidence_700.db + forensic_700.db mit zwei "
                  "Annotationen und einem Seitenabzug), Python 3.13, lxml 6.1")
 
+_GEPRUEFT_737 = ("Build 737, 2026-08-30, gegen einen Wegwerf-Bestand unter "
+                 "/tmp (evidence_1.db mit zwei Annotationen, forensic_1.db "
+                 "mit einem Seitenabzug, dessen Seitenkopf ein <noscript> "
+                 "mit nicht geschlossenem <div> traegt), Python 3.13, "
+                 "lxml 6.1")
+
 _GEPRUEFT_728 = ("Build 728, 2026-08-28, gegen einen Wegwerf-Bestand unter "
                  "/tmp (evidence_700.db mit sieben Annotationen und "
                  "Hash-Kette, forensic_700.db mit einem Seitenabzug aus drei "
@@ -358,8 +364,8 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "Ohne weitere Optionen ein reiner Blick auf den Fall. Auf dem leeren Bestand: 'Fall subject_id=1 fehlt und kein --username zum Anlegen angegeben.' auf der Fehlerausgabe, Rueckgabewert 1.",
                      _GEPRUEFT_619),
             ),
-            exit_codes=((0, "gelesen bzw. geaendert"), (1, "coordinator.db fehlt, der Fall fehlt und es wurde kein '--username' angegeben, oder ein Fachfehler"),),
-            warnungen=(
+                exit_codes=((0, "gelesen bzw. geaendert"), (1, "coordinator.db fehlt, der Fall fehlt und es wurde kein '--username' angegeben, oder ein Fachfehler"),),
+                warnungen=(
                 "MIT '--username' WIRD DER FALL ANGELEGT, wenn es ihn noch nicht gibt - ohne eigenen Schalter und ohne Rueckfrage. Das ist der ueberraschendste Punkt an diesem Werkzeug: wer sich beim '--subject-id' vertippt und '--username' mitgibt, legt einen Fall an, statt einen Fehler zu bekommen.",
                 "ES GIBT KEINEN REIN LESENDEN UNTERBEFEHL. Auch der Blick auf einen Fall laeuft ueber eine schreibfaehige Verbindung und setzt den Journalmodus - die Datei wird also angefasst, auch wenn nichts geaendert wird.",
                 "Ohne '--actor' wird als Urheber NULL gebucht und der Systembenutzer nur im Beleg vermerkt. Im laufenden Betrieb gehoert '--actor' dazu.",
@@ -5419,6 +5425,81 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "Vierzig Belege ohne jeden Inhaltsausschnitt - die "
                      "Ausgabe ist damit ohne weitere Pruefung weitergebbar.",
                      _GEPRUEFT_727),
+            ),
+        ),
+    ),
+    CliEintrag(
+        schluessel="anker_diagnose",
+        pfad="tools/anker_diagnose.py",
+        aufruf="python tools/anker_diagnose.py --evidence <evidence_N.db> "
+               "--forensic <forensic_N.db> [--beleg N] [--grenze N] "
+               "[--protokoll <Datei>]",
+        titel="Ankerbruch der Textmarkierungen messen",
+        gruppe="Migration und Reparatur",
+        zweck="Messen, warum die Positionsangaben der Textmarkierungen im "
+              "gesicherten Seitenabzug nicht aufloesen - und pruefen, ob "
+              "eine Annaeherung an die Zerlegung des Browsers sie heilt.",
+        art="lesend",
+        datenbanken=(
+            "evidence_<uid>.db (lesend, mode=ro - annotations)",
+            "forensic_<uid>.db (lesend, mode=ro - pages.html)",
+        ),
+        betrieb="Der Betrieb darf weiterlaufen. Beide Verbindungen sind "
+                "read-only; es gibt keinen schreibenden Pfad und kein "
+                "'--ausfuehren'. Ein Wartungsfenster ist nicht noetig "
+                "(Wartungsstufe C).",
+        hinweis="Die Diagnose aendert nichts. Der eigentliche Fix sitzt im "
+                "Bericht (report_render/html5_annaeherung.py) und wirkt "
+                "ohne dieses Werkzeug; hier wird nur gemessen, ob er im "
+                "vorliegenden Bestand greift.",
+        konfiguration=KONFIG_KEINE,
+        ausgabe="Je Beleg eine Zeile mit 'roh=' und 'angenaehert='. Je "
+               "Seite der Ebenenbericht: welche Stufe der Positionsangabe "
+               "bricht und was an dieser Stelle im Abzug steht, benannt "
+               "statt nur gezaehlt. Am Ende die Zaehlung, ein Urteil in "
+               "ganzen Saetzen und der Konsolen-Einzeiler fuer die "
+               "Gegenprobe im Browser.",
+        tiefe=CliTiefe(
+            beispiele=(
+            _bsp("python tools/anker_diagnose.py "
+                 "--evidence /tmp/evidence_1.db --forensic /tmp/forensic_1.db",
+                 "Meldet je Beleg, ob die Positionsangabe roh und ob sie "
+                 "nach der Annaeherung aufloest, dazu je Seite den "
+                 "Ebenenbericht. Auf dem Probebestand: 2 von 2 loesen NUR "
+                 "nach der Annaeherung auf. Rueckgabewert 0.",
+                 _GEPRUEFT_737),
+            _bsp("python tools/anker_diagnose.py "
+                 "--evidence /tmp/evidence_1.db --forensic /tmp/forensic_1.db "
+                 "--beleg 2",
+                 "Dasselbe fuer einen einzelnen Beleg. Rueckgabewert 0.",
+                 _GEPRUEFT_737),
+        ),
+        exit_codes=(
+            (0, "gelaufen - auch beim Leerbefund, der ist kein Fehler"),
+            (1, "Datei fehlt oder Datenbank nicht lesbar"),
+            (2, "Aufruffehler (fehlende Argumente)"),
+        ),
+        warnungen=(
+            "ES IST EINE DIAGNOSE UND KEINE REPARATUR. Das Werkzeug aendert "
+            "nichts - weder an den Markierungen noch am Seitenabzug. Der "
+            "eigentliche Fix sitzt im Bericht "
+            "(report_render/html5_annaeherung.py) und wirkt ohne dieses "
+            "Werkzeug.",
+            "DIE AUSGABE IST WEITERGEBBAR. Es erscheinen Tagnamen, "
+            "Kennungen, Klassen, Zahlen und Pfade - kein Beitragstext. Wo "
+            "Quelltext gezeigt wird, sind Textknoten und die nicht "
+            "freigegebenen Attributwerte verdeckt.",
+            "DIE ANNAEHERUNG IST KEIN HTML5-ZERLEGER. Sie raeumt zwei "
+            "gemessene Unterschiede aus (Rohtext in <noscript>, eigenes "
+            "Fragment fuer <template>). Ein nicht geschlossenes <a> im "
+            "Seitenkopf bleibt abweichend - dieser Fall erzeugt allerdings "
+            "MEHR Elemente im Abzug als im Browser und damit ein anderes "
+            "Fehlerbild.",
+            "MELDET DER LAUF 'die Annaeherung aendert NICHTS', ist das ein "
+            "ERGEBNIS und kein Fehlschlag: er schliesst die beiden "
+            "bekannten Ursachen aus. Dann gilt der Ebenenbericht, und der "
+            "gehoert gegen den Konsolen-Einzeiler gehalten, den der Lauf am "
+            "Ende ausgibt.",
             ),
         ),
     ),

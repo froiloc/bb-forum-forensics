@@ -572,12 +572,50 @@ class AbsatzFinder:
 
         self._wurzel = None
         self._fehler = ""
+        #: Build 737: was die Annaeherung an diesem Abzug getan hat. Leer,
+        #: wenn nichts zu tun war. Der Aufrufer traegt es in den Vermerk.
+        self.annaeherungsbefunde = []
         # Build 729: gesetzt von _ueber_xpath, gelesen von finde().
         self._anker_grund = ""
         self._anker_bruch = ""
         if not body_html:
             self._fehler = "Seitenabzug ohne <body>-Inhalt"
             return
+        # ---------------------------------------------------------------
+        # BUILD 737: DER ABZUG WIRD VOR DEM ZERLEGEN AN ZWEI HTML5-REGELN
+        # ANGENAEHERT, DIE libxml2 NICHT KENNT.
+        #
+        # Der Anker wird IM BROWSER gerechnet und HIER aufgeloest. Beide
+        # muessen denselben Baum sehen. An zwei Stellen sehen sie ihn nicht:
+        # der Inhalt von <noscript> ist im Browser bei eingeschaltetem
+        # JavaScript ROHTEXT, und der Inhalt von <template> steht ueberhaupt
+        # nicht im Baum. libxml2 zerlegt beides als gewoehnliches Markup -
+        # ein nicht geschlossenes Tag darin verschluckt dann ALLES, was
+        # folgt, und ein richtiger Anker zeigt ins Leere.
+        #
+        # GEMESSEN am 30.08.2026 gegen Chromium (Playwright, innerHTML auf
+        # einen <div> - der Weg des Ermittlungsfensters), zehn Konstrukte:
+        # die beiden genannten erzeugen genau das Bild aus Alex' Laeufen
+        # (Browser fuenf <div>, libxml2 zwei), die Annaeherung raeumt es aus,
+        # und an den acht uebrigen aendert sie nichts. Begruendung,
+        # Messtabelle und die BEKANNTE GRENZE des Verfahrens stehen in
+        # report_render/html5_annaeherung.py.
+        #
+        # WAS SIE NICHT IST: ein HTML5-Zerleger. Ein nicht geschlossenes <a>
+        # im Seitenkopf bleibt abweichend - dieser Fall erzeugt allerdings
+        # MEHR Elemente im Abzug als im Browser und damit ein anderes
+        # Fehlerbild.
+        #
+        # DER ABZUG SELBST BLEIBT UNBERUEHRT. Hier wird eine Zeichenkette
+        # bearbeitet, nicht die Datenbank; forensic_<uid>.db wird nur
+        # gelesen. Was die Annaeherung getan hat, steht in
+        # self.annaeherungsbefunde und gehoert in den Vermerk - ein stiller
+        # Eingriff in die Auswertung waere genau das, was Grundregel 1
+        # verbietet.
+        # ---------------------------------------------------------------
+        from report_render.html5_annaeherung import annaehern
+        body_html, self.annaeherungsbefunde = annaehern(body_html)
+
         try:
             # create_parent='div' bildet den Behaelter '#forensic-viewport'
             # nach, gegen den toolbar.js den Anker gerechnet hat. Ohne ihn
