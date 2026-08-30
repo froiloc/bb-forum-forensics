@@ -2498,6 +2498,409 @@
   })();
 
   // ===========================================================================
+  // PHASE 5: PostMetaModule — die Metadaten eines Beitrags (Build 735)
+  // ===========================================================================
+  //
+  // WOFUER DIESES MODUL DA IST
+  //
+  // Beim Anlegen einer Annotation sollen drei Angaben mitgeschrieben werden,
+  // die im lebenden DOM stehen, im Bericht aber fehlen: die BEITRAGSNUMMER,
+  // der ZEITSTEMPEL des Beitrags und der BETREFF. Der Bericht kann sie nicht
+  // nachtraeglich holen — er hat kein DOM, sondern nur den Seitenabzug und
+  // den XPath. Die Sichtpruefung einer echten Beweismittelgruppe am
+  // 28.08.2026 ergab: bei ALLEN 23 Belegen fehlte die post_id, und daran
+  // fielen im Vollzitat fuenf Angaben auf einmal aus.
+  //
+  // WARUM DIE VERFAHREN SO UND NICHT ANDERS GEWAEHLT SIND
+  //
+  // Sie sind NICHT geraten. Am 29.08.2026 hat Alex die Sonde
+  // 'debug/sonde_annotation_metadaten.js' (Build 732-734) auf zwei echten
+  // Seiten laufen lassen — einer Themenseite mit 4 Beitraegen
+  // (viewtopic.php?pid=721598) und einer Unterhaltung mit 6 Beitraegen
+  // (pmsnew.php). Sechs Verfahren fuer die Nummer, vier fuer die Zeit und
+  // sechs fuer den Betreff sind dort gegeneinander angetreten. Die
+  // Trefferquoten stehen in 'claude/Analyse_Sondenmessung_29082026.md'.
+  // Uebernommen ist hier nur, was in dieser Messung getragen hat.
+  //
+  // DIE DREI ENTSCHEIDUNGEN IM EINZELNEN
+  //
+  //  1) post_id: P1 (aeussere Kennung 'p<n>') schreibt, P3 ('pid=' im Link)
+  //     prueft nach. Beide 4/4 und 6/6 — die einzigen zwei Wege, die in
+  //     BEIDEN Ansichten tragen, und sie schoepfen aus verschiedenen Quellen
+  //     (Elementkennung gegen Linkziel). P2 (innere Kennung 'pp<n>') und P6
+  //     (die sichtbar angezeigte Nummer) fielen auf PN-Seiten mit 0/6 aus.
+  //
+  //     EIN BEINAHE-UNFALL, DEN DIE MESSUNG GEFANGEN HAT: im Kopf der
+  //     PN-Beitraege steht '#5' — die laufende Nummer IN DER UNTERHALTUNG,
+  //     nicht die Beitragsnummer. Ein Verfahren, das die sichtbare Nummer
+  //     nimmt, haette dort eine plausibel aussehende falsche Zahl geliefert.
+  //     Deshalb steht die sichtbare Nummer hier ueberhaupt nicht zur Wahl.
+  //
+  //  2) Zeitstempel: die Kette T1 -> T2 -> T3. T1 (inneres <i> im Kopf) traf
+  //     4/4 auf viewtopic und 0/6 auf pmsnew, T2 (Link im Kopf) genau
+  //     umgekehrt. SIE SCHLIESSEN EINANDER AUS; die Kette braucht deshalb
+  //     KEINE Ansichtserkennung — sie kann sich gar nicht vergreifen. T3
+  //     (Kopftext als Ganzes) trifft in beiden Ansichten, liest aber Beiwerk
+  //     mit (97 Zeichen Quelle auf Forenseiten gegen 25 bei T1/T2) und
+  //     bleibt darum der letzte Rueckfall.
+  //
+  //     KEINE ZEITZONE, KEINE EPOCH-ZAHL. Das Forum rendert in der Zone
+  //     seiner Einstellung; welche das ist, ist nicht erhoben. Eine Tatzeit
+  //     mit falscher Zone ist um Stunden falsch. Gespeichert wird deshalb
+  //     der Rohtext PLUS die zerlegten Bestandteile — daraus laesst sich
+  //     spaeter verlustfrei umrechnen, sobald die Zone belegt ist. Das Feld
+  //     heisst bewusst 'zeitIsoOhneZone' und nicht 'zeitIso'.
+  //
+  //  3) Betreff: ANSICHTSABHAENGIG, und das ist der wichtigste Befund der
+  //     Messung. Auf viewtopic tragen S6 (Themenkopf ohne angehaengte
+  //     Nummer) und S2 (<h3> des Eroeffnungsbeitrags) DENSELBEN
+  //     Fingerabdruck — zwei unabhaengige Wege, ein Wert, eine echte
+  //     Bestaetigung. Auf pmsnew dagegen liefern S3, S4 und S6 DREI
+  //     VERSCHIEDENE Werte: S4 ist leer, S6 greift zum naechstbesten <h2>
+  //     und liegt falsch, und nur S3 trifft den belegten Aufbau
+  //     'div.block2col > div.block > h2'.
+  //
+  //     EINE RUECKFALLKETTE WAERE HIER EIN FEHLER. 'S6, sonst S3' haette auf
+  //     jeder PN-Seite still einen falschen Betreff eingetragen — falsch,
+  //     zuversichtlich und unauffaellig. Die Wahl haengt darum an der
+  //     Ansicht, die in der Adresse steht ('pmsnew.php'), nicht an einer
+  //     Kette.
+  //
+  // BEIDE BETREFFE WERDEN GESCHRIEBEN, nicht einer. Das Vollzitat schreibt
+  // 'Beitrag zum Thema »…«' und braucht dafuer den THEMENbetreff; die
+  // Fundstelle selbst traegt haeufig 'Re: …' und ist damit dem einzelnen
+  // Beitrag zuzuordnen. Welche Angabe der Bericht am Ende zeigt, ist eine
+  // Frage der Darstellung — beide zu erheben kostet nichts und laesst die
+  // Entscheidung offen. Bei privaten Nachrichten gibt es nur den einen.
+  //
+  // JEDER WERT TRAEGT DEN NAMEN SEINES VERFAHRENS. Ein Wert ohne Herkunft
+  // ist in einer Akte nicht ueberpruefbar (Grundregel 1). Wer spaeter
+  // fragt, woher '2021-11-20T01:52:24' kommt, liest 'zeitWeg':'T1' und kann
+  // es an der Seite nachvollziehen.
+  //
+  // Beleg: claude/Analyse_Sondenmessung_29082026.md; Sondenlaeufe Alex
+  //        29.08.2026 (viewtopic 4 Beitraege, pmsnew 6 Beitraege);
+  //        Auszuege Alex 28.08.2026; db/forensic_db.py:291-307.
+  // ===========================================================================
+  var PostMetaModule = (function () {
+
+    var ANSICHT_PN    = "pmsnew";
+    var ANSICHT_THEMA = "viewtopic";
+
+    //: 'p123' -> 123. NUR die aeussere Kennung (P1). Die innere ('pp123')
+    //: bleibt hier bewusst aussen vor: sie existiert auf PN-Seiten nicht,
+    //: und ein Weg, der in einer der beiden Ansichten leer bleibt, taugt
+    //: nicht als primaerer Weg. Fuer die Beitragsnummer der Marke selbst
+    //: nimmt MarkerToolModule weiterhin BEIDE an — dort geht es darum, ueber
+    //: den Aufstieg ueberhaupt einen Beitrag zu erkennen.
+    var _P1_KENNUNG = /^p(\d+)$/;
+
+    //: 'Fri., 16.12.2022 19:08:03' und 'Mon., 26.04.2021 20:36' — die
+    //: Sekunden sind wahlfrei, weil nicht jede Forenvorlage sie rendert.
+    //: Der Wochentag davor wird nicht gelesen; er ist redundant und
+    //: sprachabhaengig (das Forum ist mehrsprachig).
+    var _ZEIT_MUSTER =
+      /(\d{1,2})\.(\d{1,2})\.(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/;
+
+    /** Sichtbarer Text eines Elements, Leerraum zusammengezogen. */
+    function _txt(el) {
+      return el ? (el.textContent || "").replace(/\s+/g, " ").trim() : "";
+    }
+
+    function _viewport() {
+      return document.getElementById("forensic-viewport");
+    }
+
+    /**
+     * Welche Ansicht liegt vor? Die Adresse entscheidet.
+     *
+     * Beleg: Weisung Alex 28.08.2026 — "Die URL bei privaten Nachrichten
+     * beginnt immer mit '/forum/pmsnew.php'." Dasselbe Merkmal benutzt
+     * TranslationModule.pmTopicIdFromUrl (Z. 6880) bereits.
+     */
+    function ansichtAus(url) {
+      return (String(url || "").indexOf("pmsnew.php") !== -1)
+        ? ANSICHT_PN : ANSICHT_THEMA;
+    }
+
+    /**
+     * Der AEUSSERSTE Behaelter des Beitrags, in dem 'knoten' sitzt.
+     *
+     * WARUM DER AEUSSERSTE UND NICHT DER NAECHSTE: Im Probelauf der Sonde
+     * traf ein 'closest("article, div.blockpost, div[id^=p]")' in der
+     * viewtopic-Ansicht zuerst auf '<div class="box" id="pp1164441">'. Der
+     * <h2> mit Datum und Betreff steht dort aber NICHT darin — er ist dessen
+     * GESCHWISTER. Zeit und Betreff kamen als null zurueck, obwohl beide auf
+     * der Seite standen. Wer daraus geschlossen haette, die Angaben seien
+     * nicht zu holen, haette sich am eigenen Werkzeug geirrt.
+     *
+     * Deshalb wird bis zum Viewport aufgestiegen und der letzte Treffer
+     * behalten: bei viewtopic der <article class="post">, bei pmsnew der
+     * <div class="blockpost">. Beide enthalten den Kopf.
+     */
+    function beitragBehaelter(knoten) {
+      var vp = _viewport();
+      var el = (knoten && knoten.nodeType === 3)
+        ? knoten.parentElement : knoten;
+      var treffer = null;
+      while (el && el.nodeType === 1 && el !== vp) {
+        var hatKennung = /^pp?\d+$/.test(el.id || "");
+        var hatKlasse  = /(^|\s)(post|blockpost)(\s|$)/
+          .test(typeof el.className === "string" ? el.className : "");
+        if (hatKennung || (hatKlasse && el.querySelector("h2"))) treffer = el;
+        el = el.parentElement;
+      }
+      return treffer;
+    }
+
+    /** P1 — die aeussere Kennung. Aufstieg vom Startknoten der Auswahl. */
+    function postIdP1(knoten) {
+      var el = (knoten && knoten.nodeType === 3)
+        ? knoten.parentElement : knoten;
+      while (el && el.nodeType === 1) {
+        var t = _P1_KENNUNG.exec(el.id || "");
+        if (t) {
+          var nr = parseInt(t[1], 10);
+          return isNaN(nr) ? null : nr;
+        }
+        el = el.parentElement;
+      }
+      return null;
+    }
+
+    /**
+     * P3 — die Nummer aus dem ersten 'pid='-Link des Beitrags.
+     *
+     * UNABHAENGIGE QUELLE: P1 liest eine Elementkennung, P3 ein Linkziel.
+     * Stimmen beide ueberein, ist die Nummer doppelt belegt. Weichen sie
+     * ab, wird NICHTS geschrieben (s. metadatenVon) — eine Beitragsnummer,
+     * bei der zwei Quellen sich widersprechen, gehoert nicht in eine Akte.
+     */
+    function postIdP3(behaelter) {
+      var a = behaelter ? behaelter.querySelector("a[href*='pid=']") : null;
+      var t = a ? /[?&]pid=(\d+)/.exec(a.getAttribute("href") || "") : null;
+      return t ? parseInt(t[1], 10) : null;
+    }
+
+    /**
+     * Einen Zeittext zerlegen. Gibt null zurueck, wenn kein Datum drinsteht.
+     *
+     * 'roh' traegt NUR die getroffene Datumsangabe, nicht die Zeichenkette,
+     * aus der sie stammt. Grund: bei T3 ist das der ganze Kopftext, und der
+     * traegt den Benutzernamen des Verfassers. In der Sonde war das ein
+     * Fehler von mir (v2), der in Alex' Ausgabe einen Klarnamen sichtbar
+     * machte. Hier faellt er nicht noch einmal an.
+     */
+    function zerlegeZeit(s) {
+      var t = _ZEIT_MUSTER.exec(String(s || ""));
+      if (!t) return null;
+      var jahr = t[3], monat = t[2], tag = t[1];
+      var std = t[4], min = t[5], sek = t[6] || "00";
+      return {
+        roh:    t[0],
+        tag:    +tag,  monat:  +monat, jahr:    +jahr,
+        stunde: +std,  minute: +min,   sekunde: +sek,
+        // KEINE Zone im Namen und keine im Wert. S.o.
+        isoOhneZone: jahr + "-" + ("0" + monat).slice(-2)
+                   + "-" + ("0" + tag).slice(-2)
+                   + "T" + ("0" + std).slice(-2)
+                   + ":" + min + ":" + ("0" + sek).slice(-2)
+      };
+    }
+
+    /**
+     * Der Zeitstempel des Beitrags — Kette T1 -> T2 -> T3.
+     * Gibt { zeit, weg } zurueck; 'zeit' ist null, wenn keiner traf.
+     */
+    function zeitVon(behaelter) {
+      var h2 = behaelter ? behaelter.querySelector("h2") : null;
+      if (!h2) return { zeit: null, weg: null };
+
+      // T1 — viewtopic: <h2> … <i><i title="3 years ago">Datum</i></i>
+      var kandidaten = h2.querySelectorAll("i");
+      for (var i = 0; i < kandidaten.length; i++) {
+        var z1 = zerlegeZeit(_txt(kandidaten[i]));
+        if (z1) return { zeit: z1, weg: "T1" };
+      }
+
+      // T2 — pmsnew: <h2> … <a href="…pid=…#p…">Datum</a>
+      var a = h2.querySelector("a[href*='pid=']");
+      var z2 = a ? zerlegeZeit(_txt(a)) : null;
+      if (z2) return { zeit: z2, weg: "T2" };
+
+      // T3 — Rueckfall ueber den ganzen Kopftext. Trifft in beiden
+      // Ansichten, liest aber Beiwerk mit; deshalb zuletzt.
+      var z3 = zerlegeZeit(_txt(h2));
+      if (z3) return { zeit: z3, weg: "T3" };
+
+      return { zeit: null, weg: null };
+    }
+
+    /**
+     * S2 — der Betreff DIESES Beitrags ('Re: …'), nur viewtopic.
+     * Auf PN-Seiten existiert er nicht; dort wird gar nicht erst gesucht.
+     */
+    function betreffS2(behaelter) {
+      var h3 = behaelter ? behaelter.querySelector(".postright h3, h3") : null;
+      var t = _txt(h3);
+      return t || null;
+    }
+
+    /**
+     * S6 — der Themenbetreff aus dem Seitenkopf, OHNE die angehaengte
+     * Nummer. Nur viewtopic.
+     *
+     * Die Messung ergab fuer S4 (dasselbe ohne die Bereinigung) 'Titel?
+     * #99999' — die Beitragsnummer klebte hinten dran. Sie wird abgeschnitten.
+     * Der Fingerabdruck von S6 stimmte in der Messung mit dem von S2 des
+     * Eroeffnungsbeitrags ueberein (33fb820c bzw. 076ee3a1 auf zwei
+     * verschiedenen Themen) — zwei unabhaengige Wege, derselbe Wert.
+     */
+    function betreffS6() {
+      var vp = _viewport();
+      if (!vp) return null;
+      var alle = vp.querySelectorAll("h2");
+      for (var i = 0; i < alle.length; i++) {
+        if (beitragBehaelter(alle[i])) continue;   // Beitragskoepfe ueberspringen
+        var t = _txt(alle[i]).replace(/\s*#\d+\s*$/, "").trim();
+        if (t) return t;
+      }
+      return null;
+    }
+
+    /**
+     * S3 — der Titel der Unterhaltung, nur pmsnew.
+     * Aufbau belegt durch Alex am 28.08.2026:
+     *   <div class="block2col"><div class="block"><h2 …>TITEL</h2>
+     */
+    function betreffS3() {
+      var vp = _viewport();
+      var h2 = vp ? vp.querySelector(".block2col .block > h2") : null;
+      var t = _txt(h2);
+      return t || null;
+    }
+
+    /**
+     * Die Metadaten zur Auswahl.
+     *
+     * WICHTIG — DER STARTKNOTEN WIRD UEBERGEBEN, NICHT NACHGESCHLAGEN.
+     * Genau daran ist Build 727 gescheitert: '_postElementVon' las die
+     * Auswahl ueber 'window.getSelection()' ERNEUT, und im Aufrufweg stand
+     * dazwischen ein 'removeAllRanges()'. Die Auswahl war weg, rangeCount
+     * war 0, und es kam nie ein Wert an. Eine Funktion, die ihren
+     * Messgegenstand selbst beschafft, ist von der Reihenfolge ihres
+     * Aufrufers abhaengig — und diese Abhaengigkeit war unsichtbar. Hier
+     * kommt der Knoten von aussen; damit kann sie gar nicht mehr auftreten.
+     *
+     * Rueckgabe ist IMMER ein Objekt, nie null. Fehlende Angaben stehen als
+     * null darin, mit einem Grund in 'hinweise'. Ein stilles Ausbleiben
+     * waere ein uebersprungener Beleg (Grundregel 1).
+     */
+    function metadatenVon(startKnoten, seitenUrl) {
+      var meta = {
+        ansicht:          ansichtAus(seitenUrl),
+        postId:           null,
+        postIdWeg:        null,
+        postIdGegenprobe: null,
+        zeitRoh:          null,
+        zeitIsoOhneZone:  null,
+        zeitTeile:        null,
+        zeitWeg:          null,
+        betreff:          null,
+        betreffWeg:       null,
+        themenbetreff:    null,
+        themenbetreffWeg: null,
+        hinweise:         []
+      };
+
+      if (!startKnoten) {
+        meta.hinweise.push("kein Startknoten uebergeben");
+        return meta;
+      }
+
+      var behaelter = beitragBehaelter(startKnoten);
+
+      // ---- post_id: P1 schreibt, P3 prueft ---------------------------------
+      var p1 = postIdP1(startKnoten);
+      var p3 = postIdP3(behaelter);
+      meta.postIdGegenprobe = p3;
+      if (p1 === null) {
+        meta.hinweise.push(
+          "kein Vorfahr mit Beitragskennung - die Seite traegt keine "
+          + "Beitraege (Uebersicht, Suche, Profil)");
+      } else if (p3 !== null && p3 !== p1) {
+        // NICHTS SCHREIBEN. Zwei Quellen, zwei Zahlen — welche stimmt, ist
+        // ohne Sichtpruefung nicht zu sagen, und eine geratene
+        // Beitragsnummer ist schlimmer als keine.
+        meta.hinweise.push("P1 (" + p1 + ") und P3 (" + p3
+          + ") weichen ab - keine Nummer geschrieben");
+      } else {
+        meta.postId    = p1;
+        meta.postIdWeg = (p3 === p1) ? "P1+P3" : "P1";
+        if (p3 === null) {
+          meta.hinweise.push("Gegenprobe P3 ohne Treffer - Nummer allein "
+            + "aus der Elementkennung");
+        }
+      }
+
+      // ---- Zeitstempel: T1 -> T2 -> T3 -------------------------------------
+      var z = zeitVon(behaelter);
+      if (z.zeit) {
+        meta.zeitRoh         = z.zeit.roh;
+        meta.zeitIsoOhneZone = z.zeit.isoOhneZone;
+        meta.zeitTeile       = {
+          tag: z.zeit.tag, monat: z.zeit.monat, jahr: z.zeit.jahr,
+          stunde: z.zeit.stunde, minute: z.zeit.minute,
+          sekunde: z.zeit.sekunde
+        };
+        meta.zeitWeg = z.weg;
+      } else {
+        meta.hinweise.push("kein Zeitstempel im Beitragskopf gefunden");
+      }
+
+      // ---- Betreff: ANSICHTSABHAENGIG, keine Kette --------------------------
+      if (meta.ansicht === ANSICHT_PN) {
+        var s3 = betreffS3();
+        if (s3) { meta.themenbetreff = s3; meta.themenbetreffWeg = "S3"; }
+        else { meta.hinweise.push("PN: kein Titel unter "
+          + "div.block2col > div.block > h2"); }
+        // Beitragsbetreff: existiert bei PN nicht. Kein Rueckfall auf S6 —
+        // der lieferte in der Messung auf PN-Seiten einen ANDEREN, falschen
+        // Wert (Fingerabdruck 353e0d45 gegen 369526b8 bei S3).
+      } else {
+        var s6 = betreffS6();
+        if (s6) { meta.themenbetreff = s6; meta.themenbetreffWeg = "S6"; }
+        else { meta.hinweise.push("kein Themenbetreff im Seitenkopf"); }
+        var s2 = betreffS2(behaelter);
+        if (s2) { meta.betreff = s2; meta.betreffWeg = "S2"; }
+        else { meta.hinweise.push("kein Beitragsbetreff (<h3>) im Beitrag"); }
+      }
+
+      _dbg("PostMetaModule.metadatenVon:", JSON.stringify(meta));
+      return meta;
+    }
+
+    return {
+      metadatenVon: metadatenVon,
+      // Fuer vitest freigelegt. Jedes Verfahren einzeln pruefbar zu halten
+      // ist die Voraussetzung dafuer, einen Fehlschlag EINEM Verfahren
+      // zuordnen zu koennen statt der ganzen Kette.
+      _test: {
+        metadatenVon:     metadatenVon,
+        ansichtAus:       ansichtAus,
+        beitragBehaelter: beitragBehaelter,
+        postIdP1:         postIdP1,
+        postIdP3:         postIdP3,
+        zerlegeZeit:      zerlegeZeit,
+        zeitVon:          zeitVon,
+        betreffS2:        betreffS2,
+        betreffS3:        betreffS3,
+        betreffS6:        betreffS6
+      }
+    };
+  })();
+
+  // ===========================================================================
   // PHASE 5: MarkerToolModule — Textmarkierungs-Workflow
   // ===========================================================================
   var MarkerToolModule = (function () {
@@ -2564,11 +2967,40 @@
     //: (substring(1) haette bei 'pp123' 'p123' geliefert und NaN ergeben).
     var _POST_KENNUNG = /^p(p?)(\d+)$/;
 
-    function _postElementVon(selObj) {
+    // -------------------------------------------------------------------------
+    // BUILD 735: DER STARTKNOTEN WIRD UEBERGEBEN, NICHT NACHGESCHLAGEN.
+    //
+    // DAS IST DIE URSACHE DAFUER, DASS BUILD 727 NIE GEWIRKT HAT. Die bis
+    // hierher gueltige Fassung nahm zwar ein 'selObj' entgegen, benutzte es
+    // aber nicht: sie las die Auswahl ueber 'window.getSelection()' ERNEUT.
+    // Im einzigen Aufrufweg (_onMouseUp) stand dazwischen ein
+    // 'sel.removeAllRanges()'. Zum Zeitpunkt des Aufrufs war die Auswahl
+    // also bereits geloescht, 'rangeCount' war 0, und die Funktion gab
+    // 'null' zurueck. Die post_id blieb leer — bei jeder einzelnen
+    // Textmarkierung, auch nach dem Einspielen von Build 727.
+    //
+    // BELEGT, NICHT VERMUTET: die Sonde 'debug/sonde_annotation_metadaten.js'
+    // ruft in LAUF C dieselbe ausgelieferte Funktion zweimal auf — einmal
+    // mit stehender Auswahl, einmal nach 'removeAllRanges()'. Alex' Laeufe
+    // vom 29.08.2026 ergaben auf vier Seiten dasselbe Bild:
+    //   viewtopic 725304 / null   ·   pmsnew 65684 / null
+    //   viewtopic  63858 / null   ·   viewtopic 703593 / null
+    //
+    // WARUM DIE TESTS DAS NICHT GEFANGEN HABEN — und das ist der eigentliche
+    // Mangel, nicht die Reihenfolge zweier Zeilen: TB01-TB09 riefen diese
+    // Funktion DIREKT auf, mit gesetzter Auswahl. Sie pruefen das Stueck,
+    // nicht den Weg. Ein gruener Test ueber eine Funktion, die im Betrieb
+    // nie unter diesen Bedingungen laeuft, ist kein Nachweis. Seit Build 735
+    // gibt es deshalb TB10-TB13, die einen echten Markierungsvorgang durch
+    // '_onMouseUp' fuehren und pruefen, was am Ende in der Nutzlast steht.
+    //
+    // Der Parameter ist jetzt der Knoten selbst. Damit KANN die Funktion
+    // nicht mehr von der Reihenfolge ihres Aufrufers abhaengen — die
+    // Abhaengigkeit ist nicht nur behoben, sie ist nicht mehr formulierbar.
+    // -------------------------------------------------------------------------
+    function _postElementVon(knoten) {
       try {
-        var sel = window.getSelection();
-        if (!sel || sel.rangeCount === 0) return null;
-        var knoten = sel.getRangeAt(0).startContainer;
+        if (!knoten) return null;
         var el = (knoten && knoten.nodeType === 3) ? knoten.parentElement : knoten;
         while (el && el.nodeType === 1) {
           var treffer = _POST_KENNUNG.exec(el.id || "");
@@ -2587,7 +3019,7 @@
         _dbg("_postElementVon: kein Vorfahr mit Beitragskennung - die " +
              "Seite traegt keine Beitraege (Uebersicht, Suche, Profil).");
       } catch (err) {
-        _dbg("_postElementVon: Auswahl nicht auswertbar:", err);
+        _dbg("_postElementVon: Knoten nicht auswertbar:", err);
       }
       return null;
     }
@@ -2609,6 +3041,30 @@
 
       var selObj = AnnotationStoreModule.selectionFromBrowser(sel);
       if (!selObj) return;
+
+      // -----------------------------------------------------------------------
+      // BUILD 735: ALLES, WAS AN DER AUSWAHL HAENGT, WIRD HIER GEHOLT —
+      // VOR 'removeAllRanges()'.
+      //
+      // Bis Build 734 stand der Aufruf von '_postElementVon' UNTERHALB der
+      // Loeschung, und die Funktion beschaffte sich die Auswahl selbst. Sie
+      // fand keine mehr. Genau das hat dafuer gesorgt, dass die post_id trotz
+      // Build 727 und 728 in jedem einzelnen Fall leer blieb — belegt durch
+      // Alex' Sondenlaeufe vom 29.08.2026 (LAUF C, vier Seiten) und durch die
+      // neu entstandene Annotation #31, die nach dem Einspielen von Build 727
+      // ebenfalls ohne Nummer war.
+      //
+      // Der Startknoten wird deshalb JETZT festgehalten und von hier an
+      // weitergereicht. 'startContainer' ist der Knoten, in dem die Markierung
+      // BEGINNT; er liegt immer im markierten Beitrag. (Der Endknoten kann bei
+      // einer beitragsuebergreifenden Markierung woanders liegen — dann ist
+      // der Anfang die richtige Zuordnung, nicht das Ende.)
+      // -----------------------------------------------------------------------
+      var startKnoten = sel.getRangeAt(0).startContainer;
+
+      // Die drei Metadaten des Beitrags, aus der Messung vom 29.08.2026
+      // abgeleitet (s. PostMetaModule). Sie wandern gleich in 'selObj.meta'.
+      var meta = PostMetaModule.metadatenVon(startKnoten, _state.currentUrl);
 
       // Selektion sichern bevor sie verloren geht
       sel.removeAllRanges();
@@ -2637,7 +3093,71 @@
       // KEINE selection (Build 337). Eine Textmarkierung hat eine selection
       // und bleibt deshalb eine Textmarkierung — Post-Rahmen und
       // post-weites Hover-Menue bleiben aus.
-      var postElFuerMarke = _postElementVon(selObj);
+      var postElFuerMarke = _postElementVon(startKnoten);
+
+      // -----------------------------------------------------------------------
+      // WELCHE NUMMER KOMMT IN DIE SPALTE 'post_id'? Es gibt zwei Wege, und
+      // sie sind NICHT deckungsgleich:
+      //
+      //   PostMetaModule (P1+P3) ist der BELEGSTAERKERE: zwei unabhaengige
+      //   Quellen (Elementkennung und Linkziel), und bei Widerspruch schreibt
+      //   er bewusst nichts.
+      //
+      //   _postElementVon (Build 728) ist der BREITERE: er nimmt auch die
+      //   INNERE Kennung 'pp<n>' an. In der reduzierten Ansicht fuer
+      //   Nicht-Vollmitglieder (Build 396) und in gallery.php gibt es nur
+      //   diese eine — dort liefert P1 nichts, und die Nummer waere verloren.
+      //
+      // Die Reihenfolge ist deshalb: der belegstaerkere zuerst, der breitere
+      // als Rueckfall — ABER NICHT bei Widerspruch. Wenn P1 und P3 sich
+      // widersprechen, ist die Nummer strittig; dann darf sie auch nicht ueber
+      // den Rueckfall doch noch in die Akte gelangen. Eine geratene
+      // Beitragsnummer ist schlimmer als keine, weil an ihr im Vollzitat fuenf
+      // weitere Angaben haengen.
+      // -----------------------------------------------------------------------
+      var strittig = false;
+      for (var iH = 0; meta && iH < meta.hinweise.length; iH++) {
+        if (meta.hinweise[iH].indexOf("weichen ab") !== -1) strittig = true;
+      }
+      var nummerFuerSpalte;
+      if (meta && meta.postId !== null) {
+        nummerFuerSpalte  = meta.postId;
+        meta.postIdSpalte = meta.postIdWeg;
+      } else if (strittig) {
+        nummerFuerSpalte  = null;
+        meta.postIdSpalte = "keine (P1/P3 strittig)";
+      } else {
+        nummerFuerSpalte  = postElFuerMarke;
+        meta.postIdSpalte = (postElFuerMarke === null)
+          ? "keine" : "Build728 (aeussere oder innere Kennung)";
+      }
+
+      // -----------------------------------------------------------------------
+      // BUILD 735: DIE METADATEN GEHEN IN 'selection_json', NICHT IN NEUE
+      // SPALTEN.
+      //
+      // 'post_id' hat bereits eine Spalte und behaelt sie. Zeitstempel und
+      // Betreff bekommen KEINE — und das ist eine bewusste Entscheidung wegen
+      // des Migrationsvorbehalts seit dem 01.07.2026: 'evidence_<uid>.db'
+      // traegt Ermittlerdaten, und jede Schemaaenderung zieht einen
+      // vollstaendigen Migrationslauf mit Nachweis nach sich. 'selection_json'
+      // ist bereits ein Freitextfeld mit wechselndem Inhalt (der
+      // Uebersetzungsanker aus Build 333 sieht ganz anders aus als der
+      // XPath-Anker); ein zusaetzlicher Unterknoten aendert das Schema nicht.
+      //
+      // ALTE ANNOTATIONEN HABEN KEIN 'meta'. Jeder Leser muss sein Fehlen
+      // aushalten — das ist die Bedingung dafuer, dass dieser Schritt ohne
+      // Migration auskommt. Fehlt es, bleibt es beim bisherigen Verhalten.
+      //
+      // Die Nummer steht damit an ZWEI Stellen: in der Spalte 'post_id' und
+      // in 'meta.postId'. Das ist keine Redundanz aus Versehen, sondern der
+      // Beleg fuer die Spalte: 'meta.postIdWeg' und 'meta.postIdGegenprobe'
+      // sagen, WORAUS die Zahl in der Spalte stammt und ob eine zweite Quelle
+      // sie bestaetigt hat. Eine Zahl ohne Herkunft ist in einer Akte nicht
+      // ueberpruefbar (Grundregel 1).
+      // -----------------------------------------------------------------------
+      if (selObj && meta) selObj.meta = meta;
+
       var ann = AnnotationStoreModule.createAnnotation(
         activeCat,
         _state.currentUrl,
@@ -2645,7 +3165,7 @@
         selObj,
         (selObj && selObj.target === "translation")
           ? selObj.postId
-          : postElFuerMarke
+          : nummerFuerSpalte
       );
 
       // Build 334: Markierungen in KI-Uebersetzungen automatisch mit
@@ -7293,6 +7813,11 @@
   // weitere (Betreff, Datum, Sprungmarke, PN-Partner, Zusammenfassung) -
   // sie gehoert unter einen Test.
   ForensicToolbar.config.markerHelpers = MarkerToolModule._test;
+  // Build 735: die Verfahren fuer Zeitstempel und Betreff. Jedes einzeln
+  // pruefbar zu halten ist die Voraussetzung dafuer, einen Fehlschlag EINEM
+  // Verfahren zuzuordnen statt der ganzen Kette - und die ansichtsabhaengige
+  // Wahl des Betreffs braucht eine Gegenprobe je Ansicht (s. TB16/TB17).
+  ForensicToolbar.config.postMetaHelpers = PostMetaModule._test;
 
   var PMSTableOrganizerModule = (function () {
     // Beleg: §21.2 Bauplan (Selektoren verifiziert gegen aiw_pmsnew_new.html)

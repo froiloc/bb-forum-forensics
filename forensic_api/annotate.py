@@ -22,9 +22,57 @@
 #       "offsetStart": 14,
 #       "xpathEnd":    "...",
 #       "offsetEnd":   32,
-#       "textContent": "BirnenKenner99"
+#       "textContent": "BirnenKenner99",
+#       "meta": {                       (optional, Build 735 — s. unten)
+#         "ansicht": "viewtopic"|"pmsnew",
+#         "postId": 721603, "postIdWeg": "P1+P3",
+#         "postIdGegenprobe": 721603, "postIdSpalte": "P1+P3",
+#         "zeitRoh": "17.12.2022 08:14:00",
+#         "zeitIsoOhneZone": "2022-12-17T08:14:00",   (OHNE Zone, s.u.)
+#         "zeitTeile": {"tag":17,"monat":12,"jahr":2022,
+#                       "stunde":8,"minute":14,"sekunde":0},
+#         "zeitWeg": "T1",
+#         "betreff": "Re: ...", "betreffWeg": "S2",
+#         "themenbetreff": "...", "themenbetreffWeg": "S6",
+#         "hinweise": []
+#       }
 #     }
 #   }
+#
+# ZUM 'meta'-UNTERKNOTEN (Build 735)
+#
+#   WOFUER: Zeitstempel und Betreff eines Beitrags stehen im lebenden DOM,
+#   im Bericht aber nicht — er hat kein DOM, sondern nur den Seitenabzug und
+#   den XPath. Die Sichtpruefung einer echten Beweismittelgruppe am
+#   28.08.2026 ergab, dass daran im Vollzitat fuenf Angaben auf einmal
+#   ausfielen. Die Toolbar erhebt sie deshalb im Augenblick des Markierens
+#   und legt sie hier ab.
+#
+#   WARUM IM JSON UND NICHT IN SPALTEN: 'evidence_<uid>.db' steht seit dem
+#   01.07.2026 unter Migrationsvorbehalt. 'selection_json' ist bereits ein
+#   Feld mit wechselndem Inhalt (der Uebersetzungsanker aus Build 333 sieht
+#   voellig anders aus als der XPath-Anker); ein zusaetzlicher Unterknoten
+#   aendert das Schema NICHT und loest damit keine Migration aus.
+#
+#   DIESER ENDPOINT TUT NICHTS DAMIT, und das ist Absicht: die
+#   Selektionspruefung unten arbeitet mit 'issubset' auf die PFLICHTfelder,
+#   zusaetzliche Felder reisen unveraendert mit. Wer diese Pruefung spaeter
+#   zu einer Weissliste verschaerft, kappt damit die Metadaten aller neuen
+#   Belege. tests/test_annotation_metadaten_transport.py haelt das fest.
+#
+#   ALTE MARKEN HABEN KEIN 'meta'. Jeder Leser muss sein Fehlen aushalten —
+#   das ist die Bedingung dafuer, dass der Schritt ohne Migration auskommt.
+#
+#   KEINE ZEITZONE. Das Forum rendert in der Zone seiner Einstellung; welche
+#   das ist, ist NICHT erhoben. Eine Tatzeit mit falscher Zone ist um
+#   Stunden falsch. Deshalb heisst das Feld 'zeitIsoOhneZone' und es gibt
+#   bewusst keine Epoch-Zahl. Der Rohtext und die zerlegten Bestandteile
+#   reisen mit, damit spaeter verlustfrei umgerechnet werden kann, sobald
+#   die Zone belegt ist.
+#
+#   Beleg: claude/Analyse_Sondenmessung_29082026.md (Trefferquoten der
+#          Verfahren aus zwei Sondenlaeufen vom 29.08.2026);
+#          toolbar/toolbar.js -> PostMetaModule.
 #   Response: 200 {"id": <annotation_id>, "status": "ok"}
 #
 # DELETE Request-Body (JSON):

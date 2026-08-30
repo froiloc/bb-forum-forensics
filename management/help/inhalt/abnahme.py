@@ -463,6 +463,35 @@ LECTORATE = Sichthilfe(
                 "der Betriebsseite gemeldet; das deutet auf eine Ursache in "
                 "der Sicherung der Seiten hin und nicht auf die Arbeit der "
                 "markierenden Person.",
+                "NEUE MARKIERUNGEN BRINGEN MEHR MIT. Bis vor Kurzem trug "
+                "eine Textmarkierung nur die markierte Stelle selbst. Seither "
+                "hält das Ermittlungsfenster im Augenblick des Markierens "
+                "drei weitere Angaben aus der Seite fest: die BEITRAGSNUMMER, "
+                "den ZEITSTEMPEL DES BEITRAGS und den BETREFF. Sie stehen "
+                "damit fest, wie die Seite sie zeigte — und nicht erst, wie "
+                "der Bericht sie später aus dem Seitenabzug ableiten müsste. "
+                "Für das Gegenlesen heißt das: Bei neuen Belegen erscheinen "
+                "Quellenzeile, Datum und Betreff ohne Vorbehalt; bei älteren "
+                "bleibt es bei dem, was oben beschrieben ist.",
+                "ZU JEDER DIESER ANGABEN WIRD MITGESCHRIEBEN, WOHER SIE "
+                "STAMMT. Eine Seite bietet für dieselbe Angabe oft mehrere "
+                "Fundorte, und die tragen nicht alle gleich weit. Deshalb "
+                "wird nicht nur der Wert gesichert, sondern auch der Weg zu "
+                "ihm. Bei der Beitragsnummer wird zusätzlich eine ZWEITE, "
+                "unabhängige Quelle herangezogen: Bestätigen beide einander, "
+                "ist die Nummer doppelt belegt. WIDERSPRECHEN SIE EINANDER, "
+                "BLEIBT DIE NUMMER LEER — eine strittige Beitragsnummer "
+                "gehört nicht in eine Akte, weil an ihr Themenbetreff, "
+                "Datum, Sprungmarke und Gesprächspartner hängen. Der Beleg "
+                "erscheint dann wie ein älterer, mit Vorbehalt.",
+                "DIE UHRZEIT TRÄGT KEINE ZEITZONE, und das ist Absicht. Das "
+                "Forum zeigte seine Zeiten in der Zone seiner eigenen "
+                "Einstellung; welche das war, ist bislang nicht festgestellt. "
+                "Gesichert wird deshalb die Angabe, wie sie auf der Seite "
+                "stand. WERTEN SIE DIESE ZEIT NICHT UNGEPRÜFT ALS ORTSZEIT "
+                "— eine Tatzeit in der falschen Zone ist um Stunden falsch. "
+                "Sobald die Zone belegt ist, lässt sich aus dem Gesicherten "
+                "verlustfrei umrechnen.",
             ),
         ),
         Abschnitt(
