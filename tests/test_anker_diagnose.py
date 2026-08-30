@@ -329,3 +329,161 @@ def test_AD16_gegenprobe_ohne_meldung_keine_zeilen(tmp_path):
     text = "\n".join(befund.seiten[0].quelltext)
     assert "Keine Fehlermeldung" in text
     assert "page-header" not in text
+
+
+# ---------------------------------------------------------------------------
+# Build 744 - M7: wo stehen die Elemente, die der gebrochene Schritt verlangt?
+#
+# DER ANLASS. Nach dem Fix aus Build 742 loesten 25 von 27 Ankern auf. Bei
+# den zwei uebrigen sagt die Bruchmeldung: der Anker verlangt den 29.
+# <article>, an der Stelle stehen 2 - und die ganze Seite traegt 500. Die
+# Elemente SIND also da. Damit bleiben zwei Lagen uebrig, die Verschiedenes
+# verlangen: sie stehen INEINANDER (eine zweite Kaskade der Zerlegung, hier
+# zu beheben) oder NEBENEINANDER an anderer Stelle (ein anderer Abzug als
+# der gesehene, nicht durch Code zu heilen).
+#
+# EINE ZAHL UNTERSCHEIDET SIE: wie viele stehen in einem gleichnamigen
+# Element? Bei der Kaskade fast alle, sonst keines. Genau diese Zahl misst
+# M7 - und diese Tests halten sie fest, damit sie nicht irgendwann
+# stillschweigend etwas anderes zaehlt.
+#
+# AD17  Kaskade -> M7 nennt die Zahl der verschachtelten und die Tiefe
+# AD18  GEGENPROBE: Geschwister anderswo -> M7 sagt ausdruecklich, dass
+#       KEINES verschachtelt ist. Ohne diese Probe waere AD17 auch mit
+#       einem Werkzeug gruen, das immer "Kaskade" meldet
+# AD19  ohne Bruch KEINE Verteilung - eine Messung ohne Anlass ist Ballast
+#       in einer weitergebbaren Ausgabe
+# AD20  die Verteilung traegt KEINEN Beitragstext
+# AD21  eine lange Kette wird gekuerzt, aber MIT der Zahl der ausgelassenen
+#       Glieder - die Laenge der Kette ist hier der Messwert
+# ---------------------------------------------------------------------------
+
+#: Der Anker verlangt den 29. <article> unter '#page-body'. In beiden
+#: Bestaenden unten steht dort genau EINER - der Anker bricht also, und M7
+#: hat einen Anlass.
+ANKER_ARTIKEL = "./donate[1]/div[1]/div[4]/article[29]/p[1]/text()[1]"
+
+
+def _seite_artikel(koerper: str) -> bytes:
+    """Dieselbe Seitenhuelle wie _seite, aber mit frei setzbarem #page-body."""
+    return ("<html><head><title>t</title></head><body>"
+            "<donate><div id=\"wrap\" class=\"wrap shadow\">"
+            "<div id=\"brdleft\">L</div>"
+            + KOPF_SCHLICHT +
+            "<div class=\"announce postmsg\">A</div>"
+            "<div id=\"page-body\">" + koerper + "</div>"
+            "<div id=\"page-footer\">F</div>"
+            "</div></donate></body></html>").encode("utf-8")
+
+
+def _kaskade(tiefe: int = 12) -> str:
+    """<article> in <article> in <article> - die Lage (a)."""
+    innen = "<p>" + WORTLAUT + ".</p>"
+    text = innen
+    for i in range(tiefe, 0, -1):
+        text = '<article class="post" id="p%d">%s</article>' % (100 + i, text)
+    return text
+
+
+def _verstreut(anzahl: int = 12) -> str:
+    """Lauter Geschwister - aber unter einem eigenen Kasten je Stueck."""
+    stuecke = ['<article class="post" id="p100"><p>%s.</p></article>'
+               % WORTLAUT]
+    for i in range(1, anzahl):
+        stuecke.append('<div class="kasten"><article class="post" id="p%d">'
+                       '<p>%s.</p></article></div>' % (100 + i, WORTLAUT))
+    return "".join(stuecke)
+
+
+def _bestand_artikel(tmp_path: Path, koerper: str, *, anker: str):
+    tmp_path = Path(tmp_path)
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    fo = tmp_path / "forensic_1.db"
+    ev = tmp_path / "evidence_1.db"
+
+    c = sqlite3.connect(fo)
+    c.executescript(
+        "CREATE TABLE pages (id INTEGER PRIMARY KEY, url_canonical TEXT,"
+        " method TEXT, html BLOB);"
+        "CREATE TABLE page_aliases (page_id INTEGER, url_raw TEXT);")
+    c.execute("INSERT INTO pages (id,url_canonical,method,html) "
+              "VALUES (1,?,'GET',?)", (URL, _seite_artikel(koerper)))
+    c.commit()
+    c.close()
+
+    c = sqlite3.connect(ev)
+    c.execute("CREATE TABLE annotations (id INTEGER PRIMARY KEY, page_url TEXT,"
+              " selection_json TEXT, post_id INTEGER, deleted_at TEXT)")
+    sel = {"xpathStart": anker, "offsetStart": 0, "xpathEnd": anker,
+           "offsetEnd": 7, "textContent": WORTLAUT}
+    c.execute("INSERT INTO annotations (id,page_url,selection_json) "
+              "VALUES (1,?,?)", (URL, json.dumps(sel, ensure_ascii=False)))
+    c.commit()
+    c.close()
+    return ev, fo
+
+
+def test_AD17_kaskade_wird_als_kaskade_benannt(tmp_path):
+    ev, fo = _bestand_artikel(tmp_path, _kaskade(12), anker=ANKER_ARTIKEL)
+    befund = AnkerDiagnose(evidence=ev, forensic=fo).lauf()
+    s = befund.seiten[0]
+    assert s.verteilung_marke == "article", s.verteilung_marke
+    text = "\n".join(s.verteilung_genaehert)
+    # Zwoelf <article>, davon elf in einem anderen - der zwoelfte ist der
+    # aeusserste. Die tiefste Schachtelung ist damit 11.
+    assert "<article>: 12 im Baum" in text, text
+    assert "11 von 12 stehen INNERHALB" in text, text
+    assert "tiefste Schachtelung: 11" in text, text
+    assert "Kaskade der Zerlegung" in text, text
+
+
+def test_AD18_gegenprobe_geschwister_sind_keine_kaskade(tmp_path):
+    # OHNE DIESE PROBE waere AD17 auch mit einem Werkzeug gruen, das bei
+    # jedem Bruch "Kaskade" meldet. Genau dieser Kurzschluss hat dieses
+    # Teilprojekt vier Builds gekostet.
+    ev, fo = _bestand_artikel(tmp_path, _verstreut(12), anker=ANKER_ARTIKEL)
+    befund = AnkerDiagnose(evidence=ev, forensic=fo).lauf()
+    text = "\n".join(befund.seiten[0].verteilung_genaehert)
+    assert "<article>: 12 im Baum" in text, text
+    assert "KEINES steht innerhalb" in text, text
+    assert "INNERHALB eines anderen" not in text, text
+    # Und die Gruppierung sagt, WO sie stattdessen stehen: einer unmittelbar
+    # unter #page-body, elf je unter einem eigenen div.kasten.
+    assert "verteilt auf 2 Vorfahrenkette(n)" in text, text
+    assert "div.kasten" in text, text
+
+
+def test_AD19_ohne_bruch_keine_verteilung(tmp_path):
+    # Eine Messung ohne Anlass ist Ballast - und in einer Ausgabe, die an
+    # die StA weitergegeben werden kann, ist jede Zeile ohne Anlass eine
+    # Zeile zu viel.
+    ev, fo = _bestand(tmp_path, KOPF_SCHLICHT)
+    befund = AnkerDiagnose(evidence=ev, forensic=fo).lauf()
+    s = befund.seiten[0]
+    assert s.verteilung_marke == ""
+    assert s.verteilung_roh == []
+    assert s.verteilung_genaehert == []
+
+
+def test_AD20_die_verteilung_traegt_keinen_beitragstext(tmp_path):
+    ev, fo = _bestand_artikel(tmp_path, _kaskade(12), anker=ANKER_ARTIKEL)
+    befund = AnkerDiagnose(evidence=ev, forensic=fo).lauf()
+    text = "\n".join(befund.seiten[0].verteilung_roh
+                     + befund.seiten[0].verteilung_genaehert)
+    assert WORTLAUT not in text, text
+    # Gegenprobe: der Wortlaut steht sehr wohl im Abzug - der Test ist also
+    # nicht deshalb gruen, weil es ihn gar nicht gibt.
+    assert WORTLAUT in _seite_artikel(_kaskade(12)).decode("utf-8")
+
+
+def test_AD21_lange_ketten_werden_mit_zahl_gekuerzt(tmp_path):
+    # Bei einer Kaskade wird die Vorfahrenkette so lang wie die Kaskade
+    # tief ist. Gekuerzt werden darf sie nur dort, wo auch gesagt wird, WIE
+    # VIEL weggelassen wurde: die Laenge der Kette IST hier der Befund.
+    ev, fo = _bestand_artikel(tmp_path, _kaskade(12), anker=ANKER_ARTIKEL)
+    befund = AnkerDiagnose(evidence=ev, forensic=fo).lauf()
+    text = "\n".join(befund.seiten[0].verteilung_genaehert)
+    assert "Glieder) ..." in text, text
+    # Und die Tiefe des ganzen Baums steht dabei - sie sagt, ob libxml2 an
+    # seine Grenze (256) gekommen ist und den Rest weggelassen hat.
+    assert "groesste Schachtelungstiefe im ganzen Baum:" in text, text

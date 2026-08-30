@@ -324,6 +324,20 @@ if __name__ == "__main__":
 #       'andere Seite des Themas' von 'spaeter neu gezogen' zu unterscheiden
 # BM03  GEGENPROBE: bei einem Bruch an einem NICHT-Beitragsschritt bleibt
 #       die Zusatzangabe weg - eine Zahl ohne Bezug waere Beiwerk
+#
+# BUILD 744 - DIE ANGABE, DIE DIE BEIDEN LAGEN WIRKLICH TRENNT
+#
+# BM02 zaehlt, wie viele Beitraege die Seite traegt. Diese Zahl allein
+# LAESST BEIDE DEUTUNGEN ZU - und eine Angabe, die jede Deutung zulaesst,
+# wird nach der gedeutet, die man ohnehin erwartet hat. Was sie trennt, ist
+# die Frage, ob die Beitraege INEINANDER stehen: ein <article> gehoert nicht
+# in ein <article>. Steht es dort, hat die Zerlegung sie ineinandergeschoben
+# (Auswertungsfehler, im Code zu beheben); steht keines darin, stehen sie
+# nebeneinander an anderer Stelle (Datenbefund, nicht durch Code zu heilen).
+#
+# BM04  Beitraege INEINANDER -> die Meldung nennt Zahl und Tiefe
+# BM05  GEGENPROBE: Beitraege NEBENEINANDER -> die Meldung sagt
+#       ausdruecklich, dass keines verschachtelt ist
 
 from report_render.absatz_finder import AbsatzFinder
 
@@ -368,3 +382,38 @@ def test_BM03_gegenprobe_ohne_beitragsschritt_keine_zusatzangabe():
     f = AbsatzFinder(_seite_mit_zwei_beitraegen())
     meldung = f.anker_bruchstelle("./donate[1]/div[1]/div[9]/p[1]/text()[1]")
     assert "Die ganze Seite traegt" not in meldung
+
+
+def _seite_mit_kaskade() -> str:
+    """Zwoelf <article>, ineinandergeschoben - die Lage 'Kaskade'."""
+    innen = "<p>Text.</p>"
+    for i in range(12, 0, -1):
+        innen = '<article class="post" id="p%d">%s</article>' % (100 + i, innen)
+    return ('<donate><div id="wrap"><div id="brdleft">L</div>'
+            '<div id="page-header">K</div>'
+            '<div class="announce">A</div>'
+            '<div id="page-body">' + innen +
+            '</div><div id="page-footer">F</div></div></donate>')
+
+
+def test_BM04_die_schachtelung_wird_gezaehlt_und_benannt():
+    # ELF VON ZWOELF stehen in einem anderen - der zwoelfte ist der
+    # aeusserste. Die tiefste Schachtelung ist damit 11.
+    f = AbsatzFinder(_seite_mit_kaskade())
+    meldung = f.anker_bruchstelle(
+        "./donate[1]/div[1]/div[4]/article[29]/p[1]/text()[1]")
+    assert "11 davon stehen INNERHALB eines anderen <article>" in meldung, meldung
+    assert "tiefste Schachtelung: 11" in meldung, meldung
+    assert "das hat die Zerlegung getan" in meldung, meldung
+
+
+def test_BM05_gegenprobe_nebeneinander_ist_keine_kaskade():
+    # OHNE DIESE PROBE waere BM04 auch mit einer Fassung gruen, die bei
+    # jedem Bruch von einer Kaskade spricht. Genau dieser Kurzschluss hat
+    # dieses Teilprojekt vier Builds gekostet.
+    f = AbsatzFinder(_seite_mit_zwei_beitraegen())
+    meldung = f.anker_bruchstelle(
+        "./donate[1]/div[1]/div[4]/article[29]/p[1]/text()[1]")
+    assert "KEINES davon steht innerhalb eines anderen <article>" in meldung, meldung
+    assert "Kaskade der Zerlegung scheidet damit aus" in meldung, meldung
+    assert "INNERHALB eines anderen" not in meldung, meldung
