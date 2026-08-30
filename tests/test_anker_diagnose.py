@@ -29,6 +29,10 @@
 # AD12  Build 739: ein heiler Abzug hat ein LEERES Fehlerprotokoll - ohne
 #       diese Gegenprobe waere AD11 auch mit einem Werkzeug gruen, das
 #       immer irgendetwas meldet
+# AD14  Build 741: die KETTE nennt das Element, das verschluckt hat - der
+#       Pfad allein sagt nur, WO etwas steht
+# AD15  Build 741: die genannten Quelltextzeilen werden gezeigt, und zwar
+#       VERDECKT - Geruest offen, Text und fremde Attributwerte zu
 # AD13  Build 739: M5 unterscheidet VERSCHLUCKT (steht tiefer) von
 #       WEGGELASSEN (steht im Quelltext, fehlt im Baum) - zwei verschiedene
 #       Ursachen mit zwei verschiedenen Abhilfen
@@ -276,3 +280,52 @@ def test_AD13_verschluckt_und_weggelassen_sind_zu_unterscheiden(tmp_path):
     assert "FEHLT IM BAUM" in zeilen2, zeilen2
     protokoll2 = " ".join(befund2.seiten[0].fehlerprotokoll)
     assert "Excessive depth" in protokoll2, protokoll2
+
+
+# ---------------------------------------------------------------------------
+# Build 741 - die Kette und die Quelltextzeilen
+# ---------------------------------------------------------------------------
+
+def test_AD14_die_kette_nennt_den_verschlucker(tmp_path):
+    # DER PFAD SAGT, WO ETWAS STEHT ('div[2]/noscript[1]/div[3]'). Die KETTE
+    # sagt, WER es aufgenommen hat - und erst damit ist die Stelle im
+    # Quelltext wiederzufinden. Nach genau dieser Angabe wird gesucht, wenn
+    # ein Element tiefer steht als erwartet.
+    ev, fo = _bestand(tmp_path, KOPF_MIT_NOSCRIPT)
+    befund = AnkerDiagnose(evidence=ev, forensic=fo).lauf()
+    zeilen = "\n".join(befund.seiten[0].verortung)
+    assert "Kette:" in zeilen
+    assert "div#page-header > noscript > div#page-body" in zeilen, zeilen
+
+
+def test_AD15_die_quelltextzeilen_werden_verdeckt_gezeigt(tmp_path):
+    # OHNE DIE ZEILE IST DIE MELDUNG EINE ZAHL. Mit ihr ist sie ein
+    # Konstrukt, das man nachstellen und pruefen kann - und genau daran ist
+    # der erste Anlauf gescheitert: sechs nachgestellte Konstrukte mit nicht
+    # geschlossenem <li> verarbeitet libxml2 ALLE richtig; die Meldung
+    # 'li and div' allein genuegt also nicht.
+    ev, fo = _bestand(tmp_path, KOPF_MIT_NOSCRIPT)
+    befund = AnkerDiagnose(evidence=ev, forensic=fo).lauf()
+    text = "\n".join(befund.seiten[0].quelltext)
+    # Das Geruest ist offen - sonst waere die Zeile wertlos.
+    assert 'id="page-header"' in text
+    assert 'class="n"' in text
+    assert "<noscript>" in text
+    # Der TEXT ist zu. 'Bitte JavaScript' steht im Abzug (s. KOPF_MIT_NOSCRIPT)
+    # und darf hier nicht erscheinen.
+    assert "Bitte JavaScript" not in text
+    assert "xxxxx" in text
+    # Und die Verschiebung der Zeilenzaehlung wird BENANNT statt
+    # stillschweigend hingenommen.
+    assert "verschoben" in text
+
+
+def test_AD16_gegenprobe_ohne_meldung_keine_zeilen(tmp_path):
+    # Ein Werkzeug, das immer Quelltext zeigt, zeigt irgendwann Quelltext
+    # ohne Anlass - und jede Zeile, die ohne Anlass erscheint, ist eine
+    # Zeile zu viel in einer weitergebbaren Ausgabe.
+    ev, fo = _bestand(tmp_path, KOPF_SCHLICHT)
+    befund = AnkerDiagnose(evidence=ev, forensic=fo).lauf()
+    text = "\n".join(befund.seiten[0].quelltext)
+    assert "Keine Fehlermeldung" in text
+    assert "page-header" not in text
