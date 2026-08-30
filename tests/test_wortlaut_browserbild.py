@@ -306,3 +306,65 @@ class AnkergrundTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ===========================================================================
+# Build 743 - die Bruchmeldung nach dem Fix
+# ===========================================================================
+#
+# WARUM DIE MELDUNG GEAENDERT WERDEN MUSSTE: Sie nannte zwei Ursachen und
+# verschwieg die haeufigste - dass die ZERLEGUNG die Elemente falsch ablegt.
+# Genau daran lagen in Alex' Bestand ALLE 29 Brueche. Seit Build 742 ist das
+# behoben; wer die Meldung JETZT liest, hat einen anderen Fall vor sich und
+# darf nicht auf die ausgeraeumte Faehrte geschickt werden.
+#
+# BM01  die Meldung schliesst die Zerlegung ausdruecklich aus
+# BM02  bei einem Bruch an einem Beitragsschritt nennt sie, wie viele
+#       <article> die GANZE Seite traegt und welche Nummern - damit ist
+#       'andere Seite des Themas' von 'spaeter neu gezogen' zu unterscheiden
+# BM03  GEGENPROBE: bei einem Bruch an einem NICHT-Beitragsschritt bleibt
+#       die Zusatzangabe weg - eine Zahl ohne Bezug waere Beiwerk
+
+from report_render.absatz_finder import AbsatzFinder
+
+
+def _seite_mit_zwei_beitraegen() -> str:
+    return ('<donate><div id="wrap"><div id="brdleft">L</div>'
+            '<div id="page-header">K</div>'
+            '<div class="announce">A</div>'
+            '<div id="page-body">'
+            '<article class="post" id="p136"><p>Erster.</p></article>'
+            '<article class="post" id="p151"><p>Zweiter.</p></article>'
+            '</div><div id="page-footer">F</div></div></donate>')
+
+
+def test_BM01_die_zerlegung_wird_ausdruecklich_ausgeschlossen():
+    f = AbsatzFinder(_seite_mit_zwei_beitraegen())
+    meldung = f.anker_bruchstelle(
+        "./donate[1]/div[1]/div[4]/article[29]/p[1]/text()[1]")
+    assert "Zerlegung scheidet" in meldung
+    assert "Build 742" in meldung
+    # Und die beiden verbleibenden Lagen werden benannt.
+    assert "ANDEREN SEITE" in meldung
+    assert "SPAETER neu gezogen" in meldung
+
+
+def test_BM02_die_seitenlage_wird_mitgezaehlt():
+    # DIE ANGABE DEUTET NICHT, SIE ZAEHLT. Zwei niedrige Nummern in einem
+    # Thema, dessen Markierungen fuenfstellige tragen, sprechen fuer eine
+    # andere Seite - aber das zu entscheiden ist Sache der Sichtpruefung.
+    f = AbsatzFinder(_seite_mit_zwei_beitraegen())
+    meldung = f.anker_bruchstelle(
+        "./donate[1]/div[1]/div[4]/article[29]/p[1]/text()[1]")
+    assert "Die ganze Seite traegt 2 <article>" in meldung
+    assert "136" in meldung and "151" in meldung
+    assert "Der Anker verlangt den 29." in meldung
+
+
+def test_BM03_gegenprobe_ohne_beitragsschritt_keine_zusatzangabe():
+    # Ohne diese Probe waere BM02 auch mit einer Fassung gruen, die die Zahl
+    # an jeden Bruch haengt - und eine Zahl ohne Bezug ist Beiwerk, das die
+    # Meldung verwaessert.
+    f = AbsatzFinder(_seite_mit_zwei_beitraegen())
+    meldung = f.anker_bruchstelle("./donate[1]/div[1]/div[9]/p[1]/text()[1]")
+    assert "Die ganze Seite traegt" not in meldung
