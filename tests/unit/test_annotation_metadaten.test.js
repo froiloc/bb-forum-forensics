@@ -182,7 +182,12 @@ const SEITE_VIEWTOPIC_OP_FREMD = `
           </span>
         </h2>
         <div class="box" id="pp1690431"><div class="inbox"><div class="postbody">
-          <div class="postleft"><dl><dd><span>Beiträge: 10</span></dd></dl></div>
+          <div class="postleft"><dl>
+            <dd class="usertitle"><strong>Deleted by own decision</strong></dd>
+            <dd><span>Leumund: 0</span></dd>
+            <dd><span>Beiträge: 10</span></dd>
+            <dd class="usercontacts"><span><a href="pmsnew.php?mdl=post&amp;uid=3837243&amp;topic=168221&amp;post=1690431">🖂 PM</a></span></dd>
+          </dl></div>
           <div class="postright">
             <h3>I paid didn't get in?</h3>
             <div class="postmsg"><p id="ziel1">TEXT OF THE POST</p></div>
@@ -199,7 +204,20 @@ const SEITE_VIEWTOPIC_OP_FREMD = `
         </div>
       </div>
     </article>
+
+    <div class="action-bar bottom">
+      <div class="buttons">
+        <a href="post.php?tid=168221&amp;mode=0" class="button icon-button reply-icon">Beitrag schreiben</a>
+      </div>
+      <div class="pagination"><span class="page">Seite:</span><ul><li class="active"><span>1</span></li></ul></div>
+    </div>
   </div>
+
+  <ul id="nav-footer" class="linklist bulletin" role="menubar">
+    <li class="small-icon breadcrumbs"><span class="crumb"><a href="/forum/" data-navbar-reference="index">Forum</a></span></li>
+    <li class="rightside">All times are <span title="UTC">UTC</span></li>
+    <li class="small-icon rightside"><a href="/forum/ucp.php?mode=delete_cookies">🕱 Delete cookies</a></li>
+  </ul>
 </div>`;
 
 /**
@@ -557,6 +575,89 @@ describe("PostMetaModule — die Verfahren einzeln (Build 735)", () => {
               gefunden: true });
     });
 
+    // -- Build 740: Zeitzone und die uebrigen Angaben ------------------------
+
+    it("MD23 - die Zeitzone wird aus der Fusszeile GELESEN", () => {
+        // Weisung Alex 30.08.2026: "Die Zeitzone ist grundsaetzlich UTC im
+        // Forum. 'All times are UTC' - das steht immer im Footer."
+        //
+        // SIE WIRD TROTZDEM GELESEN UND NICHT EINGETRAGEN.
+        // 'grundsaetzlich' ist keine Zusicherung fuer jede einzelne Seite,
+        // und eine fest verdrahtete Zone waere genau dann falsch, wenn es
+        // darauf ankommt: bei der Seite, die von der Regel abweicht.
+        //
+        // Erkannt wird am ATTRIBUT und nicht am Satz - 'All times are' ist
+        // englischer Fliesstext und kann uebersetzt sein.
+        const m = meta(toolbarDOM(SEITE_VIEWTOPIC_OP_FREMD));
+        expect(m.zeitzoneDerSeite()).toEqual(
+            { zone: "UTC", quelle: "#nav-footer span[title]" });
+        // GEGENPROBE: ohne Fusszeile wird KEINE Zone geraten.
+        const m2 = meta(toolbarDOM(SEITE_VIEWTOPIC));
+        expect(m2.zeitzoneDerSeite().zone).toBeNull();
+    });
+
+    it("MD24 - umgerechnet wird NUR bei UTC", () => {
+        const m = meta(toolbarDOM(SEITE_VIEWTOPIC_OP_FREMD));
+        const zeit = { jahr: 2023, monat: 12, tag: 5,
+                       stunde: 13, minute: 4, sekunde: 34 };
+        expect(m.utcAus(zeit, "UTC")).toEqual(
+            { iso: "2023-12-05T13:04:34Z", epoch: 1701781474 });
+        // GEGENPROBE: jede andere Zone verlangt eine Regel, die wir NICHT
+        // belegt haben - Sommerzeit, historische Verschiebungen. Dann wird
+        // nichts gerechnet, statt etwas zu raten.
+        expect(m.utcAus(zeit, "CET")).toEqual({ iso: null, epoch: null });
+        expect(m.utcAus(zeit, null)).toEqual({ iso: null, epoch: null });
+        expect(m.utcAus(null, "UTC")).toEqual({ iso: null, epoch: null });
+    });
+
+    it("MD25 - Forumnummer, Themennummer und Seitenzahl", () => {
+        // DIE FORUMNUMMER IST DIE INTERESSANTESTE: bei 278 Unterforen sagt
+        // sie, WO der Beitrag steht - eine Einordnung, die aus der
+        // Beitragsnummer allein nicht hervorgeht. Sie steht nur in den
+        // Moderationsverweisen.
+        const m = meta(toolbarDOM(SEITE_VIEWTOPIC_OP_FREMD));
+        expect(m.seitenkennungen()).toEqual(
+            { forumId: 368, themaId: 168221, seiteNr: 1 });
+        // GEGENPROBE: ohne Moderationsverweise bleibt die Forumnummer leer -
+        // und das ist kein Mangel, sondern die Seite.
+        const m2 = meta(toolbarDOM(SEITE_VIEWTOPIC));
+        expect(m2.seitenkennungen().forumId).toBeNull();
+        expect(m2.seitenkennungen().themaId).toBe(31351);
+    });
+
+    it("MD26 - die Angaben am Beitrag: Titel, Zeilen, PN-Verweis, Aktionen", () => {
+        const dom = toolbarDOM(SEITE_VIEWTOPIC_OP_FREMD);
+        const m = meta(dom);
+        const b = m.beitragsangaben(m.beitragBehaelter(markiere(dom, "#ziel1")));
+        expect(b.autorTitel).toBe("Deleted by own decision");
+        // 'autorZeilen' ist bewusst eine Liste von ROHTEXTEN: was dort steht,
+        // unterscheidet sich je nach Vorlage und Sprache. Sie hier zu
+        // zerlegen hiesse, ein Format zu behaupten, das nicht belegt ist.
+        expect(b.autorZeilen.join(" | ")).toContain("Leumund: 0");
+        expect(b.autorZeilen.join(" | ")).toContain("Beiträge: 10");
+        // Der PN-Verweis traegt drei Nummern auf einmal.
+        expect(b.pnUid).toBe(3837243);
+        expect(b.pnThemaId).toBe(168221);
+        expect(b.pnPostId).toBe(1690431);
+        expect(b.dauerlinkPid).toBe(1690431);
+        expect(b.meldelinkPid).toBe(1690431);
+        // WELCHE Handlungen die Seite anbietet - eine Aussage ueber die
+        // Rechte des KONTOS, nicht ueber den Verfasser.
+        expect(b.moderationAktionen).toEqual(["punish", "blockThumb"]);
+    });
+
+    it("MD27 - GEGENPROBE: ohne die Angaben bleibt alles leer statt geraten", () => {
+        // Ein Werkzeug, das immer etwas liefert, liefert irgendwann etwas
+        // Erfundenes. Auf einer Seite ohne diese Angaben MUSS es leer sein.
+        const dom = toolbarDOM(SEITE_VIEWTOPIC);
+        const m = meta(dom);
+        const b = m.beitragsangaben(m.beitragBehaelter(markiere(dom, "#ziel1")));
+        expect(b.autorTitel).toBeNull();
+        expect(b.pnUid).toBeNull();
+        expect(b.moderationAktionen).toEqual([]);
+        expect(m.beitragsangaben(null).autorZeilen).toEqual([]);
+    });
+
     // -- post_id -------------------------------------------------------------
 
     it("MD12 - P1 und P3 bestaetigen einander", () => {
@@ -799,6 +900,61 @@ describe("MarkerToolModule — der WEG durch _onMouseUp (Build 735)", () => {
         // also bleibt die Aussage ueber den VERFASSER unbekannt.
         expect(m.autorIstEroeffner).toBeNull();
         expect(m.themenbetreff).toBe("TITLE OF THE TOPIC");
+    });
+
+    it("TB21 - Weg: die Zone wird gelesen und erst dann umgerechnet", () => {
+        // DER GANZE WEG. Bis Build 739 gab es bewusst nur den Rohtext ohne
+        // Zone; jetzt kommt die maschinenlesbare Fassung dazu - aber nur,
+        // weil die Seite die Zone SELBST nennt.
+        const dom = toolbarDOM(SEITE_VIEWTOPIC_OP_FREMD);
+        const ann = markiereUeberDenWeg(dom, "#ziel1",
+                                        "/forum/viewtopic.php?id=168221");
+        const m = ann.selection.meta;
+        expect(m.zeitIsoOhneZone).toBe("2023-12-05T13:04:34");
+        expect(m.zeitZone).toBe("UTC");
+        expect(m.zeitZoneQuelle).toBe("#nav-footer span[title]");
+        expect(m.zeitIsoUtc).toBe("2023-12-05T13:04:34Z");
+        expect(m.zeitEpochUtc).toBe(1701781474);
+        // Und die uebrigen Angaben sind mitgekommen.
+        expect(m.forumId).toBe(368);
+        expect(m.themaId).toBe(168221);
+        expect(m.seiteNr).toBe(1);
+        expect(m.autorTitel).toBe("Deleted by own decision");
+        expect(m.pnUid).toBe(3837243);
+        expect(m.moderationAktionen).toContain("punish");
+    });
+
+    it("TB22 - GEGENPROBE: ohne Fusszeile KEINE Umrechnung, aber ein Hinweis", () => {
+        // Eine Tatzeit mit falscher Zone ist um Stunden falsch. Fehlt die
+        // Angabe, bleibt der Rohtext stehen und die maschinenlesbare Fassung
+        // LEER - mit einem Satz dazu, damit das Fehlen nicht als
+        // Nebensaechlichkeit durchgeht.
+        const dom = toolbarDOM(SEITE_VIEWTOPIC);
+        const ann = markiereUeberDenWeg(dom, "#ziel1",
+                                        "/forum/viewtopic.php?pid=721598");
+        const m = ann.selection.meta;
+        expect(m.zeitIsoOhneZone).toBe("2022-12-16T19:08:03");
+        expect(m.zeitZone).toBeNull();
+        expect(m.zeitIsoUtc).toBeNull();
+        expect(m.zeitEpochUtc).toBeNull();
+        expect(m.hinweise.join(" ")).toContain("keine Zeitzone");
+    });
+
+    it("TB23 - GEGENPROBE: eine andere Zone wird NICHT umgerechnet", () => {
+        // Ohne diese Probe waere TB21 auch mit einer Fassung gruen, die jede
+        // Zone wie UTC behandelt - und dann stuende in der Akte eine Tatzeit,
+        // die um Stunden danebenliegt und dabei genau wie eine richtige
+        // aussieht.
+        const dom = toolbarDOM(
+            SEITE_VIEWTOPIC_OP_FREMD.replace('<span title="UTC">UTC</span>',
+                                             '<span title="CET">CET</span>'));
+        const ann = markiereUeberDenWeg(dom, "#ziel1",
+                                        "/forum/viewtopic.php?id=168221");
+        const m = ann.selection.meta;
+        expect(m.zeitZone).toBe("CET");
+        expect(m.zeitIsoUtc).toBeNull();
+        expect(m.zeitEpochUtc).toBeNull();
+        expect(m.hinweise.join(" ")).toContain("nicht UTC");
     });
 
     it("TB15 - reduzierte Ansicht: NUR 'pp<n>' - der breitere Weg faengt es auf", () => {
