@@ -1,0 +1,76 @@
+{
+  "issues": [
+    {
+      "id": "9f2a67c0-3d81-4b56-a49e-08c15b73de24",
+      "type": "improvement",
+      "title": "ABNAHME: 27 von 27 Belegen loesen ueber den Anker auf",
+      "affected_version": "0.8.747",
+      "reporter": "Alex",
+      "reported_at": "2026-08-31T16:00:00+02:00",
+      "status": "resolved",
+      "priority": "critical",
+      "severity": "major",
+      "description": "Alex' Trockenuebung mit Build 747 gegen evidence_155955.db: 27 von 27 Annotationen wuerden eingetragen, ALLE ueber den Anker. Die Ankerbilanz ist leer, der Rueckfall auf den Wortlaut wurde kein einziges Mal gebraucht. Auch #16 und #25 - die beiden Belege, an denen das Teilprojekt seit Wochen haengt - loesen jetzt ueber den Anker auf und treffen beide post_id=10070, genau den Beitrag, den die Gegenprobe im Browser genannt hatte. AUSGANGSLAGE ZUM VERGLEICH: am 28.08.2026 loeste KEIN EINZIGER Beleg ueber den Anker auf (25 ueber den Wortlaut, 4 mehrdeutig, 3 nicht gefunden). Damit ist der HTML5-Zerleger aus Build 747 am ECHTEN Bestand belegt und nicht nur an Konstrukten.",
+      "expected_behavior": "Der Sollweg traegt fuer alle Belege.",
+      "actual_behavior": "Er traegt fuer alle 27.",
+      "resolved_in_version": "0.8.747",
+      "tags": [
+        "anker",
+        "post-id",
+        "abnahme",
+        "messung"
+      ],
+      "related_to": [
+        "3e1c9f04-7a58-4d26-b913-0c85f7a2e461"
+      ]
+    },
+    {
+      "id": "c30b859e-46f7-42d1-b78a-5e02419cf6b3",
+      "type": "bug",
+      "title": "DataLossWarning des Zerlegers lief auf stderr statt in die Befunde",
+      "affected_version": "0.8.747",
+      "reporter": "Alex",
+      "reported_at": "2026-08-31T16:10:00+02:00",
+      "status": "resolved",
+      "priority": "medium",
+      "severity": "minor",
+      "description": "Vor der eigentlichen Ausgabe erschienen drei Zeilen auf stderr: 'DataLossWarning: Coercing non-XML name: 5' und zweimal dasselbe fuer '&#160;'. URSACHE, GEMESSEN: html5lib legt seinen Baum ueber lxml ab, und lxml haelt sich an die XML-Namensregeln. Im Quelltext der Seite steht 'rel=\"nofollow\"&#160; target=\"_blank\"' - eine Entitaet ZWISCHEN zwei Attributen (sichtbar in M6 zu Zeile 141); der HTML-Zerleger liest sie regelgerecht als weiteren ATTRIBUTNAMEN, den XML nicht zulaesst. FOLGENLOS FUER DIE AUSWERTUNG, und das ist gemessen: bei diesem Konstrukt bleibt das <a> stehen, die Textknoten bleiben, der Anker loest auf - ein Anker zaehlt Elemente und Textknoten, Attribute kommen darin nicht vor. ABER SIE GEHOERT NICHT AUF stderr: eine Veraenderung an der Auswertung eines Beweismittels darf nicht still geschehen, und eine Zeile zwischen den Zeilen eines Laufs steht in keinem Protokoll und in keinem Vermerk (Grundregel 1). Ab Build 748 werden die Meldungen eingefangen und als Befund gefuehrt. UND SIE WERDEN UNTERSCHIEDEN: ein ELEMENTname, der umgeschrieben wird (gemessen: ein Tagname mit '&' wird zu 'aU00026b'), laesst einen Anker brechen, weil der Anker den urspruenglichen Namen verlangt - dieser Fall wird laut gemeldet. Unterschieden wird am Quelltext: kommt der Name dort als Tag vor, ist der Befund laut. IM ZWEIFEL LAUT - ein Befund zu viel kostet einen Blick, einer zu wenig eine Fehlspur.",
+      "expected_behavior": "Jede Veraenderung an der Auswertung steht in den Befunden, und Folgenloses ist von Folgenreichem unterschieden.",
+      "actual_behavior": "Sie lief ununterschieden auf stderr.",
+      "resolved_in_version": "0.8.748",
+      "tags": [
+        "zerlegung",
+        "html5",
+        "belegbarkeit",
+        "grundregel-1"
+      ],
+      "related_to": [
+        "af639c81-2b74-4e50-83d1-95c7e0a48f26"
+      ]
+    },
+    {
+      "id": "72e4a1d8-90c3-4f18-b562-3ac70d8e1946",
+      "type": "documentation",
+      "title": "Offen: Fremdzuweisungen und die sieben weiteren Bestaende",
+      "affected_version": "0.8.748",
+      "reporter": "Claude",
+      "reported_at": "2026-08-31T16:20:00+02:00",
+      "status": "open",
+      "priority": "high",
+      "severity": "major",
+      "description": "Mit der Abnahme von Build 747 ist der Nachtrag der Beitragsnummer fachlich abgeschlossen; offen bleibt der scharfe Lauf (Stufe A, Sicherung, Hash-Kette) nach einer Stichprobe an zwei bis drei Belegen. DANACH SIND ZWEI BAUSTELLEN AN DER REIHE, die seit dem 30.08.2026 bewusst unangetastet liegen: (1) Fremdzuweisungen vermerken die Quelle in forensic_<uid>.db nicht, weshalb die Annotation den Ermittler des Fremdbenutzers nicht erreicht (7d520e94) - noch nicht analysiert; (2) sieben weitere Beweismitteldatenbanken mit je einer Annotation sind ueberhaupt noch nicht gesichtet (e6a91b78), Grundregel 1: kein Beleg darf still uebersprungen werden.",
+      "expected_behavior": "Beide Baustellen werden einzeln und nacheinander angefasst.",
+      "actual_behavior": "Sie liegen und sind benannt.",
+      "tags": [
+        "offen",
+        "annotation",
+        "fremdzuweisung",
+        "vollstaendigkeit"
+      ],
+      "related_to": [
+        "7d520e94-1a63-4c78-b2e5-83f0c1a479db",
+        "e6a91b78-35d0-4f24-9c81-4b7e02a5d316"
+      ]
+    }
+  ]
+}

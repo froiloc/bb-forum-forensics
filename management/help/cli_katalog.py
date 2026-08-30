@@ -317,6 +317,10 @@ _GEPRUEFT_727 = ("Build 727, 2026-08-28, gegen einen Wegwerf-Bestand unter "
                  "/tmp (evidence_700.db + forensic_700.db mit zwei "
                  "Annotationen und einem Seitenabzug), Python 3.13, lxml 6.1")
 
+_GEPRUEFT_747 = ("Build 747, 2026-08-31, gegen einen Wegwerf-Bestand "
+                 "im Baucontainer gefahren; die erzeugte Seite wurde in "
+                 "Chromium geoeffnet und die Ankerpruefung gelesen.")
+
 _GEPRUEFT_737 = ("Build 737, 2026-08-30, gegen einen Wegwerf-Bestand unter "
                  "/tmp (evidence_1.db mit zwei Annotationen, forensic_1.db "
                  "mit einem Seitenabzug, dessen Seitenkopf ein <noscript> "
@@ -5425,6 +5429,77 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "Vierzig Belege ohne jeden Inhaltsausschnitt - die "
                      "Ausgabe ist damit ohne weitere Pruefung weitergebbar.",
                      _GEPRUEFT_727),
+            ),
+        ),
+    ),
+    CliEintrag(
+        schluessel="seite_ausleiten",
+        pfad="tools/seite_ausleiten.py",
+        aufruf="python tools/seite_ausleiten.py --evidence <evidence_N.db> "
+               "--forensic <forensic_N.db> --beleg <N> --ziel <Datei.html>",
+        titel="Seitenabzug fuer die Gegenprobe im Browser ausleiten",
+        gruppe="Migration und Reparatur",
+        zweck="Den gesicherten Seitenabzug zu einem Beleg als HTML-Datei "
+              "herausschreiben und den Anker der Markierung darin im Browser "
+              "Schritt fuer Schritt pruefbar machen.",
+        art="lesend",
+        datenbanken=(
+            "evidence_<uid>.db (lesend, mode=ro - annotations)",
+            "forensic_<uid>.db (lesend, mode=ro - pages.html)",
+        ),
+        betrieb="Der Betrieb darf weiterlaufen. Beide Verbindungen sind "
+                "read-only; es gibt keinen schreibenden Pfad und kein "
+                "'--ausfuehren'. Ein Wartungsfenster ist nicht noetig "
+                "(Wartungsstufe C).",
+        hinweis="DER BROWSER IST DER MASSSTAB, nicht ein weiterer Messwert. "
+                "Er hat den Anker beim Markieren erzeugt; was er an der "
+                "verlangten Stelle sieht, entscheidet. Genau diese Gegenprobe "
+                "hat am 31.08.2026 den Ankerbruch geklaert - der Anker war "
+                "richtig, der Abzug vollstaendig, falsch war die serverseitige "
+                "Zerlegung. Beleg: "
+                "management/Befund_Ankerbruch_Browsergegenprobe_v1_0.md",
+        konfiguration=KONFIG_KEINE,
+        ausgabe="Auf der Konsole: Herkunftsnachweis, Adresse, Anker und die "
+               "LAENGE des markierten Wortlauts (nicht der Wortlaut selbst). "
+               "In die Zieldatei: der Seitenabzug in der Huelle des "
+               "Ermittlungsfensters ('#forensic-viewport') samt einer "
+               "Ankerpruefung, die beim Oeffnen von selbst laeuft und ihre "
+               "Ausgabe in die Entwicklerkonsole und die Zwischenablage legt.",
+        tiefe=CliTiefe(
+            beispiele=(
+            _bsp("python tools/seite_ausleiten.py "
+                 "--evidence /tmp/evidence_1.db --forensic /tmp/forensic_1.db "
+                 "--beleg 1 --ziel /tmp/sichtung/beleg_1.html",
+                 "Schreibt die Seite heraus und nennt Adresse und Anker des "
+                 "Belegs. Rueckgabewert 0.",
+                 _GEPRUEFT_747),
+            _bsp("python tools/seite_ausleiten.py "
+                 "--evidence /tmp/evidence_1.db --forensic /tmp/forensic_1.db "
+                 "--beleg 999 --ziel /tmp/x.html",
+                 "Beleg gibt es nicht: Klartext, Rueckgabewert 1, keine "
+                 "Datei.",
+                 _GEPRUEFT_747),
+        ),
+        exit_codes=(
+            (0, "ausgeleitet"),
+            (1, "Datei fehlt, Beleg unbekannt oder kein GET-Abzug vorhanden"),
+            (2, "Aufruffehler (fehlende Argumente)"),
+        ),
+        warnungen=(
+            "DIE ERZEUGTE DATEI ENTHAELT BEWEISMITTELINHALT IM KLARTEXT - "
+            "Beitraege, Benutzernamen, alles. Sie gehoert in ein Verzeichnis "
+            "mit demselben Schutz wie die Datenbanken und ist nach der "
+            "Sichtung zu LOESCHEN. Das Werkzeug legt sie ausschliesslich "
+            "dorthin, wo '--ziel' es anweist.",
+            "WEITERGEGEBEN WIRD NUR DIE KONSOLENAUSGABE DER ANKERPRUEFUNG. "
+            "Sie traegt Tagnamen, Kennungen, Klassen und Zahlen - keinen "
+            "Beitragstext. Die HTML-Datei selbst wird NICHT weitergegeben.",
+            "ES SCHREIBT NICHT IN DIE DATENBANKEN. Beide werden mit 'mode=ro' "
+            "geoeffnet; es gibt kein UPDATE und kein INSERT.",
+            "Bilder und Smileys fehlen beim Oeffnen (404 in der Konsole) - "
+            "die Dateien liegen neben der Zieldatei nicht vor. Auf den "
+            "Seitenaufbau hat das keinen Einfluss; die Meldungen sind ohne "
+            "Belang.",
             ),
         ),
     ),

@@ -233,3 +233,103 @@ def test_HZ12_rohtext_stellen_unterscheidet_ausgeglichen():
     # heile Hinweistext ein Befund.
     mit_br = rohtext_stellen('<noscript>Bitte JavaScript<br>an</noscript>')
     assert mit_br and mit_br[0][2] is True
+
+
+# ---------------------------------------------------------------------------
+# Build 748 - die Namensumschreibungen des Zerlegers
+#
+# ALEX' LAUF VOM 31.08.2026 gab vor der eigentlichen Ausgabe drei Zeilen auf
+# stderr aus:
+#
+#   DataLossWarning: Coercing non-XML name: 5
+#   DataLossWarning: Coercing non-XML name: &#160;
+#
+# URSACHE, GEMESSEN: html5lib legt seinen Baum ueber lxml ab, und lxml haelt
+# sich an die XML-Namensregeln. Im Quelltext der Seite steht
+# 'rel="nofollow"&#160; target="_blank"' - eine Entitaet ZWISCHEN zwei
+# Attributen; der HTML-Zerleger liest sie regelgerecht als weiteren
+# ATTRIBUTNAMEN, und XML laesst diesen Namen nicht zu.
+#
+# ZWEI DINGE SIND DARAN ZU TUN, UND ES SIND ZWEI VERSCHIEDENE:
+#
+#   (1) Die Meldung gehoert nicht auf stderr. Eine Veraenderung an der
+#       Auswertung eines Beweismittels darf nicht still geschehen - und
+#       eine Zeile, die zwischen den Zeilen eines Laufs auf stderr
+#       erscheint, ist so gut wie still: sie steht in keinem Protokoll und
+#       in keinem Vermerk (Grundregel 1).
+#   (2) ATTRIBUTname und ELEMENTname sind zu unterscheiden. Ein Anker zaehlt
+#       Elemente und Textknoten - Attribute kommen darin nicht vor, die
+#       Umschreibung ist dort folgenlos. Ein umgeschriebener ELEMENTname
+#       dagegen laesst einen Anker brechen, denn der Anker verlangt den
+#       urspruenglichen Namen.
+#
+# HZ13  die Warnung erreicht stderr NICHT mehr, sondern die Befunde
+# HZ14  ein Attributname wird als folgenlos benannt - und der Anker traegt
+# HZ15  ein ELEMENTname wird laut gemeldet ('DIESE STELLE GEHOERT ANGESEHEN')
+# HZ16  GEGENPROBE: ein heiler Abzug erzeugt KEINEN solchen Befund
+# ---------------------------------------------------------------------------
+
+import warnings as _warnings
+
+
+#: Genau der Konstrukt aus Alex' Abzug: eine Entitaet zwischen zwei
+#: Attributen (s. M6 zu Zeile 141).
+_ENTITAET_ZWISCHEN_ATTRIBUTEN = (
+    '<donate><div id="wrap"><div id="page-body">'
+    '<article class="post" id="p1">'
+    '<p>Vor <a href="/x" rel="nofollow"&#160; target="_blank">T</a> nach.</p>'
+    '</article></div></div></donate>')
+
+
+def _mit_aufgefangenen_warnungen(quelle):
+    with _warnings.catch_warnings(record=True) as durchgelassen:
+        _warnings.simplefilter("always")
+        wurzel, befunde = Html5Zerleger().zerlege(quelle)
+    return wurzel, befunde, [str(w.message) for w in durchgelassen]
+
+
+def test_HZ13_die_warnung_erreicht_stderr_nicht_mehr():
+    _wurzel, befunde, durchgelassen = _mit_aufgefangenen_warnungen(
+        _ENTITAET_ZWISCHEN_ATTRIBUTEN)
+    assert durchgelassen == [], \
+        "die Meldung gehoert in die Befunde, nicht auf stderr"
+    # ABER SIE VERSCHWINDET NICHT: verschwiegen waere schlimmer als laut.
+    assert any("umgeschrieben" in b for b in befunde), befunde
+
+
+def test_HZ14_ein_attributname_ist_folgenlos_und_wird_so_benannt():
+    wurzel, befunde, _ = _mit_aufgefangenen_warnungen(
+        _ENTITAET_ZWISCHEN_ATTRIBUTEN)
+    text = "\n".join(befunde)
+    assert "&#160;" in text
+    assert "folgenlos" in text
+    assert "ACHTUNG" not in text, "ein Attributname ist kein lauter Befund"
+    # UND DER BELEG DAZU: der Anker traegt. Ohne diese Zeile waere die
+    # Aussage 'folgenlos' eine Behauptung.
+    anker = "./donate[1]/div[1]/div[1]/article[1]/p[1]/text()[1]"
+    assert wurzel.xpath(anker)
+    assert len(wurzel.xpath("//article/p")[0].xpath("./text()")) == 2
+
+
+def test_HZ15_ein_elementname_wird_laut_gemeldet():
+    # DIESER FALL TRITT WIRKLICH EIN: ein Tagname mit '&' wird zu
+    # 'aU00026b' umgeschrieben. Der Anker verlangt weiterhin 'a&b' und
+    # faende nichts - der Bruch waere sichtbar, die Ursache stuende nirgends.
+    _wurzel, befunde, _ = _mit_aufgefangenen_warnungen(
+        '<donate><div id="wrap"><div id="page-body">'
+        '<article class="post" id="p1"><a&b>x</a&b><p>T</p></article>'
+        '</div></div></donate>')
+    text = "\n".join(befunde)
+    assert "ACHTUNG" in text, text
+    assert "a&b" in text
+    assert "GEHOERT ANGESEHEN" in text
+
+
+def test_HZ16_gegenprobe_ein_heiler_abzug_meldet_nichts():
+    # OHNE DIESE PROBE waeren HZ13-HZ15 auch mit einer Fassung gruen, die
+    # bei jedem Lauf etwas meldet - und ein Befund ohne Anlass verwaessert
+    # die Befunde, auf die es ankommt.
+    _wurzel, befunde, durchgelassen = _mit_aufgefangenen_warnungen(
+        _seite('<div id="page-header"><h1>Forum</h1></div>'))
+    assert befunde == []
+    assert durchgelassen == []

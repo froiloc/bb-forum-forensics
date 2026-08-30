@@ -1,5 +1,5 @@
 78feb3d011604ac01062f2ee34022e5f  browserprobe_tmp.mjs
-f8e1e46378a7622a8e305fe76b93c61d  build.json
+8af6a0f80fd73ca2d7dff81fcfd029e5  build.json
 673abd39475236a9afcade34abf8880c  core/kategorie_farben.py
 930ac5645cc3e4ae9ba6852e6a93dbfc  db/coordinator_db.py
 e718360fcd9faaaf37380931f6f69530  debug/sonde_annotation_metadaten.js
@@ -27,6 +27,7 @@ da01e33fed74c5ce01f13fbcee449b6f  issue-tracker/eintraege_claude_Build742.json
 0b53e44f95e20f2aa365c644a5af17e0  issue-tracker/eintraege_claude_Build745.json
 34db358267c92fc492fb135181c1ce35  issue-tracker/eintraege_claude_Build746.json
 c467263cfaa6b2703877da0c882334c7  issue-tracker/eintraege_claude_Build747.json
+e140adf3a77df12dbefebf785031f649  issue-tracker/eintraege_claude_Build748.json
 a6532b6387716ad167972fd1380a4021  maintenance/wartungsstufen.py
 b141fc6686f934511d02a96253e81de9  management/audit/event_types.py
 e9e47dad4fc23791482c258d027d6e97  management/help/cli_katalog.py
@@ -41,7 +42,7 @@ c85b0344fdd5a0fece85ff9c4e9420d1  management/maintenance/anker_diagnose.py
 4a00b054c51798cd150637a4f25bda72  report_render/beleg_darstellung.py
 9d3165c0db51c1d2a27bfd57573aa7d9  report_render/docx_renderer.py
 afb94d4489a303ec95c8f1a307a5645e  report_render/ermittler_namen.py
-51d3c447625721aba3f4cc3035d8d37a  report_render/html5_zerleger.py
+9d09adf175c58036ac8ce40ace6e01c3  report_render/html5_zerleger.py
 4ad05625a3ad3fe02f690ac1bf200619  report_render/html_renderer.py
 b8dced38a1d4df38dc7dd0530abd4329  report_render/pdf_renderer.py
 8a1cfb55cbeef4e64eed8d46011dfa28  report_render/quellen_kunde.py
@@ -55,7 +56,7 @@ b03881f5dfce37c54db9821e5e79c80c  report_render/vollzitat_satz.py
 28ff3ff5f2919dcd9fef46d98cd4c477  tests/hilfe_fehlliste_stand.json
 d87425fff19aa5ce49b9da1c2d052a11  tests/test_anker_diagnose.py
 c10f89adffdcc017ab1dd7843450e442  tests/test_annotation_metadaten_transport.py
-880bd304c4c5707613711ecabed1ec27  tests/test_html5_zerleger.py
+52cf542e78c7ec1fb676fb6c0996d297  tests/test_html5_zerleger.py
 9c8e1e03b2a951f1bfcedba7bb6e873a  tests/test_issue_tracker_eintraege.py
 c401aa2b00cecd7768aa41ae71cd1f61  tests/test_kategorie_farben.py
 1e867279992f1fcdc6d9c1e43d658d9f  tests/test_laufkopf.py
