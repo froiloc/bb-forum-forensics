@@ -281,8 +281,32 @@ class SichtLxml(Sicht):
         # GENAU wie AbsatzFinder.__init__: fragment_fromstring mit
         # create_parent='div'. Eine andere Aufbereitung waere eine andere
         # Messung - und damit keine Aussage ueber den Bericht.
+        #
+        # BUILD 739: MIT EIGENEM ZERLEGER, UM SEIN FEHLERPROTOKOLL ZU LESEN.
+        #
+        # DAS IST DIE QUELLE, DIE ICH SECHS BUILDS LANG NICHT ANGESEHEN HABE.
+        # libxml2 fuehrt Buch darueber, was ihm beim Zerlegen begegnet ist -
+        # und es benennt genau die beiden Mechanismen, die das beobachtete
+        # Bild erzeugen koennen:
+        #
+        #   ERR_TAG_NAME_MISMATCH   ein Element wurde nicht geschlossen; alles
+        #                           Folgende landet darin
+        #   ERR_RESOURCE_LIMIT      "Excessive depth in document: 256, use
+        #                           XML_PARSE_HUGE option" - libxml2 bricht die
+        #                           Schachtelung ab und LAESST DEN REST WEG
+        #
+        # Der zweite Fall ist der interessantere, weil ein BROWSER diese
+        # Grenze nicht hat: er wuerde die Seite vollstaendig aufbauen, waehrend
+        # der Bericht sie abgeschnitten sieht. Genau so sieht Alex' Befund aus.
+        #
+        # Beide Faelle sind am 30.08.2026 nachgestellt und erzeugen die
+        # gemeldete Kinderzahl 2. Sie sind AM PROTOKOLL zu unterscheiden - und
+        # zusaetzlich daran, ob '#page-body' im Baum ueberhaupt noch vorkommt:
+        # beim ersten Fall steht es tiefer, beim zweiten fehlt es ganz.
+        parser = lxml_html.HTMLParser(recover=True)
         self._wurzel = lxml_html.fragment_fromstring(
-            body_html, create_parent="div")
+            body_html, create_parent="div", parser=parser)
+        self.fehlerprotokoll = [str(e) for e in parser.error_log]
 
     @property
     def wurzel(self):
@@ -397,6 +421,10 @@ class Seitenbefund:
     annaeherung: List[str] = field(default_factory=list)
     #: M3 - die Rohtext-Elemente und ob ihr Inhalt ausgeglichen ist.
     rohtext: str = ""
+    #: M4 (Build 739) - was libxml2 selbst beim Zerlegen gemeldet hat.
+    fehlerprotokoll: List[str] = field(default_factory=list)
+    #: M5 (Build 739) - wo die bekannten Kennungen WIRKLICH stehen.
+    verortung: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -612,6 +640,57 @@ class AnkerDiagnose:
         body, roh_sicht, genaehert_sicht = sichten
         s.laenge = len(body)
         s.annaeherung = list(getattr(genaehert_sicht, "befunde", []))
+
+        # -- M4: das Fehlerprotokoll von libxml2 --------------------------
+        #
+        # DIE QUELLE, DIE SECHS BUILDS LANG UNGELESEN BLIEB. Sie benennt die
+        # Ursache oft direkt: 'ERR_TAG_NAME_MISMATCH' heisst, ein Element
+        # wurde nicht geschlossen; 'ERR_RESOURCE_LIMIT: Excessive depth in
+        # document: 256' heisst, libxml2 hat die Schachtelung ABGEBROCHEN und
+        # den Rest der Seite weggelassen - eine Grenze, die ein Browser nicht
+        # hat. Ein leeres Protokoll ist ebenfalls ein Befund: dann hat der
+        # Zerleger nichts zu beanstanden gehabt, und die Ursache liegt nicht
+        # bei ihm.
+        s.fehlerprotokoll = list(getattr(roh_sicht, "fehlerprotokoll", []))
+        if not s.fehlerprotokoll:
+            s.fehlerprotokoll = ["(leer - libxml2 hat beim Zerlegen nichts "
+                                 "beanstandet)"]
+
+        # -- M5: wo stehen die bekannten Kennungen WIRKLICH? ---------------
+        #
+        # DIE ENTSCHEIDENDE UNTERSCHEIDUNG. Ein Element, das im Quelltext
+        # steht und im Baum FEHLT, ist vom Zerleger weggelassen worden; eines,
+        # das im Baum TIEFER steht als erwartet, ist verschluckt worden.
+        # Beides sieht in der Kinderzahl gleich aus und verlangt Verschiedenes.
+        for kennung in ("wrap", "brdleft", "page-header", "page-body",
+                        "page-footer"):
+            im_quelltext = ('id="%s"' % kennung) in body or \
+                           ("id='%s'" % kennung) in body
+            el = roh_sicht.mit_kennung(kennung)
+            if el is not None:
+                s.verortung.append("#%-12s Baum: %s"
+                                   % (kennung, roh_sicht.pfad_von(el)))
+            elif im_quelltext:
+                s.verortung.append(
+                    "#%-12s STEHT IM QUELLTEXT, FEHLT IM BAUM - der Zerleger "
+                    "hat es weggelassen" % kennung)
+            else:
+                s.verortung.append("#%-12s weder im Quelltext noch im Baum"
+                                   % kennung)
+
+        # -- M6 GESTRICHEN, und der Grund gehoert hierher -------------------
+        #
+        # Der Entwurf hatte eine dritte Messung: an eine wachsende
+        # Anfangsstrecke des Quelltextes eine Sonde anhaengen und suchen, ab
+        # wann sie nicht mehr unmittelbar unter '#wrap' sitzt. Sie ist NICHT
+        # ausgeliefert worden, weil ihr Ergebnis nicht auszulegen ist: ohne
+        # einen zweiten Zerleger als Bezugspunkt sagt die Tiefe der Sonde nur
+        # etwas ueber die Stelle im Dokument, an der sie haengt, und nicht
+        # ueber einen Fehler. Eine Zahl ohne Auslegung wird ausgelegt - und
+        # zwar von dem, der sie zuerst liest.
+        #
+        # M4 und M5 beantworten die Frage ohnehin: M4 nennt die Ursache, M5
+        # unterscheidet 'verschluckt' von 'weggelassen'.
 
         # -- M3: die Rohtext-Elemente -------------------------------------
         from report_render.html5_annaeherung import rohtext_stellen

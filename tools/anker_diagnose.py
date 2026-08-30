@@ -191,6 +191,16 @@ def main(argv=None) -> int:
                 m()
                 continue
             m("   Abzug: %d Zeichen im <body>" % s.laenge)
+            # M4 zuerst: das Fehlerprotokoll von libxml2 benennt die Ursache
+            # oft unmittelbar und ist deshalb die wichtigste Zeile der Seite.
+            m("   M4 Fehlerprotokoll des Zerlegers:")
+            for zeile in s.fehlerprotokoll[:12]:
+                m("      %s" % zeile)
+            if len(s.fehlerprotokoll) > 12:
+                m("      ... (%d weitere)" % (len(s.fehlerprotokoll) - 12))
+            m("   M5 Wo die bekannten Kennungen WIRKLICH stehen:")
+            for zeile in s.verortung:
+                m("      %s" % zeile)
             if s.rohtext:
                 m("   M3 %s" % s.rohtext)
             for zeile in s.annaeherung:
@@ -246,9 +256,17 @@ def _urteil(z) -> str:
         "Ankern bleiben gebrochen.\n"
         "Das schliesst <noscript> und <template> als Ursache AUS und ist "
         "damit ein Ergebnis, kein Fehlschlag.\n"
-        "Naechster Schritt: der Ebenenbericht oben sagt, an welcher Stufe es "
-        "bricht und was dort steht. Diese Angabe gehoert gegen das gehalten, "
-        "was der Browser an derselben Stelle zeigt."
+        "\n"
+        "WEITERLESEN BEI M4, M5 UND M6 - in dieser Reihenfolge:\n"
+        "  M4 sagt, ob der Zerleger selbst etwas beanstandet hat. "
+        "'ERR_RESOURCE_LIMIT: Excessive depth' heisst, dass er die "
+        "Schachtelung abgebrochen und den Rest der Seite WEGGELASSEN hat - "
+        "eine Grenze, die ein Browser nicht kennt. "
+        "'ERR_TAG_NAME_MISMATCH' heisst, dass ein Element offen geblieben "
+        "ist.\n"
+        "  M5 sagt, ob '#page-body' im Baum TIEFER steht (verschluckt) oder "
+        "GANZ FEHLT, obwohl es im Quelltext steht (weggelassen). Das sind "
+        "zwei verschiedene Ursachen mit zwei verschiedenen Abhilfen."
         % (z["belege"] - z["lxml_traegt"], z["belege"]))
 
 

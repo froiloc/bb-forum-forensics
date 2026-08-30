@@ -5454,11 +5454,13 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "vorliegenden Bestand greift.",
         konfiguration=KONFIG_KEINE,
         ausgabe="Je Beleg eine Zeile mit 'roh=' und 'angenaehert='. Je "
-               "Seite der Ebenenbericht: welche Stufe der Positionsangabe "
-               "bricht und was an dieser Stelle im Abzug steht, benannt "
-               "statt nur gezaehlt. Am Ende die Zaehlung, ein Urteil in "
-               "ganzen Saetzen und der Konsolen-Einzeiler fuer die "
-               "Gegenprobe im Browser.",
+               "Seite: das FEHLERPROTOKOLL des Zerlegers (M4 - es benennt "
+               "die Ursache oft unmittelbar), die VERORTUNG der bekannten "
+               "Kennungen (M5 - steht '#page-body' tiefer im Baum, ist es "
+               "verschluckt; fehlt es dort und steht im Quelltext, ist es "
+               "weggelassen), der Ebenenbericht und die Rohtext-Elemente. "
+               "Am Ende die Zaehlung, ein Urteil in ganzen Saetzen und der "
+               "Konsolen-Einzeiler fuer die Gegenprobe im Browser.",
         tiefe=CliTiefe(
             beispiele=(
             _bsp("python tools/anker_diagnose.py "
@@ -5497,9 +5499,14 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             "Fehlerbild.",
             "MELDET DER LAUF 'die Annaeherung aendert NICHTS', ist das ein "
             "ERGEBNIS und kein Fehlschlag: er schliesst die beiden "
-            "bekannten Ursachen aus. Dann gilt der Ebenenbericht, und der "
-            "gehoert gegen den Konsolen-Einzeiler gehalten, den der Lauf am "
-            "Ende ausgibt.",
+            "bekannten Ursachen aus. Dann sind M4 und M5 zu lesen.",
+            "'ERR_RESOURCE_LIMIT: Excessive depth in document: 256' im "
+            "Fehlerprotokoll ist ein eigener Befund und nicht Beiwerk: der "
+            "Zerleger bricht die Schachtelung an dieser Grenze ab und LAESST "
+            "DEN REST DER SEITE WEG. Ein Browser kennt diese Grenze nicht - "
+            "er zeigt die Seite vollstaendig. Genau so entsteht das Bild "
+            "'im Browser mehr Elemente als im Abzug', ohne dass am Abzug "
+            "etwas fehlt.",
             ),
         ),
     ),

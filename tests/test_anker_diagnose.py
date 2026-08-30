@@ -24,6 +24,14 @@
 # AD09  die Ausgabe traegt KEINEN Beitragstext
 # AD10  GEGENPROBE zu AD09: der Beitragstext steht sehr wohl im Abzug -
 #       AD09 ist also nicht deshalb gruen, weil es ihn gar nicht gibt
+# AD11  Build 739: das Fehlerprotokoll von libxml2 wird gelesen und
+#       ausgegeben (M4)
+# AD12  Build 739: ein heiler Abzug hat ein LEERES Fehlerprotokoll - ohne
+#       diese Gegenprobe waere AD11 auch mit einem Werkzeug gruen, das
+#       immer irgendetwas meldet
+# AD13  Build 739: M5 unterscheidet VERSCHLUCKT (steht tiefer) von
+#       WEGGELASSEN (steht im Quelltext, fehlt im Baum) - zwei verschiedene
+#       Ursachen mit zwei verschiedenen Abhilfen
 #
 # Beleg: management/maintenance/anker_diagnose.py; tools/anker_diagnose.py;
 #        report_render/html5_annaeherung.py.
@@ -66,6 +74,8 @@ URL = "/forum/viewtopic.php?id=31351"
 
 def _bestand(tmp_path: Path, kopf: str, *, uebersetzung: bool = False):
     """Ein winziger, aber ECHTER Bestand: zwei SQLite-Dateien wie im Betrieb."""
+    tmp_path = Path(tmp_path)
+    tmp_path.mkdir(parents=True, exist_ok=True)
     fo = tmp_path / "forensic_1.db"
     ev = tmp_path / "evidence_1.db"
 
@@ -216,3 +226,53 @@ def test_AD10_gegenprobe_der_text_steht_sehr_wohl_im_abzug(tmp_path):
     con.close()
     assert WORTLAUT.encode("utf-8") in roh
     assert b"Bitte JavaScript" in roh
+
+
+# ---------------------------------------------------------------------------
+# Build 739 - was libxml2 selbst zu sagen hat
+# ---------------------------------------------------------------------------
+
+def test_AD11_das_fehlerprotokoll_wird_gelesen(tmp_path):
+    # DIE QUELLE, DIE SECHS BUILDS LANG UNGELESEN BLIEB. libxml2 fuehrt Buch
+    # darueber, was ihm begegnet ist, und benennt die Ursache oft unmittelbar.
+    ev, fo = _bestand(tmp_path, KOPF_MIT_NOSCRIPT)
+    befund = AnkerDiagnose(evidence=ev, forensic=fo).lauf()
+    protokoll = " ".join(befund.seiten[0].fehlerprotokoll)
+    assert "MISMATCH" in protokoll, protokoll
+    assert "noscript" in protokoll
+
+
+def test_AD12_gegenprobe_heiler_abzug_meldet_nichts(tmp_path):
+    # Ohne diese Probe waere AD11 auch mit einem Werkzeug gruen, das immer
+    # irgendetwas meldet - und dann waere jede Seite verdaechtig.
+    ev, fo = _bestand(tmp_path, KOPF_SCHLICHT)
+    befund = AnkerDiagnose(evidence=ev, forensic=fo).lauf()
+    protokoll = " ".join(befund.seiten[0].fehlerprotokoll)
+    assert "leer" in protokoll
+    assert "MISMATCH" not in protokoll
+
+
+def test_AD13_verschluckt_und_weggelassen_sind_zu_unterscheiden(tmp_path):
+    # DIE ENTSCHEIDENDE UNTERSCHEIDUNG. Beides sieht in der Kinderzahl gleich
+    # aus und verlangt Verschiedenes: ein verschlucktes Element steht im Baum
+    # an anderer Stelle und ist ueber einen berichtigten Pfad erreichbar; ein
+    # weggelassenes ist gar nicht da, und dann hilft nur eine andere Zerlegung.
+    ev, fo = _bestand(tmp_path, KOPF_MIT_NOSCRIPT)
+    befund = AnkerDiagnose(evidence=ev, forensic=fo).lauf()
+    zeilen = "\n".join(befund.seiten[0].verortung)
+    # VERSCHLUCKT: page-body steht im Baum, aber tiefer als erwartet.
+    assert "#page-body" in zeilen
+    assert "noscript" in zeilen, zeilen
+    assert "FEHLT IM BAUM" not in zeilen
+
+    # WEGGELASSEN: eine Schachtelung jenseits der Grenze von libxml2. Der
+    # Zerleger bricht ab und laesst den Rest weg - eine Grenze, die ein
+    # Browser nicht hat.
+    tief = ('<div id="page-header">' + "<div>" * 300 + "x" + "</div>" * 300
+            + "</div>")
+    ev2, fo2 = _bestand(tmp_path / "tief", tief)
+    befund2 = AnkerDiagnose(evidence=ev2, forensic=fo2).lauf()
+    zeilen2 = "\n".join(befund2.seiten[0].verortung)
+    assert "FEHLT IM BAUM" in zeilen2, zeilen2
+    protokoll2 = " ".join(befund2.seiten[0].fehlerprotokoll)
+    assert "Excessive depth" in protokoll2, protokoll2
