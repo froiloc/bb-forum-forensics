@@ -1,0 +1,113 @@
+{
+  "issues": [
+    {
+      "id": "b2f47d09-3c15-4e8a-9760-1de83c50a7b6",
+      "type": "bug",
+      "title": "Widerlegt: <noscript>/<template> sind NICHT die Ursache des Ankerbruchs",
+      "affected_version": "0.8.738",
+      "reporter": "Alex",
+      "reported_at": "2026-08-30T17:00:00+02:00",
+      "status": "resolved",
+      "priority": "high",
+      "severity": "major",
+      "description": "Alex' Diagnoselauf vom 30.08.2026 auf evidence_155955/forensic_155955 ueber 29 Belege und 8 Seiten: die Annaeherung aus Build 737 aendert NICHTS, und in KEINEM der acht Abzuege steht ein <noscript> oder <template>. Alle 29 Anker brechen an derselben Stelle - './donate[1]/div[1]' hat im Abzug zwei Kinder (div#brdleft, div#page-header) statt der vier bis fuenf, die der Browser zeigt. Meine Hypothese aus Build 737 ist damit WIDERLEGT.",
+      "expected_behavior": "Die Ursache ist benannt.",
+      "actual_behavior": "Sie ist es nicht. Zwei Mechanismen sind ausgeschlossen, ein dritter ist noch nicht gemessen.",
+      "resolved_in_version": "0.8.739",
+      "tags": [
+        "anker",
+        "xpath",
+        "messung",
+        "widerlegt"
+      ],
+      "related_to": [
+        "7ae4d2b1-05c9-4f36-b8e1-3d09a7625fc4"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-08-30T17:30:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "DER FIX AUS BUILD 737 BLEIBT TROTZDEM DRIN. Er ist gegen einen echten Browser an zehn Konstrukten belegt und richtig - er trifft in diesem Bestand nur nicht zu. Ein Fix zurueckzunehmen, weil er den vorliegenden Fall nicht loest, hiesse den naechsten Bestand sehenden Auges falsch auszuwerten."
+        },
+        {
+          "timestamp": "2026-08-30T17:35:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "AUCH AUSGESCHLOSSEN: dass der Browser einen anderen Text bekommt als der Bericht. server/blob_handler.py _extract_body ist eine reine Zeichenkettensuche nach <body> (Z. 641-668) und _rewrite_asset_urls ein reines str.replace auf Adressen (Z. 598-630). Keiner der beiden zerlegt oder repariert HTML. Browser und Bericht sehen DIESELBE Zeichenkette; der Unterschied entsteht erst beim Zerlegen."
+        }
+      ]
+    },
+    {
+      "id": "e5a91c86-7b23-4d60-a418-92f6047d3b15",
+      "type": "improvement",
+      "title": "Das Fehlerprotokoll des Zerlegers wird gelesen (M4)",
+      "affected_version": "0.8.738",
+      "reporter": "Claude",
+      "reported_at": "2026-08-30T17:05:00+02:00",
+      "status": "resolved",
+      "priority": "critical",
+      "severity": "major",
+      "description": "libxml2 fuehrt Buch darueber, was ihm beim Zerlegen begegnet ist - und benennt die in Frage kommenden Mechanismen unmittelbar: 'ERR_TAG_NAME_MISMATCH' (ein Element blieb offen) und 'ERR_RESOURCE_LIMIT: Excessive depth in document: 256, use XML_PARSE_HUGE option' (der Zerleger bricht die Schachtelung ab und laesst den Rest der Seite WEG - eine Grenze, die ein Browser nicht hat). ICH HABE DIESE QUELLE SECHS BUILDS LANG NICHT ANGESEHEN, obwohl sie ohne jeden Aufwand zu haben ist.",
+      "expected_behavior": "Der Zerleger wird gefragt, was er beanstandet hat.",
+      "actual_behavior": "Er wurde nie gefragt.",
+      "resolved_in_version": "0.8.739",
+      "tags": [
+        "anker",
+        "diagnose",
+        "lxml",
+        "eigener-fehler",
+        "methodik"
+      ],
+      "related_to": [
+        "b2f47d09-3c15-4e8a-9760-1de83c50a7b6"
+      ]
+    },
+    {
+      "id": "7d2c58f1-9046-4e37-b85a-c1039e7b246d",
+      "type": "improvement",
+      "title": "M5 unterscheidet 'verschluckt' von 'weggelassen'",
+      "affected_version": "0.8.738",
+      "reporter": "Claude",
+      "reported_at": "2026-08-30T17:10:00+02:00",
+      "status": "resolved",
+      "priority": "high",
+      "severity": "minor",
+      "description": "Zwei ganz verschiedene Ursachen sehen in der Kinderzahl gleich aus. VERSCHLUCKT: das Element steht im Baum, nur tiefer - dann ist es ueber einen berichtigten Pfad erreichbar. WEGGELASSEN: es steht im Quelltext und fehlt im Baum - dann hilft nur eine andere Zerlegung. M5 gibt zu jeder bekannten Kennung (#wrap, #brdleft, #page-header, #page-body, #page-footer) den TATSAECHLICHEN Pfad aus oder meldet, dass sie im Quelltext steht und im Baum fehlt.",
+      "expected_behavior": "Die beiden Faelle sind an einem Lauf zu unterscheiden.",
+      "actual_behavior": "Sie waren es nicht.",
+      "resolved_in_version": "0.8.739",
+      "tags": [
+        "anker",
+        "diagnose",
+        "belegkraft"
+      ],
+      "related_to": [
+        "e5a91c86-7b23-4d60-a418-92f6047d3b15"
+      ]
+    },
+    {
+      "id": "0f6b4a27-8d51-49c3-b70e-3529ea184cf0",
+      "type": "documentation",
+      "title": "Eine dritte Messung wurde entworfen und NICHT ausgeliefert",
+      "affected_version": "0.8.739",
+      "reporter": "Claude",
+      "reported_at": "2026-08-30T17:15:00+02:00",
+      "status": "resolved",
+      "priority": "low",
+      "severity": "trivial",
+      "description": "Der Entwurf zu Build 739 hatte eine dritte Messung: an eine wachsende Anfangsstrecke des Quelltextes eine Sonde anhaengen und suchen, ab wann sie nicht mehr unmittelbar unter '#wrap' sitzt. Sie lief und lieferte Zahlen - aber ihr Ergebnis ist ohne einen zweiten Zerleger als Bezugspunkt nicht auszulegen: die Tiefe der Sonde sagt etwas ueber die Stelle im Dokument, an der sie haengt, und nicht ueber einen Fehler.",
+      "expected_behavior": "Es wird nur ausgegeben, was auch auszulegen ist.",
+      "actual_behavior": "Eine Zahl ohne Auslegung wird ausgelegt - und zwar von dem, der sie zuerst liest.",
+      "resolved_in_version": "0.8.739",
+      "tags": [
+        "diagnose",
+        "methodik",
+        "nicht-ausgeliefert"
+      ],
+      "related_to": [
+        "e5a91c86-7b23-4d60-a418-92f6047d3b15"
+      ]
+    }
+  ]
+}
