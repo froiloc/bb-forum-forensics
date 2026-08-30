@@ -105,7 +105,7 @@ _GETRAGEN_VON = (
     "tools/postid_nachtragen.py",
     "management/maintenance/postid_nachtrag.py",
     "report_render/absatz_finder.py",
-    "report_render/html5_annaeherung.py",
+    "report_render/html5_zerleger.py",
 )
 
 from management.maintenance.postid_nachtrag import (        # noqa: E402

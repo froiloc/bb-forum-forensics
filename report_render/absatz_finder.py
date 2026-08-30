@@ -568,13 +568,17 @@ class AbsatzFinder:
         ihn aus den Roh-Bytes zu gewinnen; dann ist die Abgrenzung dieselbe
         wie im Auslieferungspfad.
         """
-        from lxml import html as lxml_html  # spaeter Import: s. Kopf install.py
-
         self._wurzel = None
         self._fehler = ""
-        #: Build 737: was die Annaeherung an diesem Abzug getan hat. Leer,
-        #: wenn nichts zu tun war. Der Aufrufer traegt es in den Vermerk.
-        self.annaeherungsbefunde = []
+        #: Build 747: was VOR dem Zerlegen am Text getan wurde - seit
+        #: Build 747 nur noch die <template>-Leerung. Leer, wenn nichts zu
+        #: tun war. Der Aufrufer traegt es in den Vermerk.
+        #:
+        #: UMBENANNT von 'annaeherungsbefunde': der alte Name beschrieb ein
+        #: Verfahren, das es nicht mehr gibt. Ein Name, dessen Bedeutung sich
+        #: aendert, ist der zuverlaessigste Weg zu einem Auswertungsfehler -
+        #: deshalb umbenannt und nicht umgedeutet.
+        self.zerlegungsbefunde = []
         # Build 729: gesetzt von _ueber_xpath, gelesen von finde().
         self._anker_grund = ""
         self._anker_bruch = ""
@@ -582,47 +586,50 @@ class AbsatzFinder:
             self._fehler = "Seitenabzug ohne <body>-Inhalt"
             return
         # ---------------------------------------------------------------
-        # BUILD 737: DER ABZUG WIRD VOR DEM ZERLEGEN AN ZWEI HTML5-REGELN
-        # ANGENAEHERT, DIE libxml2 NICHT KENNT.
+        # BUILD 747: ZERLEGT WIRD NACH DEM HTML5-STANDARD, NICHT MEHR
+        # ANNAEHERND.
         #
-        # Der Anker wird IM BROWSER gerechnet und HIER aufgeloest. Beide
-        # muessen denselben Baum sehen. An zwei Stellen sehen sie ihn nicht:
-        # der Inhalt von <noscript> ist im Browser bei eingeschaltetem
-        # JavaScript ROHTEXT, und der Inhalt von <template> steht ueberhaupt
-        # nicht im Baum. libxml2 zerlegt beides als gewoehnliches Markup -
-        # ein nicht geschlossenes Tag darin verschluckt dann ALLES, was
-        # folgt, und ein richtiger Anker zeigt ins Leere.
+        # Der Anker wird IM BROWSER gerechnet und HIER aufgeloest. Sehen
+        # beide nicht denselben Baum, zeigt ein richtiger Anker ins Leere.
         #
-        # GEMESSEN am 30.08.2026 gegen Chromium (Playwright, innerHTML auf
-        # einen <div> - der Weg des Ermittlungsfensters), zehn Konstrukte:
-        # die beiden genannten erzeugen genau das Bild aus Alex' Laeufen
-        # (Browser fuenf <div>, libxml2 zwei), die Annaeherung raeumt es aus,
-        # und an den acht uebrigen aendert sie nichts. Begruendung,
-        # Messtabelle und die BEKANNTE GRENZE des Verfahrens stehen in
-        # report_render/html5_annaeherung.py.
+        # Bis Build 746 stand hier lxml.html plus ein HANDGEBAUTER Teilnachbau
+        # des HTML5-Baumaufbaus. Er bildete erst eine, dann zwei Regeln nach
+        # und zerbrach dabei ueber fuenf Builds hinweg je ein Konstrukt, das
+        # vorher heil war - zuletzt riss er '#page-body' nach dem zweiten
+        # Beitrag auf und liess 498 Beitraege herausfallen.
         #
-        # WAS SIE NICHT IST: ein HTML5-Zerleger. Ein nicht geschlossenes <a>
-        # im Seitenkopf bleibt abweichend - dieser Fall erzeugt allerdings
-        # MEHR Elemente im Abzug als im Browser und damit ein anderes
-        # Fehlerbild.
+        # GEGENPROBE IM BROWSER am echten Abzug (31.08.2026, Chromium in der
+        # Ermittlungs-VM, Belege #16 und #25): alle zwoelf Ankerschritte
+        # loesen auf, '#page-body' haengt unter 'div#wrap' und traegt 500
+        # direkte <article>. DER ANKER WAR RICHTIG, DER ABZUG VOLLSTAENDIG -
+        # falsch war allein die Zerlegung.
         #
-        # DER ABZUG SELBST BLEIBT UNBERUEHRT. Hier wird eine Zeichenkette
-        # bearbeitet, nicht die Datenbank; forensic_<uid>.db wird nur
-        # gelesen. Was die Annaeherung getan hat, steht in
-        # self.annaeherungsbefunde und gehoert in den Vermerk - ein stiller
-        # Eingriff in die Auswertung waere genau das, was Grundregel 1
+        # html5lib fuehrt den GANZEN Algorithmus aus, denselben wie der
+        # Browser. Gemessen an 17 Konstrukten gegen Chromium: lxml roh 7,
+        # lxml + Teilnachbau 16, html5lib 17. Begruendung und Messtabelle
+        # stehen in report_render/html5_zerleger.py.
+        #
+        # KEIN RUECKFALL AUF lxml. Fehlt html5lib, bricht das hier mit einer
+        # Klartextmeldung ab. Ein Werkzeug, das je nach Installationslage
+        # anders zerlegt, liefert Ergebnisse, die nicht vergleichbar sind.
+        #
+        # DER ABZUG BLEIBT UNBERUEHRT. Was am Text getan wurde (die
+        # <template>-Leerung), steht in self.zerlegungsbefunde und gehoert in
+        # den Vermerk - ein stiller Eingriff waere genau das, was Grundregel 1
         # verbietet.
         # ---------------------------------------------------------------
-        from report_render.html5_annaeherung import annaehern
-        body_html, self.annaeherungsbefunde = annaehern(body_html)
+        from report_render.html5_zerleger import Html5FehltError, Html5Zerleger
 
         try:
-            # create_parent='div' bildet den Behaelter '#forensic-viewport'
-            # nach, gegen den toolbar.js den Anker gerechnet hat. Ohne ihn
-            # waere der Bezugspunkt bei mehreren Wurzelelementen mehrdeutig.
-            self._wurzel = lxml_html.fragment_fromstring(
-                body_html, create_parent="div")
-        except Exception as exc:  # lxml wirft je nach Eingabe Verschiedenes
+            self._wurzel, self.zerlegungsbefunde = \
+                Html5Zerleger().zerlege(body_html)
+        except Html5FehltError as exc:
+            # Eigener Zweig: das ist ein Anlagenproblem, kein Befund ueber
+            # das Beweismittel. Die beiden in einer Meldung zusammenzuziehen
+            # hiesse, den leichten Fall wie den schweren aussehen zu lassen.
+            self._fehler = str(exc)
+            logger.error("AbsatzFinder: %s", self._fehler)
+        except Exception as exc:
             self._fehler = "Seitenabzug nicht zerlegbar: %s" % exc
             logger.warning("AbsatzFinder: %s", self._fehler)
 
@@ -835,7 +842,7 @@ class AbsatzFinder:
                 # jedes folgende Geschwister rutschte eine Ebene tiefer.
                 #
                 # Seit Build 742 ist das behoben (report_render/
-                # html5_annaeherung.py). Wer diese Meldung JETZT liest, hat es
+                # html5_zerleger.py). Wer diese Meldung JETZT liest, hat es
                 # mit einem anderen Fall zu tun - und die Meldung soll ihn
                 # nicht auf die bereits ausgeraeumte Faehrte schicken.
                 #

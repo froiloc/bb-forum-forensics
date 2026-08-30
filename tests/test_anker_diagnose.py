@@ -38,7 +38,7 @@
 #       Ursachen mit zwei verschiedenen Abhilfen
 #
 # Beleg: management/maintenance/anker_diagnose.py; tools/anker_diagnose.py;
-#        report_render/html5_annaeherung.py.
+#        report_render/html5_zerleger.py.
 # =============================================================================
 
 import json
@@ -494,46 +494,18 @@ def test_AD21_lange_ketten_werden_mit_zahl_gekuerzt(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Build 745 - M8: wo die ANNAEHERUNG selbst zugegriffen hat
+# Build 747 - M8 IST GESTRICHEN, und das gehoert festgehalten
 #
-# M6 zeigt die Zeilen, die der ZERLEGER beanstandet hat. Das genuegte,
-# solange die Annaeherung ueber jeden Zweifel erhaben war - am 30.08.2026
-# war sie es nicht mehr: sie hat '#page-body' aufgerissen, und der Zerleger
-# meldet dazu nichts, denn der Eingriff war meiner.
-#
-# AD22  M8 nennt die Quelltextzeile jedes Nachzugs an einem Element MIT
-#       KENNUNG - verdeckt, aber mit vollstaendigem Geruest
-# AD23  GEGENPROBE: ohne einen solchen Nachzug sagt M8 das ausdruecklich,
-#       statt Zeilen ohne Anlass zu zeigen
+# M8 zeigte, an welcher Quelltextzeile der handgebaute Teilnachbau der
+# HTML5-Regeln ein Endtag nachgezogen und dabei ein Geruestelement
+# mitgeschlossen hat. Es hat genau das geleistet, wofuer es gebaut wurde: es
+# hat den Fehler IM WERKZEUG gefunden ('</div> hat article#p151.post
+# mitgeschlossen'). Mit dem Teilnachbau ist auch der Mechanismus fort -
+# html5lib zieht keine Endtags in den Text ein. Die frueheren AD22 und AD23
+# sind deshalb ersatzlos entfallen; eine Rubrik, die ueber ein nicht mehr
+# vorhandenes Verfahren berichtet, kann nur leer bleiben, und eine leere
+# Rubrik wird gelesen, als sei dort nichts gewesen.
 # ---------------------------------------------------------------------------
-
-#: Ein <div> MIT KENNUNG bleibt im <li> offen. Der Nachzug schliesst es -
-#: und weil es eine Kennung traegt, gehoert er einzeln benannt.
-KOPF_OFFENER_KASTEN = ('<div id="page-header"><ul><li>'
-                       '<div id="kasten" class="a">x</li></ul></div>')
-
-
-def test_AD22_m8_nennt_die_stellen_der_nachzuege(tmp_path):
-    ev, fo = _bestand(tmp_path, KOPF_OFFENER_KASTEN)
-    befund = AnkerDiagnose(evidence=ev, forensic=fo).lauf()
-    text = "\n".join(befund.seiten[0].nachzug_quelltext)
-    assert "div#kasten.a mitgeschlossen" in text, text
-    assert "</li> hat" in text, text
-    # Das Geruest ist offen, der Text zu.
-    assert 'id="kasten"' in text, text
-    assert WORTLAUT not in text, text
-    # Und die Herkunft der Zeilennummern wird benannt - sie sind, anders als
-    # die des Zerlegers in M6, NICHT verschoben.
-    assert "NICHT verschoben" in text, text
-
-
-def test_AD23_gegenprobe_ohne_nachzug_mit_kennung_keine_zeilen(tmp_path):
-    ev, fo = _bestand(tmp_path, KOPF_SCHLICHT)
-    befund = AnkerDiagnose(evidence=ev, forensic=fo).lauf()
-    text = "\n".join(befund.seiten[0].nachzug_quelltext)
-    assert "mitgeschlossen" not in text, text
-    assert "page-header" not in text, text
-
 
 def test_AD24_bei_div_wird_die_schachtelung_nicht_als_befund_ausgelegt(tmp_path):
     # BUILD 746 - EINE BEHAUPTUNG OHNE BELEG, die mir selbst unterlaufen

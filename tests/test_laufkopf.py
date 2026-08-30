@@ -68,6 +68,10 @@ def test_LK04_der_kopf_nennt_alles_noetige():
     # Und die Anleitung, was mit den Summen zu tun ist - eine Zahl ohne
     # Auslegung wird ausgelegt, und zwar von dem, der sie zuerst liest.
     assert "MD5SUMS" in text
+    # BUILD 747: html5lib bestimmt die Zerlegung mit und gehoert deshalb in
+    # den Herkunftsnachweis - eine andere Fassung kann ein anderes Ergebnis
+    # bedeuten.
+    assert "html5lib :" in text
 
 
 def test_LK05_der_kopf_wirft_nie(tmp_path):
@@ -95,5 +99,5 @@ def test_LK06_die_werkzeuge_nennen_ihre_tragenden_dateien():
         modul = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(modul)
         getragen = modul._GETRAGEN_VON
-        assert "report_render/html5_annaeherung.py" in getragen, modul.__name__
+        assert "report_render/html5_zerleger.py" in getragen, modul.__name__
         assert "report_render/absatz_finder.py" in getragen, modul.__name__

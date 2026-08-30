@@ -30,19 +30,19 @@
 #   RICHTIG, im Browser loesen sie auf. Der zerlegte Abzug hat an derselben
 #   Stelle weniger Elemente als der Browser.
 #
-#   Am 30.08.2026 wurden zehn HTML-Konstrukte gegen Chromium und gegen
-#   libxml2 gehalten. Zwei erzeugen GENAU dieses Bild - ein <noscript> und
-#   ein <template>, deren Inhalt nicht ausgeglichen ist. Der Browser stellt
-#   den Inhalt beider nicht in den Baum, libxml2 schon; ein offenes Tag darin
-#   verschluckt dann alles, was folgt.
+#   Am 31.08.2026 entschied die Gegenprobe im Browser am echten Abzug die
+#   Sache: alle zwoelf Ankerschritte loesen dort auf, '#page-body' haengt
+#   unter 'div#wrap' und traegt 500 direkte <article>. Der Anker war richtig,
+#   der Abzug vollstaendig - falsch war allein die ZERLEGUNG. Seit Build 747
+#   zerlegt das System nach dem HTML5-Standard (html5lib).
 #
 #   DIESES WERKZEUG SAGT, OB DAS IM VORLIEGENDEN ABZUG DER FALL IST. Es
 #   behauptet es nicht - es misst es.
 #
 # ── WAS DER LAUF AUSGIBT ─────────────────────────────────────────────────────
 #
-#   Je Beleg eine Zeile: loest der Anker roh auf? Loest er nach der
-#   Annaeherung auf? Die Zeilen mit 'roh=nein angenaehert=JA' sind der
+#   Je Beleg eine Zeile: loest der Anker mit libxml2 auf? Loest er mit dem
+#   HTML5-Zerleger auf? Die Zeilen mit 'roh=nein angenaehert=JA' sind der
 #   Befund, um dessentwillen es das Werkzeug gibt.
 #
 #   Je Seite: der Ebenenbericht (welche Stufe des Ankers bricht, und was
@@ -66,7 +66,7 @@
 #   1  Fachfehler (Datei fehlt, Datenbank nicht lesbar)
 #   2  Aufruffehler (fehlende oder unbrauchbare Argumente)
 #
-# Version: 0.8.746 - Build 746 (Laufkopf, M7, M8)
+# Version: 0.8.747 - Build 747 (Laufkopf, M7)
 # =============================================================================
 
 from __future__ import annotations
@@ -91,7 +91,7 @@ from management.maintenance.anker_diagnose import AnkerDiagnose  # noqa: E402
 _GETRAGEN_VON = (
     "tools/anker_diagnose.py",
     "management/maintenance/anker_diagnose.py",
-    "report_render/html5_annaeherung.py",
+    "report_render/html5_zerleger.py",
     "report_render/absatz_finder.py",
 )
 
@@ -224,15 +224,6 @@ def main(argv=None) -> int:
                 m("   M6 Die Quelltextzeilen, die der Zerleger genannt hat:")
                 for zeile in s.quelltext:
                     m("      %s" % zeile)
-            if s.nachzug_quelltext:
-                # M8 steht direkt hinter M6: beide zeigen Quelltext, und der
-                # Leser soll die beiden Herkuenfte nebeneinander haben -
-                # M6 nennt, was der ZERLEGER beanstandet hat, M8 was die
-                # ANNAEHERUNG selbst getan hat.
-                m("   M8 Wo die ANNAEHERUNG ein Element mit Kennung "
-                  "mitgeschlossen hat:")
-                for zeile in s.nachzug_quelltext:
-                    m("      %s" % zeile)
             if s.verteilung_marke:
                 # M7 steht VOR M3: wenn ein Anker bricht, ist die Frage
                 # 'wo stehen die verlangten Elemente' die naechste, die
@@ -289,7 +280,7 @@ def _urteil(z) -> str:
             "ZERLEGUNG die Elemente falsch ablegt.\n"
             "Es ist ein Auswertungsfehler und KEIN Datenschaden - an den "
             "gesicherten Seiten fehlt nichts.\n"
-            "Der Fix ist report_render/html5_annaeherung.py, und er ist in "
+            "Der Zerleger ist report_render/html5_zerleger.py, und er ist in "
             "report_render/absatz_finder.py bereits eingebaut."
             % (z["entscheidend"], z["belege"]))
     if z["lxml_traegt"] == z["belege"]:
