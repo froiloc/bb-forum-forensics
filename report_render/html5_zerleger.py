@@ -95,12 +95,13 @@
 #   Vermerk - ein stiller Eingriff waere genau das, was Grundregel 1
 #   verbietet.
 #
-# Version: 0.8.747 - Build 747
+# Version: 0.8.748 - Build 748 (Namensmeldungen eingefangen)
 # =============================================================================
 
 from __future__ import annotations
 
 import re
+import warnings
 from typing import Any, List, Tuple
 
 #: <template>: Inhalt gehoert im Browser NICHT in den Baum.
@@ -205,6 +206,74 @@ class Html5Zerleger:
             % anzahl[0]]
 
     # ------------------------------------------------------------------
+    @staticmethod
+    def _namensbefunde(gemeldet, quelltext: str) -> List[str]:
+        """
+        Die Namensumschreibungen des Zerlegers als Klartextbefunde.
+
+        UND SIE WERDEN UNTERSCHIEDEN - das ist der eigentliche Zweck:
+
+          * EIN ATTRIBUTNAME ist fuer die Auswertung folgenlos. Ein Anker
+            zaehlt Elemente und Textknoten; Attribute kommen darin nicht vor.
+            GEMESSEN am 31.08.2026: bei 'rel="x"&#160; target="_y"' bleibt
+            das <a> stehen, die Textknoten bleiben, der Anker loest auf.
+
+          * EIN ELEMENTNAME waere etwas anderes. Wuerde ein Tag von 'a&b' zu
+            'aU00026b' umgeschrieben, verlangte der Anker weiterhin 'a&b' und
+            fande nichts - der Bruch waere sichtbar, aber die Ursache stuende
+            nirgends. GEMESSEN: dieser Fall tritt tatsaechlich ein, wenn ein
+            Tagname ein '&' traegt.
+
+        UNTERSCHIEDEN WIRD AM QUELLTEXT: kommt der umgeschriebene Name dort
+        als TAG vor ('<name'), ist ein Elementname moeglich betroffen und
+        der Befund laut. Sonst ist es ein Attributname.
+
+        IM ZWEIFEL LAUT: die Pruefung kann einen Attributnamen faelschlich
+        fuer einen Tagnamen halten, wenn er zufaellig auch als Tag im Text
+        steht. Ein Befund zu viel kostet einen Blick; einer zu wenig kostet
+        eine Fehlspur.
+        """
+        namen: List[str] = []
+        andere: List[str] = []
+        for eintrag in gemeldet:
+            botschaft = str(getattr(eintrag, "message", eintrag))
+            marke = "Coercing non-XML name:"
+            if marke in botschaft:
+                name = botschaft.split(marke, 1)[1].strip()
+                if name and name not in namen:
+                    namen.append(name)
+            elif botschaft not in andere:
+                andere.append(botschaft)
+
+        heraus: List[str] = []
+        if namen:
+            als_tag = [n for n in namen
+                       if ("<" + n.lower()) in quelltext.lower()]
+            nur_attribut = [n for n in namen if n not in als_tag]
+            if nur_attribut:
+                heraus.append(
+                    "Der Zerleger hat %d Namen umgeschrieben, die HTML "
+                    "zulaesst und XML nicht: %s. Sie kommen im Abzug NICHT "
+                    "als Tag vor, sind also Attributnamen - fuer die "
+                    "Auswertung folgenlos, weil ein Anker Elemente und "
+                    "Textknoten zaehlt und keine Attribute. Ursache ist die "
+                    "Seitenvorlage des Forums (z. B. eine Entitaet zwischen "
+                    "zwei Attributen), nicht der Abzug."
+                    % (len(nur_attribut),
+                       ", ".join(repr(n) for n in nur_attribut)))
+            if als_tag:
+                heraus.append(
+                    "ACHTUNG: %d umgeschriebene(r) Name(n) kommt im Abzug "
+                    "auch als TAG vor: %s. Ein umgeschriebener ELEMENTname "
+                    "kann einen Anker brechen lassen, denn der Anker "
+                    "verlangt den urspruenglichen Namen. DIESE STELLE "
+                    "GEHOERT ANGESEHEN."
+                    % (len(als_tag), ", ".join(repr(n) for n in als_tag)))
+        for botschaft in andere:
+            heraus.append("Meldung des Zerlegers: %s" % botschaft)
+        return heraus
+
+    # ------------------------------------------------------------------
     def zerlege(self, body_html: str) -> Tuple[Any, List[str]]:
         """
         (Wurzel-<div>, Befunde). Wirft Html5FehltError, wenn html5lib fehlt.
@@ -226,8 +295,37 @@ class Html5Zerleger:
 
         zerleger = HTMLParser(tree=getTreeBuilder("lxml"),
                               namespaceHTMLElements=False)
-        teile = zerleger.parseFragment(text, container=self.BEHAELTER,
-                                       scripting=self._scripting)
+
+        # -- Die Warnungen des Zerlegers EINFANGEN, nicht laufen lassen ----
+        #
+        # BUILD 748. html5lib legt seinen Baum ueber lxml ab, und lxml haelt
+        # sich an die XML-Namensregeln. Ein Name, den HTML zulaesst und XML
+        # nicht, wird UMGESCHRIEBEN ('coerced') - html5lib meldet das als
+        # DataLossWarning auf stderr.
+        #
+        # AN ALEX' ECHTEM ABZUG TRAT DAS AUF, dreimal, mit den Namen '5' und
+        # '&#160;'. Der Grund steht im Quelltext der Seite selbst: dort steht
+        # 'rel="nofollow"&#160; target="_blank"' - eine Entitaet ZWISCHEN
+        # zwei Attributen. Der HTML-Zerleger liest sie regelgerecht als
+        # weiteren ATTRIBUTNAMEN.
+        #
+        # ZWEI GRUENDE, WARUM DAS NICHT AUF stderr GEHOERT:
+        #
+        #   (1) GRUNDREGEL 1. Eine Veraenderung an der Auswertung eines
+        #       Beweismittels darf nicht still geschehen - und eine Zeile,
+        #       die zwischen den Zeilen eines Laufs auf stderr erscheint,
+        #       ist so gut wie still: sie steht in keinem Protokoll und in
+        #       keinem Vermerk.
+        #   (2) Sie mitten in eine Ermittlerausgabe zu schreiben, macht die
+        #       Ausgabe unlesbar, ohne dass jemand etwas davon hat.
+        #
+        # Sie werden deshalb eingefangen und in die BEFUNDE gelegt - dorthin,
+        # wo der Aufrufer sie in den Vermerk uebernimmt.
+        with warnings.catch_warnings(record=True) as gemeldet:
+            warnings.simplefilter("always")
+            teile = zerleger.parseFragment(text, container=self.BEHAELTER,
+                                           scripting=self._scripting)
+        befunde.extend(self._namensbefunde(gemeldet, text))
 
         # -- Den Behaelter bauen ------------------------------------------
         #
