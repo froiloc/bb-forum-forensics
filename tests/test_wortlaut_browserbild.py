@@ -404,7 +404,14 @@ def test_BM04_die_schachtelung_wird_gezaehlt_und_benannt():
         "./donate[1]/div[1]/div[4]/article[29]/p[1]/text()[1]")
     assert "11 davon stehen INNERHALB eines anderen <article>" in meldung, meldung
     assert "tiefste Schachtelung: 11" in meldung, meldung
-    assert "das hat die Zerlegung getan" in meldung, meldung
+    assert "Die Schachtelung stammt also aus der Zerlegung" in meldung, meldung
+    # BUILD 746 - DIE WIDERSPRUCHSPROBE. Bis Build 745 stand hinter dieser
+    # Angabe unbedingt 'Die Zerlegung scheidet als Ursache aus'. Die Meldung
+    # widersprach sich damit in zwei aufeinanderfolgenden Saetzen - und der
+    # Leser waehlt dann die Haelfte, die zu seiner Erwartung passt.
+    assert "Zerlegung scheidet als Ursache aus" not in meldung, meldung
+    assert "NICHT ausgeraeumt" in meldung, meldung
+    assert "M8" in meldung, meldung
 
 
 def test_BM05_gegenprobe_nebeneinander_ist_keine_kaskade():
@@ -417,3 +424,6 @@ def test_BM05_gegenprobe_nebeneinander_ist_keine_kaskade():
     assert "KEINES davon steht innerhalb eines anderen <article>" in meldung, meldung
     assert "Kaskade der Zerlegung scheidet damit aus" in meldung, meldung
     assert "INNERHALB eines anderen" not in meldung, meldung
+    # Und HIER darf der Schlusssatz stehen - ohne Schachtelung ist die
+    # Zerlegung tatsaechlich ausgeraeumt.
+    assert "Zerlegung scheidet als Ursache aus" in meldung, meldung

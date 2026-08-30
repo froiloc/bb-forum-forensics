@@ -66,7 +66,7 @@
 #   1  Fachfehler (Datei fehlt, Datenbank nicht lesbar)
 #   2  Aufruffehler (fehlende oder unbrauchbare Argumente)
 #
-# Version: 0.8.745 - Build 745 (M7, M8)
+# Version: 0.8.746 - Build 746 (Laufkopf, M7, M8)
 # =============================================================================
 
 from __future__ import annotations
@@ -81,7 +81,19 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from management.help import cli_epilog                          # noqa: E402
+from management.maintenance.laufkopf import Laufkopf            # noqa: E402
 from management.maintenance.anker_diagnose import AnkerDiagnose  # noqa: E402
+
+
+#: Die Dateien, die das ERGEBNIS dieses Laufs tragen. Nicht alle
+#: importierten - eine Liste, in der die entscheidende Datei zwischen
+#: zwanzig beilaeufigen steht, wird nicht gelesen.
+_GETRAGEN_VON = (
+    "tools/anker_diagnose.py",
+    "management/maintenance/anker_diagnose.py",
+    "report_render/html5_annaeherung.py",
+    "report_render/absatz_finder.py",
+)
 
 
 class Mitschrift:
@@ -146,6 +158,13 @@ def main(argv=None) -> int:
         m("=" * 78)
         m("evidence: %s" % a.evidence)
         m("forensic: %s" % a.forensic)
+        m()
+        # HERKUNFT ZUERST (Build 746). Am 31.08.2026 lag eine Ausgabe vor,
+        # die zeichengleich mit der aus dem Build davor war - 'nicht
+        # eingespielt' und 'eingespielt, aber ohne Wirkung an dieser Stelle'
+        # waren nicht zu unterscheiden. Das darf sich nicht wiederholen.
+        for zeile in Laufkopf("anker_diagnose", _GETRAGEN_VON).zeilen():
+            m(zeile)
         m()
 
         d = AnkerDiagnose(evidence=Path(a.evidence), forensic=Path(a.forensic),

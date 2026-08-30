@@ -87,7 +87,7 @@
 #   Eingriffe geschehen auf einer tiefen Kopie des gefundenen Absatzes.
 #
 # Grundregeln: GR1, GR6, GR10.
-# Version: v0.8.744 - Build: 744 - 2026-08-30
+# Version: v0.8.746 - Build: 746 - 2026-08-31
 # =============================================================================
 
 from __future__ import annotations
@@ -844,18 +844,38 @@ class AbsatzFinder:
                 # Ermittler war auf Seite 2, verglichen wird Seite 1) und ein
                 # SPAETER NEU GEZOGENER Abzug (die Seite hat sich zwischen
                 # Markierung und Sicherung geaendert).
+                # BUILD 746: DER SCHLUSSSATZ IST JETZT BEDINGT.
+                #
+                # Bis Build 745 stand 'Die Zerlegung scheidet als Ursache
+                # aus' UNBEDINGT da - auch dann, wenn die Zusatzangabe davor
+                # gerade eine Schachtelung gemeldet hatte, die nur aus der
+                # Zerlegung stammen kann. Die Meldung widersprach sich damit
+                # in zwei aufeinanderfolgenden Saetzen.
+                #
+                # EINE SICH WIDERSPRECHENDE MELDUNG IST SCHLIMMER ALS KEINE:
+                # der Leser waehlt die Haelfte, die zu seiner Erwartung
+                # passt, und haelt sie fuer belegt.
+                lage = self._seitenlage(marke, wunsch, len(gleiche))
+                if "INNERHALB eines anderen" in lage:
+                    schluss = (" Die Zerlegung ist damit NICHT ausgeraeumt: "
+                               "die Schachtelung oben kann nur von ihr "
+                               "stammen. Dieser Fall gehoert gemeldet - "
+                               "tools/anker_diagnose.py zeigt unter M8, an "
+                               "welcher Quelltextzeile zugegriffen wurde.")
+                else:
+                    schluss = (" Die Zerlegung scheidet als Ursache aus - sie "
+                               "ist seit Build 742 an die Browser-Regeln "
+                               "angeglichen, und der Anker loest bis hierher "
+                               "auf. Bleibt zweierlei: der Ermittler war auf "
+                               "einer ANDEREN SEITE des Themas als der "
+                               "verglichene Abzug, oder der Abzug ist SPAETER "
+                               "neu gezogen worden als die Markierung.")
                 return ("Schritt %d von %d bricht bei %r: der Anker verlangt "
                         "das %d. <%s>, im Abzug stehen nur %d. Aufgeloest bis "
-                        "%s. Im Abzug steht dort: %s.%s Die Zerlegung scheidet "
-                        "als Ursache aus - sie ist seit Build 742 an die "
-                        "Browser-Regeln angeglichen, und der Anker loest bis "
-                        "hierher auf. Bleibt zweierlei: der Ermittler war auf "
-                        "einer ANDEREN SEITE des Themas als der verglichene "
-                        "Abzug, oder der Abzug ist SPAETER neu gezogen worden "
-                        "als die Markierung."
+                        "%s. Im Abzug steht dort: %s.%s%s"
                         % (nr, len(schritte), schritt, wunsch, marke,
                            len(gleiche), bisher, _benenne(gleiche),
-                           self._seitenlage(marke, wunsch, len(gleiche))))
+                           lage, schluss))
             alle = [k for k in knoten
                     if isinstance(getattr(k, "tag", None), str)]
             return ("Schritt %d von %d bricht bei %r: an dieser Stelle gibt "
@@ -941,10 +961,19 @@ class AbsatzFinder:
                 tiefste = n
 
         if verschachtelt:
+            # BUILD 746 - DIE BEGRUENDUNG BERICHTIGT. Bis Build 745 stand
+            # hier 'ein <article> gehoert nicht in ein <article>'. DAS IST
+            # FALSCH: HTML5 erlaubt beides ausdruecklich (ein Kommentar in
+            # einem Beitrag ist genau das). Die Aussage stuetzt sich nicht
+            # auf den Standard, sondern auf die VORLAGE DIESES FORUMS, in
+            # der ein Beitrag ein flaches <article class="post"> ist - und
+            # ein fallbezogener Beleg gehoert als solcher benannt.
             lage = (" %d davon stehen INNERHALB eines anderen <article> "
-                    "(tiefste Schachtelung: %d) - ein <article> gehoert "
-                    "nicht in ein <article>; das hat die Zerlegung getan."
-                    % (verschachtelt, tiefste))
+                    "(tiefste Schachtelung: %d). In der Vorlage dieses "
+                    "Forums steht ein Beitrag als flaches "
+                    "<article class=\"post\">; eines im anderen kommt dort "
+                    "nicht vor. Die Schachtelung stammt also aus der "
+                    "Zerlegung." % (verschachtelt, tiefste))
         else:
             lage = (" KEINES davon steht innerhalb eines anderen <article> - "
                     "eine Kaskade der Zerlegung scheidet damit aus.")

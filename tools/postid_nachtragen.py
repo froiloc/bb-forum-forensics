@@ -83,7 +83,7 @@
 #       --protokoll nachtrag_700.log
 #
 # Grundregeln: GR1, GR2, GR6, GR10.
-# Version: v0.8.728 - Build: 728 - 2026-08-28
+# Version: v0.8.746 - Build: 746 - 2026-08-31
 # =============================================================================
 
 from __future__ import annotations
@@ -98,7 +98,16 @@ from typing import List, Optional
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from management.help import cli_epilog                      # noqa: E402
+from management.maintenance.laufkopf import Laufkopf        # noqa: E402
 from report_render.absatz_finder import GRUND_TEXT          # noqa: E402
+#: Die Dateien, die das ERGEBNIS dieses Laufs tragen.
+_GETRAGEN_VON = (
+    "tools/postid_nachtragen.py",
+    "management/maintenance/postid_nachtrag.py",
+    "report_render/absatz_finder.py",
+    "report_render/html5_annaeherung.py",
+)
+
 from management.maintenance.postid_nachtrag import (        # noqa: E402
     ERG_GETRAGEN,
     ERG_MEHRDEUTIG,
@@ -343,6 +352,12 @@ def _lauf(args, sag: Mitschrift) -> int:
         sag("  Rueckfall    : ABGESCHALTET (--nur-anker) - nur der Anker gilt.")
     if args.auch_ersetzte:
         sag("  Umfang       : auch ersetzte Versionen (--auch-ersetzte)")
+    sag("=" * 78)
+    # HERKUNFT DES LAUFS (Build 746, Grundregel 8). Steht VOR dem
+    # Wartungsvorbehalt: wer den Lauf abbricht, soll trotzdem wissen,
+    # mit welchem Stand er ihn angefangen hat.
+    for zeile in Laufkopf("postid_nachtragen", _GETRAGEN_VON).zeilen():
+        sag(zeile)
     sag("=" * 78)
 
     # --- WARTUNGSVORBEHALT (Stufe A) -------------------------------------
