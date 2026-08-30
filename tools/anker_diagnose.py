@@ -66,7 +66,7 @@
 #   1  Fachfehler (Datei fehlt, Datenbank nicht lesbar)
 #   2  Aufruffehler (fehlende oder unbrauchbare Argumente)
 #
-# Version: 0.8.737 - Build 737
+# Version: 0.8.744 - Build 744 (M7 ergaenzt)
 # =============================================================================
 
 from __future__ import annotations
@@ -204,6 +204,18 @@ def main(argv=None) -> int:
             if s.quelltext:
                 m("   M6 Die Quelltextzeilen, die der Zerleger genannt hat:")
                 for zeile in s.quelltext:
+                    m("      %s" % zeile)
+            if s.verteilung_marke:
+                # M7 steht VOR M3: wenn ein Anker bricht, ist die Frage
+                # 'wo stehen die verlangten Elemente' die naechste, die
+                # gestellt wird - und die Antwort entscheidet, ob ueberhaupt
+                # noch ein Zerlegungsfehler in Betracht kommt.
+                m("   M7 Wo die <%s> WIRKLICH stehen:" % s.verteilung_marke)
+                m("      -- roh (libxml2) --")
+                for zeile in s.verteilung_roh:
+                    m("      %s" % zeile)
+                m("      -- nach der Annaeherung (der Weg des Berichts) --")
+                for zeile in s.verteilung_genaehert:
                     m("      %s" % zeile)
             if s.rohtext:
                 m("   M3 %s" % s.rohtext)

@@ -5458,7 +5458,10 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "die Ursache oft unmittelbar), die VERORTUNG der bekannten "
                "Kennungen (M5 - steht '#page-body' tiefer im Baum, ist es "
                "verschluckt; fehlt es dort und steht im Quelltext, ist es "
-               "weggelassen), der Ebenenbericht und die Rohtext-Elemente. "
+               "weggelassen), die VERTEILUNG der verlangten Elemente (M7 - "
+               "wo die <article> wirklich stehen und wie viele davon in "
+               "einem anderen <article> sitzen), der Ebenenbericht und die "
+               "Rohtext-Elemente. "
                "Am Ende die Zaehlung, ein Urteil in ganzen Saetzen und der "
                "Konsolen-Einzeiler fuer die Gegenprobe im Browser.",
         tiefe=CliTiefe(
@@ -5500,6 +5503,16 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             "MELDET DER LAUF 'die Annaeherung aendert NICHTS', ist das ein "
             "ERGEBNIS und kein Fehlschlag: er schliesst die beiden "
             "bekannten Ursachen aus. Dann sind M4 und M5 zu lesen.",
+            "M7 BEANTWORTET DIE FRAGE 'die Seite traegt 500 <article>, aber "
+            "an der verlangten Stelle stehen 2 - wo stehen die anderen?'. "
+            "Die entscheidende Zeile ist die Zahl der Elemente, die "
+            "INNERHALB eines gleichnamigen stehen: sind es fast alle, hat "
+            "die Zerlegung eine Kaskade gebaut (ein Auswertungsfehler, im "
+            "Code zu beheben); ist es keines, stehen die Elemente "
+            "nebeneinander an anderer Stelle - dann ist der verglichene "
+            "Abzug ein anderer als der gesehene (ein Datenbefund, NICHT "
+            "durch Code zu heilen). M7 erscheint nur, wenn auf der Seite "
+            "auch ein Anker bricht.",
             "'ERR_RESOURCE_LIMIT: Excessive depth in document: 256' im "
             "Fehlerprotokoll ist ein eigener Befund und nicht Beiwerk: der "
             "Zerleger bricht die Schachtelung an dieser Grenze ab und LAESST "

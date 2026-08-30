@@ -87,7 +87,7 @@
 #   Eingriffe geschehen auf einer tiefen Kopie des gefundenen Absatzes.
 #
 # Grundregeln: GR1, GR6, GR10.
-# Version: v0.8.725 - Build: 725 - 2026-08-27
+# Version: v0.8.744 - Build: 744 - 2026-08-30
 # =============================================================================
 
 from __future__ import annotations
@@ -884,6 +884,20 @@ class AbsatzFinder:
             einem Thema, dessen Markierungen fuenfstellige tragen, sprechen
             fuer eine andere Seite.
 
+        BUILD 744 - DIE DRITTE ANGABE, UND SIE IST DIE ENTSCHEIDENDE:
+
+          * WIE VIELE der Beitraege stehen INNERHALB eines anderen
+            <article>? Ein <article> gehoert nicht in ein <article>; steht
+            es dort, hat die ZERLEGUNG sie ineinandergeschoben. Dann ist es
+            ein Auswertungsfehler und im Code zu beheben. Steht KEINES in
+            einem anderen, scheidet das aus - dann stehen die Beitraege
+            nebeneinander, nur nicht dort, wo der Anker sie sucht, und der
+            verglichene Abzug ist ein anderer als der gesehene.
+
+        Erst diese Zahl trennt die beiden Lagen. Die ersten beiden Angaben
+        allein lassen beide Deutungen zu - und eine Angabe, die jede Deutung
+        zulaesst, wird nach der gedeutet, die man ohnehin erwartet hat.
+
         DIE ANGABE DEUTET NICHT, sie zaehlt. Was daraus folgt, entscheidet
         die Sichtpruefung - hier wird nur zusammengetragen, was ohne
         Vermutung zu haben ist.
@@ -904,10 +918,41 @@ class AbsatzFinder:
         auszug = ", ".join(str(n) for n in nummern[:6])
         if len(nummern) > 6:
             auszug += ", ..."
+
+        # -- Die Schachtelungszaehlung ------------------------------------
+        # Gezaehlt wird ueber die Vorfahrenkette und nicht mit einem
+        # XPath-Ausdruck wie '//article//article': der zaehlte zwar
+        # dasselbe, sagte aber nichts ueber die TIEFE - und die Tiefe
+        # unterscheidet 'eine Ebene verrutscht' von 'eine Kaskade'.
+        verschachtelt = 0
+        tiefste = 0
+        for el in alle:
+            n = 0
+            eltern = el.getparent()
+            schranke = 5000
+            while eltern is not None and schranke:
+                if str(getattr(eltern, "tag", "")).lower() == "article":
+                    n += 1
+                eltern = eltern.getparent()
+                schranke -= 1
+            if n:
+                verschachtelt += 1
+            if n > tiefste:
+                tiefste = n
+
+        if verschachtelt:
+            lage = (" %d davon stehen INNERHALB eines anderen <article> "
+                    "(tiefste Schachtelung: %d) - ein <article> gehoert "
+                    "nicht in ein <article>; das hat die Zerlegung getan."
+                    % (verschachtelt, tiefste))
+        else:
+            lage = (" KEINES davon steht innerhalb eines anderen <article> - "
+                    "eine Kaskade der Zerlegung scheidet damit aus.")
+
         return (" Die ganze Seite traegt %d <article>%s. Der Anker verlangt "
-                "den %d." % (len(alle),
-                             (" (Nummern: %s)" % auszug) if auszug else "",
-                             wunsch))
+                "den %d.%s" % (len(alle),
+                               (" (Nummern: %s)" % auszug) if auszug else "",
+                               wunsch, lage))
 
     # ------------------------------------------------------------------
     def _ueber_xpath(self, selection: Any, text: str) -> Optional[Fundstelle]:

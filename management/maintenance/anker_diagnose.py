@@ -79,7 +79,7 @@
 #   nicht 'wo noetig', sondern die Vorgabe - offen ist nur, was namentlich
 #   freigegeben ist.
 #
-# Version: 0.8.737 - Build 737
+# Version: 0.8.744 - Build 744 (M7 ergaenzt)
 # =============================================================================
 
 from __future__ import annotations
@@ -279,12 +279,88 @@ class Sicht:
         Quelltext wiederzufinden - und genau danach wird gesucht, wenn ein
         Element tiefer steht als erwartet.
         """
+        teile = self.kette_teile(knoten)
+        return " > ".join(teile) if teile else "(Wurzel)"
+
+    def kette_teile(self, knoten) -> List[str]:
+        """
+        Dieselbe Kette, aber als Liste - von aussen nach innen.
+
+        BUILD 744. Getrennt herausgezogen, weil eine Kette bei einer
+        Schachtelungskaskade Hunderte Glieder lang werden kann. Eine solche
+        Zeile ist nicht mehr zu lesen; gekuerzt werden darf sie aber nur
+        dort, wo auch gesagt wird, WIE VIEL weggelassen wurde (s.
+        kette_kurz). Deshalb liefert die Grundform die Teile und nicht den
+        fertigen Satz.
+        """
         teile: List[str] = []
         aktuell = knoten
-        while aktuell is not None and aktuell is not self.wurzel:
+        # Die Schranke ist eine Notbremse gegen einen Baum, der sich - aus
+        # welchem Grund auch immer - im Kreis dreht. Sie ist bewusst hoch:
+        # eine echte Kaskade mit 500 Gliedern soll VOLLSTAENDIG gezaehlt
+        # werden, denn ihre Laenge ist hier der Messwert.
+        schranke = 5000
+        while aktuell is not None and aktuell is not self.wurzel and schranke:
             teile.append(self.benenne(aktuell))
             aktuell = self.eltern(aktuell)
-        return " > ".join(reversed(teile)) if teile else "(Wurzel)"
+            schranke -= 1
+        teile.reverse()
+        return teile
+
+    def kette_kurz(self, knoten, kopf: int = 3, fuss: int = 3) -> str:
+        """
+        Die Kette lesbar gekuerzt - mit benannter Auslassung.
+
+        'div#wrap > div#page-body > ... (494 Glieder) ... > article#p665.post'
+
+        WARUM MIT ZAHL: Eine Auslassung ohne Zahl verschweigt genau die
+        Angabe, um die es hier geht. Die Laenge der Kette IST der Befund -
+        sie unterscheidet 'steht eine Ebene zu tief' von 'steht in einer
+        Kaskade'.
+        """
+        teile = self.kette_teile(knoten)
+        if not teile:
+            return "(Wurzel)"
+        if len(teile) <= kopf + fuss + 1:
+            return " > ".join(teile)
+        weg = len(teile) - kopf - fuss
+        return "%s > ... (%d Glieder) ... > %s" % (
+            " > ".join(teile[:kopf]), weg, " > ".join(teile[-fuss:]))
+
+    def alle_mit_marke(self, marke: str) -> List[Any]:
+        """
+        Alle Elemente mit diesem Tagnamen - in Dokumentreihenfolge.
+
+        BUILD 744. Fuer die Frage 'die Seite traegt 500 <article>, aber nur
+        2 stehen an der verlangten Stelle - wo stehen die anderen 498?'.
+        """
+        gefunden: List[Any] = []
+        stapel = [self.wurzel]
+        while stapel:
+            k = stapel.pop()
+            if self.marke(k) == marke:
+                gefunden.append(k)
+            stapel.extend(reversed(self.kinder(k)))
+        return gefunden
+
+    def groesste_tiefe(self) -> int:
+        """
+        Die groesste Schachtelungstiefe im ganzen Baum.
+
+        BUILD 744. libxml2 bricht bei 'Excessive depth in document: 256' ab
+        und laesst den Rest weg - ein Browser tut das nicht. Steht die Tiefe
+        in der Naehe dieser Grenze, ist das kein Nebenbefund, sondern die
+        Erklaerung dafuer, dass Teile der Seite im Baum fehlen.
+        """
+        groesste = 0
+        stapel = [(self.wurzel, 0)]
+        while stapel:
+            k, t = stapel.pop()
+            if t > groesste:
+                groesste = t
+            for kind in self.kinder(k):
+                stapel.append((kind, t + 1))
+        return groesste
 
     def mit_kennung(self, kennung: str):
         """Den Knoten mit dieser Kennung suchen. None, wenn es ihn nicht gibt."""
@@ -395,6 +471,117 @@ class SichtGenaehert(SichtLxml):
 
 
 # =============================================================================
+# M7 - Wo stehen die Elemente, die der Anker verlangt?
+# =============================================================================
+#
+# BUILD 744. DER BEFUND, DER DAZU GEFUEHRT HAT: Nach dem Fix aus Build 742
+# loesten 25 von 27 Ankern auf. Bei den zwei uebrigen sagt die Bruchmeldung:
+#
+#   "Der Anker verlangt den 29. <article>, im Abzug stehen dort 2.
+#    Die ganze Seite traegt 500 <article> (Nummern: 136, 151, 161, 350, ...)."
+#
+# DIE ELEMENTE SIND ALSO DA. Sie sind nur keine Geschwister an der
+# verlangten Stelle. Damit ist 'im Abzug fehlt etwas' ausgeschieden, und es
+# bleiben zwei Lagen, die VERSCHIEDENES verlangen:
+#
+#   (a) SIE STEHEN INEINANDER. Dann hat die Zerlegung eine zweite Kaskade
+#       gebaut - eine, die der Fix aus Build 742 nicht abraeumt, weil ihr
+#       ein anderes Konstrukt zugrunde liegt. Das waere ein AUSWERTUNGS-
+#       fehler und hier zu beheben.
+#   (b) SIE STEHEN NEBENEINANDER, NUR WOANDERS. Dann ist der verglichene
+#       Abzug ein anderer als der gesehene - andere Seite des Themas, oder
+#       spaeter neu gezogen. Das waere ein DATEN-Befund und nicht durch
+#       Code zu heilen.
+#
+# EINE ZAHL UNTERSCHEIDET DIE BEIDEN: wie viele der Elemente stehen
+# innerhalb eines gleichnamigen? Bei (a) fast alle, bei (b) keines.
+#
+# DIE AUSGABE IST WEITERGEBBAR: Tagnamen, Kennungen, Klassen, Zahlen. Kein
+# Text, keine Attributwerte ausser den namentlich freigegebenen.
+
+
+def verteilung_zeilen(sicht, marke: str, grenze_ketten: int = 6,
+                      grenze_kennungen: int = 10) -> List[str]:
+    """
+    Die Verteilung aller '<marke>' im Baum EINER Zerlegung, als Textzeilen.
+
+    Gruppiert wird nach der Vorfahrenkette des ELTERN-Knotens: alle
+    Elemente, die derselbe Knotenzug aufgenommen hat, stehen in einer
+    Gruppe. Die Zahl der Gruppen ist damit unmittelbar die Antwort auf
+    'stehen sie beieinander oder verstreut'.
+    """
+    knoten = sicht.alle_mit_marke(marke)
+    if not knoten:
+        return ["Kein <%s> in dieser Zerlegung." % marke]
+
+    # -- Gruppieren nach der Kette des Elternknotens ----------------------
+    # Ein gewoehnliches dict genuegt: seit Python 3.7 haelt es die
+    # Einfuegereihenfolge, und die ist hier die Dokumentreihenfolge - die
+    # erste Gruppe ist also die oberste Stelle der Seite.
+    gruppen: Dict[str, List[Any]] = {}
+    for k in knoten:
+        eltern = sicht.eltern(k)
+        kette = sicht.kette_kurz(eltern) if eltern is not None else "(Wurzel)"
+        gruppen.setdefault(kette, []).append(k)
+
+    # -- Wie viele stehen in einem GLEICHNAMIGEN Element? -----------------
+    # DAS IST DIE ENTSCHEIDENDE ZAHL (s. Kopf dieses Abschnitts).
+    verschachtelt = 0
+    tiefste = 0
+    for k in knoten:
+        n = 0
+        e = sicht.eltern(k)
+        schranke = 5000
+        while e is not None and schranke:
+            if sicht.marke(e) == marke:
+                n += 1
+            e = sicht.eltern(e)
+            schranke -= 1
+        if n:
+            verschachtelt += 1
+        if n > tiefste:
+            tiefste = n
+
+    heraus: List[str] = [
+        "<%s>: %d im Baum, verteilt auf %d Vorfahrenkette(n)"
+        % (marke, len(knoten), len(gruppen))]
+
+    for nr, (kette, elemente) in enumerate(list(gruppen.items())
+                                           [:grenze_ketten], start=1):
+        namen = []
+        for e in elemente[:grenze_kennungen]:
+            kg = sicht.kennung(e)
+            namen.append("#" + kg if kg else "(ohne id)")
+        if len(elemente) > grenze_kennungen:
+            namen.append("... (%d weitere)" % (len(elemente)
+                                               - grenze_kennungen))
+        heraus.append("  [%d] %dx unter %s" % (nr, len(elemente), kette))
+        heraus.append("      davon: %s" % ", ".join(namen))
+    if len(gruppen) > grenze_ketten:
+        heraus.append("  ... (%d weitere Ketten)"
+                      % (len(gruppen) - grenze_ketten))
+
+    if verschachtelt:
+        heraus.append(
+            "  %d von %d stehen INNERHALB eines anderen <%s> - tiefste "
+            "Schachtelung: %d. Das ist eine Kaskade der Zerlegung, kein "
+            "Merkmal der Seite: ein <%s> gehoert nicht in ein <%s>."
+            % (verschachtelt, len(knoten), marke, tiefste, marke, marke))
+    else:
+        heraus.append(
+            "  KEINES steht innerhalb eines anderen <%s>. Eine Kaskade "
+            "scheidet damit aus - die Elemente stehen nebeneinander, nur "
+            "nicht an der vom Anker verlangten Stelle." % marke)
+
+    tiefe = sicht.groesste_tiefe()
+    heraus.append("  groesste Schachtelungstiefe im ganzen Baum: %d%s"
+                  % (tiefe,
+                     "   <-- NAHE AN DER GRENZE VON libxml2 (256); der "
+                     "Zerleger laesst ab dort weg" if tiefe >= 200 else ""))
+    return heraus
+
+
+# =============================================================================
 # Befunde
 # =============================================================================
 @dataclass
@@ -464,6 +651,13 @@ class Seitenbefund:
     verortung: List[str] = field(default_factory=list)
     #: M6 (Build 741) - die Quelltextzeilen, die der Zerleger genannt hat.
     quelltext: List[str] = field(default_factory=list)
+    #: M7 (Build 744) - wo die Elemente stehen, die der gebrochene Schritt
+    #: verlangt. Leer, wenn auf dieser Seite kein Anker gebrochen ist: dann
+    #: gibt es nichts zu verorten, und eine Messung ohne Anlass ist Ballast.
+    verteilung_roh: List[str] = field(default_factory=list)
+    verteilung_genaehert: List[str] = field(default_factory=list)
+    #: Der Tagname des gebrochenen Schritts ('article'), fuer die Ueberschrift.
+    verteilung_marke: str = ""
 
 
 @dataclass
@@ -772,6 +966,35 @@ class AnkerDiagnose:
                              % (m, v, "" if ok else " (unausgeglichen)")
                              for v, m, ok in stellen[:8]),
                    len(unausgeglichen)))
+
+        # -- M7: wo stehen die Elemente, die der gebrochene Schritt will? --
+        #
+        # NUR bei einem Bruch, und nur zu DEM Tag, an dem er bricht. Eine
+        # Verteilung ueber alle Tagnamen der Seite waere eine Seitenlage und
+        # keine Messung - sie beantwortete keine Frage, sondern lieferte
+        # Zahlen, aus denen sich jede Vermutung belegen liesse.
+        #
+        # Genommen wird der Bruch der ANGENAEHERTEN Zerlegung: sie ist seit
+        # Build 742 der Weg, auf dem der Bericht laeuft. Der rohe Bruch ist
+        # der Rueckfall, falls die Annaeherung durchlaeuft und nur die rohe
+        # bricht.
+        bruch_schritt = ""
+        for b in befund.belege:
+            if b.page_url != url:
+                continue
+            if b.zweite is not None and not b.zweite.traegt:
+                bruch_schritt = b.zweite.bruch_schritt
+                break
+            if not bruch_schritt and b.lxml is not None and not b.lxml.traegt:
+                bruch_schritt = b.lxml.bruch_schritt
+        if bruch_schritt:
+            treffer = SCHRITT_MUSTER.match(bruch_schritt)
+            if treffer and treffer.group(1) != "text()":
+                s.verteilung_marke = treffer.group(1)
+                s.verteilung_roh = verteilung_zeilen(roh_sicht,
+                                                     s.verteilung_marke)
+                s.verteilung_genaehert = verteilung_zeilen(
+                    genaehert_sicht, s.verteilung_marke)
 
         # -- Der Ebenenvergleich entlang des ersten Ankers dieser Seite ----
         anker = ""
