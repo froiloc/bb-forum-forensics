@@ -79,7 +79,7 @@
 #   nicht 'wo noetig', sondern die Vorgabe - offen ist nur, was namentlich
 #   freigegeben ist.
 #
-# Version: 0.8.744 - Build 744 (M7 ergaenzt)
+# Version: 0.8.745 - Build 745 (M7, M8)
 # =============================================================================
 
 from __future__ import annotations
@@ -465,8 +465,11 @@ class SichtGenaehert(SichtLxml):
     name = "libxml2 nach Annaeherung an die Browser-Regeln"
 
     def __init__(self, body_html: str) -> None:
-        from report_render.html5_annaeherung import annaehern
-        genaehert, self.befunde = annaehern(body_html)
+        from report_render.html5_annaeherung import annaehern_mit_protokoll
+        # BUILD 745: mit Einsatzprotokoll. Die Zaehlung ('2 x </div>') sagt
+        # nicht, WELCHES </div> - und genau darauf kam es am 30.08.2026 an.
+        genaehert, self.befunde, self.nachzuege = \
+            annaehern_mit_protokoll(body_html)
         super().__init__(genaehert)
 
 
@@ -658,6 +661,10 @@ class Seitenbefund:
     verteilung_genaehert: List[str] = field(default_factory=list)
     #: Der Tagname des gebrochenen Schritts ('article'), fuer die Ueberschrift.
     verteilung_marke: str = ""
+    #: M8 (Build 745) - die Quelltextzeilen an den Stellen, an denen die
+    #: Annaeherung ein Element MIT KENNUNG mitgeschlossen hat. Nur diese
+    #: koennen einen ganzen Zweig verschieben.
+    nachzug_quelltext: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -933,6 +940,21 @@ class AnkerDiagnose:
         # Messgegenstand und tragen keinen Fallbezug.
         s.quelltext = self._quelltextzeilen(body, s.fehlerprotokoll)
 
+        # -- M8: die Stellen, an denen die ANNAEHERUNG zugegriffen hat -----
+        #
+        # BUILD 745. M6 zeigt die Zeilen, die der ZERLEGER beanstandet hat.
+        # Das genuegte, solange die Annaeherung ueber jeden Zweifel erhaben
+        # war - am 30.08.2026 war sie es nicht mehr: sie hat '#page-body'
+        # nach dem zweiten Beitrag geschlossen und 498 Beitraege
+        # herausfallen lassen. Der Zerleger meldet dazu NICHTS, denn der
+        # Eingriff ist ja meiner.
+        #
+        # Gezeigt werden nur die Nachzuege an Elementen MIT KENNUNG. Ein
+        # nachgezogenes </span> im Beitragskopf verschiebt nichts, was ein
+        # Anker verlangt; davon gibt es Hunderte.
+        s.nachzug_quelltext = self._nachzugzeilen(
+            body, getattr(genaehert_sicht, "nachzuege", []))
+
         # -- M6-Entwurf GESTRICHEN, und der Grund gehoert hierher -----------
         #
         # Der Entwurf hatte eine dritte Messung: an eine wachsende
@@ -1045,6 +1067,56 @@ class AnkerDiagnose:
             if a is None and c is None:
                 break
         return s
+
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _nachzugzeilen(body: str, nachzuege: Sequence[Any]) -> List[str]:
+        """
+        Zu jedem Nachzug an einem Element MIT KENNUNG die Quelltextzeile.
+
+        BUILD 745. Dieselbe Verdeckung wie in _quelltextzeilen: Tagnamen,
+        'id', 'class', 'style', 'role', 'type' und 'name' bleiben offen,
+        Text und alle uebrigen Attributwerte werden verdeckt.
+
+        Die Zeilennummern stammen hier NICHT vom Zerleger, sondern aus der
+        Annaeherung selbst - sie zaehlt auf demselben Text, auf dem sie
+        arbeitet. Eine Verschiebung wie bei M6 gibt es deshalb nicht, und
+        das gehoert gesagt: sonst wird die Angabe vorsichtshalber wie die
+        andere behandelt und damit ungenauer gelesen, als sie ist.
+        """
+        mit_kennung = [n for n in nachzuege if getattr(n, "mit_kennung", False)]
+        if not mit_kennung:
+            if nachzuege:
+                return ["Kein Nachzug an einem Element mit Kennung - die "
+                        "Annaeherung hat %d Endtag(s) nachgezogen, aber "
+                        "keines davon an einem Traeger des Seitengeruests. "
+                        "Ein Zweig ist dadurch nicht verschoben worden."
+                        % len(nachzuege)]
+            return ["Die Annaeherung hat nichts nachgezogen."]
+
+        zeilen = body.split("\n")
+        heraus: List[str] = []
+        gesehen = set()
+        for n in mit_kennung:
+            nr = int(getattr(n, "zeile", 0) or 0)
+            schluessel = (nr, n.kennzeichen)
+            if schluessel in gesehen or not (1 <= nr <= len(zeilen)):
+                continue
+            gesehen.add(schluessel)
+            heraus.append("--- Zeile %d: %s hat %s mitgeschlossen ---"
+                          % (nr, n.ausloeser, n.kennzeichen))
+            for i in range(max(1, nr - 1), min(len(zeilen), nr + 1) + 1):
+                heraus.append("%6d | %s"
+                              % (i, verdecke_tag_folge(zeilen[i - 1])))
+            if len(gesehen) >= 6:
+                heraus.append("(weitere Nachzuege ausgelassen - die ersten "
+                              "sechs genuegen, um den Konstrukt "
+                              "nachzustellen)")
+                break
+        heraus.append("(Diese Zeilennummern stammen aus der Annaeherung "
+                      "selbst und sind NICHT verschoben - anders als die "
+                      "des Zerlegers in M6.)")
+        return heraus
 
     # ------------------------------------------------------------------
     @staticmethod
