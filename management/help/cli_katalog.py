@@ -5449,7 +5449,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "'--ausfuehren'. Ein Wartungsfenster ist nicht noetig "
                 "(Wartungsstufe C).",
         hinweis="Die Diagnose aendert nichts. Der eigentliche Fix sitzt im "
-                "Bericht (report_render/html5_annaeherung.py) und wirkt "
+                "Bericht (report_render/html5_zerleger.py) und wirkt "
                 "ohne dieses Werkzeug; hier wird nur gemessen, ob er im "
                 "vorliegenden Bestand greift.",
         konfiguration=KONFIG_KEINE,
@@ -5458,10 +5458,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "die Ursache oft unmittelbar), die VERORTUNG der bekannten "
                "Kennungen (M5 - steht '#page-body' tiefer im Baum, ist es "
                "verschluckt; fehlt es dort und steht im Quelltext, ist es "
-               "weggelassen), die STELLEN, an denen die Annaeherung selbst "
-               "ein Element mit Kennung mitgeschlossen hat (M8 - der Zerleger "
-               "meldet dazu nichts, denn der Eingriff ist der des Werkzeugs), "
-               "die VERTEILUNG der verlangten Elemente (M7 - "
+               "weggelassen), die VERTEILUNG der verlangten Elemente (M7 - "
                "wo die <article> wirklich stehen und wie viele davon in "
                "einem anderen <article> sitzen), der Ebenenbericht und die "
                "Rohtext-Elemente. "
@@ -5491,7 +5488,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             "ES IST EINE DIAGNOSE UND KEINE REPARATUR. Das Werkzeug aendert "
             "nichts - weder an den Markierungen noch am Seitenabzug. Der "
             "eigentliche Fix sitzt im Bericht "
-            "(report_render/html5_annaeherung.py) und wirkt ohne dieses "
+            "(report_render/html5_zerleger.py) und wirkt ohne dieses "
             "Werkzeug.",
             "DIE AUSGABE IST WEITERGEBBAR. Es erscheinen Tagnamen, "
             "Kennungen, Klassen, Zahlen und Pfade - kein Beitragstext. Wo "
@@ -5514,16 +5511,12 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             "vom 31.08.2026 war zeichengleich mit der aus dem Build "
             "davor, und 'nicht eingespielt' war von 'eingespielt, aber "
             "ohne Wirkung' nicht zu unterscheiden.",
-            "M8 ZEIGT, WAS DIE ANNAEHERUNG SELBST GETAN HAT. Sie zieht "
-            "ausstehende Endtags nach; schliesst dabei ein Element MIT "
-            "KENNUNG mit, kann ein ganzer Zweig der Seite verschoben "
-            "werden. Genau das ist am 30.08.2026 geschehen: die Fassung "
-            "aus Build 742 hat '#page-body' aufgerissen, weil sie das "
-            "Element zu einem Endtag im GANZEN Stapel suchte statt nur "
-            "innerhalb seines Geltungsbereichs. Seit Build 745 endet die "
-            "Suche an <table>, <td>, <th>, <caption> und den weiteren "
-            "Grenzen des Standards. Steht in M8 ein Nachzug an einem "
-            "Geruestelement, gehoert er geprueft.",
+            "SEIT BUILD 747 ZERLEGT DAS SYSTEM NACH DEM HTML5-STANDARD "
+            "(html5lib) - demselben Algorithmus, den der Browser ausfuehrt, "
+            "der die Anker erzeugt hat. Der frueher hier beschriebene "
+            "handgebaute Teilnachbau ist ERSATZLOS entfallen, und mit ihm "
+            "die Messung M8, die ueber seine Eingriffe berichtete. Fehlt "
+            "html5lib, bricht die Auswertung mit einer Klartextmeldung ab - es gibt KEINEN Rueckfall auf einen anderen Zerleger, weil ein Werkzeug, das je nach Installationslage anders zerlegt, nicht vergleichbare Ergebnisse liefert.",
             "M7 BEANTWORTET DIE FRAGE 'die Seite traegt 500 <article>, aber "
             "an der verlangten Stelle stehen 2 - wo stehen die anderen?'. "
             "Die entscheidende Zeile ist die Zahl der Elemente, die "

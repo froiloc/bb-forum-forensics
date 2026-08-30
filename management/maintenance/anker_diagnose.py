@@ -43,12 +43,18 @@
 #       zerlegten Abzug? Benannt, nicht nur gezaehlt. Erst am ganzen Weg ist
 #       zu sehen, ob der Baum ueberall zu flach ist oder nur an einer Stelle.
 #
-#   M2  DIE GEGENPROBE MIT DER ANNAEHERUNG. Derselbe Anker, dieselbe
-#       Zerlegung - aber auf dem Abzug, der vorher an zwei HTML5-Regeln
-#       angenaehert wurde, die libxml2 nicht kennt (Rohtext in <noscript>,
-#       eigenes Fragment fuer <template>; s.
-#       report_render/html5_annaeherung.py). LOEST DER ANKER DANN AUF, IST
-#       DIE FRAGE BEANTWORTET - und zwar mit dem Fix in der Hand.
+#   M2  DIE GEGENPROBE MIT DEM HTML5-ZERLEGER. Derselbe Anker, aber der
+#       Abzug nach dem HTML5-STANDARD zerlegt (html5lib, s.
+#       report_render/html5_zerleger.py) - also mit demselben Algorithmus,
+#       den der Browser ausfuehrt, der den Anker erzeugt hat. LOEST DER
+#       ANKER DANN AUF, IST DIE FRAGE BEANTWORTET.
+#
+#       BIS BUILD 746 STAND HIER EIN HANDGEBAUTER TEILNACHBAU der
+#       HTML5-Regeln. Er hat ueber fuenf Builds hinweg je ein Konstrukt
+#       geheilt und ein anderes zerbrochen; am echten Abzug riss er
+#       '#page-body' nach dem zweiten Beitrag auf und liess 498 von 500
+#       Beitraegen herausfallen. EINE HALB NACHGEBILDETE REGEL IST
+#       GEFAEHRLICHER ALS KEINE.
 #
 #       DER ERSTE ENTWURF DIESER DATEI STELLTE libxml2 GEGEN html.parser.
 #       Das haette nichts beantwortet: die Messung gegen Chromium vom
@@ -58,10 +64,10 @@
 #       Zerlegung gelesen worden. Eine Gegenprobe, die nur bestaetigen kann,
 #       ist keine.
 #
-#   M3  DIE ROHTEXT-ELEMENTE IM ABZUG. Wo stehen <noscript> und <template>,
-#       und ist ihr Inhalt ausgeglichen? NUR ein unausgeglichener Inhalt kann
-#       die Zerlegung sprengen; ein heiles <noscript> ist harmlos. Die
-#       Unterscheidung erspart eine Fehlspur.
+#   M3  DIE ROHTEXT-ELEMENTE IM ABZUG. Wo stehen <noscript> und <template>?
+#       Seit Build 747 ist das eine AUSKUNFT und keine Warnung: beide Faelle
+#       sind behandelt (scripting-Flag bzw. Leerung). Die Angabe bleibt, weil
+#       ihr Vorhandensein fuer die Beurteilung eines Abzugs von Belang ist.
 #
 # ── ZUR WEITERGABE DER AUSGABE ───────────────────────────────────────────────
 #
@@ -79,7 +85,7 @@
 #   nicht 'wo noetig', sondern die Vorgabe - offen ist nur, was namentlich
 #   freigegeben ist.
 #
-# Version: 0.8.746 - Build 746 (M7, M8, Deutung berichtigt)
+# Version: 0.8.747 - Build 747 (HTML5-Zerleger; M8 gestrichen)
 # =============================================================================
 
 from __future__ import annotations
@@ -444,33 +450,44 @@ class SichtLxml(Sicht):
         return knoten.getparent()
 
 
-class SichtGenaehert(SichtLxml):
+class SichtHtml5(SichtLxml):
     """
-    DIESELBE Zerlegung wie im Bericht - aber auf dem an die Browser-Regeln
-    ANGENAEHERTEN Abzug (report_render/html5_annaeherung.py).
+    Die Zerlegung NACH DEM HTML5-STANDARD - derselbe Algorithmus wie im
+    Browser (report_render/html5_zerleger.py).
 
-    WARUM NICHT EIN ZWEITER ZERLEGER ALS ZWEITE MEINUNG: Der erste Entwurf
-    dieser Datei stellte libxml2 gegen html.parser. Die Messung vom
-    30.08.2026 gegen Chromium zeigt, dass das nichts beantwortet haette -
-    html.parser kennt die beiden entscheidenden HTML5-Regeln (Rohtext in
-    <noscript>, eigenes Fragment fuer <template>) ebenso wenig wie libxml2.
-    Beide haetten uebereinstimmend das falsche Ergebnis geliefert, und die
-    Uebereinstimmung waere als Entlastung der Zerlegung gelesen worden.
+    BUILD 747. Bis Build 746 stand hier 'SichtGenaehert': dieselbe
+    libxml2-Zerlegung, aber auf einem Text, den ein handgebauter Teilnachbau
+    der HTML5-Regeln vorher zurechtgelegt hatte. Der Nachbau hat ueber fuenf
+    Builds hinweg je ein Konstrukt geheilt und ein anderes zerbrochen; am
+    echten Abzug riss er '#page-body' nach dem zweiten Beitrag auf.
 
-    Die richtige Gegenprobe ist deshalb nicht 'ein anderer Zerleger', sondern
-    'derselbe Zerleger auf dem angenaeherten Text'. Loest der Anker DANN auf,
-    ist die Frage beantwortet - und zwar mit dem Fix in der Hand.
+    UMBENANNT UND NICHT UMGEDEUTET: der alte Name beschrieb ein Verfahren,
+    das es nicht mehr gibt. Ein Name, dessen Bedeutung sich aendert, ist der
+    zuverlaessigste Weg zu einem Auswertungsfehler.
+
+    WARUM DAS EINE ECHTE GEGENPROBE IST: Der erste Entwurf dieser Datei
+    stellte libxml2 gegen html.parser. Das haette nichts beantwortet - beide
+    kennen den HTML5-Baumaufbau nicht und haetten uebereinstimmend das
+    falsche Ergebnis geliefert; die Uebereinstimmung waere als Entlastung
+    gelesen worden. html5lib dagegen fuehrt DENSELBEN Algorithmus aus wie
+    der Browser, der den Anker erzeugt hat. Gemessen an 17 Konstrukten gegen
+    Chromium (31.08.2026): lxml roh 7, lxml + Teilnachbau 16, html5lib 17.
     """
 
-    name = "libxml2 nach Annaeherung an die Browser-Regeln"
+    name = "html5lib (der Weg des Berichts seit Build 747)"
 
     def __init__(self, body_html: str) -> None:
-        from report_render.html5_annaeherung import annaehern_mit_protokoll
-        # BUILD 745: mit Einsatzprotokoll. Die Zaehlung ('2 x </div>') sagt
-        # nicht, WELCHES </div> - und genau darauf kam es am 30.08.2026 an.
-        genaehert, self.befunde, self.nachzuege = \
-            annaehern_mit_protokoll(body_html)
-        super().__init__(genaehert)
+        from report_render.html5_zerleger import Html5Zerleger
+        # Die Basisklasse baut ihren Baum aus Text; hier ist er schon fertig.
+        # Deshalb wird ihr __init__ NICHT aufgerufen und der Baum unmittelbar
+        # gesetzt - alles Uebrige (kinder, marke, eltern ...) gilt
+        # unveraendert, weil html5lib denselben lxml-Baumtyp liefert.
+        self._wurzel, self.befunde = Html5Zerleger().zerlege(body_html)
+        #: html5lib fuehrt kein Fehlerprotokoll wie libxml2 - es hat keines
+        #: zu fuehren, weil der Standard fuer jeden Eingabefehler ein
+        #: definiertes Verhalten vorschreibt. Das Feld bleibt, damit die
+        #: Auswertung nicht zwei Faelle unterscheiden muss.
+        self.fehlerprotokoll = []
 
 
 # =============================================================================
@@ -689,10 +706,6 @@ class Seitenbefund:
     verteilung_genaehert: List[str] = field(default_factory=list)
     #: Der Tagname des gebrochenen Schritts ('article'), fuer die Ueberschrift.
     verteilung_marke: str = ""
-    #: M8 (Build 745) - die Quelltextzeilen an den Stellen, an denen die
-    #: Annaeherung ein Element MIT KENNUNG mitgeschlossen hat. Nur diese
-    #: koennen einen ganzen Zweig verschieben.
-    nachzug_quelltext: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -733,7 +746,7 @@ class AnkerDiagnose:
         self._evidence = Path(evidence)
         self._forensic = Path(forensic)
         self._nur_beleg = nur_beleg
-        #: je Adresse: (body_html, SichtLxml, SichtGenaehert)
+        #: je Adresse: (body_html, SichtLxml, SichtHtml5)
         self._seiten: Dict[str, Tuple[str, Any, Any]] = {}
         self._con_blob: Optional[sqlite3.Connection] = None
 
@@ -829,9 +842,9 @@ class AnkerDiagnose:
             z.hinweis = ("Zu dieser Adresse gibt es keinen GET-Abzug - der "
                          "Anker ist damit gar nicht pruefbar.")
             return z
-        _body, roh_sicht, genaehert_sicht = sichten
+        _body, roh_sicht, html5_sicht = sichten
         z.lxml = self._anker_pruefen(roh_sicht, anker)
-        z.zweite = self._anker_pruefen(genaehert_sicht, anker)
+        z.zweite = self._anker_pruefen(html5_sicht, anker)
         return z
 
     # ------------------------------------------------------------------
@@ -905,9 +918,9 @@ class AnkerDiagnose:
         if sichten is None:
             s.vorhanden = False
             return s
-        body, roh_sicht, genaehert_sicht = sichten
+        body, roh_sicht, html5_sicht = sichten
         s.laenge = len(body)
-        s.annaeherung = list(getattr(genaehert_sicht, "befunde", []))
+        s.annaeherung = list(getattr(html5_sicht, "befunde", []))
 
         # -- M4: das Fehlerprotokoll von libxml2 --------------------------
         #
@@ -968,20 +981,20 @@ class AnkerDiagnose:
         # Messgegenstand und tragen keinen Fallbezug.
         s.quelltext = self._quelltextzeilen(body, s.fehlerprotokoll)
 
-        # -- M8: die Stellen, an denen die ANNAEHERUNG zugegriffen hat -----
+        # -- M8 GESTRICHEN (Build 747), und der Grund gehoert hierher ----
         #
-        # BUILD 745. M6 zeigt die Zeilen, die der ZERLEGER beanstandet hat.
-        # Das genuegte, solange die Annaeherung ueber jeden Zweifel erhaben
-        # war - am 30.08.2026 war sie es nicht mehr: sie hat '#page-body'
-        # nach dem zweiten Beitrag geschlossen und 498 Beitraege
-        # herausfallen lassen. Der Zerleger meldet dazu NICHTS, denn der
-        # Eingriff ist ja meiner.
+        # M8 zeigte, an welcher Quelltextzeile der handgebaute Teilnachbau
+        # ein Endtag nachgezogen und dabei ein Geruestelement mitgeschlossen
+        # hat. Es hat genau das geleistet, wofuer es gebaut wurde: es hat
+        # den Fehler IM WERKZEUG gefunden - '</div> hat article#p151.post
+        # mitgeschlossen'.
         #
-        # Gezeigt werden nur die Nachzuege an Elementen MIT KENNUNG. Ein
-        # nachgezogenes </span> im Beitragskopf verschiebt nichts, was ein
-        # Anker verlangt; davon gibt es Hunderte.
-        s.nachzug_quelltext = self._nachzugzeilen(
-            body, getattr(genaehert_sicht, "nachzuege", []))
+        # Mit dem Teilnachbau ist auch der Mechanismus fort. html5lib zieht
+        # keine Endtags in den Text ein; es baut den Baum nach dem Standard.
+        # Eine Messung, die ueber ein nicht mehr vorhandenes Verfahren
+        # berichtet, kann nur leer bleiben - und eine leere Rubrik in einem
+        # Diagnoselauf wird gelesen, als sei dort nichts gewesen. Deshalb
+        # gestrichen und nicht stillgelegt.
 
         # -- M6-Entwurf GESTRICHEN, und der Grund gehoert hierher -----------
         #
@@ -993,24 +1006,27 @@ class AnkerDiagnose:
         # etwas ueber die Stelle im Dokument, an der sie haengt, und nicht
         # ueber einen Fehler. Eine Zahl ohne Auslegung wird ausgelegt - und
         # zwar von dem, der sie zuerst liest.
-        #
-        # M4 und M5 beantworten die Frage ohnehin: M4 nennt die Ursache, M5
-        # unterscheidet 'verschluckt' von 'weggelassen'.
 
         # -- M3: die Rohtext-Elemente -------------------------------------
-        from report_render.html5_annaeherung import rohtext_stellen
+        #
+        # BUILD 747: DAS IST JETZT EINE AUSKUNFT UND KEINE WARNUNG MEHR.
+        # Beide Faelle sind behandelt - <noscript> durch das scripting-Flag
+        # des Zerlegers, <template> durch die Leerung. Die Angabe bleibt,
+        # weil das Vorhandensein solcher Elemente fuer die Beurteilung eines
+        # Abzugs von Belang ist: wer eine Auffaelligkeit sucht, will wissen,
+        # ob es sie gibt.
+        from report_render.html5_zerleger import rohtext_stellen
         stellen = rohtext_stellen(body)
         if not stellen:
-            s.rohtext = ("Kein <noscript> und kein <template> im Abzug. Die "
-                         "beiden bekannten Zerlegungsfallen scheiden damit "
-                         "aus - bleibt der Anker gebrochen, liegt es an "
-                         "etwas anderem.")
+            s.rohtext = ("Kein <noscript> und kein <template> im Abzug.")
         else:
             unausgeglichen = [x for x in stellen if not x[2]]
             s.rohtext = (
                 "%d Rohtext-Element(e) im Abzug: %s. Davon %d mit "
-                "UNAUSGEGLICHENEM Inhalt - nur diese koennen die Zerlegung "
-                "sprengen; ein heiles <noscript> ist harmlos."
+                "unausgeglichenem Inhalt. BEIDE FAELLE SIND SEIT BUILD 747 "
+                "BEHANDELT - <noscript> ueber das scripting-Flag, <template> "
+                "ueber die Leerung; die Angabe steht hier zur Beurteilung des "
+                "Abzugs, nicht als Warnung."
                 % (len(stellen),
                    ", ".join("<%s> bei Zeichen %d%s"
                              % (m, v, "" if ok else " (unausgeglichen)")
@@ -1044,7 +1060,7 @@ class AnkerDiagnose:
                 s.verteilung_roh = verteilung_zeilen(roh_sicht,
                                                      s.verteilung_marke)
                 s.verteilung_genaehert = verteilung_zeilen(
-                    genaehert_sicht, s.verteilung_marke)
+                    html5_sicht, s.verteilung_marke)
 
         # -- Der Ebenenvergleich entlang des ersten Ankers dieser Seite ----
         anker = ""
@@ -1056,7 +1072,7 @@ class AnkerDiagnose:
             return s
 
         schritte = [t for t in anker.split("/") if t and t != "."]
-        a, c = roh_sicht.wurzel, genaehert_sicht.wurzel
+        a, c = roh_sicht.wurzel, html5_sicht.wurzel
         bisher = "."
         for schritt in schritte:
             treffer = SCHRITT_MUSTER.match(schritt)
@@ -1065,8 +1081,8 @@ class AnkerDiagnose:
             marke, wunsch = treffer.group(1), int(treffer.group(2))
             za = len([k for k in roh_sicht.kinder(a)
                       if roh_sicht.marke(k) == marke]) if a is not None else -1
-            zc = len([k for k in genaehert_sicht.kinder(c)
-                      if genaehert_sicht.marke(k) == marke]) \
+            zc = len([k for k in html5_sicht.kinder(c)
+                      if html5_sicht.marke(k) == marke]) \
                 if c is not None else -1
             # '-' statt einer Zahl, sobald ein Zweig schon abgerissen ist.
             # Eine '-1' waere eine Zahl und laedt zum Vergleichen ein; hier
@@ -1086,65 +1102,15 @@ class AnkerDiagnose:
                                 % ("", roh_sicht.liste(a)
                                    if a is not None else "-"))
                 s.zeilen.append("%-44s angenaehert hat dort: %s"
-                                % ("", genaehert_sicht.liste(c)
+                                % ("", html5_sicht.liste(c)
                                    if c is not None else "-"))
             a = roh_sicht.schritt(a, marke, wunsch) if a is not None else None
-            c = genaehert_sicht.schritt(c, marke, wunsch) \
+            c = html5_sicht.schritt(c, marke, wunsch) \
                 if c is not None else None
             bisher += "/" + schritt
             if a is None and c is None:
                 break
         return s
-
-    # ------------------------------------------------------------------
-    @staticmethod
-    def _nachzugzeilen(body: str, nachzuege: Sequence[Any]) -> List[str]:
-        """
-        Zu jedem Nachzug an einem Element MIT KENNUNG die Quelltextzeile.
-
-        BUILD 745. Dieselbe Verdeckung wie in _quelltextzeilen: Tagnamen,
-        'id', 'class', 'style', 'role', 'type' und 'name' bleiben offen,
-        Text und alle uebrigen Attributwerte werden verdeckt.
-
-        Die Zeilennummern stammen hier NICHT vom Zerleger, sondern aus der
-        Annaeherung selbst - sie zaehlt auf demselben Text, auf dem sie
-        arbeitet. Eine Verschiebung wie bei M6 gibt es deshalb nicht, und
-        das gehoert gesagt: sonst wird die Angabe vorsichtshalber wie die
-        andere behandelt und damit ungenauer gelesen, als sie ist.
-        """
-        mit_kennung = [n for n in nachzuege if getattr(n, "mit_kennung", False)]
-        if not mit_kennung:
-            if nachzuege:
-                return ["Kein Nachzug an einem Element mit Kennung - die "
-                        "Annaeherung hat %d Endtag(s) nachgezogen, aber "
-                        "keines davon an einem Traeger des Seitengeruests. "
-                        "Ein Zweig ist dadurch nicht verschoben worden."
-                        % len(nachzuege)]
-            return ["Die Annaeherung hat nichts nachgezogen."]
-
-        zeilen = body.split("\n")
-        heraus: List[str] = []
-        gesehen = set()
-        for n in mit_kennung:
-            nr = int(getattr(n, "zeile", 0) or 0)
-            schluessel = (nr, n.kennzeichen)
-            if schluessel in gesehen or not (1 <= nr <= len(zeilen)):
-                continue
-            gesehen.add(schluessel)
-            heraus.append("--- Zeile %d: %s hat %s mitgeschlossen ---"
-                          % (nr, n.ausloeser, n.kennzeichen))
-            for i in range(max(1, nr - 1), min(len(zeilen), nr + 1) + 1):
-                heraus.append("%6d | %s"
-                              % (i, verdecke_tag_folge(zeilen[i - 1])))
-            if len(gesehen) >= 6:
-                heraus.append("(weitere Nachzuege ausgelassen - die ersten "
-                              "sechs genuegen, um den Konstrukt "
-                              "nachzustellen)")
-                break
-        heraus.append("(Diese Zeilennummern stammen aus der Annaeherung "
-                      "selbst und sind NICHT verschoben - anders als die "
-                      "des Zerlegers in M6.)")
-        return heraus
 
     # ------------------------------------------------------------------
     @staticmethod
@@ -1201,7 +1167,7 @@ class AnkerDiagnose:
             self._seiten[url] = None
             return None
         try:
-            paar = (body, SichtLxml(body), SichtGenaehert(body))
+            paar = (body, SichtLxml(body), SichtHtml5(body))
         except Exception as exc:                  # pragma: no cover - defensiv
             logger.warning("anker_diagnose: nicht zerlegbar: %s", exc)
             self._seiten[url] = None

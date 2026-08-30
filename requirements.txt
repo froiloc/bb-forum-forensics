@@ -5,6 +5,17 @@
 # Laufzeit-Abhaengigkeiten (PROD + DEV):
 pyyaml>=6.0
 lxml>=5.0
+# Build 747: Zerlegung des Seitenabzugs nach dem HTML5-Standard - DERSELBE
+# Algorithmus, den der Browser ausfuehrt, der die Anker der Markierungen
+# erzeugt hat. Rein Python (py3-none-any), zieht 'webencodings'.
+# BEGRUENDUNG: lxml folgt dem HTML5-Baumaufbau nicht; ein handgebauter
+# Teilnachbau hat ueber fuenf Builds je ein Konstrukt geheilt und ein
+# anderes zerbrochen. Gemessen an 17 Konstrukten gegen Chromium
+# (31.08.2026): lxml roh 7, lxml + Teilnachbau 16, html5lib 17.
+# Beleg: management/Befund_Ankerbruch_Browsergegenprobe_v1_0.md,
+#        report_render/html5_zerleger.py
+html5lib>=1.1
+webencodings>=0.5.1
 
 # Nur DEV (Tests):
 # pytest>=8.0

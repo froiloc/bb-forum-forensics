@@ -63,7 +63,7 @@ class Laufkopf:
         kopf = Laufkopf("anker_diagnose", [
             "tools/anker_diagnose.py",
             "management/maintenance/anker_diagnose.py",
-            "report_render/html5_annaeherung.py",
+            "report_render/html5_zerleger.py",
         ])
         for zeile in kopf.zeilen():
             print(zeile)
@@ -96,6 +96,16 @@ class Laufkopf:
 
     # ------------------------------------------------------------------
     @staticmethod
+    def html5lib_fassung() -> str:
+        """Die Fassung von html5lib - oder ein Klartextgrund."""
+        try:
+            import html5lib
+            return str(getattr(html5lib, "__version__", "unbekannt"))
+        except ImportError:
+            return "NICHT INSTALLIERT - die Zerlegung nach HTML5 ist nicht moeglich"
+
+    # ------------------------------------------------------------------
+    @staticmethod
     def md5_von(pfad: Path) -> str:
         """MD5 einer Datei, in Bloecken gelesen - oder ein Klartextgrund."""
         try:
@@ -117,6 +127,11 @@ class Laufkopf:
                       % ("%d" % nr if nr is not None
                          else "NICHT FESTSTELLBAR - build.json nicht lesbar"))
         heraus.append("  Python   : %d.%d.%d" % sys.version_info[:3])
+        # BUILD 747: html5lib bestimmt seit dem Wechsel auf den
+        # HTML5-Standard MIT, wie der Abzug zerlegt wird. Eine andere
+        # Fassung kann ein anderes Ergebnis bedeuten - sie gehoert damit
+        # genauso in den Herkunftsnachweis wie die eigenen Dateien.
+        heraus.append("  html5lib : %s" % self.html5lib_fassung())
         for rel in self._dateien:
             pfad = WURZEL / rel
             if not pfad.exists():
