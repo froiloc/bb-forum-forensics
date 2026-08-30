@@ -34,9 +34,15 @@
 #         "zeitWeg": "T1",
 #         "betreff": "Re: ...", "betreffWeg": "S2",
 #         "themenbetreff": "...", "themenbetreffWeg": "S6a"|"S6b",
-#         "moderation": false,          (Build 736)
-#         "eroeffner": true|false|null, (Build 736 — null heisst UNBEKANNT)
-#         "eroeffnerQuelle": "...",
+#         "autorUid": 3837243,          (Build 738 — der VERFASSER)
+#         "autorName": "...",
+#         "autorIstEroeffner": true|false|null,
+#         "eroeffnerUid": 3837243,      (der EROEFFNER des Themas)
+#         "eroeffnerName": "...",
+#         "kontoName": "Ermittler",     (das KONTO, das den Abzug holte)
+#         "kontoUid": 155955,
+#         "kontoIstEroeffner": true|false|null,
+#         "kontoDarfModerieren": true|false|null,
 #         "hinweise": []
 #       }
 #     }
@@ -73,28 +79,46 @@
 #   reisen mit, damit spaeter verlustfrei umgerechnet werden kann, sobald
 #   die Zone belegt ist.
 #
-#   ZU 'eroeffner' (Build 736): DREI ZUSTAENDE, NICHT ZWEI. Traegt ein Thema
-#   fuer den angemeldeten Benutzer Moderationsrechte, rendert das Forum unter
-#   der Titelzeile einen Hinweiskasten, und darin erscheint '<b>OP</b>' genau
-#   dann, wenn diese Person das Thema EROEFFNET hat. Daraus folgt:
-#     true   Kasten vorhanden UND OP-Kennzeichen darin
-#     false  Kasten vorhanden, kein OP-Kennzeichen
-#     null   kein Kasten -> die Seite sagt darueber NICHTS
-#   'null' darf beim Auswerten NIEMALS wie 'false' behandelt werden. Ohne
-#   Moderationsrechte wird der Kasten gar nicht erst gerendert; aus seinem
-#   Fehlen auf fehlende Eroeffnerschaft zu schliessen, waere ein entlastender
-#   Schluss ohne Beleg.
+#   ZU DEN PERSONENFELDERN (Build 738): DREI VERSCHIEDENE PERSONEN.
 #
-#   WESSEN EROEFFNERSCHAFT? Der Kasten spricht den ANGEMELDETEN Benutzer an
-#   ('You have moderation permisions in this thread.'). Wer das im
-#   gesicherten Abzug ist, haengt daran, unter welcher Sitzung die Seite
-#   geholt wurde — UND DAS IST NICHT ERHOBEN. Der Wert ist deshalb ein Befund
-#   der SEITE und noch keine Aussage ueber den Beschuldigten. Die Zuordnung
-#   gehoert geklaert, bevor die Angabe in einen Vermerk geht.
+#   Eine Themenseite nennt bis zu drei, und sie zu verwechseln ist die
+#   gefaehrlichste Fehldeutung in diesem Datensatz - sie schriebe dem
+#   Beschuldigten Rechte oder Taten des Ermittlungskontos zu:
+#
+#     autor*    DER VERFASSER DES BEITRAGS, in dem die Markierung sitzt.
+#               Nummer und Name aus dem Verweis 'user.php?id=' im
+#               Beitragskopf. Das ist die Angabe, um die es in diesem
+#               Projekt geht.
+#     eroeffner* DER EROEFFNER DES THEMAS. Sein Beitrag traegt im Kopf
+#               '<a class="op" title="Original Poster">OP</a>'. Seitenweit
+#               gesucht.
+#     konto*    DAS KONTO, UNTER DEM DIE SEITE GEHOLT WURDE. Aus dem
+#               Seitenkopf: Name in '#username_logged_in .username',
+#               Nummer aus dem Abmeldelink. Alles, was die Seite in der
+#               ZWEITEN PERSON sagt, bezieht sich hierauf.
+#
+#   DREI ZUSTAENDE BEI 'autorIstEroeffner' UND 'kontoIstEroeffner':
+#     true   das Kennzeichen ist da
+#     false  es ist da, wo es stuende, und es steht nicht da
+#     null   die Seite sagt darueber NICHTS - etwa auf einer Folgeseite,
+#            auf der der Eroeffnungsbeitrag gar nicht zu sehen ist
+#   'null' darf beim Auswerten NIEMALS wie 'false' behandelt werden. Das
+#   waere ein entlastender Schluss ohne Beleg.
+#
+#   DIE FELDER AUS BUILD 736 ('moderation', 'eroeffner', 'eroeffnerQuelle')
+#   SIND ENTFALLEN. Sie beruhten auf einem Modell, das ein zweiter Auszug
+#   vom 30.08.2026 widerlegt hat: der Moderationslink in der Titelzeile ist
+#   NICHT der Anzeiger fuer Moderationsrechte, und das '(OP)' im
+#   Hinweiskasten sagt etwas ueber das Konto, nicht ueber den Verfasser.
+#   Die Namen wurden bewusst NICHT weiterverwendet - ein Name, dessen
+#   Bedeutung sich geaendert hat, ist die zuverlaessigste Art, einen
+#   Auswertungsfehler zu erzeugen.
 #
 #   Beleg: claude/Analyse_Sondenmessung_29082026.md (Trefferquoten der
 #          Verfahren aus zwei Sondenlaeufen vom 29.08.2026);
-#          Auszug Alex 30.08.2026 (Moderationslink und OP-Kennzeichen);
+#          Auszuege Alex 30.08.2026 (Thema 31351 mit Hinweiskasten,
+#          Thema 168221 mit Moderationsmenue und OP-Kennzeichen an
+#          einem fremden Beitrag; Weisung zum Scraping-Konto);
 #          toolbar/toolbar.js -> PostMetaModule.
 #   Response: 200 {"id": <annotation_id>, "status": "ok"}
 #

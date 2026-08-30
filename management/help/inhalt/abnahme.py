@@ -502,23 +502,35 @@ LECTORATE = Sichthilfe(
                 "einer angehängten Nummer auffallen, ist das ein Befund für "
                 "die Betriebsseite — er deutet auf eine Titelzeile hin, die "
                 "anders gebaut ist als die bisher bekannten.",
-                "OB JEMAND DAS THEMA ERÖFFNET HAT, KANN JETZT MIT "
-                "DOKUMENTIERT WERDEN — und diese Angabe kennt DREI Zustände, "
-                "nicht zwei: ja, nein und UNBEKANNT. Das Forum zeigte einen "
-                "Hinweis auf Moderationsrechte nur dort, wo solche bestanden, "
-                "und nur in diesem Hinweis stand die Kennzeichnung als "
-                "Eröffner. Wo es den Hinweis nicht gab, sagt die Seite über "
-                "die Eröffnerschaft SCHLICHT NICHTS. Behandeln Sie ein "
-                "„unbekannt“ deshalb niemals wie ein „nein“ — das wäre eine "
-                "Feststellung ohne Grundlage, und zwar eine entlastende.",
-                "NOCH UNGEKLÄRT IST DABEI, AUF WEN SICH DIESE ANGABE "
-                "BEZIEHT. Der Hinweis des Forums sprach den jeweils "
-                "angemeldeten Benutzer an. Unter welchem Zugang die "
-                "gesicherten Seiten geholt wurden, ist bislang nicht "
-                "festgestellt. Die Angabe ist deshalb vorerst ein Befund "
-                "ÜBER DIE SEITE und noch keine Aussage über die beschuldigte "
-                "Person. Verwenden Sie sie in einem Vermerk erst, wenn die "
-                "Betriebsseite diese Zuordnung geklärt hat.",
+                "DREI PERSONEN, UND SIE DÜRFEN NIE VERWECHSELT WERDEN. Eine "
+                "Themenseite nennt bis zu drei, und neue Markierungen führen "
+                "sie getrennt mit: den VERFASSER des Beitrags, in dem die "
+                "Markierung sitzt — mit Benutzernummer und Name; den "
+                "ERÖFFNER des Themas; und das KONTO, unter dem die Seite "
+                "seinerzeit gesichert wurde. Das letzte ist ein "
+                "Ermittlungszugang und keine beschuldigte Person. Alles, was "
+                "eine gesicherte Seite in der zweiten Person sagt — ein "
+                "Hinweis auf Moderationsrechte, eine Schaltfläche „Löschen“ "
+                "—, bezieht sich auf DIESES Konto. WER DAS VERWECHSELT, "
+                "SCHREIBT EINER BESCHULDIGTEN PERSON RECHTE ZU, DIE DIE "
+                "ERMITTLUNG HATTE. Das ist die schwerwiegendste Fehldeutung, "
+                "die dieser Datensatz zulässt.",
+                "OB JEMAND DAS THEMA ERÖFFNET HAT, wird am Beitrag selbst "
+                "abgelesen: im Kopf des Eröffnungsbeitrags steht vor dem "
+                "Namen ein Kennzeichen „OP“. Die Angabe kennt DREI Zustände "
+                "— ja, nein und UNBEKANNT. Unbekannt ist sie etwa auf einer "
+                "Folgeseite, auf der der Eröffnungsbeitrag gar nicht zu "
+                "sehen ist. Behandeln Sie ein „unbekannt“ niemals wie ein "
+                "„nein“ — das wäre eine Feststellung ohne Grundlage, und "
+                "zwar eine entlastende.",
+                "EINE FRÜHERE FASSUNG DIESER ANGABE WAR FALSCH, und das "
+                "gehört gesagt, weil kurzzeitig Markierungen damit entstanden "
+                "sein können. Sie stützte sich auf einen Hinweiskasten, der "
+                "nur auf manchen Seiten erscheint, und schrieb dessen Aussage "
+                "dem Verfasser zu, obwohl sie das Ermittlungskonto betraf. "
+                "SOLLTEN SIE IN EINEM VERMERK EINEN FELDBEZUG „ERÖFFNER“ OHNE "
+                "ZUSATZ FINDEN, ist er aus dieser Zeit und gehört der "
+                "Betriebsseite gemeldet.",
             ),
         ),
         Abschnitt(

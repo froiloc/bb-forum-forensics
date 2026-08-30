@@ -27,10 +27,10 @@
 #       gueltig
 # ME05  Umlaute und Nicht-Latein ueberstehen den Weg (das Forum ist
 #       mehrsprachig, UTF-8)
-# ME06  Build 736: 'eroeffner': null ueberlebt den Weg als null und wird
-#       NICHT zu false - der Unterschied zwischen 'nicht der Eroeffner' und
-#       'darueber sagt die Seite nichts' ist der zwischen einem Befund und
-#       einem Fehlschluss
+# ME06  Build 738: 'autorIstEroeffner': null ueberlebt den Weg als null und
+#       wird NICHT zu false - der Unterschied zwischen 'nicht der Eroeffner'
+#       und 'darueber sagt die Seite nichts' ist der zwischen einem Befund
+#       und einem Fehlschluss
 #
 # Beleg: forensic_api/annotate.py (Selektionspruefung); toolbar/toolbar.js
 #        (PostMetaModule, Build 735); claude/Analyse_Sondenmessung_29082026.md
@@ -60,14 +60,23 @@ META_VIEWTOPIC = {
     "betreffWeg": "S2",
     "themenbetreff": "Ein Thema über Bonn",
     "themenbetreffWeg": "S6a",
-    # Build 736: Befunde der SEITE. 'eroeffner' kennt DREI Zustaende -
-    # true, false und null (= unbekannt, weil die Seite keinen
-    # Moderationshinweis traegt). Dass 'null' den Weg unveraendert uebersteht,
-    # ist keine Nebensache: wuerde es unterwegs zu 'false', stuende in der
-    # Akte eine Verneinung, fuer die es keinen Beleg gibt.
-    "moderation": True,
-    "eroeffner": True,
-    "eroeffnerQuelle": "OP-Kennzeichen im Moderationshinweis",
+    # Build 738: DREI VERSCHIEDENE PERSONEN, DREI GRUPPEN. Die Felder aus
+    # Build 736 ('moderation', 'eroeffner') sind ENTFALLEN - sie beruhten
+    # auf einem Modell, das Alex' zweiter Auszug widerlegt hat.
+    #
+    # 'autorIstEroeffner' und 'kontoIstEroeffner' sagen VERSCHIEDENES, und
+    # beide kennen drei Zustaende. Dass 'null' den Weg unveraendert
+    # uebersteht, ist keine Nebensache: wuerde es unterwegs zu 'false',
+    # stuende in der Akte eine Verneinung, fuer die es keinen Beleg gibt.
+    "autorUid": 3837243,
+    "autorName": "Username_Of_The_Thread_Starter",
+    "autorIstEroeffner": True,
+    "eroeffnerUid": 3837243,
+    "eroeffnerName": "Username_Of_The_Thread_Starter",
+    "kontoName": "Ermittler",
+    "kontoUid": 155955,
+    "kontoIstEroeffner": None,
+    "kontoDarfModerieren": True,
     "hinweise": [],
 }
 
@@ -117,7 +126,12 @@ def test_ME01_meta_kommt_unveraendert_an():
     # ist in einer Akte nicht ueberpruefbar (Grundregel 1).
     assert gespeichert["meta"]["zeitWeg"] == "T1"
     assert gespeichert["meta"]["themenbetreffWeg"] == "S6a"
-    assert gespeichert["meta"]["eroeffnerQuelle"] == "OP-Kennzeichen im Moderationshinweis"
+    # DIE DREI PERSONEN BLEIBEN UNTERSCHEIDBAR. Wuerden sie unterwegs
+    # zusammenfallen, schriebe der Vermerk dem Beschuldigten die Rechte des
+    # Ermittlungskontos zu.
+    assert gespeichert["meta"]["autorUid"] == 3837243
+    assert gespeichert["meta"]["kontoUid"] == 155955
+    assert gespeichert["meta"]["kontoUid"] != gespeichert["meta"]["autorUid"]
 
 
 def test_ME02_die_spalte_post_id_bleibt_unberuehrt():
@@ -186,16 +200,19 @@ def test_ME06_unbekannte_eroeffnerschaft_bleibt_unbekannt():
     # das soll festgehalten sein, damit eine spaetere Normalisierung
     # ("leere Werte vereinheitlichen") hier anschlaegt.
     meta = dict(META_VIEWTOPIC)
-    meta["moderation"] = False
-    meta["eroeffner"] = None
-    meta["eroeffnerQuelle"] = None
-    meta["hinweise"] = ["keine Moderationsanzeige - die Seite sagt ueber die "
-                        "Eroeffnerschaft NICHTS (nicht: sie verneint sie)"]
+    meta["autorIstEroeffner"] = None
+    meta["eroeffnerUid"] = None
+    meta["eroeffnerName"] = None
+    meta["kontoIstEroeffner"] = None
+    meta["hinweise"] = ["kein OP-Kennzeichen auf dieser Seite - der "
+                        "Eroeffnungsbeitrag ist hier nicht zu sehen "
+                        "(Folgeseite). UNBEKANNT, nicht 'nein'"]
     ep, bundle = _endpoint()
     _post(ep, {"page_url": "/forum/viewtopic.php?id=1",
                "category": "CAT_OTHER", "selection": _selektion(meta)})
     kwargs = bundle.evidence.save_annotation.call_args.kwargs
     gespeichert = json.loads(kwargs["selection_json"])
-    assert gespeichert["meta"]["eroeffner"] is None
-    assert gespeichert["meta"]["eroeffner"] is not False
-    assert "sagt ueber die" in gespeichert["meta"]["hinweise"][0]
+    assert gespeichert["meta"]["autorIstEroeffner"] is None
+    assert gespeichert["meta"]["autorIstEroeffner"] is not False
+    assert gespeichert["meta"]["kontoIstEroeffner"] is None
+    assert "UNBEKANNT" in gespeichert["meta"]["hinweise"][0]
