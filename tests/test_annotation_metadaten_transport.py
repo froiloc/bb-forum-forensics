@@ -77,6 +77,24 @@ META_VIEWTOPIC = {
     "kontoUid": 155955,
     "kontoIstEroeffner": None,
     "kontoDarfModerieren": True,
+    # Build 740: die Zone steht in der Fusszeile der Seite und wird von dort
+    # GELESEN. Erst damit darf umgerechnet werden - 'zeitIsoUtc' und
+    # 'zeitEpochUtc' sind nur gesetzt, wenn dort ausdruecklich UTC steht.
+    "zeitZone": "UTC",
+    "zeitZoneQuelle": "#nav-footer span[title]",
+    "zeitIsoUtc": "2022-12-17T08:14:00Z",
+    "zeitEpochUtc": 1671264840,
+    "forumId": 368,
+    "themaId": 168221,
+    "seiteNr": 1,
+    "autorTitel": "Deleted by own decision",
+    "autorZeilen": ["Leumund: 0", "Beitr\u00e4ge: 10"],
+    "pnUid": 3837243,
+    "pnThemaId": 168221,
+    "pnPostId": 1690431,
+    "dauerlinkPid": 1690431,
+    "meldelinkPid": 1690431,
+    "moderationAktionen": ["punish", "blockThumb"],
     "hinweise": [],
 }
 
@@ -132,6 +150,15 @@ def test_ME01_meta_kommt_unveraendert_an():
     assert gespeichert["meta"]["autorUid"] == 3837243
     assert gespeichert["meta"]["kontoUid"] == 155955
     assert gespeichert["meta"]["kontoUid"] != gespeichert["meta"]["autorUid"]
+    # Build 740: die Zone reist mit ihrer QUELLE. Eine Zeitangabe ohne die
+    # Auskunft, woher ihre Zone stammt, ist in einer Akte nicht pruefbar -
+    # und eine Tatzeit mit falscher Zone ist um Stunden falsch.
+    assert gespeichert["meta"]["zeitZone"] == "UTC"
+    assert gespeichert["meta"]["zeitZoneQuelle"].startswith("#nav-footer")
+    assert gespeichert["meta"]["zeitEpochUtc"] == 1671264840
+    # Und die Listenfelder ueberstehen den Weg als Listen.
+    assert gespeichert["meta"]["moderationAktionen"] == ["punish", "blockThumb"]
+    assert "Leumund: 0" in gespeichert["meta"]["autorZeilen"]
 
 
 def test_ME02_die_spalte_post_id_bleibt_unberuehrt():

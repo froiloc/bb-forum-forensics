@@ -3101,6 +3101,205 @@
       return { vorhanden: true, kontoIstEroeffner: false };
     }
 
+    // -------------------------------------------------------------------------
+    // BUILD 740: DIE ZEITZONE STEHT IN DER SEITE - UND WIRD DORT GELESEN
+    //
+    // Weisung Alex 30.08.2026: "Die Zeitzone ist grundsaetzlich UTC im Forum.
+    // 'All times are UTC' - das steht immer im Footer." Belegt durch:
+    //
+    //   <ul id="nav-footer" class="linklist bulletin" role="menubar">
+    //     …
+    //     <li class="rightside">All times are <span title="UTC">UTC</span></li>
+    //
+    // SIE WIRD TROTZDEM GELESEN UND NICHT EINGETRAGEN, und dafuer gibt es
+    // einen Grund: 'grundsaetzlich' ist keine Zusicherung fuer jede einzelne
+    // Seite. Eine Tatzeit mit falscher Zone ist um Stunden falsch, und eine
+    // fest verdrahtete Zone waere genau dann falsch, wenn es darauf ankommt -
+    // bei der Seite, die von der Regel abweicht. Gelesen kostet nichts und
+    // ist belegbar; angenommen ist billiger und im Zweifel unbrauchbar.
+    //
+    // ERST DAMIT DARF UMGERECHNET WERDEN. Bis Build 739 gab es bewusst nur
+    // 'zeitIsoOhneZone' - den Rohtext ohne Zonenangabe. Jetzt kommen
+    // 'zeitIsoUtc' und 'zeitEpochUtc' dazu, ABER NUR, wenn die Seite
+    // ausdruecklich UTC nennt. Steht dort etwas anderes oder nichts, bleiben
+    // beide null und die Zone wird als das ausgewiesen, was sie ist:
+    // unbekannt.
+    //
+    // Erkannt wird am ATTRIBUT und nicht am Satz: 'All times are' ist
+    // englischer Fliesstext und kann uebersetzt sein, 'title="UTC"' nicht.
+    // -------------------------------------------------------------------------
+
+    /**
+     * Die Zeitzone, in der das Forum seine Zeiten gerendert hat.
+     * Gibt { zone, quelle } zurueck; 'zone' ist null, wenn nichts dasteht.
+     */
+    function zeitzoneDerSeite() {
+      var vp = _viewport();
+      if (!vp) return { zone: null, quelle: null };
+      var fuss = vp.querySelector("#nav-footer");
+      if (fuss) {
+        var mit = fuss.querySelector("span[title]");
+        if (mit) {
+          var t = (mit.getAttribute("title") || "").trim();
+          if (t) return { zone: t, quelle: "#nav-footer span[title]" };
+          var s = _txt(mit);
+          if (s) return { zone: s, quelle: "#nav-footer span (Text)" };
+        }
+      }
+      return { zone: null, quelle: null };
+    }
+
+    /**
+     * Aus zerlegter Zeit und Zone die maschinenlesbaren Fassungen bilden.
+     * NUR bei UTC - jede andere Zone verlangt eine Regel, die wir nicht
+     * haben (Sommerzeit, historische Verschiebungen), und geraten wird sie
+     * nicht.
+     */
+    function utcAus(zeit, zone) {
+      if (!zeit || String(zone || "").toUpperCase() !== "UTC") {
+        return { iso: null, epoch: null };
+      }
+      var ms = Date.UTC(zeit.jahr, zeit.monat - 1, zeit.tag,
+                        zeit.stunde, zeit.minute, zeit.sekunde);
+      if (isNaN(ms)) return { iso: null, epoch: null };
+      return {
+        iso: new Date(ms).toISOString().replace(/\.\d{3}Z$/, "Z"),
+        epoch: Math.floor(ms / 1000)
+      };
+    }
+
+    // -------------------------------------------------------------------------
+    // BUILD 740: WAS DIE SEITE SONST NOCH HERGIBT
+    //
+    // Weisung Alex 30.08.2026: "Forumnummer 'fid' kannst du mit aufnehmen.
+    // Eigentlich kannst du in das JSON alles mit aufnehmen. Was wir davon
+    // verwenden, muessen wir dann spaeter schauen. Aber Haben ermoeglicht da
+    // Nutzen."
+    //
+    // AUFGENOMMEN WIRD, WAS EINE KENNUNG ODER EIN MERKMAL IST - nicht
+    // Fliesstext. Der Grund ist nicht Sparsamkeit, sondern Brauchbarkeit:
+    // der Beitragstext steht bereits in 'textContent', und ihn ein zweites
+    // Mal an anderer Stelle zu fuehren hiesse, zwei Fassungen desselben
+    // Belegs zu haben, die auseinanderlaufen koennen. Was hier dazukommt,
+    // sind Nummern, Verweise und Zustandsangaben - Dinge, die man spaeter
+    // verknuepfen kann.
+    //
+    // ALLE FELDER SIND WAHLFREI. Fehlt eines, steht null - das ist der
+    // Normalfall auf Seiten, die es nicht fuehren, und kein Mangel.
+    // -------------------------------------------------------------------------
+
+    //: 'moderate.php?action=punish&fid=368&id=168221&pid=1690431&hash=…'
+    var _FID = /[?&]fid=(\d+)/;
+    var _TID = /[?&]tid=(\d+)/;
+    var _PID = /[?&]pid=(\d+)/;
+    var _UID = /[?&]uid=(\d+)/;
+    var _TOPIC = /[?&]topic=(\d+)/;
+    var _POST = /[?&]post=(\d+)/;
+    var _AKTION = /[?&]action=([A-Za-z_]+)/;
+
+    function _zahlAus(muster, wert) {
+      var t = muster.exec(String(wert || ""));
+      return t ? parseInt(t[1], 10) : null;
+    }
+
+    /**
+     * Kennungen, die fuer die ganze Seite gelten: Forum, Thema, Seitenzahl.
+     *
+     * DIE FORUMNUMMER IST DIE INTERESSANTESTE davon: sie sagt, in WELCHEM
+     * Unterforum der Beitrag steht - und bei 278 Unterforen ist das eine
+     * Einordnung, die aus der Beitragsnummer allein nicht hervorgeht. Sie
+     * steht nur in den Moderationsverweisen; ohne Moderationsrechte bleibt
+     * sie leer, und das ist kein Mangel, sondern die Seite.
+     */
+    function seitenkennungen() {
+      var vp = _viewport();
+      var k = { forumId: null, themaId: null, seiteNr: null };
+      if (!vp) return k;
+
+      var mod = vp.querySelector("a[href*='moderate.php']");
+      if (mod) k.forumId = _zahlAus(_FID, mod.getAttribute("href"));
+
+      // Die Themennummer steht an mehreren Stellen; der Antwortknopf ist die
+      // verlaesslichste, weil es ihn auf jeder Themenseite gibt.
+      var antwort = vp.querySelector("a[href*='post.php'][href*='tid=']");
+      if (antwort) k.themaId = _zahlAus(_TID, antwort.getAttribute("href"));
+      if (k.themaId === null) {
+        var titel = vp.querySelector("h2.topic-title a[href*='viewtopic.php']");
+        if (titel) {
+          var t = /[?&]id=(\d+)/.exec(titel.getAttribute("href") || "");
+          if (t) k.themaId = parseInt(t[1], 10);
+        }
+      }
+
+      // Die laufende Seite steht in der Blaetterleiste als aktiver Eintrag.
+      var aktiv = vp.querySelector(".pagination li.active span, "
+                                  + ".pagination .active");
+      if (aktiv) {
+        var n = parseInt(_txt(aktiv), 10);
+        if (!isNaN(n)) k.seiteNr = n;
+      }
+      return k;
+    }
+
+    /**
+     * Angaben, die am einzelnen Beitrag haengen.
+     *
+     * 'autorZeilen' ist bewusst eine LISTE VON ROHTEXTEN und keine zerlegte
+     * Struktur: was in der linken Spalte steht, unterscheidet sich je nach
+     * Forenvorlage und Sprache ('Leumund: 0', 'Beitraege: 10', ein
+     * Benutzertitel). Sie hier auseinanderzunehmen hiesse, ein Format zu
+     * behaupten, das nicht belegt ist. Aufgehoben ist besser als
+     * missverstanden - und die Zerlegung kann jederzeit spaeter erfolgen,
+     * solange der Rohtext da ist.
+     */
+    function beitragsangaben(behaelter) {
+      var a = {
+        autorTitel: null, autorZeilen: [],
+        pnUid: null, pnThemaId: null, pnPostId: null,
+        dauerlinkPid: null, meldelinkPid: null,
+        moderationAktionen: []
+      };
+      if (!behaelter) return a;
+
+      var titel = behaelter.querySelector(".postleft dd.usertitle, dd.usertitle");
+      if (titel) a.autorTitel = _txt(titel) || null;
+
+      var zeilen = behaelter.querySelectorAll(".postleft dd, .postleft dt");
+      for (var i = 0; i < zeilen.length && a.autorZeilen.length < 12; i++) {
+        var t = _txt(zeilen[i]);
+        if (t) a.autorZeilen.push(t);
+      }
+
+      var pn = behaelter.querySelector("a[href*='pmsnew.php'][href*='uid=']");
+      if (pn) {
+        var h = pn.getAttribute("href");
+        a.pnUid = _zahlAus(_UID, h);
+        a.pnThemaId = _zahlAus(_TOPIC, h);
+        a.pnPostId = _zahlAus(_POST, h);
+      }
+
+      var dauer = behaelter.querySelector("a[href*='viewtopic.php'][href*='pid=']");
+      if (dauer) a.dauerlinkPid = _zahlAus(_PID, dauer.getAttribute("href"));
+
+      var melde = behaelter.querySelector("a[href*='misc.php'][href*='report=']");
+      if (melde) {
+        var m = /[?&]report=(\d+)/.exec(melde.getAttribute("href") || "");
+        if (m) a.meldelinkPid = parseInt(m[1], 10);
+      }
+
+      // WELCHE Moderationshandlungen die Seite anbietet - das ist eine
+      // Aussage ueber die Rechte des Kontos, nicht ueber den Verfasser.
+      var mods = behaelter.querySelectorAll("a[href*='moderate.php']");
+      for (var j = 0; j < mods.length && a.moderationAktionen.length < 12; j++) {
+        var akt = _AKTION.exec(mods[j].getAttribute("href") || "");
+        var name = akt ? akt[1] : "(ohne action)";
+        if (a.moderationAktionen.indexOf(name) === -1) {
+          a.moderationAktionen.push(name);
+        }
+      }
+      return a;
+    }
+
     /**
      * Die Metadaten zur Auswahl.
      *
@@ -3159,6 +3358,30 @@
         kontoUid:          null,
         kontoIstEroeffner: null,   // nur aus dem Hinweiskasten, sonst null
         kontoDarfModerieren: null, // an DIESEM Beitrag
+        // ---- Build 740: die Zeitzone steht in der Seite ------------------
+        // 'zeitIsoUtc' und 'zeitEpochUtc' NUR, wenn die Fusszeile
+        // ausdruecklich UTC nennt. Sonst bleiben sie null, und die Zone
+        // wird als unbekannt ausgewiesen statt angenommen.
+        zeitZone:         null,
+        zeitZoneQuelle:   null,
+        zeitIsoUtc:       null,
+        zeitEpochUtc:     null,
+        // ---- Build 740: Kennungen und Angaben der Seite ------------------
+        // Weisung Alex: "Haben ermoeglicht da Nutzen." Aufgenommen wird, was
+        // eine Kennung oder ein Merkmal ist - kein Fliesstext; der steht
+        // bereits in 'textContent', und zwei Fassungen desselben Belegs
+        // koennen auseinanderlaufen.
+        forumId:          null,
+        themaId:          null,
+        seiteNr:          null,
+        autorTitel:       null,
+        autorZeilen:      [],
+        pnUid:            null,
+        pnThemaId:        null,
+        pnPostId:         null,
+        dauerlinkPid:     null,
+        meldelinkPid:     null,
+        moderationAktionen: [],
         hinweise:         []
       };
 
@@ -3206,6 +3429,38 @@
       } else {
         meta.hinweise.push("kein Zeitstempel im Beitragskopf gefunden");
       }
+
+      // ---- Build 740: die Zone, und erst damit die Umrechnung -------------
+      var zone = zeitzoneDerSeite();
+      meta.zeitZone       = zone.zone;
+      meta.zeitZoneQuelle = zone.quelle;
+      if (!zone.zone) {
+        meta.hinweise.push("keine Zeitzone in der Fusszeile - der Zeitstempel "
+          + "bleibt OHNE Zone; er darf nicht ungeprueft als Ortszeit gelten");
+      } else if (String(zone.zone).toUpperCase() !== "UTC") {
+        meta.hinweise.push("die Seite nennt die Zone '" + zone.zone + "' und "
+          + "nicht UTC - es wird NICHT umgerechnet, weil dafuer eine Regel "
+          + "noetig waere, die wir nicht belegt haben");
+      } else if (z.zeit) {
+        var u = utcAus(z.zeit, zone.zone);
+        meta.zeitIsoUtc   = u.iso;
+        meta.zeitEpochUtc = u.epoch;
+      }
+
+      // ---- Build 740: Kennungen der Seite und Angaben am Beitrag ----------
+      var sk = seitenkennungen();
+      meta.forumId = sk.forumId;
+      meta.themaId = sk.themaId;
+      meta.seiteNr = sk.seiteNr;
+      var ba = beitragsangaben(behaelter);
+      meta.autorTitel         = ba.autorTitel;
+      meta.autorZeilen        = ba.autorZeilen;
+      meta.pnUid              = ba.pnUid;
+      meta.pnThemaId          = ba.pnThemaId;
+      meta.pnPostId           = ba.pnPostId;
+      meta.dauerlinkPid       = ba.dauerlinkPid;
+      meta.meldelinkPid       = ba.meldelinkPid;
+      meta.moderationAktionen = ba.moderationAktionen;
 
       // ---- Betreff: ANSICHTSABHAENGIG, keine Kette --------------------------
       if (meta.ansicht === ANSICHT_PN) {
@@ -3313,7 +3568,12 @@
         moderationAmBeitrag:    moderationAmBeitrag,
         angemeldetesKonto:      angemeldetesKonto,
         themeneroeffner:        themeneroeffner,
-        themenhinweisKasten:    themenhinweisKasten
+        themenhinweisKasten:    themenhinweisKasten,
+        // Build 740
+        zeitzoneDerSeite:       zeitzoneDerSeite,
+        utcAus:                 utcAus,
+        seitenkennungen:        seitenkennungen,
+        beitragsangaben:        beitragsangaben
       }
     };
   })();

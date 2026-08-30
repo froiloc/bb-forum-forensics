@@ -43,6 +43,15 @@
 #         "kontoUid": 155955,
 #         "kontoIstEroeffner": true|false|null,
 #         "kontoDarfModerieren": true|false|null,
+#         "zeitZone": "UTC"|null,       (Build 740 - AUS DER SEITE GELESEN)
+#         "zeitZoneQuelle": "#nav-footer span[title]"|null,
+#         "zeitIsoUtc": "2023-12-05T13:04:34Z"|null,   (NUR bei UTC)
+#         "zeitEpochUtc": 1701781474|null,             (NUR bei UTC)
+#         "forumId": 368, "themaId": 168221, "seiteNr": 1,
+#         "autorTitel": "...", "autorZeilen": ["...", "..."],
+#         "pnUid": 3837243, "pnThemaId": 168221, "pnPostId": 1690431,
+#         "dauerlinkPid": 1690431, "meldelinkPid": 1690431,
+#         "moderationAktionen": ["punish", "blockThumb"],
 #         "hinweise": []
 #       }
 #     }
@@ -72,12 +81,24 @@
 #   ALTE MARKEN HABEN KEIN 'meta'. Jeder Leser muss sein Fehlen aushalten —
 #   das ist die Bedingung dafuer, dass der Schritt ohne Migration auskommt.
 #
-#   KEINE ZEITZONE. Das Forum rendert in der Zone seiner Einstellung; welche
-#   das ist, ist NICHT erhoben. Eine Tatzeit mit falscher Zone ist um
-#   Stunden falsch. Deshalb heisst das Feld 'zeitIsoOhneZone' und es gibt
-#   bewusst keine Epoch-Zahl. Der Rohtext und die zerlegten Bestandteile
-#   reisen mit, damit spaeter verlustfrei umgerechnet werden kann, sobald
-#   die Zone belegt ist.
+#   ZUR ZEITZONE (Build 740): SIE WIRD AUS DER SEITE GELESEN, NICHT
+#   ANGENOMMEN. Die Fusszeile des Forums nennt sie ausdruecklich:
+#       <ul id="nav-footer"> … <li class="rightside">All times are
+#       <span title="UTC">UTC</span></li>
+#   Erkannt wird am ATTRIBUT und nicht am Satz - 'All times are' ist
+#   englischer Fliesstext und kann uebersetzt sein.
+#
+#   'zeitIsoUtc' und 'zeitEpochUtc' sind NUR gesetzt, wenn dort
+#   ausdruecklich UTC steht. Nennt die Seite eine andere Zone, wird NICHT
+#   umgerechnet: dafuer braeuchte es eine Regel (Sommerzeit, historische
+#   Verschiebungen), die nicht belegt ist. Nennt sie gar keine, bleibt es
+#   beim Rohtext.
+#
+#   'zeitIsoOhneZone' BLEIBT in jedem Fall - es ist die Angabe, wie sie auf
+#   der Seite stand, und damit die pruefbare. Die umgerechneten Felder sind
+#   eine Bequemlichkeit fuer die Auswertung und nicht die Quelle. Eine
+#   Tatzeit mit falscher Zone ist um Stunden falsch und sieht dabei aus wie
+#   eine richtige.
 #
 #   ZU DEN PERSONENFELDERN (Build 738): DREI VERSCHIEDENE PERSONEN.
 #
@@ -113,6 +134,22 @@
 #   Die Namen wurden bewusst NICHT weiterverwendet - ein Name, dessen
 #   Bedeutung sich geaendert hat, ist die zuverlaessigste Art, einen
 #   Auswertungsfehler zu erzeugen.
+#
+#   ZU DEN UEBRIGEN FELDERN (Build 740): Weisung Alex 30.08.2026 -
+#   "Eigentlich kannst du in das JSON alles mit aufnehmen. Was wir davon
+#   verwenden, muessen wir dann spaeter schauen. Aber Haben ermoeglicht da
+#   Nutzen." Aufgenommen wird, was eine KENNUNG oder ein MERKMAL ist, kein
+#   Fliesstext: der Beitragstext steht bereits in 'textContent', und zwei
+#   Fassungen desselben Belegs koennen auseinanderlaufen.
+#
+#   'autorZeilen' ist bewusst eine Liste von ROHTEXTEN und keine zerlegte
+#   Struktur - was in der linken Beitragsspalte steht, unterscheidet sich je
+#   nach Forenvorlage und Sprache. Sie zu zerlegen hiesse, ein Format zu
+#   behaupten, das nicht belegt ist; die Zerlegung kann spaeter erfolgen,
+#   solange der Rohtext da ist.
+#
+#   'forumId' steht nur in Moderationsverweisen und bleibt sonst leer. Das
+#   ist kein Mangel, sondern die Seite.
 #
 #   Beleg: claude/Analyse_Sondenmessung_29082026.md (Trefferquoten der
 #          Verfahren aus zwei Sondenlaeufen vom 29.08.2026);
