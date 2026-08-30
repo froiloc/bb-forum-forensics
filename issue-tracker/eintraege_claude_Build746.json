@@ -1,0 +1,96 @@
+{
+  "issues": [
+    {
+      "id": "a72d51c8-3f96-4b04-8e17-05b9c6a3f2d1",
+      "type": "bug",
+      "title": "Eine Ausgabe liess nicht erkennen, aus welchem Stand sie stammt",
+      "affected_version": "0.8.745",
+      "reporter": "Claude",
+      "reported_at": "2026-08-31T11:00:00+02:00",
+      "status": "resolved",
+      "priority": "high",
+      "severity": "major",
+      "description": "Am 31.08.2026 lag eine Ausgabe von tools/postid_nachtragen.py vor, die ZEICHENGLEICH war mit der aus dem Build davor. Zwei Erklaerungen waren damit gleich gut vereinbar: (a) der neue Stand ist nicht eingespielt worden, (b) er ist eingespielt und hat an dieser Stelle nichts geaendert. DAS SIND ZWEI VOELLIG VERSCHIEDENE LAGEN mit zwei verschiedenen naechsten Schritten - und die Ausgabe liess nicht erkennen, welche vorlag. Eine Messung, deren Herkunft offen ist, ist keine Messung. Grundregel 8 verlangt MD5-Pruefsummen der im Einsatz befindlichen Dateien; bisher wurden sie ANGEFORDERT, ab Build 746 gibt der Lauf sie von sich aus aus (management/maintenance/laufkopf.py). Der Kopf nennt Werkzeug, Buildnummer aus build.json, Python-Version und je tragender Datei die MD5. Er vergleicht NICHT mit einem Sollwert - das Werkzeug weiss nicht, welcher Stand der richtige ist; ein eingebauter Sollwert waere ein zweiter Ort, an dem eine Versionsangabe gepflegt werden muss. Und er bricht nie ab: ein Diagnosewerkzeug, das wegen seines eigenen Kopfes nicht laeuft, ist schlimmer als eines mit unvollstaendigem Kopf.",
+      "expected_behavior": "Jede Ausgabe sagt, aus welchem Stand sie stammt.",
+      "actual_behavior": "Sie sagte es nicht - ab Build 746 tut sie es.",
+      "resolved_in_version": "0.8.746",
+      "tags": [
+        "belegbarkeit",
+        "grundregel-8",
+        "werkzeug",
+        "diagnose"
+      ],
+      "related_to": []
+    },
+    {
+      "id": "d05e8b41-96a2-4c37-b7e0-1f4a72c9d863",
+      "type": "bug",
+      "title": "Behauptung ohne Beleg: 'ein <div> gehoert nicht in ein <div>'",
+      "affected_version": "0.8.745",
+      "reporter": "Claude",
+      "reported_at": "2026-08-31T11:10:00+02:00",
+      "status": "resolved",
+      "priority": "high",
+      "severity": "major",
+      "description": "M7 legte die Schachtelungszahl UNBEDINGT als Befund aus: 'Das ist eine Kaskade der Zerlegung, kein Merkmal der Seite: ein <X> gehoert nicht in ein <X>.' Bei <div> ist das schlicht FALSCH - ein <div> in einem <div> ist voellig gewoehnlich. Aufgefallen an einem Probelauf, in dem der Anker an einem <div>-Schritt brach. UND AUCH BEI <article> WAR DIE BEGRUENDUNG FALSCH: HTML5 erlaubt <article> in <article> ausdruecklich (ein Kommentar in einem Beitrag ist genau das). Die Aussage stuetzt sich nicht auf den Standard, sondern auf die VORLAGE DIESES FORUMS, in der ein Beitrag ein flaches <article class=\"post\"> ist - ein fallbezogener Beleg, der als solcher zu benennen ist. Ab Build 746 wird die Auslegung nur fuer die Elemente gegeben, fuer die sie belegt ist (FLACHE_ELEMENTE); bei allen anderen steht ausdruecklich, dass die Zahl beschreibend und kein Vorwurf ist.",
+      "expected_behavior": "Keine Behauptung ohne Beleg - auch nicht in einer Nebenzeile der Ausgabe.",
+      "actual_behavior": "Die Auslegung galt unbedingt und war fuer <div> falsch.",
+      "resolved_in_version": "0.8.746",
+      "tags": [
+        "belegbarkeit",
+        "diagnose",
+        "html5"
+      ],
+      "related_to": [
+        "9b3c07af-4d21-4e85-a6f0-71c8b25de394"
+      ]
+    },
+    {
+      "id": "c9184a7e-52d6-4f80-a3b1-6e07d5b29f4c",
+      "type": "bug",
+      "title": "Die Bruchmeldung widersprach sich in zwei aufeinanderfolgenden Saetzen",
+      "affected_version": "0.8.745",
+      "reporter": "Claude",
+      "reported_at": "2026-08-31T11:20:00+02:00",
+      "status": "resolved",
+      "priority": "high",
+      "severity": "major",
+      "description": "Der Schlusssatz 'Die Zerlegung scheidet als Ursache aus - sie ist seit Build 742 an die Browser-Regeln angeglichen' stand UNBEDINGT in der Bruchmeldung - auch dann, wenn die Zusatzangabe unmittelbar davor eine Schachtelung gemeldet hatte, die nur aus der Zerlegung stammen kann. Die Meldung sagte damit in zwei aufeinanderfolgenden Saetzen das Gegenteil von sich selbst. EINE SICH WIDERSPRECHENDE MELDUNG IST SCHLIMMER ALS KEINE: der Leser waehlt die Haelfte, die zu seiner Erwartung passt, und haelt sie fuer belegt. Ab Build 746 ist der Schlusssatz bedingt; bei gemeldeter Schachtelung sagt er ausdruecklich, dass die Zerlegung NICHT ausgeraeumt ist, und verweist auf M8 in tools/anker_diagnose.py.",
+      "expected_behavior": "Die Meldung sagt eine Sache, und zwar die belegte.",
+      "actual_behavior": "Sie sagte beide.",
+      "resolved_in_version": "0.8.746",
+      "tags": [
+        "belegbarkeit",
+        "anker",
+        "post-id"
+      ],
+      "related_to": [
+        "2f8ea513-70c4-4b96-a0d5-9c17e3b48250"
+      ]
+    },
+    {
+      "id": "f38c0d29-7b15-42ae-9106-8d4e5a1b7c02",
+      "type": "improvement",
+      "title": "Offen: liegt Build 745 in der VM, und wirkt der Geltungsbereich dort?",
+      "affected_version": "0.8.746",
+      "reporter": "Claude",
+      "reported_at": "2026-08-31T11:30:00+02:00",
+      "status": "open",
+      "priority": "critical",
+      "severity": "major",
+      "description": "Alex' Trockenuebung vom 31.08.2026 ist ZEICHENGLEICH mit der aus Build 744: #16 weiterhin ueber den Wortlaut, #25 weiterhin nicht gefunden, 25 von 27 ueber den Anker. Mit Build 745 haette sich mindestens die Zahl in 'im Abzug stehen nur 2' aendern muessen. ZWEI ERKLAERUNGEN SIND OFFEN und werden NICHT geraten: (a) Build 745 ist in der VM nicht eingespielt, (b) er ist eingespielt und der Geltungsbereich greift an diesem Konstrukt nicht - dann sitzt der Zugriff der Annaeherung nicht in einer Tabellenzelle, sondern anderswo. ENTSCHIEDEN WIRD DAS AN EINEM LAUF: tools/anker_diagnose.py gibt ab Build 746 den Laufkopf mit den MD5-Summen aus, und M8 nennt die Quelltextzeile jedes Zugriffs auf ein Geruestelement. Fehlt M8 in der Ausgabe, ist es Lage (a); steht dort eine Zeile, ist es Lage (b) und die Zeile ist der naechste Konstrukt zum Nachstellen.",
+      "expected_behavior": "Der naechste Lauf entscheidet zwischen (a) und (b), ohne dass geraten wird.",
+      "actual_behavior": "Bis dahin ist es offen - und das steht so da.",
+      "tags": [
+        "anker",
+        "post-id",
+        "offen",
+        "messung"
+      ],
+      "related_to": [
+        "b83f2c17-6a94-4d05-9e28-51c7d0a4b6e3",
+        "a72d51c8-3f96-4b04-8e17-05b9c6a3f2d1"
+      ]
+    }
+  ]
+}

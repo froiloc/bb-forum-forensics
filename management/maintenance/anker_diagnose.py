@@ -79,7 +79,7 @@
 #   nicht 'wo noetig', sondern die Vorgabe - offen ist nur, was namentlich
 #   freigegeben ist.
 #
-# Version: 0.8.745 - Build 745 (M7, M8)
+# Version: 0.8.746 - Build 746 (M7, M8, Deutung berichtigt)
 # =============================================================================
 
 from __future__ import annotations
@@ -503,6 +503,34 @@ class SichtGenaehert(SichtLxml):
 # Text, keine Attributwerte ausser den namentlich freigegebenen.
 
 
+#: Elemente, die IN DIESEM FORUM nachweislich FLACH stehen - eines im
+#: anderen kommt in der Seitenvorlage nicht vor. Nur bei ihnen ist eine
+#: Schachtelung ein Befund ueber die Zerlegung.
+#:
+#: WARUM NICHT 'ein <article> gehoert nicht in ein <article>': DAS WAERE
+#: FALSCH. HTML5 erlaubt beides ausdruecklich (ein Kommentar in einem
+#: Beitrag ist ein <article> in einem <article>). Die Aussage stuetzt sich
+#: hier NICHT auf den Standard, sondern auf die Vorlage dieses Forums, in
+#: der ein Beitrag ein flaches <article class="post"> ist. Das ist ein
+#: fallbezogener Beleg und gehoert als solcher benannt.
+#:
+#: <div> steht bewusst NICHT hier: ein <div> in einem <div> ist voellig
+#: gewoehnlich. Eine Schachtelungszahl zu <div> ist beschreibend und kein
+#: Vorwurf - sie so zu lesen waere eine Behauptung ohne Beleg.
+FLACHE_ELEMENTE = frozenset({"article"})
+
+
+def _deutung(marke: str) -> str:
+    """Die Auslegung der Schachtelungszahl - nur wo sie belegt ist."""
+    if marke in FLACHE_ELEMENTE:
+        return (" In der Vorlage dieses Forums steht ein Beitrag als flaches "
+                "<article class=\"post\">; eines im anderen kommt dort nicht "
+                "vor. Die Schachtelung stammt also aus der Zerlegung.")
+    return (" ACHTUNG: bei <%s> ist eine Schachtelung gewoehnlich und fuer "
+            "sich KEIN Befund. Die Zahl steht hier zum Vergleich der beiden "
+            "Zerlegungen, nicht als Vorwurf." % marke)
+
+
 def verteilung_zeilen(sicht, marke: str, grenze_ketten: int = 6,
                       grenze_kennungen: int = 10) -> List[str]:
     """
@@ -567,14 +595,14 @@ def verteilung_zeilen(sicht, marke: str, grenze_ketten: int = 6,
     if verschachtelt:
         heraus.append(
             "  %d von %d stehen INNERHALB eines anderen <%s> - tiefste "
-            "Schachtelung: %d. Das ist eine Kaskade der Zerlegung, kein "
-            "Merkmal der Seite: ein <%s> gehoert nicht in ein <%s>."
-            % (verschachtelt, len(knoten), marke, tiefste, marke, marke))
+            "Schachtelung: %d.%s"
+            % (verschachtelt, len(knoten), marke, tiefste, _deutung(marke)))
     else:
         heraus.append(
-            "  KEINES steht innerhalb eines anderen <%s>. Eine Kaskade "
-            "scheidet damit aus - die Elemente stehen nebeneinander, nur "
-            "nicht an der vom Anker verlangten Stelle." % marke)
+            "  KEINES steht innerhalb eines anderen <%s>.%s Die Elemente "
+            "stehen nebeneinander, nur nicht an der vom Anker verlangten "
+            "Stelle." % (marke, " Eine Kaskade scheidet damit aus."
+                         if marke in FLACHE_ELEMENTE else ""))
 
     tiefe = sicht.groesste_tiefe()
     heraus.append("  groesste Schachtelungstiefe im ganzen Baum: %d%s"

@@ -5506,6 +5506,14 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             "MELDET DER LAUF 'die Annaeherung aendert NICHTS', ist das ein "
             "ERGEBNIS und kein Fehlschlag: er schliesst die beiden "
             "bekannten Ursachen aus. Dann sind M4 und M5 zu lesen.",
+            "JEDER LAUF NENNT SEINE HERKUNFT (Build 746): Buildnummer aus "
+            "build.json und die MD5-Summe jeder Datei, die das Ergebnis "
+            "traegt. Sie gehoeren gegen die MD5SUMS-Datei der Lieferung "
+            "gehalten - weichen sie ab, ist der Lauf mit einem anderen "
+            "Stand gefahren worden als angenommen. Anlass: eine Ausgabe "
+            "vom 31.08.2026 war zeichengleich mit der aus dem Build "
+            "davor, und 'nicht eingespielt' war von 'eingespielt, aber "
+            "ohne Wirkung' nicht zu unterscheiden.",
             "M8 ZEIGT, WAS DIE ANNAEHERUNG SELBST GETAN HAT. Sie zieht "
             "ausstehende Endtags nach; schliesst dabei ein Element MIT "
             "KENNUNG mit, kann ein ganzer Zweig der Seite verschoben "
@@ -5570,7 +5578,11 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
               "Beitragsnummer und den Weg, auf dem sie gefunden wurde. "
               "Aenderung und Beleg stehen in EINER Transaktion: entweder "
               "beides oder nichts. Die coordinator.db wird nicht beruehrt.",
-        ausgabe="Klartext auf der Konsole: je gepruefter Annotation eine "
+        ausgabe="Zuerst der HERKUNFTSNACHWEIS (Build 746): Buildnummer und "
+               "die MD5-Summe jeder Datei, die das Ergebnis traegt - sie "
+               "gehoeren gegen die MD5SUMS-Datei der Lieferung gehalten, "
+               "damit ein Lauf nie unbemerkt mit einem anderen Stand "
+               "gefahren wird (Grundregel 8). Dann Klartext auf der Konsole: je gepruefter Annotation eine "
                 "Zeile mit Beleg-Nummer, Art, Ergebnis, eingetragener "
                 "Nummer, Weg und Gegenprobe; danach die Zaehlung. "
                 "'--protokoll' schreibt DIESELBEN Zeilen zusaetzlich in eine "

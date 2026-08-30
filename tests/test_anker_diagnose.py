@@ -434,7 +434,10 @@ def test_AD17_kaskade_wird_als_kaskade_benannt(tmp_path):
     assert "<article>: 12 im Baum" in text, text
     assert "11 von 12 stehen INNERHALB" in text, text
     assert "tiefste Schachtelung: 11" in text, text
-    assert "Kaskade der Zerlegung" in text, text
+    assert "Die Schachtelung stammt also aus der Zerlegung" in text, text
+    # Die Begruendung stuetzt sich auf die VORLAGE DIESES FORUMS und nicht
+    # auf HTML5 - der Standard erlaubt <article> in <article> ausdruecklich.
+    assert "Vorlage dieses Forums" in text, text
 
 
 def test_AD18_gegenprobe_geschwister_sind_keine_kaskade(tmp_path):
@@ -447,6 +450,7 @@ def test_AD18_gegenprobe_geschwister_sind_keine_kaskade(tmp_path):
     assert "<article>: 12 im Baum" in text, text
     assert "KEINES steht innerhalb" in text, text
     assert "INNERHALB eines anderen" not in text, text
+    assert "Eine Kaskade scheidet damit aus" in text, text
     # Und die Gruppierung sagt, WO sie stattdessen stehen: einer unmittelbar
     # unter #page-body, elf je unter einem eigenen div.kasten.
     assert "verteilt auf 2 Vorfahrenkette(n)" in text, text
@@ -529,3 +533,29 @@ def test_AD23_gegenprobe_ohne_nachzug_mit_kennung_keine_zeilen(tmp_path):
     text = "\n".join(befund.seiten[0].nachzug_quelltext)
     assert "mitgeschlossen" not in text, text
     assert "page-header" not in text, text
+
+
+def test_AD24_bei_div_wird_die_schachtelung_nicht_als_befund_ausgelegt(tmp_path):
+    # BUILD 746 - EINE BEHAUPTUNG OHNE BELEG, die mir selbst unterlaufen
+    # ist: die Ausgabe schrieb 'ein <div> gehoert nicht in ein <div>'. DAS
+    # IST FALSCH - ein <div> in einem <div> ist voellig gewoehnlich. Die
+    # Zahl ist dort BESCHREIBEND und kein Vorwurf, und genau das muss sie
+    # auch sagen.
+    ev, fo = _bestand(tmp_path, KOPF_MIT_NOSCRIPT)
+    befund = AnkerDiagnose(evidence=ev, forensic=fo).lauf()
+    s = befund.seiten[0]
+    assert s.verteilung_marke == "div", s.verteilung_marke
+    text = "\n".join(s.verteilung_roh)
+    assert "gehoert nicht in ein" not in text, text
+    assert "gewoehnlich und fuer sich KEIN Befund" in text, text
+
+
+def test_AD25_gegenprobe_bei_article_wird_sie_sehr_wohl_ausgelegt(tmp_path):
+    # OHNE DIESE PROBE waere AD24 auch mit einer Fassung gruen, die
+    # ueberhaupt keine Auslegung mehr gibt - und dann waere die Angabe,
+    # um derentwillen M7 gebaut wurde, wieder eine blosse Zahl.
+    ev, fo = _bestand_artikel(tmp_path, _kaskade(12), anker=ANKER_ARTIKEL)
+    befund = AnkerDiagnose(evidence=ev, forensic=fo).lauf()
+    text = "\n".join(befund.seiten[0].verteilung_genaehert)
+    assert "Vorlage dieses Forums" in text, text
+    assert "gewoehnlich und fuer sich KEIN Befund" not in text, text
