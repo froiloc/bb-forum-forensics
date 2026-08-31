@@ -332,6 +332,12 @@ _GEPRUEFT_728 = ("Build 728, 2026-08-28, gegen einen Wegwerf-Bestand unter "
                  "Hash-Kette, forensic_700.db mit einem Seitenabzug aus drei "
                  "Beitraegen), Python 3.13, lxml 6.1")
 
+_GEPRUEFT_753 = ("Build 753, 2026-08-31, gegen einen Wegwerf-Bestand unter "
+                 "/tmp (evidence_999.db mit vier Annotationen, forensic_999.db "
+                 "mit einem Seitenabzug aus vier Beitraegen, deren "
+                 "Elementindex dem Aufbau der PN-Seiten folgt), Python 3.13, "
+                 "lxml 6.1, html5lib 1.1")
+
 
 CLI_KATALOG: Tuple[CliEintrag, ...] = (
     # -------------------------------------------------------------- Fallsteuerung
@@ -5765,6 +5771,117 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "an der Zahl der Markierungen: jede Seite wird einmal "
                 "zerlegt, und eine Themenseite kann bis zu 500 Beitraege "
                 "tragen.",
+            ),
+        ),
+    ),
+    CliEintrag(
+        schluessel="xpath_versatz_messen",
+        pfad="tools/xpath_versatz_messen.py",
+        aufruf="python tools/xpath_versatz_messen.py "
+               "--evidence <evidence_N.db> --forensic <forensic_N.db> "
+               "[--seite <Teil der Adresse>] [--protokoll <Datei>]",
+        titel="Versatz der XPath-Ausdruecke messen",
+        gruppe="Diagnose",
+        zweck="Messen, um wie viele BEITRAEGE der in "
+              "'annotations.selection_json' gespeicherte XPath-Ausdruck "
+              "danebenzeigt - und ob dieser Versatz an der ZEIT der "
+              "Markierung oder an der POSITION auf der Seite haengt.",
+        # 'lesend' und nicht 'gemischt': es gibt keinen Unterbefehl und keinen
+        # Schalter, der schreiben wuerde. Beide Datenbanken werden ueber
+        # 'file:...?mode=ro' geoeffnet - es KANN nicht schreiben.
+        art="lesend",
+        datenbanken=(
+            "evidence_<uid>.db (lesend, mode=ro - annotations)",
+            "forensic_<uid>.db (lesend, mode=ro - pages, page_aliases)",
+        ),
+        betrieb="Darf jederzeit laufen. Beide Verbindungen sind "
+                "schreibgeschuetzt; ein Wartungsfenster ist nicht noetig.",
+        beleg="Nein - es schreibt nichts und legt deshalb auch keinen Beleg "
+              "in der Hash-Kette an. Der Befund ist die Ausgabe; "
+              "'--protokoll' schreibt sie zusaetzlich in eine Datei.",
+        ausgabe="Je Seite: alle pages-Zeilen zu der Adresse (auch POST und "
+                "ueber Aliasse erreichte), der Vergleich von "
+                "'pages.fetched_at' gegen 'annotations.ts', die Zahl der "
+                "Beitraege im Abzug, je Markierung der Platz des vom "
+                "Ausdruck benannten Beitrags gegen den Platz des Beitrags "
+                "mit dem eindeutigen Wortlaut und den Versatz - und zum "
+                "Schluss, ob der Versatz der Zeit oder der Position folgt. "
+                "Der markierte Wortlaut steht NICHT in der Ausgabe.",
+        hinweis="WOZU ES DA IST: Die Browsermessung vom 31.08.2026 "
+                "(debug/messung_xpath_blink_M1.js) hat gezeigt, dass die "
+                "gespeicherten XPath-Ausdruecke AUCH IN BLINK nicht "
+                "aufloesen - 'text()[24]' bei 23 Textknoten, 'div[54]' bei "
+                "53 Kindern. Blink und der Abzug sehen denselben Baum; der "
+                "Zerleger scheidet damit als Ursache aus. Der Fehler sitzt "
+                "in genau EINEM Schritt, dem Index des Beitragsbehaelters, "
+                "und betraegt ein ganzzahliges Vielfaches EINES Beitrags. "
+                "Der Baum, gegen den gerechnet wurde, trug also mehr "
+                "Beitraege als der heutige Abzug. "
+                "ES RAET NICHTS: kommt der markierte Wortlaut in mehreren "
+                "Beitraegen vor, gibt es keinen Messwert, und die Zeile "
+                "bleibt leer. Und wo Zeit und Position gleich laufen - eine "
+                "Seite, die von oben nach unten abgearbeitet wurde -, SAGT "
+                "das Werkzeug, dass die Frage aus diesem Bestand nicht "
+                "entscheidbar ist, statt sich eine Deutung auszusuchen.",
+        konfiguration=KONFIG_KEINE,
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/xpath_versatz_messen.py "
+                     "--evidence /tmp/evidence_999.db "
+                     "--forensic /tmp/forensic_999.db",
+                     "Vier Markierungen auf einer Seite mit vier Beitraegen: "
+                     "Versatz +0, +1, +1 und -2 je richtig gemessen; der "
+                     "Befund 'drei von vier Markierungen sind AELTER als der "
+                     "Abzug' ausgeloest. Rueckgabewert 1, weil Versatz "
+                     "gefunden wurde.",
+                     _GEPRUEFT_753),
+                _bsp("python tools/xpath_versatz_messen.py "
+                     "--evidence /tmp/evidence_999.db "
+                     "--forensic /tmp/forensic_999.db --seite tid=1",
+                     "Dieselbe Messung, auf eine Adresse eingeschraenkt. "
+                     "Der Filter vergleicht auf Teilzeichenkette in "
+                     "'annotations.page_url'.",
+                     _GEPRUEFT_753),
+                _bsp("python tools/xpath_versatz_messen.py "
+                     "--evidence /tmp/evidence_999.db "
+                     "--forensic /tmp/forensic_999.db "
+                     "--protokoll /tmp/versatz_999.log",
+                     "Wie oben, zusaetzlich als Datei. Die Datei traegt "
+                     "dieselben Zeilen wie die Konsole - sie ist keine "
+                     "andere Auswahl.",
+                     _GEPRUEFT_753),
+            ),
+            exit_codes=(
+                (0, "durchgelaufen, kein Versatz und kein Zeitbefund"),
+                (1, "durchgelaufen, aber es gibt etwas zu berichten "
+                    "(Versatz, mehrere pages-Zeilen zu einer Adresse, "
+                    "Markierungen aelter als der Abzug, fehlender Abzug)"),
+                (2, "nicht zustande gekommen (Datei fehlt, annotations "
+                    "nicht lesbar, Protokolldatei nicht schreibbar)"),
+            ),
+            warnungen=(
+                "EIN VERSATZ VON 0 IST KEIN FREISPRUCH. Gemessen wird nur "
+                "dort, wo der markierte Wortlaut in GENAU EINEM Beitrag der "
+                "Seite steht. Wo er in mehreren steht, gibt es keinen "
+                "Messwert - und keinen Messwert zu haben ist etwas anderes, "
+                "als einen von null zu haben.",
+                "DIE SPALTE 'Anker->Platz' SAGT NICHT, DASS DER AUSDRUCK "
+                "AUFLOEST. Sie nennt den Beitrag, in dem der am weitesten "
+                "aufgeloeste Elementknoten liegt. Die Spalte 'Schritte' "
+                "daneben sagt, wie weit der Ausdruck gekommen ist - "
+                "'15/16' heisst, dass die letzte Stufe gebrochen ist und "
+                "der Beitrag trotzdem feststeht.",
+                "'KEIN TRENNENDES PAAR' IST EIN ERGEBNIS UND KEIN FEHLER. "
+                "Auf einer Seite, die von oben nach unten abgearbeitet "
+                "wurde, laufen Zeit und Position gleich; die beiden "
+                "Deutungen sind dann aus diesem Bestand nicht zu trennen. "
+                "Dafuer braucht es eine Seite, die nicht der Reihe nach "
+                "bearbeitet wurde.",
+                "DIE LAUFZEIT HAENGT AN DER ZAHL DER MARKIERUNGEN MAL DER "
+                "ZAHL DER BEITRAEGE: fuer jede Markierung wird der Wortlaut "
+                "gegen jeden Beitrag der Seite gehalten. Auf einer Seite mit "
+                "500 Beitraegen und 260 Markierungen sind das 130.000 "
+                "Vergleiche - das dauert und ist kein Aufhaenger.",
             ),
         ),
     ),

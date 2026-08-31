@@ -54,6 +54,16 @@ debug/test_2_91_console.js
 
 !management/*.md
 !documents/*.md
+
+# VERZEICHNISBESCHREIBUNGEN - Weisung Alex, 31.08.2026 (Build 753)
+# '*.md' ist oben pauschal ausgeschlossen, damit Notizen und Auszuege nicht
+# versehentlich in den Bestand geraten. Die README.md eines Verzeichnisses
+# ist aber kein Notizzettel, sondern die Beschreibung dessen, was dort
+# hineingehoert und was nicht - sie MUSS mitgeliefert werden, sonst steht
+# die Regel nur im Kopf dessen, der sie aufgestellt hat.
+!README.md
+!*/README.md
+!*/*/README.md
 !management/*.html
 !issue-tracker/
 !issue-tracker/data

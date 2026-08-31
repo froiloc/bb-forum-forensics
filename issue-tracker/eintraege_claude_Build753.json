@@ -1,0 +1,193 @@
+{
+  "issues": [
+    {
+      "id": "ef3cb207-a755-486d-8b5b-0e7d84004186",
+      "type": "documentation",
+      "title": "<mark>-Injektion als Ursache der Textknotendifferenz WIDERLEGT",
+      "affected_version": "0.8.753",
+      "reporter": "Claude",
+      "reported_at": "2026-08-31T20:30:00+02:00",
+      "status": "resolved",
+      "severity": "major",
+      "description": "Browsermessung M1 vom 31.08.2026 im Ermittlungsfenster (Chrome 151): 'CSS.highlights' liefert 'object', der Highlight-Konstruktor ist vorhanden, und im Viewport steht KEIN einziges <mark>. Der <mark>-Rueckfallpfad (toolbar.js Z. 1453 ff.) laeuft nicht; der DOM wird beim Markieren nicht veraendert. Die in der Uebergabe nach Build 752 zu Vorgang 8d3b62f5 als 'draengend' bezeichnete Erklaerung stammte von Claude, war NICHT gemessen und ist damit falsch. Alex hatte sie vor der Messung bestritten.",
+      "expected_behavior": "Eine Vermutung wird als Vermutung gefuehrt, bis sie gemessen ist.",
+      "actual_behavior": "Sie stand als 'Erklaerung draengt sich auf' in der Uebergabe und hat eine Sitzung lang die Suchrichtung bestimmt.",
+      "tags": [
+        "messung",
+        "xpath",
+        "toolbar"
+      ],
+      "related_to": []
+    },
+    {
+      "id": "3719a4b4-1353-4cbc-be10-81566a638992",
+      "type": "documentation",
+      "title": "Zerleger und Browser sehen denselben Baum - html5lib bestaetigt",
+      "affected_version": "0.8.753",
+      "reporter": "Claude",
+      "reported_at": "2026-08-31T20:30:00+02:00",
+      "status": "resolved",
+      "severity": "minor",
+      "description": "M1 misst am Traegerabsatz von '/forum/pmsnew.php?mdl=topic&tid=64200' in Blink 23 Textknoten - der Abzug hat 23. 'div[52]' fuehrt in beiden auf Beitrag #291411, der Beitragsbehaelter hat in beiden 53 Elementkinder, 'div[54]' bricht in beiden. Der Umbau auf html5lib (Build 747) bildet Blink ab und scheidet als Fehlerquelle aus.",
+      "tags": [
+        "messung",
+        "zerleger",
+        "html5lib"
+      ],
+      "related_to": []
+    },
+    {
+      "id": "84d492be-451b-4c34-b8f2-9f08efdfa344",
+      "type": "bug",
+      "title": "XPath-Ausdruecke loesen auch in Blink nicht auf - Fehler sitzt im Beitragsindex",
+      "affected_version": "0.8.753",
+      "reporter": "Claude",
+      "reported_at": "2026-08-31T20:30:00+02:00",
+      "status": "open",
+      "severity": "blocker",
+      "description": "Die gespeicherten Ausdruecke passen nicht auf die Seite, auf der sie erzeugt wurden: 'text()[24]' bei 23 Textknoten, 'div[54]' bei 53 Kindern, 'div[1010]' bei 1005. Der Fehler sitzt in GENAU EINEM Schritt, dem Index des Beitragsbehaelters, und betraegt ein ganzzahliges Vielfaches EINES Beitrags. Auf tid=64200: 0 bis Platz 4, danach +1 konstant. Auf tid=57358: von +2 oben auf +18 unten, stufenweise. Der Seitenbau ist dabei ausnahmslos regelmaessig (Elementindex = 2*Platz+3). Kontrollseite tid=19368 mit 6 Beitraegen: 10 von 10 richtig. FOLGERUNG: die damals ausgelieferte Seite trug mehr Beitraege als der heute verglichene Abzug. Einzelheiten in documents/Befund_XPath_Beitragsindex_v1_0.md.",
+      "expected_behavior": "Ein gespeicherter Ausdruck loest auf der Seite auf, auf der er erzeugt wurde.",
+      "actual_behavior": "Er benennt einen Beitrag weiter unten; der markierte Wortlaut steht dort nicht.",
+      "tags": [
+        "xpath",
+        "sicherung",
+        "befund"
+      ],
+      "related_to": []
+    },
+    {
+      "id": "74a4923e-21a5-4a8e-a015-8362f6b490d5",
+      "type": "bug",
+      "title": "373 Eintragungen des Nachtrags beruhen auf ungeprueften Ausdruecken",
+      "affected_version": "0.8.753",
+      "reporter": "Claude",
+      "reported_at": "2026-08-31T20:30:00+02:00",
+      "status": "open",
+      "severity": "blocker",
+      "description": "Die Kreuzprobe in postid_nachtrag._nummer_bestimmen laeuft nur im Zweig des TEILweise aufgeloesten Ausdrucks. Loest der Ausdruck ganz auf (fundstelle.weg == WEG_XPATH), wird die Beitragsnummer ungeprueft uebernommen - das sind 373 der 410 vorgesehenen Eintragungen. Gemessen (M1): auf tid=64200 loesen 31 Ausdruecke ganz auf, davon zeigen 24 auf den falschen Beitrag; auf tid=57358 27, davon mindestens 13 falsch; auf der Kontrollseite tid=19368 10, davon 0. Der scharfe Lauf darf in dieser Form nicht gefahren werden.",
+      "expected_behavior": "Auch ein vollstaendig aufgeloester Ausdruck wird am Inhalt geprueft, bevor eine Nummer eingetragen wird.",
+      "actual_behavior": "Er wird geglaubt, weil er nicht gestolpert ist.",
+      "tags": [
+        "nachtrag",
+        "kreuzprobe",
+        "blocker"
+      ],
+      "related_to": []
+    },
+    {
+      "id": "d71fcbd3-b2a2-48ed-be18-8f02121f422d",
+      "type": "bug",
+      "title": "_ueber_xpath prueft den gefundenen Text nicht gegen den Wortlaut",
+      "affected_version": "0.8.753",
+      "reporter": "Claude",
+      "reported_at": "2026-08-31T20:30:00+02:00",
+      "status": "open",
+      "severity": "critical",
+      "description": "AbsatzFinder._ueber_xpath() bildet die Fundstelle aus Anker und Offsets und vergleicht an keiner Stelle, ob dort der markierte Wortlaut steht. Reicht der Endanker nicht, wird 'ab hier so viele Zeichen, wie der Wortlaut lang ist' genommen. Damit ist nicht nur die Beitragsnummer betroffen, sondern auch der Textausschnitt, den das Vollzitat abdruckt. Die Toolbar tut es uebrigens laengst: rangeFromSelection() vergleicht range.toString() gegen selection.textContent und setzt 'stale'.",
+      "expected_behavior": "Die serverseitige Aufloesung prueft den Inhalt wie die Toolbar.",
+      "actual_behavior": "Sie prueft ihn nicht.",
+      "tags": [
+        "absatz_finder",
+        "vollzitat"
+      ],
+      "related_to": []
+    },
+    {
+      "id": "d0f54dfc-8dc7-4e11-b28f-5be052eeb80f",
+      "type": "feature_request",
+      "title": "Neu: tools/xpath_versatz_messen.py - Versatz gegen Zeit und Position",
+      "affected_version": "0.8.753",
+      "reporter": "Claude",
+      "reported_at": "2026-08-31T20:30:00+02:00",
+      "status": "testing",
+      "severity": "major",
+      "description": "Rein lesendes Werkzeug (beide Datenbanken ueber file:...?mode=ro). Es haelt pages.fetched_at gegen annotations.ts, misst je Markierung den Abstand zwischen dem vom Ausdruck benannten Beitrag und dem Beitrag mit dem eindeutigen Wortlaut, und sortiert den Versatz nach Zeit UND nach Position. Wo Zeit und Position gleich laufen, SAGT es, dass die Frage aus diesem Bestand nicht entscheidbar ist, statt sich eine Deutung auszusuchen; wo es trennende Paare gibt, nennt es sie einzeln. Mit Katalogeintrag, --help-Epilog und neun Regressionstests (XV01-XV09).",
+      "tags": [
+        "werkzeug",
+        "messung"
+      ],
+      "related_to": []
+    },
+    {
+      "id": "6f5bcfe8-bfce-49fa-b7f7-99f963c6cef9",
+      "type": "bug",
+      "title": "Anzeigefehler im neuen Werkzeug durch eigenen Test gefunden (XV06)",
+      "affected_version": "0.8.753",
+      "reporter": "Claude",
+      "reported_at": "2026-08-31T20:30:00+02:00",
+      "status": "resolved",
+      "severity": "minor",
+      "description": "Die Spalte 'Wortlaut->Platz' gab '-' aus, sobald kein eindeutiger Traeger feststand - damit war der Zweig '(N Traeger)' unerreichbar und die Lage 'Wortlaut ist mehrdeutig' nicht von 'Wortlaut nicht gefunden' zu unterscheiden. Genau die erste ist der Fall, in dem NICHTS eingetragen werden darf. Gefunden von XV06, behoben vor der Auslieferung.",
+      "tags": [
+        "werkzeug",
+        "gegenprobe"
+      ],
+      "related_to": []
+    },
+    {
+      "id": "ae798ec0-ae58-4e78-9e84-5847cb8f41b3",
+      "type": "feature_request",
+      "title": "Neu: drei Messvorrichtungen fuer das Ermittlungsfenster",
+      "affected_version": "0.8.753",
+      "reporter": "Claude",
+      "reported_at": "2026-08-31T20:30:00+02:00",
+      "status": "testing",
+      "severity": "minor",
+      "description": "debug/messung_xpath_blink_M1.js (loest der Ausdruck auf, auf welchen Beitrag zeigt er, steht der Wortlaut dort), debug/messung_wiederherstellung_M1b.js (was liefert die Wiederherstellung wirklich - und wie viele Markierungen werden ueberhaupt gezeichnet; beantwortet Alex' Einwand, dass im Fenster alles richtig aussieht) und debug/messung_seitenumfang_M1c.js (laufende Nummern aus <span class=\"conr\">, Blaetterleiste, hoechster verlangter Beitragsindex). Alle drei rein lesend, mit IIFE-Wrapper, WANN/WO/WIE/ZU BEOBACHTEN im Kopf und kopierbarer Ausgabe.",
+      "tags": [
+        "messung",
+        "toolbar"
+      ],
+      "related_to": []
+    },
+    {
+      "id": "205024cf-a3fd-468f-84da-a8c0f4c032be",
+      "type": "documentation",
+      "title": "README.md fuer fuenf Verzeichnisse - Rest offen",
+      "affected_version": "0.8.753",
+      "reporter": "Claude",
+      "reported_at": "2026-08-31T20:30:00+02:00",
+      "status": "in_progress",
+      "severity": "minor",
+      "description": "Weisung Alex 31.08.2026: jedes Verzeichnis braucht eine README.md, die beschreibt, welchen Inhalt es traegt und wofuer es gedacht ist. Angelegt in diesem Build: tools/, tests/, debug/, documents/, management/ - also die in diesem Build beruehrten. Die uebrigen Verzeichnisse (core/, db/, editor/, forensic_api/, report_render/, server/, static/, toolbar/, userinfo/, maintenance/, setup/, deployment/, issue-tracker/) stehen noch aus. Ausserdem gehoert das Wurzelverzeichnis aufgeraeumt: dort liegen Wegwerfdateien (betroffen.csv, browserprobe_tmp.mjs, debug_scrollpos_probe.js, ex.sh) neben Betriebsdateien.",
+      "tags": [
+        "dokumentation",
+        "aufraeumen"
+      ],
+      "related_to": []
+    },
+    {
+      "id": "3fa56f04-97d4-47e3-8616-2eaac07d29b8",
+      "type": "improvement",
+      "title": "HTML5-Konformitaet der Seitenabzuege ist nie geprueft worden",
+      "affected_version": "0.8.753",
+      "reporter": "Claude",
+      "reported_at": "2026-08-31T20:30:00+02:00",
+      "status": "open",
+      "severity": "major",
+      "description": "M4 der Ankerdiagnose gibt das Fehlerprotokoll von libxml2 aus. Das ist KEINE HTML5-Pruefung: libxml2 beanstandet Konstrukte, die nach HTML5 zulaessig sind (ein nicht geschlossenes <li> etwa), und schweigt zu solchen, die es nicht sind. Die Rubrik ist bisher als Aussage ueber den Abzug gelesen worden; sie ist eine Aussage ueber libxml2. Eine echte Konformitaetspruefung (Nu Html Checker / vnu) gehoert nach Weisung Alex in den Prepper und braucht die PHP-Skripte nicht.",
+      "tags": [
+        "prepper",
+        "abzug",
+        "pruefung"
+      ],
+      "related_to": []
+    },
+    {
+      "id": "55cc0b93-b992-47e6-a618-ce7432e12f4a",
+      "type": "documentation",
+      "title": "Versionierung der Annotationen: Schema traegt bereits version_nr und prev_id",
+      "affected_version": "0.8.753",
+      "reporter": "Claude",
+      "reported_at": "2026-08-31T20:30:00+02:00",
+      "status": "open",
+      "severity": "minor",
+      "description": "Weisung Alex 31.08.2026: bei einer Heilung darf KEINE bestehende Zeile geaendert werden; es entsteht eine neue Zeile mit Rueckverweis ueber annotations.prev_id, ggf. ein Eintrag in evidence_audit_log, und im selection_json stehen renderengine ('Blink') und renderengine_version. Befund: evidence_uid.db.schema.sql fuehrt version_nr (NOT NULL DEFAULT 1) und prev_id (FK auf annotations.id) bereits. Fuer die Vorgabe ist KEIN Schemaeingriff noetig. Das ist zugleich der Weg fuer Vorgang e5c8203d.",
+      "tags": [
+        "migration",
+        "annotationen"
+      ],
+      "related_to": []
+    }
+  ]
+}
