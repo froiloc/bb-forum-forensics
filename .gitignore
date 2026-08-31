@@ -92,3 +92,5 @@ MD5SUMS_Build*.txt
 *.tsv
 *.sql
 *.sql.txt
+
+ignore/
