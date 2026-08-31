@@ -48,6 +48,7 @@ from management.maintenance.postid_nachtrag import (  # noqa: E402
     WEG_UEBERSETZUNG,
     WEG_WORTLAUT,
     WEG_WORTLAUT_EINDEUTIG,
+    WEG_ANKER_TEIL,
 )
 
 # --- Der Seitenabzug ---------------------------------------------------------
@@ -783,3 +784,165 @@ class WerkzeugTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ---------------------------------------------------------------------------
+# Build 750 - der TEILWEISE aufgeloeste Anker
+#
+# ALEX' GESAMTLAUF ueber zwoelf Beweismitteldatenbanken (31.08.2026) zeigt
+# ein Muster, das an einer einzelnen Datenbank nicht zu sehen war: der
+# haeufigste Bruch sitzt in der LETZTEN Stufe des Ankers. Die Meldung sagt
+# es selbst:
+#
+#   "Schritt 16 von 16 bricht bei 'text()[24]': der Browser hat 24
+#    Textknoten gezaehlt, der Abzug hat 23. Aufgeloest bis
+#    ./donate[1]/.../div[52]/.../p[1]."
+#
+# DER BEITRAG STEHT DAMIT FEST. Er ist der naechste Vorfahr mit einer
+# Beitragskennung; fuer ihn wird der Textknotenindex nicht gebraucht.
+# Trotzdem fiel das Werkzeug auf die WORTLAUTSUCHE zurueck - und die ist
+# schwaecher: sie sucht irgendeine Fundstelle mit demselben Wortlaut,
+# notfalls in einem anderen Beitrag, und liefert bei mehrfach vorkommendem
+# Wortlaut gar nichts ('mehrdeutig'), obwohl der Anker den Beitrag benennt.
+#
+# In Alex' Lauf betraf das 37 Belege ueber den Wortlaut und zwei als "von
+# Hand zu klaeren" gemeldete.
+#
+# PN50  bricht nur die letzte Stufe, kommt die Nummer aus dem ANKER
+# PN51  GEGENPROBE: bricht der Anker schon im Geruest, liefert der Teilweg
+#       NICHTS - sonst waere er ein Ratespiel mit gutem Namen
+# PN52  GEGENPROBE: loest der Anker GANZ auf, bleibt es beim Sollweg -
+#       der Teilweg darf den vollen Anker nicht verdraengen
+# PN53  widersprechen sich Anker und Wortlaut, wird das BENANNT
+# ---------------------------------------------------------------------------
+
+#: Der Pfad auf den Absatz in BODY_ECHT_FORUM - AM ABZUG ERMITTELT, nicht
+#: geschaetzt (lxml getpath, 31.08.2026). ANKER_4711 gilt fuer BODY, nicht
+#: fuer diesen Aufbau; das ist beim Schreiben dieser Faelle aufgefallen.
+_ABSATZ_ECHT = ("./div[1]/article[1]/div[1]/div[1]/div[1]/div[1]/div[2]"
+                "/div[1]/p[1]")
+#: Der Anker, der GANZ aufloest.
+ANKER_ECHT_VOLL = _ABSATZ_ECHT + "/text()[1]"
+#: Derselbe Anker, aber die letzte Stufe verlangt einen Textknoten, den der
+#: Abzug nicht hat - genau Alex' Bruchbild ("Browser 7, Abzug 1").
+ANKER_4711_TEXTKNOTEN = _ABSATZ_ECHT + "/text()[7]"
+
+
+class TeilankerTests(unittest.TestCase):
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self._tmp.name)
+        self.auf = Aufbau(self.dir)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _lauf(self, **kw):
+        return PostIdNachtrag(evidence=self.auf.evidence,
+                              forensic=self.auf.forensic, **kw).lauf()
+
+    def _zeile(self, befund, ident):
+        for z in befund.zeilen:
+            if z.annotation_id == ident:
+                return z
+        self.fail("Beleg #%d fehlt im Befund (GR1)." % ident)
+
+    def test_PN50_letzte_stufe_bricht_nummer_kommt_aus_dem_anker(self):
+        nr = self.auf.annotation(
+            seite=SEITE_ECHT_FORUM,
+            auswahl=_auswahl(ANKER_4711_TEXTKNOTEN, "Bahnhof"))
+        z = self._zeile(self._lauf(), nr)
+        self.assertEqual(WEG_ANKER_TEIL, z.weg)
+        self.assertEqual(1164441, z.post_id)
+        # UND DER GRUND STEHT DABEI - eine Nummer ohne Herkunft ist in einer
+        # Akte so gut wie keine.
+        self.assertIn("aus dem Anker", z.bemerkung)
+        self.assertIn("nicht aus der Wortlautsuche", z.bemerkung)
+
+    def test_PN51_gegenprobe_bruch_im_geruest_liefert_nichts(self):
+        # OHNE DIESE PROBE waere PN50 auch mit einer Fassung gruen, die aus
+        # JEDEM angefangenen Anker eine Nummer macht - und das waere ein
+        # Ratespiel mit gutem Namen.
+        nr = self.auf.annotation(
+            seite=SEITE_ECHT_FORUM,
+            auswahl=_auswahl(ANKER_KAPUTT, "Bahnhof"))
+        z = self._zeile(self._lauf(), nr)
+        self.assertNotEqual(WEG_ANKER_TEIL, z.weg)
+
+    def test_PN52_gegenprobe_ganz_aufgeloester_anker_bleibt_sollweg(self):
+        # Der Teilweg darf den vollen Anker nicht verdraengen - sonst
+        # verloere die Zaehlung die Unterscheidung, auf die es ankommt.
+        nr = self.auf.annotation(
+            seite=SEITE_ECHT_FORUM,
+            auswahl=_auswahl(ANKER_ECHT_VOLL, "Bahnhof"))
+        z = self._zeile(self._lauf(), nr)
+        self.assertEqual(WEG_ANKER, z.weg)
+        self.assertEqual(1164441, z.post_id)
+
+    def test_PN53_widerspruch_zum_wortlaut_wird_benannt(self):
+        # Der Wortlaut steht im Abzug NUR in Beitrag 1164441. Ein Anker, der
+        # in einem anderen Beitrag endet, muesste also widersprechen - hier
+        # gibt es nur einen Beitrag, also faellt der Fall zusammen. Geprueft
+        # wird deshalb die Zusage selbst: findet der Wortlaut denselben
+        # Beitrag, wird KEIN Widerspruch behauptet.
+        nr = self.auf.annotation(
+            seite=SEITE_ECHT_FORUM,
+            auswahl=_auswahl(ANKER_4711_TEXTKNOTEN, "Bahnhof"))
+        z = self._zeile(self._lauf(), nr)
+        self.assertEqual(WEG_ANKER_TEIL, z.weg)
+        self.assertNotIn("ACHTUNG", z.bemerkung)
+
+
+class TeilankerMethodeTests(unittest.TestCase):
+    """
+    Die Herleitung selbst, ohne den Umweg ueber einen ganzen Lauf.
+
+    WARUM ZUSAETZLICH: Beim Gegenprobenlauf zu Build 750 fiel auf, dass zwei
+    Schranken einander verdecken - der Guard IN der Methode ('ganz
+    aufgeloest -> nichts') und der Guard im Aufrufer ('nur wenn der Sollweg
+    nicht schon getragen hat'). Legt man einen davon stilllegt, faengt der
+    andere den Fall ab, und KEIN Test wurde rot. Ein Schutz, dessen Wegfall
+    kein Test bemerkt, ist kein geprueftes Verhalten, sondern ein Zufall.
+    Diese Faelle pruefen die Methode unmittelbar.
+
+    PN54  ein ganz aufgeloester Anker liefert aus dem Teilweg NICHTS
+    PN55  ein in der letzten Stufe gebrochener Anker liefert die Nummer
+    PN56  ohne Anker liefert er nichts - und zwar ohne Ausnahme
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self._tmp.name)
+        self.auf = Aufbau(self.dir)
+        self.nachtrag = PostIdNachtrag(evidence=self.auf.evidence,
+                                       forensic=self.auf.forensic)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _finder(self):
+        from report_render.absatz_finder import AbsatzFinder
+        return AbsatzFinder(BODY_ECHT_FORUM)
+
+    def test_PN54_ganz_aufgeloester_anker_liefert_aus_dem_teilweg_nichts(self):
+        # DAS IST DER GUARD IN DER METHODE. Ohne ihn haenge alles am
+        # Aufrufer - und ein Schutz an nur einer Stelle faellt beim naechsten
+        # Umbau still weg.
+        nummer, hinweis = self.nachtrag._nummer_aus_teilanker(
+            self._finder(), {"xpathStart": ANKER_ECHT_VOLL})
+        self.assertIsNone(nummer)
+        self.assertEqual("", hinweis)
+
+    def test_PN55_gebrochene_letzte_stufe_liefert_die_nummer(self):
+        nummer, hinweis = self.nachtrag._nummer_aus_teilanker(
+            self._finder(), {"xpathStart": ANKER_4711_TEXTKNOTEN})
+        self.assertEqual(1164441, nummer)
+        self.assertIn("aus dem Anker", hinweis)
+
+    def test_PN56_ohne_anker_liefert_er_nichts(self):
+        for auswahl in ({}, {"xpathStart": ""}, None, "keine Abbildung"):
+            with self.subTest(auswahl=auswahl):
+                nummer, _ = self.nachtrag._nummer_aus_teilanker(
+                    self._finder(), auswahl)
+                self.assertIsNone(nummer)

@@ -775,6 +775,61 @@ class AbsatzFinder:
         return (knoten, "text", 0)
 
     # ------------------------------------------------------------------
+    def anker_teilknoten(self, ausdruck: str):
+        """
+        Der am weitesten aufgeloeste ELEMENTknoten eines Ankers.
+
+        Rueckgabe: (Knoten oder None, Zahl der aufgeloesten Schritte,
+        Gesamtzahl der Schritte). Loest der Anker ganz auf, ist der Knoten
+        der Traeger der letzten Elementstufe.
+
+        BUILD 750. DER BEFUND, DER DAZU GEFUEHRT HAT (Alex' Gesamtlauf ueber
+        zwoelf Beweismitteldatenbanken, 31.08.2026): Der haeufigste Bruch
+        sitzt in der LETZTEN Stufe, bei 'text()[n]' - der Browser zaehlte in
+        einem Absatz mehr Textknoten als der Abzug hat. Die Meldung sagt in
+        diesen Faellen selbst: "Aufgeloest bis .../div[36]/.../p[1]".
+        DER BEITRAG STEHT DAMIT LAENGST FEST. Er ist der naechste Vorfahr
+        mit einer Beitragskennung - dafuer braucht es den Textknotenindex
+        ueberhaupt nicht.
+        Bis Build 749 fiel das Werkzeug an dieser Stelle trotzdem auf die
+        WORTLAUTSUCHE zurueck. Die ist schwaecher: sie findet irgendeine
+        Fundstelle mit demselben Wortlaut, notfalls in einem anderen
+        Beitrag, und bei mehrfach vorkommendem Wortlaut gar keine
+        ("mehrdeutig") - obwohl der Anker den Beitrag benennt.
+        In Alex' Lauf betraf das 37 Belege ueber den Wortlaut und zwei als
+        "von Hand zu klaeren" gemeldete, bei denen der Anker bis in den
+        Beitrag hinein aufgeloest hatte.
+        WARUM DAS EIN STAERKERER BELEG IST ALS DER WORTLAUT: der Anker ist
+        die Positionsangabe des Ermittlers. Loest er bis in den Beitrag
+        hinein auf, ist dieser Beitrag benannt - und nicht gesucht.
+        """
+        schritte = [t for t in str(ausdruck or "").split("/") if t and t != "."]
+        if not schritte:
+            return None, 0, 0
+        knoten = self._wurzel
+        letzter = None
+        gegangen = 0
+        for schritt in schritte:
+            treffer = _SCHRITT_MUSTER.match(schritt)
+            if not treffer:
+                break
+            try:
+                ergebnis = knoten.xpath("./" + schritt)
+            except Exception:                     # pragma: no cover - defensiv
+                break
+            if not ergebnis:
+                break
+            knoten = ergebnis[0]
+            gegangen += 1
+            # NUR ELEMENTE. Ein Textknoten-Treffer kommt als 'smart string'
+            # zurueck; er traegt keine Kinder und ist als Ausgangspunkt fuer
+            # die Vorfahrensuche unbrauchbar. Sein TRAEGER ist bereits als
+            # vorheriger Schritt vermerkt.
+            if isinstance(getattr(knoten, "tag", None), str):
+                letzter = knoten
+        return letzter, gegangen, len(schritte)
+
+    # ------------------------------------------------------------------
     def anker_bruchstelle(self, ausdruck: str) -> str:
         """
         Den Anker Schritt fuer Schritt aufloesen und sagen, WO er bricht.

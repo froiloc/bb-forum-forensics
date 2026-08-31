@@ -163,6 +163,12 @@ logger = get_logger(__name__)
 WEG_ANKER = "anker"
 WEG_WORTLAUT = "wortlaut"
 WEG_WORTLAUT_EINDEUTIG = "wortlaut_ein_beitrag"
+#: BUILD 750. Der Anker loest NICHT ganz auf, aber weit genug, um den
+#: Beitrag zu benennen - typisch bricht erst die letzte Stufe ('text()[n]').
+#: Das ist ein STAERKERER Beleg als der Wortlaut: der Anker ist die
+#: Positionsangabe des Ermittlers; loest er bis in den Beitrag hinein auf,
+#: ist dieser Beitrag benannt und nicht gesucht.
+WEG_ANKER_TEIL = "anker_teil"
 WEG_UEBERSETZUNG = "uebersetzung"
 WEG_KEINER = "keiner"
 
@@ -619,6 +625,47 @@ class PostIdNachtrag:
         return z
 
     # ------------------------------------------------------------------
+    @staticmethod
+    def _nummer_aus_teilanker(finder, selection):
+        """
+        (Beitragsnummer oder None, Hinweis im Klartext).
+
+        BUILD 750. Der Anker wird Schritt fuer Schritt gegangen; vom am
+        weitesten erreichten ELEMENT aus wird der naechste Vorfahr mit einer
+        Beitragskennung gesucht.
+
+        ZWEI SCHRANKEN, damit daraus kein Raten wird:
+
+          * ES MUSS EIN ANKER DA SEIN. Ohne 'xpathStart' gibt es nichts zu
+            gehen.
+          * DER ANKER MUSS WEIT GENUG GEKOMMEN SEIN. Bricht er schon im
+            Seitengeruest, sagt der erreichte Knoten nichts ueber einen
+            Beitrag - dann traegt auch kein Vorfahr eine Beitragskennung,
+            und die Suche liefert von selbst None. Eine zusaetzliche
+            Mindesttiefe waere eine geratene Zahl und steht deshalb nicht
+            hier.
+        """
+        from report_render.absatz_finder import AbsatzFinder
+        if not isinstance(selection, dict):
+            return None, ""
+        ausdruck = str(selection.get("xpathStart") or "")
+        if not ausdruck:
+            return None, ""
+        knoten, gegangen, gesamt = finder.anker_teilknoten(ausdruck)
+        if knoten is None or gegangen >= gesamt:
+            # Ganz aufgeloest? Dann hat der Sollweg getragen und dieser
+            # Zweig hat nichts beizutragen.
+            return None, ""
+        nummer = AbsatzFinder.post_id_von(knoten)
+        if nummer is None:
+            return None, ""
+        return nummer, (
+            "Der Anker loest %d von %d Schritten auf und endet damit INNERHALB "
+            "des Beitrags; die Nummer stammt aus dem Anker und nicht aus der "
+            "Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die "
+            "Zaehlung der Textknoten." % (gegangen, gesamt))
+
+    # ------------------------------------------------------------------
     def _nummer_bestimmen(self, r: sqlite3.Row, selection: Any,
                           z: Zeilenbefund) -> Optional[int]:
         """
@@ -660,6 +707,56 @@ class PostIdNachtrag:
         # danach getragen hat. Genau dann ist er die Auskunft, die fehlte.
         z.anker_grund = getattr(fundstelle, "anker_grund", "") or ""
         z.anker_bruch = getattr(fundstelle, "anker_bruch", "") or ""
+
+        # -- (c) DER TEILWEISE AUFGELOESTE ANKER ---------------------------
+        #
+        # BUILD 750, aus Alex' Gesamtlauf ueber zwoelf Beweismitteldaten-
+        # banken (31.08.2026): Der haeufigste Bruch sitzt in der LETZTEN
+        # Stufe. Die Meldung sagt das selbst - "Schritt 16 von 16 bricht bei
+        # 'text()[24]': der Browser hat 24 Textknoten gezaehlt, der Abzug
+        # hat 23. Aufgeloest bis .../div[52]/.../p[1]."
+        #
+        # DER BEITRAG STEHT DAMIT FEST. Er ist der naechste Vorfahr mit
+        # einer Beitragskennung; der Textknotenindex wird dafuer nicht
+        # gebraucht. Bis Build 749 fiel das Werkzeug trotzdem auf die
+        # WORTLAUTSUCHE zurueck - und die ist schwaecher: sie sucht eine
+        # Fundstelle mit demselben Wortlaut, notfalls in einem anderen
+        # Beitrag, und liefert bei mehrfach vorkommendem Wortlaut gar nichts
+        # ('mehrdeutig'), obwohl der Anker den Beitrag benennt.
+        #
+        # DIE PRUEFUNG STEHT VOR DER AUSWERTUNG DER FUNDSTELLE und nicht
+        # dahinter: sie soll den Wortlaut ERSETZEN, wo der Anker traegt,
+        # nicht ihn im Nachhinein bestaetigen.
+        teilnummer, teilhinweis = self._nummer_aus_teilanker(finder, selection)
+        # ZWEI SCHRANKEN, UND DAS IST ABSICHT - aber sie decken einander,
+        # und das gehoert gesagt: '_nummer_aus_teilanker' gibt bei einem
+        # ganz aufgeloesten Anker schon nichts zurueck (PN54), und die
+        # zweite Bedingung hier faengt denselben Fall noch einmal ab. Beim
+        # Gegenprobenlauf zu Build 750 wurde deshalb KEIN Test rot, als eine
+        # der beiden stillgelegt wurde. Die Doppelung bleibt - sie kostet
+        # nichts und schuetzt den Fall, dass der Sollweg aus einem anderen
+        # Grund als dem Anker traegt -, aber sie ist als Doppelung benannt
+        # und nicht als zweite gepruefte Regel ausgegeben.
+        if teilnummer is not None and fundstelle.weg != WEG_XPATH:
+            z.weg = WEG_ANKER_TEIL
+            z.bemerkung = teilhinweis
+            # WIDERSPRUCH NICHT VERSCHWEIGEN. Findet der Wortlaut einen
+            # ANDEREN Beitrag als der Anker, ist das ein Befund und keine
+            # Nebensache - er gehoert in die Zeile, damit ihn jemand ansieht.
+            wortlautnummern = []
+            for treffer in fundstelle.treffer:
+                nummer = AbsatzFinder.post_id_von(treffer.block)
+                if nummer is not None and nummer not in wortlautnummern:
+                    wortlautnummern.append(nummer)
+            if wortlautnummern and teilnummer not in wortlautnummern:
+                z.bemerkung += (" ACHTUNG: die Wortlautsuche haette %s "
+                                "geliefert - der Anker und der Wortlaut "
+                                "zeigen auf VERSCHIEDENE Beitraege. "
+                                "Eingetragen wird der Anker; die Stelle "
+                                "gehoert angesehen."
+                                % ", ".join("#%d" % n
+                                            for n in wortlautnummern))
+            return teilnummer
         if not fundstelle.treffer:
             z.ergebnis = ERG_NICHT_GEFUNDEN
             z.bemerkung = (fundstelle.hinweis
