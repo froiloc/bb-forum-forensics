@@ -1,0 +1,93 @@
+{
+  "issues": [
+    {
+      "id": "4e19d7c2-0a63-4b58-9e14-7f2c68b035ae",
+      "type": "improvement",
+      "title": "Beitragsnummer aus dem teilweise aufgeloesten Anker statt aus dem Wortlaut",
+      "affected_version": "0.8.749",
+      "reporter": "Alex",
+      "reported_at": "2026-08-31T20:00:00+02:00",
+      "status": "resolved",
+      "priority": "critical",
+      "severity": "major",
+      "description": "Alex' Gesamtlauf ueber ZWOELF Beweismitteldatenbanken (31.08.2026, rund 450 Annotationen) zeigt ein Muster, das an evidence_155955.db allein nicht zu sehen war: DER HAEUFIGSTE BRUCH SITZT IN DER LETZTEN STUFE DES ANKERS. Die Meldung sagt es selbst - 'Schritt 16 von 16 bricht bei text()[24]: der Browser hat 24 Textknoten gezaehlt, der Abzug hat 23. Aufgeloest bis .../div[52]/.../p[1].' DER BEITRAG STEHT DAMIT FEST: er ist der naechste Vorfahr mit einer Beitragskennung, und dafuer wird der Textknotenindex nicht gebraucht. Bis Build 749 fiel das Werkzeug trotzdem auf die WORTLAUTSUCHE zurueck. Die ist schwaecher: sie sucht irgendeine Fundstelle mit demselben Wortlaut - notfalls in einem ANDEREN Beitrag - und liefert bei mehrfach vorkommendem Wortlaut gar nichts ('mehrdeutig'), obwohl der Anker den Beitrag benennt. In Alex' Lauf betraf das 37 Belege mit Weg=wortlaut und zwei als 'von Hand zu klaeren' gemeldete (evidence_2948078 #65: Wortlaut in 24 Beitraegen, Anker aufgeloest bis div[52]/.../p[1]; evidence_583231 #1: Wortlaut in 162 Beitraegen). BEHOBEN: AbsatzFinder.anker_teilknoten() geht den Anker Schritt fuer Schritt und gibt den am weitesten erreichten ELEMENTknoten samt (gegangen, gesamt) zurueck; PostIdNachtrag._nummer_aus_teilanker() sucht von dort den naechsten Vorfahr mit Beitragskennung. Neuer Weg WEG_ANKER_TEIL. Zwei Schranken: ohne Anker gibt es nichts zu gehen, und ein GANZ aufgeloester Anker liefert aus diesem Zweig nichts - der Sollweg wird nicht verdraengt. Bricht der Anker schon im Seitengeruest, traegt kein Vorfahr eine Beitragskennung und die Suche liefert von selbst None; eine geratene Mindesttiefe waere eine erfundene Zahl und steht deshalb nicht im Code. WIDERSPRUCH WIRD BENANNT: findet der Wortlaut einen ANDEREN Beitrag als der Anker, steht das in der Zeile ('ACHTUNG ... zeigen auf VERSCHIEDENE Beitraege'); eingetragen wird der Anker, weil er die Positionsangabe des Ermittlers ist.",
+      "expected_behavior": "Loest der Anker bis in den Beitrag hinein auf, wird der Beitrag benannt und nicht gesucht.",
+      "actual_behavior": "Ab Build 750 ist das so.",
+      "resolved_in_version": "0.8.750",
+      "tags": [
+        "post-id",
+        "nachtrag",
+        "anker",
+        "belegkraft"
+      ],
+      "related_to": []
+    },
+    {
+      "id": "8d3b62f5-14ca-4e07-b891-25a0f79ce463",
+      "type": "bug",
+      "title": "Anker zaehlen mehr Textknoten, als der Abzug hat - Ursache noch offen",
+      "affected_version": "0.8.749",
+      "reporter": "Alex",
+      "reported_at": "2026-08-31T20:10:00+02:00",
+      "status": "open",
+      "priority": "critical",
+      "severity": "critical",
+      "description": "AUS ALEX' GESAMTLAUF, und es ist ein BEFUND UEBER DIE ERHEBUNG, nicht ueber die Auswertung: In einer Vielzahl von Faellen verlangt der Anker einen Textknoten mit hoeherer Nummer, als der Abzug im selben Absatz hat - der Absatz selbst wird korrekt erreicht. Beispiele aus evidence_2948078, alle im SELBEN Absatz (.../div[52]/.../p[1]), Abzug jeweils 23 Textknoten: Beleg #59 verlangt 24, #60 verlangt 25, #61 verlangt 26, #62 verlangt 28, #66 verlangt 32, #67 verlangt 33, #68 verlangt 34, #69 und #70 verlangen 36, #71 verlangt 37, #72 und #73 verlangen 38. DIE ZAHLEN STEIGEN MIT DER REIHENFOLGE DER BELEGE, waehrend der Abzug unveraendert 23 traegt. Dasselbe Bild in evidence_1488 (Browser 5 / Abzug 1, Browser 14 / Abzug 2, Browser 17 / Abzug 6). EINE ERKLAERUNG DRAENGT SICH AUF und wird hier ausdruecklich NICHT als Befund ausgegeben, weil sie nicht gemessen ist: wird beim Markieren der Absatz durch bereits vorhandene Markierungen im DOM zerlegt (etwa durch eingefuegte <mark>-Elemente, wenn die CSS-Highlight-Schnittstelle nicht zur Verfuegung steht - vgl. die Meldung 'CSS Custom Highlights API nicht verfuegbar - Fallback auf <mark>-Injection aktiv' in den Testlaeufen), so entstuenden mit jeder weiteren Markierung im selben Absatz zusaetzliche Textknoten, und der Anker wuerde auf einem veraenderten DOM gerechnet. DAS IST ZU MESSEN, BEVOR ES GEGLAUBT WIRD - der naechstliegende Weg ist eine Gegenprobe im Ermittlungsfenster: einen Absatz mit mehreren Annotationen laden und die Textknoten VOR und NACH dem Einfaerben zaehlen. FOLGE, falls es sich bestaetigt: die Anker der betroffenen Altannotationen sind an der letzten Stufe unbrauchbar, aber der Beitrag bleibt bestimmbar (s. 4e19d7c2); fuer NEUE Annotationen muesste der Anker auf dem uneingefaerbten DOM gerechnet werden.",
+      "expected_behavior": "Der Anker wird auf demselben DOM gerechnet, den der Abzug wiedergibt.",
+      "actual_behavior": "Er verlangt mehr Textknoten, als der Abzug hat - steigend mit der Zahl der Markierungen im Absatz.",
+      "tags": [
+        "anker",
+        "toolbar",
+        "erhebung",
+        "messung-offen"
+      ],
+      "related_to": [
+        "4e19d7c2-0a63-4b58-9e14-7f2c68b035ae"
+      ]
+    },
+    {
+      "id": "c7f04a91-6b28-4d53-8e70-13ba95c2d8f7",
+      "type": "bug",
+      "title": "35 Annotationen ohne zerlegbaren Seitenabzug",
+      "affected_version": "0.8.749",
+      "reporter": "Alex",
+      "reported_at": "2026-08-31T20:15:00+02:00",
+      "status": "open",
+      "priority": "high",
+      "severity": "major",
+      "description": "In zwei Bestaenden hat KEINE einzige Annotation einen Seitenabzug: evidence_1088376.db (22 von 22) und evidence_1547111.db (13 von 13) melden durchweg 'Zu <Adresse> gibt es in fdb.pages keinen zerlegbaren Seitenabzug'. Betroffen sind ausschliesslich viewtopic-Adressen, und je Bestand mehrere verschiedene Themen. DAS IST KEIN AUSWERTUNGSFEHLER, sondern ein Befund ueber die Sicherung: ohne Abzug gibt es weder Anker noch Wortlaut, und die Beitragsnummer ist auf keinem Weg zu bestimmen. ZU KLAEREN, und nicht zu raten: fehlen die Seiten in forensic_<uid>.db ganz, sind sie unter einer anderen Adresse abgelegt (Alias), oder ist der Abzug vorhanden, aber leer? Der Unterschied entscheidet, ob nachgesichert werden muss oder ob eine Adresszuordnung fehlt. Solange das offen ist, sind 35 Belege dieser beiden Bestaende ohne Beitragsbezug - und damit ohne Betreff, ohne Originaldatum und ohne Gruppierung im Bericht.",
+      "expected_behavior": "Zu jeder Annotation gibt es den Seitenabzug, auf dem sie erhoben wurde.",
+      "actual_behavior": "In zwei Bestaenden fehlt er durchgaengig.",
+      "tags": [
+        "beweismittel",
+        "seitenabzug",
+        "vollstaendigkeit",
+        "messung-offen"
+      ],
+      "related_to": []
+    },
+    {
+      "id": "0a5c8e34-7d92-41b6-a058-6e3f14c7902d",
+      "type": "improvement",
+      "title": "Testluecke: zwei Schranken deckten einander, keine Gegenprobe schlug an",
+      "affected_version": "0.8.750",
+      "reporter": "Claude",
+      "reported_at": "2026-08-31T20:20:00+02:00",
+      "status": "resolved",
+      "priority": "medium",
+      "severity": "minor",
+      "description": "Beim Gegenprobenlauf zu Build 750 wurde KEIN Test rot, als eine der beiden Schranken des neuen Wegs stillgelegt wurde - weder der Guard in _nummer_aus_teilanker ('ganz aufgeloest -> nichts') noch der im Aufrufer ('nur wenn der Sollweg nicht schon getragen hat'). Sie decken einander: faellt einer weg, faengt der andere denselben Fall ab. EIN SCHUTZ, DESSEN WEGFALL KEIN TEST BEMERKT, IST KEIN GEPRUEFTES VERHALTEN, SONDERN EIN ZUFALL. Abhilfe: PN54-PN56 pruefen _nummer_aus_teilanker unmittelbar; mit ihnen wird der Guard in der Methode rot, wenn man ihn entfernt. Die Doppelung im Aufrufer BLEIBT - sie kostet nichts und schuetzt den Fall, dass der Sollweg aus einem anderen Grund als dem Anker traegt -, ist aber im Code ausdruecklich als Doppelung benannt und nicht als zweite gepruefte Regel ausgegeben. Festgehalten, weil eine unbemerkte Testluecke genau die Sorte Fehler ist, die spaeter als 'das war doch getestet' wiederkehrt.",
+      "expected_behavior": "Jede Schranke ist einzeln pruefbar, oder ihre Doppelung ist benannt.",
+      "actual_behavior": "Sie deckten einander unbemerkt - jetzt ist beides geregelt.",
+      "resolved_in_version": "0.8.750",
+      "tags": [
+        "tests",
+        "belegbarkeit",
+        "gegenprobe"
+      ],
+      "related_to": [
+        "4e19d7c2-0a63-4b58-9e14-7f2c68b035ae"
+      ]
+    }
+  ]
+}
