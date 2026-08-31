@@ -83,7 +83,7 @@
 #       --protokoll nachtrag_700.log
 #
 # Grundregeln: GR1, GR2, GR6, GR10.
-# Version: v0.8.751 - Build: 751 - 2026-08-31
+# Version: v0.8.752 - Build: 752 - 2026-08-31
 # =============================================================================
 
 from __future__ import annotations
@@ -446,10 +446,33 @@ def _lauf(args, sag: Mitschrift) -> int:
         for lage, anzahl in sorted(proben.items()):
             sag("  %-24s %6d%s"
                 % (lage, anzahl,
-                   "   <- NICHTS eingetragen, von Hand ansehen"
+                   "   <- Anker widerlegt; traegt der Wortlaut eindeutig, "
+                   "wird ER eingetragen"
                    if lage == "nicht bestanden" else
-                   "   <- Nummer allein aus Elementindizes"
+                   "   <- Wortlaut kommt in mehreren Beitraegen vor, "
+                   "bestaetigt also nichts"
+                   if lage == "schwach" else
+                   "   <- kein Wortlaut zum Pruefen, nichts eingetragen"
                    if lage == "nicht pruefbar" else ""))
+
+    # BUILD 752: DER VERSATZ. Die Kreuzprobe sagt, DASS der Anker
+    # danebenzeigt; diese Zahl sagt, UM WIEVIEL - gerechnet in Beitraegen
+    # und nicht in Beitragsnummern. Ist sie durchweg dieselbe, ist die
+    # Verschiebung systematisch und liesse sich beziffern; streut sie, ist
+    # an den Ankern dieser Altbestaende nichts zu heilen.
+    versaetze = befund.versaetze()
+    if versaetze:
+        sag("")
+        sag("VERSATZ - um wie viele BEITRAEGE der Anker danebenzeigt "
+            "(positiv = weiter unten):")
+        for wert, anzahl in sorted(versaetze.items()):
+            sag("  %+6d %s %6d Belege" % (wert, "Beitraege", anzahl))
+        if len(versaetze) == 1:
+            sag("  EINGIPFELIG - die Verschiebung ist auf diesem Bestand "
+                "systematisch.")
+        else:
+            sag("  STREUEND - die Verschiebung ist NICHT in einer Zahl zu "
+                "fassen.")
 
     # BUILD 729: DIE ANKER-BILANZ. Sie ist die Antwort auf die Frage, die
     # der Lauf von Build 728 offenlassen musste - dort stand 25-mal

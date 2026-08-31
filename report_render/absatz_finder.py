@@ -87,7 +87,7 @@
 #   Eingriffe geschehen auf einer tiefen Kopie des gefundenen Absatzes.
 #
 # Grundregeln: GR1, GR6, GR10.
-# Version: v0.8.751 - Build: 751 - 2026-08-31
+# Version: v0.8.752 - Build: 752 - 2026-08-31
 # =============================================================================
 
 from __future__ import annotations
@@ -1341,6 +1341,69 @@ class AbsatzFinder:
             if _falte(fassung) and _falte(fassung) in gefalteter_inhalt:
                 return True
         return False
+
+    # ------------------------------------------------------------------
+    def beitragsreihe(self) -> List[Any]:
+        """
+        Alle Beitragsbehaelter des Abzugs in Dokumentreihenfolge.
+
+        BUILD 752. Gebraucht wird sie fuer die Messung des VERSATZES: wie
+        viele Beitraege liegen zwischen dem, den der Anker benennt, und dem,
+        in dem der Wortlaut steht? Diese Zahl ist in BEITRAEGEN gerechnet und
+        nicht in Beitragsnummern - der Abstand zweier Beitragsnummern haengt
+        davon ab, wie viel im Forum dazwischen geschrieben wurde, und sagt
+        ueber die Seite gar nichts.
+
+        Die aeussere Kennung 'p<Nr>' und die innere 'pp<Nr>' bezeichnen
+        DENSELBEN Beitrag (s. post_id_von). Gezaehlt wird deshalb je Nummer
+        nur einmal, und zwar beim ersten Auftreten.
+        """
+        if self._wurzel is None:
+            return []
+        aus: List[Any] = []
+        gesehen = set()
+        for el in self._wurzel.iter():
+            if not isinstance(getattr(el, "tag", None), str):
+                continue
+            treffer = _POST_KENNUNG.match(str(el.get("id") or "").strip())
+            if not treffer:
+                continue
+            nummer = int(treffer.group(2))
+            if nummer in gesehen:
+                continue
+            gesehen.add(nummer)
+            aus.append(el)
+        return aus
+
+    # ------------------------------------------------------------------
+    def beitragsversatz(self, von_nummer: Optional[int],
+                        nach_nummer: Optional[int]) -> Optional[int]:
+        """
+        Wie viele Beitraege liegen zwischen zwei Nummern? None, wenn eine
+        der beiden im Abzug nicht vorkommt.
+
+        Vorzeichen: positiv, wenn 'von_nummer' WEITER UNTEN steht als
+        'nach_nummer'. Genau dieses Vorzeichen ist der Messgegenstand - bei
+        allen bisher gemessenen Faellen benennt der Anker einen Beitrag
+        weiter unten als den, in dem der Wortlaut steht (Alex' Lauf vom
+        31.08.2026: 34 von 34).
+
+        WOZU: ist der Versatz auf einer Seite fuer alle Belege GLEICH, ist
+        die Verschiebung systematisch und in EINER Zahl zu fassen. Ist er
+        verschieden, ist sie es nicht. Die Unterscheidung entscheidet, ob
+        sich die Anker dieser Altbestaende ueberhaupt heilen lassen - und
+        sie ist zu MESSEN und nicht zu schaetzen.
+        """
+        if von_nummer is None or nach_nummer is None:
+            return None
+        stellen = {}
+        for platz, el in enumerate(self.beitragsreihe()):
+            treffer = _POST_KENNUNG.match(str(el.get("id") or "").strip())
+            if treffer:
+                stellen.setdefault(int(treffer.group(2)), platz)
+        if von_nummer not in stellen or nach_nummer not in stellen:
+            return None
+        return stellen[von_nummer] - stellen[nach_nummer]
 
     # ------------------------------------------------------------------
     def rendere(self, block, markierungen: Sequence[Markierung]) -> str:

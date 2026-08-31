@@ -19,7 +19,7 @@
 # GEGENPROBEN sind eigens ausgewiesen (PN14, PN15): ein Test, der auch dann
 #   gruen bliebe, wenn die Pruefung fehlt, prueft nichts.
 #
-# Version: v0.8.751 - Build: 751 - 2026-08-31
+# Version: v0.8.752 - Build: 752 - 2026-08-31
 # =============================================================================
 
 from __future__ import annotations
@@ -47,6 +47,7 @@ from management.maintenance.postid_nachtrag import (  # noqa: E402
     PostIdNachtrag,
     WEG_ANKER,
     WEG_UEBERSETZUNG,
+    WEG_WORTLAUT_ANKER_AB,
     WEG_WORTLAUT,
     WEG_WORTLAUT_EINDEUTIG,
     WEG_ANKER_TEIL,
@@ -161,6 +162,45 @@ BODY_ECHT_PN = """<div id="forensic-viewport">
 </div>
 </div>"""
 
+#: BUILD 752 - ZWEI Beitraege auf EINER Seite, und der Wortlaut steht im
+#: ERSTEN, waehrend der Anker in den ZWEITEN zeigt. Das ist Alex' Bruchbild
+#: vom 31.08.2026 im Kleinen: der Abzug traegt weniger Zeilen als der
+#: Browser hatte, also zaehlt der Elementindex des Ankers zu weit nach
+#: unten. Ohne einen Aufbau mit MEHR ALS EINEM Beitrag ist genau der Fall
+#: nicht zu pruefen - mit nur einem faellt "Anker" und "Wortlaut" zusammen.
+BODY_ZWEI_BEITRAEGE = """<div id="forensic-viewport">
+<div class="block2col"><div class="block">
+  <h2>TITEL DER UNTERHALTUNG</h2>
+</div></div>
+<div class="pmliste">
+  <div class="trenner"></div>
+  <div id="p500100" class="blockpost">
+    <div class="box" id="pp500100">
+      <div class="postmsg"><p>Wir sehen uns am Suedkai um sieben.</p></div>
+    </div>
+  </div>
+  <div class="trenner"></div>
+  <div id="p500200" class="blockpost">
+    <div class="box" id="pp500200">
+      <div class="postmsg"><p>Bis dann also, um sieben, ich bringe Karten mit.</p></div>
+    </div>
+  </div>
+</div>
+</div>"""
+
+SEITE_ZWEI = "/forum/pmsnew.php?mdl=topic&tid=4242"
+#: AM AUFBAU ERMITTELT (lxml getpath, 31.08.2026), nicht geschaetzt: der
+#: Absatz im ZWEITEN Beitrag. Die letzte Stufe verlangt einen Textknoten,
+#: den es dort nicht gibt - Alex' Bruchbild.
+ANKER_ZWEITER_BEITRAG = ("./div[1]/div[2]/div[4]/div[1]/div[1]/p[1]/text()[5]")
+#: Derselbe Aufbau, Anker in den ERSTEN Beitrag - fuer die Gegenprobe.
+ANKER_ERSTER_BEITRAG = ("./div[1]/div[2]/div[2]/div[1]/div[1]/p[1]/text()[5]")
+#: Der Wortlaut, der NUR im ERSTEN Beitrag steht.
+WORTLAUT_ERSTER = "Suedkai"
+#: Ein Wortlaut, den BEIDE Beitraege tragen - fuer den Fall, in dem die
+#: Kreuzprobe zwar besteht, aber nichts beweist.
+WORTLAUT_BEIDE = "um sieben"
+
 SEITE = "/forum/viewtopic.php?id=99"
 SEITE_INNEN = "/forum/viewtopic.php?id=100"
 SEITE_ECHT_FORUM = "/forum/viewtopic.php?id=120200"
@@ -223,6 +263,8 @@ class Aufbau:
                     (SEITE_ECHT_FORUM, _html(BODY_ECHT_FORUM)))
         con.execute("INSERT INTO pages VALUES(6,?,?,0,200,'','GET')",
                     (SEITE_ECHT_PN, _html(BODY_ECHT_PN)))
+        con.execute("INSERT INTO pages VALUES(7,?,?,0,200,'','GET')",
+                    (SEITE_ZWEI, _html(BODY_ZWEI_BEITRAEGE)))
         # 4711 gehoert dem untersuchten Benutzer, 4712 nur einem Fremden
         # (Alias-Tabelle), 4713 steht in KEINER der beiden - der Regelfall
         # fuer den Beitrag eines Dritten. Damit sind alle drei Antworten der
@@ -1030,10 +1072,11 @@ class KreuzprobeTests(unittest.TestCase):
         self.assertEqual("bestanden", z.kreuzprobe)
         self.assertIn("KREUZPROBE BESTANDEN", z.bemerkung)
 
-    def test_PN58_wortlaut_nicht_im_beitrag_traegt_nichts_ein(self):
+    def test_PN58_wortlaut_nirgends_im_abzug_traegt_nichts_ein(self):
         # DER FALL, UM DESSENTWILLEN DIE PROBE GEBAUT IST. Build 750 haette
         # hier 1164441 eingetragen, ohne dass irgendetwas den Beitrag
-        # bestaetigt haette.
+        # bestaetigt haette. Der Wortlaut steht im ganzen Abzug nirgends -
+        # dann entscheidet auch er nicht, und es bleibt bei GAR NICHTS.
         nr = self.auf.annotation(
             seite=SEITE_ECHT_FORUM,
             auswahl=_auswahl(ANKER_4711_TEXTKNOTEN, WORTLAUT_FREMD))
@@ -1041,19 +1084,23 @@ class KreuzprobeTests(unittest.TestCase):
         self.assertIsNone(z.post_id)
         self.assertEqual(ERG_ANKER_UNBESTAETIGT, z.ergebnis)
         self.assertEqual("nicht bestanden", z.kreuzprobe)
-        # UND DIE AUSKUNFT MUSS EHRLICH BLEIBEN: nicht bestaetigt ist
-        # etwas anderes als widerlegt.
-        self.assertIn("NICHT", z.bemerkung)
-        self.assertIn("kein Beweis, dass der Anker falsch ist", z.bemerkung)
+        self.assertIn("keinem Beitrag", z.bemerkung)
+        self.assertIn("VON HAND ANSEHEN", z.bemerkung)
 
-    def test_PN59_ohne_wortlaut_ist_die_probe_nicht_moeglich(self):
+    def test_PN59_ohne_wortlaut_wird_nichts_eingetragen(self):
+        # BUILD 752 - GEAENDERT GEGENUEBER 751, und der Grund ist gemessen:
+        # ohne Wortlaut ist nichts zu pruefen, und dann bleibt nur der
+        # Elementindex des Ankers. Der zeigt auf diesen Seiten nachweislich
+        # daneben (36 von 37 Kreuzproben gescheitert, Alex' Lauf vom
+        # 31.08.2026). Eine Nummer allein aus ihm ist nicht zu vertreten.
         nr = self.auf.annotation(
             seite=SEITE_ECHT_FORUM,
             auswahl=_auswahl(ANKER_4711_TEXTKNOTEN, ""))
         z = self._zeile(self._lauf(), nr)
         self.assertEqual("nicht pruefbar", z.kreuzprobe)
-        self.assertEqual(1164441, z.post_id)
-        self.assertIn("nicht am Inhalt", z.bemerkung)
+        self.assertIsNone(z.post_id)
+        self.assertEqual(ERG_ANKER_UNBESTAETIGT, z.ergebnis)
+        self.assertIn("nachweislich verschoben", z.bemerkung)
 
     def test_PN60_die_methode_selbst(self):
         from report_render.absatz_finder import AbsatzFinder
@@ -1085,3 +1132,105 @@ class KreuzprobeTests(unittest.TestCase):
         proben = self._lauf().kreuzproben()
         self.assertEqual(1, proben.get("bestanden"))
         self.assertEqual(1, proben.get("nicht bestanden"))
+
+
+# ---------------------------------------------------------------------------
+# BUILD 752 - DER WORTLAUT UEBERNIMMT, WO DER ANKER WIDERLEGT IST
+#
+# ALEX' LAUF MIT BUILD 751 UEBER 462 ANNOTATIONEN (31.08.2026) HAT DIE FRAGE
+# AUS BUILD 751 BEANTWORTET, und zwar gegen den Teilanker: von 37 Teilankern
+# haben 36 die Kreuzprobe NICHT bestanden. Und der Fehler hat eine RICHTUNG -
+# in allen 34 Faellen, in denen der Wortlaut genau einen Beitrag nennt,
+# benennt der Anker einen Beitrag mit HOEHERER Nummer, also einen weiter
+# unten auf der Seite. Kein einziger Gegenfall.
+#
+# Damit stehen die fehlenden Zeilen des Abzugs NICHT am Ende, sondern DAVOR:
+# der Elementindex zaehlt Zeilen mit, die der Abzug nicht hat, und landet zu
+# weit unten. Der Anker taugt auf diesen Seiten nicht mehr als Positionsangabe.
+#
+# DIE EINE BESTANDENE PROBE (#65 in evidence_2948078) IST KEIN GEGENBEWEIS:
+# 13 andere Belege stehen am SELBEN Ankerknoten und sind gescheitert. Der
+# Unterschied liegt am Wortlaut - der von #65 kommt in vielen Beitraegen vor.
+# Ein Treffer in einem von vielen bestaetigt nichts.
+#
+# PN62  Anker widerlegt + Wortlaut eindeutig -> der WORTLAUT wird eingetragen
+# PN63  und der Versatz wird dabei GEMESSEN, in Beitraegen und mit Vorzeichen
+# PN64  Kreuzprobe bestanden, Wortlaut aber in mehreren Beitraegen
+#       -> "schwach", es wird NICHTS eingetragen
+# PN65  beitragsreihe zaehlt 'p<Nr>' und 'pp<Nr>' als EINEN Beitrag
+# ---------------------------------------------------------------------------
+
+
+class WortlautUebernimmtTests(unittest.TestCase):
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self._tmp.name)
+        self.auf = Aufbau(self.dir)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _lauf(self):
+        return PostIdNachtrag(evidence=self.auf.evidence,
+                              forensic=self.auf.forensic).lauf()
+
+    def _zeile(self, befund, ident):
+        for z in befund.zeilen:
+            if z.annotation_id == ident:
+                return z
+        self.fail("Beleg #%d fehlt im Befund (GR1)." % ident)
+
+    def test_PN62_anker_widerlegt_wortlaut_eindeutig_traegt(self):
+        # Der Anker zeigt in den ZWEITEN Beitrag, der Wortlaut steht im
+        # ERSTEN und nur dort. Build 751 haette hier GAR NICHTS eingetragen
+        # und damit 34 Belege verloren, die Build 749 noch hatte.
+        nr = self.auf.annotation(
+            seite=SEITE_ZWEI,
+            auswahl=_auswahl(ANKER_ZWEITER_BEITRAG, WORTLAUT_ERSTER))
+        z = self._zeile(self._lauf(), nr)
+        self.assertEqual(500100, z.post_id)
+        self.assertEqual(WEG_WORTLAUT_ANKER_AB, z.weg)
+        self.assertEqual(ERG_WUERDE, z.ergebnis)
+        self.assertEqual("nicht bestanden", z.kreuzprobe)
+        # UND DER HERGANG STEHT DABEI: eine Nummer ohne Herkunft ist in
+        # einer Akte so gut wie keine.
+        self.assertIn("EINGETRAGEN WIRD DER WORTLAUT", z.bemerkung)
+        self.assertIn("#500200", z.bemerkung)
+        self.assertIn("STICHPROBE", z.bemerkung)
+
+    def test_PN63_der_versatz_wird_gemessen(self):
+        nr = self.auf.annotation(
+            seite=SEITE_ZWEI,
+            auswahl=_auswahl(ANKER_ZWEITER_BEITRAG, WORTLAUT_ERSTER))
+        befund = self._lauf()
+        z = self._zeile(befund, nr)
+        # POSITIV heisst: der Anker zeigt WEITER UNTEN. Genau dieses
+        # Vorzeichen ist der Messgegenstand.
+        self.assertEqual(1, z.versatz)
+        self.assertEqual({1: 1}, befund.versaetze())
+
+    def test_PN64_bestanden_aber_wortlaut_in_mehreren_traegt_nichts(self):
+        # "um sieben" steht in BEIDEN Beitraegen. Der Anker zeigt in den
+        # zweiten, und der Wortlaut steht dort auch - aber eben nicht nur
+        # dort. Genau das ist Beleg #65 aus Alex' Lauf.
+        nr = self.auf.annotation(
+            seite=SEITE_ZWEI,
+            auswahl=_auswahl(ANKER_ZWEITER_BEITRAG, WORTLAUT_BEIDE))
+        z = self._zeile(self._lauf(), nr)
+        self.assertIsNone(z.post_id)
+        self.assertEqual("schwach", z.kreuzprobe)
+        self.assertEqual(ERG_ANKER_UNBESTAETIGT, z.ergebnis)
+        self.assertIn("BESTAETIGT NICHTS", z.bemerkung)
+
+    def test_PN65_beitragsreihe_zaehlt_jeden_beitrag_einmal(self):
+        from report_render.absatz_finder import AbsatzFinder
+        finder = AbsatzFinder(BODY_ZWEI_BEITRAEGE)
+        kennungen = [el.get("id") for el in finder.beitragsreihe()]
+        # 'p500100' UND 'pp500100' bezeichnen denselben Beitrag - gezaehlt
+        # wird er einmal, sonst waere jeder Versatz doppelt so gross.
+        self.assertEqual(["p500100", "p500200"], kennungen)
+        self.assertEqual(1, finder.beitragsversatz(500200, 500100))
+        self.assertEqual(-1, finder.beitragsversatz(500100, 500200))
+        self.assertIsNone(finder.beitragsversatz(500100, 999999))
+        self.assertIsNone(finder.beitragsversatz(None, 500100))
