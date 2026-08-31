@@ -647,14 +647,14 @@ class Ebene:
 class Ankerbefund:
     """Das Ergebnis EINER Zerlegung fuer EINEN Anker."""
     sicht: str
-    traegt: bool
+    position_vorhanden: bool
     bruch_nummer: int = 0
     bruch_schritt: str = ""
     ebenen: List[Ebene] = field(default_factory=list)
 
     @property
     def kurz(self) -> str:
-        if self.traegt:
+        if self.position_vorhanden:
             return "alle Schritte loesen auf"
         return "bricht bei Schritt %d (%r)" % (self.bruch_nummer,
                                                self.bruch_schritt)
@@ -669,6 +669,21 @@ class Zeilenbefund:
     lxml: Optional[Ankerbefund] = None
     zweite: Optional[Ankerbefund] = None
     hinweis: str = ""
+    #: BUILD 754 - DIE INHALTSPROBE, und sie ist der eigentliche Zweck.
+    #:
+    #: Bis Build 753 hat dieses Werkzeug ausschliesslich geprueft, ob die vom
+    #: Ausdruck verlangte POSITION existiert. Ob dort auch der markierte
+    #: Wortlaut steht, wurde nie gefragt - der Wortlaut kam in der ganzen
+    #: Datei nicht vor. Das Feld hiess 'traegt' und ist als 'der Ausdruck
+    #: stimmt' gelesen worden; es hiess aber nur 'die Indizes existieren'.
+    #: Auf einer Seite mit 500 Beitraegen existiert fast jeder Index - er ist
+    #: dann nur der falsche.
+    #:
+    #: Gemessen am Ermittlungsfenster (M1b, 31.08.2026): auf
+    #: '/forum/pmsnew.php?mdl=topic&tid=64200' liefern von 46 Annotationen
+    #: SIEBEN einen Bereich mit dem gespeicherten Wortlaut. Die alte Pruefung
+    #: haette dort rund 31 als 'traegt' gemeldet.
+    pruefung: Optional[Any] = None
 
     @property
     def entscheidend(self) -> bool:
@@ -677,7 +692,8 @@ class Zeilenbefund:
         um dessentwillen dieses Werkzeug gebaut wurde.
         """
         return (self.lxml is not None and self.zweite is not None
-                and self.lxml.traegt != self.zweite.traegt)
+                and self.lxml.position_vorhanden
+                != self.zweite.position_vorhanden)
 
 
 @dataclass
@@ -718,9 +734,11 @@ class Laufbefund:
         return {
             "belege": len(self.belege),
             "lxml_traegt": sum(1 for b in self.belege
-                               if b.lxml is not None and b.lxml.traegt),
+                               if b.lxml is not None
+                               and b.lxml.position_vorhanden),
             "genaehert_traegt": sum(1 for b in self.belege
-                                 if b.zweite is not None and b.zweite.traegt),
+                                 if b.zweite is not None
+                                 and b.zweite.position_vorhanden),
             "entscheidend": sum(1 for b in self.belege if b.entscheidend),
             "seiten": len(self.seiten),
             "seiten_abweichend": sum(1 for s in self.seiten
@@ -748,6 +766,13 @@ class AnkerDiagnose:
         self._nur_beleg = nur_beleg
         #: je Adresse: (body_html, SichtLxml, SichtHtml5)
         self._seiten: Dict[str, Tuple[str, Any, Any]] = {}
+        #: BUILD 754 - der AbsatzFinder je Adresse, fuer die Inhaltspruefung.
+        #: Eigener Zwischenspeicher, weil er einen ANDEREN Baum haelt als die
+        #: beiden Sichten: den, gegen den auch der Nachtrag auswertet. Wer
+        #: hier eine der Sichten einsetzte, verglichene den Inhalt gegen einen
+        #: anderen Baum als die Auswertung - und genau das soll das Werkzeug
+        #: ja aufdecken.
+        self._finder_je_seite: Dict[str, Any] = {}
         self._con_blob: Optional[sqlite3.Connection] = None
 
     # ------------------------------------------------------------------
@@ -845,7 +870,53 @@ class AnkerDiagnose:
         _body, roh_sicht, html5_sicht = sichten
         z.lxml = self._anker_pruefen(roh_sicht, anker)
         z.zweite = self._anker_pruefen(html5_sicht, anker)
+        # BUILD 754: die Positionspruefung sagt nur, dass die Indizes
+        # existieren. Was dort STEHT, sagt erst die Inhaltspruefung - und die
+        # entscheidet, ob der Ausdruck etwas wert ist.
+        z.pruefung = self._inhalt_pruefen(url, int(r["id"]),
+                                          r["selection_json"])
         return z
+
+    # ------------------------------------------------------------------
+    def _inhalt_pruefen(self, url: str, beleg_id: int, selection_json):
+        """
+        Die Inhaltspruefung ueber den gemeinsamen Vorgang.
+
+        WARUM NICHT HIER NACHGEBAUT: Die Verifikation gibt es seit Build 754
+        genau einmal, in management/maintenance/annotation_pruefung.py, und
+        tools/annotationen_verifizieren.py benutzt dieselbe. Zwei Pruefungen
+        derselben Frage waeren binnen zweier Builds auseinandergelaufen -
+        dann haette man zwei Antworten und keine.
+
+        Ein Fehlschlag hier beendet die Diagnose NICHT: die Positionsmessung
+        ist auch ohne Inhaltsprobe eine Auskunft. Er bleibt aber nicht still
+        (Grundregel 1) - der Befund traegt dann die Meldung im Klartext.
+        """
+        try:
+            from management.maintenance.annotation_pruefung import (
+                AnnotationPruefer)
+            finder = self._finder(url)
+            if finder is None:
+                return None
+            return AnnotationPruefer(finder).pruefe(beleg_id, url,
+                                                    selection_json)
+        except Exception as exc:                  # pragma: no cover - defensiv
+            logger.warning("anker_diagnose: Inhaltspruefung zu Beleg %s "
+                           "fehlgeschlagen: %s", beleg_id, exc)
+            return None
+
+    # ------------------------------------------------------------------
+    def _finder(self, url: str):
+        """Der AbsatzFinder zu einer Adresse - je Adresse einmal gebaut."""
+        if url in self._finder_je_seite:
+            return self._finder_je_seite[url]
+        from report_render.absatz_finder import AbsatzFinder
+        roh = self._blob(url)
+        finder = AbsatzFinder.aus_seiten_html(roh) if roh else None
+        if finder is not None and not finder.brauchbar:
+            finder = None
+        self._finder_je_seite[url] = finder
+        return finder
 
     # ------------------------------------------------------------------
     @staticmethod
@@ -859,11 +930,11 @@ class AnkerDiagnose:
         erst daran ist zu sehen, ob der Baum ueberall zwei Ebenen zu flach
         ist oder nur an einer Stelle.
         """
-        b = Ankerbefund(sicht=sicht.name, traegt=True)
+        b = Ankerbefund(sicht=sicht.name, position_vorhanden=True)
         schritte = [t for t in str(ausdruck or "").split("/")
                     if t and t != "."]
         if not schritte:
-            b.traegt = False
+            b.position_vorhanden = False
             b.bruch_schritt = "(leer)"
             return b
         knoten = sicht.wurzel
@@ -871,7 +942,7 @@ class AnkerDiagnose:
         for nr, schritt in enumerate(schritte, 1):
             treffer = SCHRITT_MUSTER.match(schritt)
             if not treffer:
-                b.traegt = False
+                b.position_vorhanden = False
                 b.bruch_nummer, b.bruch_schritt = nr, schritt
                 b.ebenen.append(Ebene(nr, schritt, False, bisher,
                                       "kein lesbarer Schritt", 0))
@@ -884,7 +955,7 @@ class AnkerDiagnose:
                     nr, schritt, trifft, bisher,
                     "%d Textknoten" % da, da))
                 if not trifft:
-                    b.traegt = False
+                    b.position_vorhanden = False
                     b.bruch_nummer, b.bruch_schritt = nr, schritt
                     return b
                 # Ein Textknoten ist das Ende des Weges.
@@ -897,7 +968,7 @@ class AnkerDiagnose:
                 nr, schritt, naechster is not None, bisher,
                 sicht.liste(knoten), len(gleiche)))
             if naechster is None:
-                b.traegt = False
+                b.position_vorhanden = False
                 b.bruch_nummer, b.bruch_schritt = nr, schritt
                 return b
             knoten = naechster
@@ -1048,10 +1119,11 @@ class AnkerDiagnose:
         for b in befund.belege:
             if b.page_url != url:
                 continue
-            if b.zweite is not None and not b.zweite.traegt:
+            if b.zweite is not None and not b.zweite.position_vorhanden:
                 bruch_schritt = b.zweite.bruch_schritt
                 break
-            if not bruch_schritt and b.lxml is not None and not b.lxml.traegt:
+            if (not bruch_schritt and b.lxml is not None
+                    and not b.lxml.position_vorhanden):
                 bruch_schritt = b.lxml.bruch_schritt
         if bruch_schritt:
             treffer = SCHRITT_MUSTER.match(bruch_schritt)
