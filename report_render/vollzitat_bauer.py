@@ -220,12 +220,46 @@ class VollzitatBauer:
 
         for beleg_id in ids:
             rec = annotationen.get(beleg_id)
+            fortgefuehrt = []
+            if rec is None:
+                # BUILD 749: BEVOR EIN BELEG ALS FEHLEND GILT, WIRD DIE
+                # VERSIONSKETTE VORWAERTS VERFOLGT.
+                #
+                # Wird eine Annotation geaendert, entsteht ein NEUER
+                # Datensatz (version_nr+1, prev_id = Vorgaenger.id), und der
+                # Vorgaenger bekommt deleted_at gesetzt - so arbeitet
+                # save_annotation seit jeher. Die im Bericht verzeichnete
+                # ALTE Nummer stand danach nicht mehr unter den aktiven
+                # Annotationen, und der Beleg galt als 'nicht mehr
+                # vorhanden'. Er war aber sehr wohl vorhanden, nur unter
+                # einer neuen Nummer. Alex' Befund vom 31.08.2026.
+                rec, fortgefuehrt = self._aktuelle_fassung(beleg_id)
             if rec is None:
                 # GR1: der Beleg verschwindet nicht - er bekommt einen eigenen
                 # Unterblock, der sagt, dass es ihn nicht (mehr) gibt.
-                self._fehlbeleg(gruppe, bloecke, beleg_id)
+                self._fehlbeleg(gruppe, bloecke, beleg_id, fortgefuehrt)
                 continue
-            self._einordnen(gruppe, bloecke, absatz_index, beleg_id, rec)
+            if fortgefuehrt:
+                # DER AUSTAUSCH DARF NICHT STILL GESCHEHEN. In einer Akte
+                # darf nicht unbemerkt ein anderer Datensatz an die Stelle
+                # des zitierten treten - auch dann nicht, wenn es derselbe
+                # Beleg in neuerer Fassung ist. Die Fortfuehrung gehoert in
+                # den Vermerk (Grundregel 1).
+                gruppe.warnungen.append(
+                    "Beleg #%d wurde seit der Aufnahme in die Gruppe "
+                    "geaendert und wird als #%d fortgefuehrt (Fassung %s, "
+                    "Kette: %s). Zitiert ist die AKTUELLE Fassung; die "
+                    "fruehere ist ueber die Versionskette weiterhin "
+                    "einsehbar."
+                    % (beleg_id, int(rec.id),
+                       getattr(rec, "version_nr", "?"),
+                       " -> ".join("#%d" % n for n in fortgefuehrt)))
+            # EINGEORDNET WIRD UNTER DER AKTUELLEN NUMMER, nicht unter der
+            # alten. Der Befund zitiert diesen Datensatz; traege er die alte
+            # Nummer, zeigte der Bericht eine Nummer, unter der der zitierte
+            # Inhalt nicht zu finden ist. Die alte Nummer geht nicht
+            # verloren - sie steht in der Fortfuehrungsmeldung oben.
+            self._einordnen(gruppe, bloecke, absatz_index, int(rec.id), rec)
 
         # Absaetze rendern - erst jetzt, wenn ALLE Markierungen je Absatz
         # bekannt sind. Frueher zu rendern hiesse, denselben Absatz mehrfach
@@ -307,7 +341,32 @@ class VollzitatBauer:
         return aus + einzeln
 
     # ------------------------------------------------------------------
-    def _fehlbeleg(self, gruppe, bloecke, beleg_id: int) -> None:
+    def _aktuelle_fassung(self, beleg_id: int):
+        """
+        (aktuelle Fassung oder None, durchlaufene Nummernkette).
+
+        BUILD 749. Duenne Huelle um EvidenceDb.get_current_annotation - sie
+        haelt den Bauer davon frei, die Kette selbst zu kennen, und faengt
+        den Fall ab, dass gar keine Beweismitteldatenbank anliegt.
+
+        WARUM NICHT EINFACH DIE KETTE IM BAUER LAUFEN LASSEN: die Regel, was
+        'ersetzt' und was 'geloescht' heisst, gehoert an EINE Stelle. Zwei
+        Orte fuer dieselbe Regel laufen auseinander, und dann sagt der
+        Bericht etwas anderes als die Verwaltungsansicht.
+        """
+        if self._evidence is None:
+            return None, []
+        try:
+            return self._evidence.get_current_annotation(int(beleg_id))
+        except Exception as exc:  # pragma: no cover - defensiv
+            logger.warning(
+                "Vollzitat: Versionskette zu Beleg #%s nicht verfolgbar (%s).",
+                beleg_id, exc)
+            return None, []
+
+    # ------------------------------------------------------------------
+    def _fehlbeleg(self, gruppe, bloecke, beleg_id: int,
+                   fortgefuehrt=None) -> None:
         from report_render.quellen_kunde import Quelle
         schluessel = ("fehlt", beleg_id)
         # BUILD 727: ART_UNBEKANNT statt ART_BEITRAG. Bis Build 726 erschien
@@ -325,7 +384,14 @@ class VollzitatBauer:
             farbe=kategorie_farben.UNBEKANNT_HINTERLEGUNG,
             markierung="", notiz="", ermittler="",
             name_quelle="kuerzel", absatz_weg=WEG_FEHLT,
-            hinweis="Zu dieser Beleg-Nummer gibt es in der "
+            hinweis=("Zu dieser Beleg-Nummer gibt es in der "
+                     "Beweismitteldatenbank keine aktive Annotation. Die "
+                     "Versionskette wurde vorwaerts verfolgt und endet ohne "
+                     "aktuelle Fassung (%s) - die Annotation wurde also "
+                     "geloescht und nicht ersetzt."
+                     % " -> ".join("#%d" % n for n in fortgefuehrt))
+                    if fortgefuehrt and len(fortgefuehrt) > 1 else
+                    "Zu dieser Beleg-Nummer gibt es in der "
                     "Beweismitteldatenbank keine aktive Annotation. Sie "
                     "wurde geloescht oder stammt aus einer anderen "
                     "Beweismitteldatenbank."))
