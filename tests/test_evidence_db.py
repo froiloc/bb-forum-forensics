@@ -591,3 +591,103 @@ class TestSoftDeleteBuild178(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestVersionsketteVorwaerts(unittest.TestCase):
+    """
+    Build 749 - get_current_annotation: von einer alten Nummer zur aktuellen.
+
+    ALEX' BEFUND vom 31.08.2026: Ein Bericht, der eine inzwischen geaenderte
+    Annotation fuehrt, wies den Beleg als 'nicht mehr vorhanden' aus. Er war
+    aber vorhanden, nur unter einer neuen Nummer: save_annotation legt bei
+    einer Aenderung einen NEUEN Datensatz an (version_nr+1, prev_id =
+    Vorgaenger.id) und setzt beim Vorgaenger deleted_at.
+
+    get_annotation_history laeuft RUECKWAERTS zum Ersteintrag. Diese Tests
+    pruefen das Spiegelbild: vorwaerts bis zur aktuellen Fassung.
+
+    EV50  eine ersetzte Nummer fuehrt zur aktuellen Fassung
+    EV51  eine mehrgliedrige Kette wird ganz durchlaufen
+    EV52  eine bereits aktuelle Nummer liefert sich selbst, Kette einelementig
+    EV53  GEGENPROBE: wirklich geloescht (kein Nachfolger) liefert None -
+          sonst verschwaende eine echte Loeschung aus dem Bericht
+    EV54  eine unbekannte Nummer liefert None und eine LEERE Kette - das
+          unterscheidet 'gibt es nicht' von 'geloescht'
+    EV55  ein Zyklus laesst den Aufruf nicht haengen
+    """
+
+    def setUp(self):
+        _setup_test_logging()
+        self.con = sqlite3.connect(":memory:")
+        self.con.row_factory = sqlite3.Row
+        self.edb = EvidenceDb(self.con)
+
+    def tearDown(self):
+        self.con.close()
+        reset_for_testing()
+
+    def _speichere(self, text, local_id="m1"):
+        return self.edb.save_annotation(
+            page_url="/forum/viewtopic.php?id=1", category="CAT_LOCATION",
+            text=text, local_id=local_id, created_by="mc")
+
+    def test_EV50_ersetzte_nummer_fuehrt_zur_aktuellen_fassung(self):
+        alt = self._speichere("erste Fassung")
+        neu = self._speichere("zweite Fassung")
+        self.assertNotEqual(alt, neu, "eine Aenderung ergibt eine neue Nummer")
+        rec, kette = self.edb.get_current_annotation(alt)
+        self.assertIsNotNone(rec)
+        self.assertEqual(neu, rec.id)
+        self.assertEqual("zweite Fassung", rec.text)
+        self.assertEqual([alt, neu], kette)
+
+    def test_EV51_mehrgliedrige_kette_wird_ganz_durchlaufen(self):
+        a = self._speichere("v1")
+        b = self._speichere("v2")
+        c = self._speichere("v3")
+        rec, kette = self.edb.get_current_annotation(a)
+        self.assertEqual(c, rec.id)
+        self.assertEqual("v3", rec.text)
+        self.assertEqual([a, b, c], kette)
+        # Auch von der Mitte aus - ein Bericht kann jede Fassung fuehren.
+        rec2, kette2 = self.edb.get_current_annotation(b)
+        self.assertEqual(c, rec2.id)
+        self.assertEqual([b, c], kette2)
+
+    def test_EV52_aktuelle_nummer_liefert_sich_selbst(self):
+        ident = self._speichere("nur eine Fassung")
+        rec, kette = self.edb.get_current_annotation(ident)
+        self.assertEqual(ident, rec.id)
+        self.assertEqual([ident], kette)
+
+    def test_EV53_gegenprobe_wirklich_geloescht_liefert_none(self):
+        # OHNE DIESE PROBE waere EV50 auch mit einer Fassung gruen, die jede
+        # Nummer irgendwie aufloest - und dann verschwaende eine echte
+        # Loeschung aus dem Bericht.
+        ident = self._speichere("wird geloescht")
+        self.edb.delete_annotation(ident)
+        rec, kette = self.edb.get_current_annotation(ident)
+        self.assertIsNone(rec)
+        # Die Kette ist NICHT leer: die Nummer gibt es, sie ist nur beendet.
+        self.assertEqual([ident], kette)
+
+    def test_EV54_unbekannte_nummer_hat_eine_leere_kette(self):
+        # 'gibt es nicht' und 'geloescht' sind zwei verschiedene Auskuenfte.
+        rec, kette = self.edb.get_current_annotation(999999)
+        self.assertIsNone(rec)
+        self.assertEqual([], kette)
+
+    def test_EV55_ein_zyklus_laesst_den_aufruf_nicht_haengen(self):
+        a = self._speichere("v1")
+        b = self._speichere("v2")
+        # Datenschaden von Hand herstellen: b zeigt auf a, a auf b.
+        self.con.execute(
+            "UPDATE annotations SET prev_id = ?, deleted_at = ? WHERE id = ?",
+            (b, 1787832100, a))
+        self.con.execute(
+            "UPDATE annotations SET deleted_at = ? WHERE id = ?",
+            (1787832200, b))
+        self.con.commit()
+        rec, kette = self.edb.get_current_annotation(a)
+        self.assertIsNone(rec)
+        self.assertLessEqual(len(kette), self.edb.NACHFOLGER_GRENZE)

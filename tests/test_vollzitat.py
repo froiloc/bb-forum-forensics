@@ -835,3 +835,154 @@ class SichtpruefungTests(unittest.TestCase):
         self.assertEqual(POST_AUS_ANNOTATION, q.post_quelle)
         html = HtmlRenderer()._render_vollzitat(g)
         self.assertNotIn("aus dem Seitenabzug bestimmt", html)
+
+
+# ---------------------------------------------------------------------------
+# Build 749 - die Versionskette wird VORWAERTS verfolgt
+#
+# ALEX' BEFUND vom 31.08.2026: "Es wird die Fehlermeldung 'Beleg nicht mehr
+# vorhanden' gebracht, wenn eine Annotation mittlerweile geaendert worden
+# ist. Es sollte aber zur neusten Version der Annotation durchgehangelt
+# werden. Dafuer sind annotations.version_nr und annotations.prev_id da."
+#
+# MECHANIK: save_annotation legt bei einer Aenderung einen NEUEN Datensatz an
+# (version_nr+1, prev_id = Vorgaenger.id) und setzt beim Vorgaenger
+# deleted_at. Der Bauer las nur die aktiven Annotationen; die im Bericht
+# verzeichnete ALTE Nummer stand darin nicht mehr.
+#
+# WARUM DIE MELDUNG TROTZDEM BLEIBT, wenn wirklich geloescht wurde: 'ersetzt'
+# und 'geloescht' sehen in der Spalte deleted_at gleich aus und verlangen
+# Verschiedenes. Wer beides gleich behandelt, verschweigt entweder eine
+# Loeschung oder erfindet einen Beleg.
+#
+# VZ37  eine geaenderte Annotation wird ueber die Kette gefunden
+# VZ38  und die Fortfuehrung wird AUSGEWIESEN, nicht still vollzogen
+# VZ39  eine mehrgliedrige Kette wird bis zur aktuellen Fassung verfolgt
+# VZ40  GEGENPROBE: wirklich geloescht bleibt 'nicht mehr vorhanden' - und
+#       die Meldung sagt jetzt, dass die Kette verfolgt wurde
+# VZ41  ein Zyklus laesst den Lauf nicht haengen
+# ---------------------------------------------------------------------------
+
+class _FakeEvidenceMitKette(_FakeEvidence):
+    """
+    Ein Bestand MIT Versionskette - die aktiven Datensaetze und die Kette
+    getrennt, genau wie in der echten Datenbank: get_all_annotations liefert
+    nur die aktiven, get_current_annotation laeuft ueber alle.
+    """
+
+    def __init__(self, alle):
+        self._alle = {int(a.id): a for a in alle}
+        super().__init__([a for a in alle if a.deleted_at is None])
+
+    def get_current_annotation(self, annotation_id):
+        zeile = self._alle.get(int(annotation_id))
+        if zeile is None:
+            return None, []
+        kette = [int(annotation_id)]
+        gesehen = {int(annotation_id)}
+        while True:
+            if zeile.deleted_at is None:
+                return zeile, kette
+            nachfolger = None
+            for a in self._alle.values():
+                if a.prev_id == zeile.id:
+                    nachfolger = a
+                    break
+            if nachfolger is None:
+                return None, kette
+            if int(nachfolger.id) in gesehen or len(kette) > 100:
+                return None, kette
+            gesehen.add(int(nachfolger.id))
+            kette.append(int(nachfolger.id))
+            zeile = nachfolger
+
+
+def _markierung():
+    """Eine Auswahl auf dem Beispielabsatz - wie toolbar.js sie schriebe."""
+    f = _finder()
+    return _sel(_pfad(f, 0), 27, 37, "Bad Honnef")
+
+
+def _kette(alt_id, neu_id, **kw):
+    """Ein Vorgaenger (geloescht) und sein Nachfolger (aktiv)."""
+    alt = _ann(alt_id, "CAT_LOCATION", _markierung(), "alte Notiz", "mc", **kw)
+    alt.deleted_at = 1787832100
+    neu = _ann(neu_id, "CAT_LOCATION", _markierung(), "neue Notiz", "mc", **kw)
+    neu.version_nr = 2
+    neu.prev_id = alt_id
+    return alt, neu
+
+
+def _baue(evidence, ids):
+    con = _con()
+    bauer = VollzitatBauer(evidence=evidence, forensic=_FakeForensic(), con=con)
+    try:
+        return bauer.baue(ids)
+    finally:
+        con.close()
+
+
+class VersionsketteTests(unittest.TestCase):
+
+    def test_vz37_geaenderte_annotation_wird_gefunden(self):
+        alt, neu = _kette(11, 12)
+        gruppe = _baue(_FakeEvidenceMitKette([alt, neu]), [11])
+        # Der Beleg ist NICHT verloren - er steht unter seiner neuen Nummer.
+        ub = gruppe.unterbloecke[0]
+        self.assertNotEqual("Beleg nicht mehr vorhanden",
+                            ub.quelle.bezeichnung())
+        self.assertEqual([12], [b.annotation_id for b in ub.befunde])
+        self.assertEqual("neue Notiz", ub.befunde[0].notiz)
+
+    def test_vz38_die_fortfuehrung_wird_ausgewiesen(self):
+        # IN EINER AKTE DARF NICHT UNBEMERKT ein anderer Datensatz an die
+        # Stelle des zitierten treten - auch nicht derselbe Beleg in neuerer
+        # Fassung. Ohne diese Zeile waere der Austausch still (Grundregel 1).
+        alt, neu = _kette(11, 12)
+        gruppe = _baue(_FakeEvidenceMitKette([alt, neu]), [11])
+        text = "\n".join(gruppe.warnungen)
+        self.assertIn("#11", text)
+        self.assertIn("#12", text)
+        self.assertIn("fortgefuehrt", text)
+
+    def test_vz39_mehrgliedrige_kette_wird_ganz_verfolgt(self):
+        a1 = _ann(21, "CAT_LOCATION", _markierung(), "v1", "mc")
+        a1.deleted_at = 1787832100
+        a2 = _ann(22, "CAT_LOCATION", _markierung(), "v2", "mc")
+        a2.deleted_at = 1787832200
+        a2.version_nr, a2.prev_id = 2, 21
+        a3 = _ann(23, "CAT_LOCATION", _markierung(), "v3", "mc")
+        a3.version_nr, a3.prev_id = 3, 22
+        gruppe = _baue(_FakeEvidenceMitKette([a1, a2, a3]), [21])
+        ub = gruppe.unterbloecke[0]
+        self.assertEqual([23], [b.annotation_id for b in ub.befunde])
+        self.assertEqual("v3", ub.befunde[0].notiz)
+        # Die ganze Kette steht im Vermerk, nicht nur Anfang und Ende.
+        text = "\n".join(gruppe.warnungen)
+        self.assertIn("#21 -> #22 -> #23", text)
+
+    def test_vz40_gegenprobe_wirklich_geloescht_bleibt_fehlend(self):
+        # OHNE DIESE PROBE waere VZ37 auch mit einer Fassung gruen, die JEDE
+        # fehlende Nummer irgendwie aufloest - und dann verschwaende eine
+        # echte Loeschung aus dem Bericht.
+        weg = _ann(31, "CAT_LOCATION", _markierung(), "geloescht", "mc")
+        weg.deleted_at = 1787832100
+        gruppe = _baue(_FakeEvidenceMitKette([weg]), [31])
+        ub = gruppe.unterbloecke[0]
+        self.assertEqual("Beleg nicht mehr vorhanden", ub.quelle.bezeichnung())
+        text = "\n".join(gruppe.warnungen)
+        self.assertIn("#31", text)
+
+    def test_vz41_ein_zyklus_laesst_den_lauf_nicht_haengen(self):
+        # Ein Zyklus in der Kette ist ein Datenschaden. Er darf den Bericht
+        # nicht zum Stehen bringen - der Beleg gilt dann als fehlend, und
+        # das ist die ehrliche Auskunft.
+        a = _ann(41, "CAT_LOCATION", _markierung(), "a", "mc")
+        a.deleted_at = 1787832100
+        b = _ann(42, "CAT_LOCATION", _markierung(), "b", "mc")
+        b.deleted_at = 1787832200
+        b.prev_id = 41
+        a.prev_id = 42
+        gruppe = _baue(_FakeEvidenceMitKette([a, b]), [41])
+        self.assertEqual("Beleg nicht mehr vorhanden",
+                         gruppe.unterbloecke[0].quelle.bezeichnung())

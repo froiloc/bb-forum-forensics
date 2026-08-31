@@ -1056,6 +1056,81 @@ class EvidenceDb:
         chain.reverse()
         return chain
 
+    #: Wie viele Glieder eine Versionskette hoechstens haben darf.
+    #: Eine Annotation, die hundertmal geaendert wurde, ist denkbar; eine mit
+    #: zehntausend Fassungen bedeutet, dass etwas anderes nicht stimmt - und
+    #: dann wird lieber abgebrochen und gemeldet als endlos gelaufen.
+    NACHFOLGER_GRENZE = 1000
+
+    def get_current_annotation(self, annotation_id: int):
+        """
+        Die AKTUELLE Fassung zu einer (moeglicherweise alten) Nummer.
+
+        Rueckgabe: (Datensatz oder None, Kette der durchlaufenen Nummern).
+        Die Kette beginnt mit annotation_id und endet mit der Nummer des
+        zurueckgegebenen Datensatzes; sie ist einelementig, wenn die Nummer
+        selbst schon die aktuelle Fassung ist.
+
+        BUILD 749. WOZU ES DAS GIBT: Wird eine Annotation geaendert, entsteht
+        ein NEUER Datensatz (version_nr+1, prev_id = Vorgaenger.id), und der
+        Vorgaenger bekommt deleted_at gesetzt (save_annotation, s. o.). Ein
+        Bericht, der die alte Nummer fuehrt, fand sie danach nicht mehr unter
+        den aktiven Annotationen und wies den Beleg als 'nicht mehr
+        vorhanden' aus - obwohl er sehr wohl vorhanden ist, nur unter einer
+        neuen Nummer. Alex' Befund vom 31.08.2026.
+
+        get_annotation_history laeuft RUECKWAERTS zum Ersteintrag; diese
+        Methode ist ihr Spiegelbild: sie laeuft VORWAERTS bis zur aktuellen
+        Fassung.
+
+        DREI LAGEN WERDEN UNTERSCHIEDEN, und die Unterscheidung ist der Sinn
+        der Sache:
+
+          * die Nummer gibt es gar nicht        -> (None, [])
+          * die Nummer ist geloescht UND hat keinen Nachfolger
+            (also WIRKLICH geloescht)           -> (None, [Kette])
+          * die Nummer wurde ERSETZT            -> (aktuelle Fassung, Kette)
+
+        Die zweite und die dritte Lage sehen in der Spalte deleted_at gleich
+        aus und verlangen Verschiedenes - dieselbe Unterscheidung trifft
+        bereits get_deleted_annotations.
+        """
+        spalten = ("id, page_url, element_id, category, text, ts, "
+                   "investigator_id, selection_json, tags_json, local_id, "
+                   "post_id, created_by, deleted_at, version_nr, prev_id, "
+                   "actual_uid")
+        zeile = self._con.execute(
+            "SELECT %s FROM annotations WHERE id = ?" % spalten,
+            (annotation_id,),
+        ).fetchone()
+        if zeile is None:
+            return None, []
+
+        kette = [int(annotation_id)]
+        gesehen = {int(annotation_id)}
+        while True:
+            if zeile["deleted_at"] is None:
+                # Nicht geloescht - das ist die aktuelle Fassung.
+                return self._row_to_annotation(zeile), kette
+            nachfolger = self._con.execute(
+                "SELECT %s FROM annotations WHERE prev_id = ? "
+                "ORDER BY version_nr DESC, id DESC LIMIT 1" % spalten,
+                (zeile["id"],),
+            ).fetchone()
+            if nachfolger is None:
+                # Geloescht und kein Nachfolger: WIRKLICH geloescht.
+                return None, kette
+            nid = int(nachfolger["id"])
+            if nid in gesehen or len(kette) >= self.NACHFOLGER_GRENZE:
+                logger.warning(
+                    "get_current_annotation: Kette bricht ab bei id=%d "
+                    "(Zyklus oder Grenze %d erreicht)",
+                    nid, self.NACHFOLGER_GRENZE)
+                return None, kette
+            gesehen.add(nid)
+            kette.append(nid)
+            zeile = nachfolger
+
     def get_deleted_annotations(
         self, page_url: Optional[str] = None
     ) -> list[AnnotationRecord]:
