@@ -663,6 +663,32 @@ class AbsatzFinder:
     def fehler(self) -> str:
         return self._fehler
 
+    @property
+    def wurzel(self):
+        """
+        Der Wurzelknoten des zerlegten Abzugs - NUR LESEND gedacht.
+
+        BUILD 754. Gebraucht von management/maintenance/annotation_pruefung.py:
+        die Verifikation muss den Ausdruck bis auf den TEXTKNOTEN aufloesen,
+        um den Zeichenversatz anwenden und den Wortlaut an der benannten
+        Stelle vergleichen zu koennen. 'anker_teilknoten()' liefert
+        ausdruecklich nur den letzten ELEMENTknoten - fuer die Frage, ob dort
+        auch der markierte Wortlaut steht, reicht das nicht.
+
+        WARUM KEIN ZWEITER BAUM: Die Verifikation koennte sich den Abzug
+        selbst zerlegen. Dann gaebe es zwei Baeume aus derselben
+        Zeichenkette, und jede kuenftige Aenderung am Zerleger muesste an
+        zwei Stellen ankommen. Ein Messwerkzeug, das einen ANDEREN Baum misst
+        als die Auswertung, misst das Falsche - und zwar unbemerkt.
+
+        ES WIRD NICHT GESCHRIEBEN. lxml-Knoten sind veraenderbar; dass hier
+        niemand hineinschreibt, ist eine Verabredung und keine Zusicherung
+        des Typs. Wer es doch tut, veraendert die Auswertung aller
+        nachfolgenden Fundstellen derselben Seite (der Finder wird je
+        Adresse EINMAL gebaut und wiederverwendet).
+        """
+        return self._wurzel
+
     # ------------------------------------------------------------------
     def finde(self, selection: Any, element_id: Optional[str] = None) -> Fundstelle:
         """

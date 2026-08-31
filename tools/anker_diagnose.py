@@ -187,16 +187,43 @@ def main(argv=None) -> int:
             if b.hinweis:
                 m("Beleg %-6d %s" % (b.beleg_id, b.hinweis))
                 continue
-            roh = "JA " if (b.lxml and b.lxml.traegt) else "nein"
-            gen = "JA " if (b.zweite and b.zweite.traegt) else "nein"
+            roh = "JA " if (b.lxml and b.lxml.position_vorhanden) else "nein"
+            gen = "JA " if (b.zweite and b.zweite.position_vorhanden) else "nein"
             marke = "   <== DIE ANNAEHERUNG HEILT DIESEN" if b.entscheidend \
                 else ""
-            m("Beleg %-6d roh=%s  angenaehert=%s%s" % (b.beleg_id, roh, gen,
-                                                       marke))
-            if b.lxml and not b.lxml.traegt:
+            # BUILD 754: 'POSITION' statt 'traegt'. Die alte Beschriftung hat
+            # gesagt, was gemessen wurde, und ist gelesen worden als das,
+            # was NICHT gemessen wurde. Ein Feld, das 'traegt' heisst, wird
+            # als 'stimmt' gelesen - das hat dieses Projekt eine Woche
+            # gekostet.
+            m("Beleg %-6d POSITION roh=%s  html5=%s%s"
+              % (b.beleg_id, roh, gen, marke))
+            if b.lxml and not b.lxml.position_vorhanden:
                 m("             roh: %s" % b.lxml.kurz)
-            if b.zweite and not b.zweite.traegt:
-                m("             angenaehert: %s" % b.zweite.kurz)
+            if b.zweite and not b.zweite.position_vorhanden:
+                m("             html5: %s" % b.zweite.kurz)
+            # -- DIE INHALTSPROBE ---------------------------------------
+            #
+            # SIE STEHT UNMITTELBAR UNTER DER POSITIONSANGABE und nicht in
+            # einer eigenen Rubrik weiter unten: die beiden Angaben gehoeren
+            # zusammengelesen, sonst entsteht wieder der Eindruck, eine
+            # vorhandene Position sei ein Beleg.
+            p = getattr(b, "pruefung", None)
+            if p is None:
+                m("             INHALT   nicht geprueft (kein Abzug oder "
+                  "Pruefung fehlgeschlagen - s. Protokoll)")
+            else:
+                wl = ("#%d" % p.beitraege_wortlaut[0]
+                      if len(p.beitraege_wortlaut) == 1
+                      else ("%d Beitraege" % len(p.beitraege_wortlaut)
+                            if p.beitraege_wortlaut else "kein Beitrag"))
+                m("             INHALT   %s   Anker->%s, Wortlaut->%s, "
+                  "Textprobe: %s"
+                  % (p.urteil,
+                     "#%d" % p.beitrag_anker if p.beitrag_anker is not None
+                     else "-", wl, p.textprobe))
+                if p.urteil in ("WIDERLEGT", "UNKLAR"):
+                    m("             %s" % p.bemerkung)
         m()
 
         # -- Die Seiten ---------------------------------------------------

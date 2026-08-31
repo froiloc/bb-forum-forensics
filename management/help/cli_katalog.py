@@ -332,6 +332,11 @@ _GEPRUEFT_728 = ("Build 728, 2026-08-28, gegen einen Wegwerf-Bestand unter "
                  "Hash-Kette, forensic_700.db mit einem Seitenabzug aus drei "
                  "Beitraegen), Python 3.13, lxml 6.1")
 
+_GEPRUEFT_754 = ("Build 754, 2026-08-31, gegen Wegwerf-Bestaende unter /tmp "
+                 "(evidence_900.db mit sechs Annotationen ueber alle sechs "
+                 "Lagen, forensic_900.db mit einem Seitenabzug aus vier "
+                 "Beitraegen), Python 3.13, lxml 6.1, html5lib 1.1")
+
 _GEPRUEFT_753 = ("Build 753, 2026-08-31, gegen einen Wegwerf-Bestand unter "
                  "/tmp (evidence_999.db mit vier Annotationen, forensic_999.db "
                  "mit einem Seitenabzug aus vier Beitraegen, deren "
@@ -5882,6 +5887,113 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "gegen jeden Beitrag der Seite gehalten. Auf einer Seite mit "
                 "500 Beitraegen und 260 Markierungen sind das 130.000 "
                 "Vergleiche - das dauert und ist kein Aufhaenger.",
+            ),
+        ),
+    ),
+    CliEintrag(
+        schluessel="annotationen_verifizieren",
+        pfad="tools/annotationen_verifizieren.py",
+        aufruf="python tools/annotationen_verifizieren.py "
+               "[--data-dir ./data] [--uid <uid> ...] [--ausfuehrlich] "
+               "[--protokoll <Datei>]",
+        titel="Alle Annotationen gegen den Seitenabzug verifizieren",
+        gruppe="Diagnose",
+        zweck="Jede Annotation jedes Bestands gegen ihren gesicherten "
+              "Seitenabzug halten und benennen, MIT WELCHER BELEGKRAFT sie "
+              "sich bestaetigen laesst - in sechs unterschiedenen Lagen.",
+        art="lesend",
+        datenbanken=(
+            "evidence_<uid>.db (lesend, mode=ro - annotations)",
+            "forensic_<uid>.db (lesend, mode=ro - pages, page_aliases)",
+        ),
+        betrieb="Darf jederzeit laufen. Beide Verbindungen sind "
+                "schreibgeschuetzt; ein Wartungsfenster ist nicht noetig.",
+        beleg="Nein - es schreibt nichts. Der Befund ist die Ausgabe; "
+              "'--protokoll' schreibt sie zusaetzlich in eine Datei.",
+        ausgabe="Je Bestand und Seite eine Zeile pro Annotation mit Urteil, "
+                "dem vom Ausdruck benannten Beitrag, den Beitraegen mit dem "
+                "Wortlaut und dem Ergebnis der Textprobe; danach die "
+                "Zaehlung je Lage, zuletzt die Gesamtbilanz ueber alle "
+                "Bestaende. Bei WIDERLEGT und UNKLAR steht die Begruendung "
+                "im Klartext darunter, mit '--ausfuehrlich' bei jeder Zeile. "
+                "Der markierte Wortlaut steht NICHT in der Ausgabe.",
+        hinweis="WOZU ES DA IST - und der Grund ist ein Fehler im eigenen "
+                "Werkzeugkasten: Bis Build 753 hat an KEINER der beiden "
+                "entscheidenden Stellen jemand geprueft, ob am Ende des "
+                "Ausdrucks auch der markierte Wortlaut steht. "
+                "'anker_diagnose' prueft nur, ob die verlangte Position "
+                "existiert (der Wortlaut kam in der Datei nicht vor), und "
+                "'postid_nachtragen' uebernimmt im Zweig 'Weg=anker' die "
+                "Nummer ungeprueft - die Kreuzprobe aus Build 751 lief NUR "
+                "im Zweig des teilweise aufgeloesten Ausdrucks, also "
+                "ausgerechnet nur dort, wo der Ausdruck schon gestolpert "
+                "war. Auf einer Seite mit 500 Beitraegen existiert fast "
+                "jeder Index; er ist dann nur der falsche. "
+                "DIE SECHS LAGEN: BESTAETIGT (Position UND Inhalt sagen "
+                "dasselbe), BEITRAG_BELEGT (Fundstelle offen, Beitrag "
+                "belegt), NUR_WORTLAUT (Ausdruck traegt nicht, Wortlaut "
+                "eindeutig), UNKLAR (Wortlaut mehrdeutig oder nicht "
+                "gefunden), WIDERLEGT (Wortlaut steht eindeutig in einem "
+                "ANDEREN Beitrag), UNPRUEFBAR (kein Ausdruck, kein Abzug). "
+                "Sie werden BENANNT und nicht zu einer Note verrechnet - "
+                "eine Gesamtnote naehme dem Leser die Unterscheidung ab, auf "
+                "die es vor Gericht ankommt.",
+        konfiguration=KONFIG_KEINE,
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/annotationen_verifizieren.py "
+                     "--data-dir /tmp/fall",
+                     "Alle gefundenen Bestaende. Im Versuch sechs "
+                     "Annotationen ueber alle sechs Lagen: je einmal "
+                     "BESTAETIGT, BEITRAG_BELEGT, NUR_WORTLAUT, UNKLAR, "
+                     "WIDERLEGT und UNPRUEFBAR. Rueckgabewert 1, weil nicht "
+                     "alle eine belastbare Beitragsnummer hergeben.",
+                     _GEPRUEFT_754),
+                _bsp("python tools/annotationen_verifizieren.py "
+                     "--data-dir /tmp/fall --uid 900 --ausfuehrlich "
+                     "--protokoll /tmp/verifikation_900.log",
+                     "Ein Bestand, mit Begruendung zu JEDER Zeile und "
+                     "Mitschrift. Die Datei traegt dieselben Zeilen wie die "
+                     "Konsole - sie ist keine andere Auswahl.",
+                     _GEPRUEFT_754),
+            ),
+            exit_codes=(
+                (0, "durchgelaufen, JEDE Annotation gibt eine belastbare "
+                    "Beitragsnummer her"),
+                (1, "durchgelaufen, aber es bleiben Faelle offen "
+                    "(UNKLAR, WIDERLEGT oder UNPRUEFBAR)"),
+                (2, "nicht zustande gekommen (Verzeichnis fehlt, keine "
+                    "Datenbanken gefunden, Protokolldatei nicht schreibbar)"),
+            ),
+            warnungen=(
+                "'BESTAETIGT' IST DER EINZIGE FALL, IN DEM POSITION UND "
+                "INHALT DASSELBE SAGEN. 'BEITRAG_BELEGT' und 'NUR_WORTLAUT' "
+                "tragen den BEITRAG, nicht die Stelle darin - fuer die "
+                "Beitragsnummer genuegt das, fuer den Zeichenausschnitt des "
+                "Vollzitats nicht.",
+                "'WIDERLEGT' HEISST NICHT, DASS DER ERMITTLER SICH GEIRRT "
+                "HAT. Es heisst, dass die Angabe des Ausdrucks vom Inhalt "
+                "nicht getragen wird. Der Wortlaut kann ueber eine "
+                "Beitragsgrenze hinweg markiert, in einer Uebersetzung "
+                "erhoben oder anders gefaltet worden sein.",
+                "DIE TEXTPROBE IST NUR ANWENDBAR, wenn Start- und "
+                "Endausdruck derselbe sind und auf einen Textknoten zeigen. "
+                "Sonst steht dort 'nicht_anwendbar', und der Fall traegt die "
+                "Wortlautprobe. Das ist eine Auskunft und kein Mangel.",
+                "DAS lxml-BAUMMODELL KENNT KEINE BENACHBARTEN TEXTKNOTEN. "
+                "Wo der Browser welche hat (nach splitText oder nach dem "
+                "Entfernen eines Elements ohne normalize()), zaehlt "
+                "'text()[n]' dort anders als hier. Ein Fehlschlag der "
+                "Textprobe allein fuehrt deshalb NICHT auf 'WIDERLEGT', "
+                "sondern auf die Wortlautprobe.",
+                "'versatz_ende_vor_anfang' IST EIN BEFUND UEBER DIE "
+                "SPEICHERUNG, nicht ueber den Abzug: eine gueltige "
+                "Browser-Auswahl kann kein offsetEnd < offsetStart erzeugt "
+                "haben. Im Bestand kommt das vor (Belege 14 und 50 in "
+                "evidence_1488).",
+                "DIE LAUFZEIT HAENGT AN DER ZAHL DER MARKIERUNGEN MAL DER "
+                "ZAHL DER BEITRAEGE: fuer jede Markierung wird der Wortlaut "
+                "gegen jeden Beitrag der Seite gehalten.",
             ),
         ),
     ),
