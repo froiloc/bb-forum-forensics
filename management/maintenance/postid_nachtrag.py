@@ -142,7 +142,7 @@
 #   gar nicht - dieselbe Zusage wie bei CoordinatorWriter.audited_write.
 #
 # Grundregeln: GR1, GR2, GR6, GR10.
-# Version: v0.8.751 - Build: 751 - 2026-08-31
+# Version: v0.8.752 - Build: 752 - 2026-08-31
 # =============================================================================
 
 from __future__ import annotations
@@ -169,12 +169,19 @@ WEG_WORTLAUT_EINDEUTIG = "wortlaut_ein_beitrag"
 #: Positionsangabe des Ermittlers; loest er bis in den Beitrag hinein auf,
 #: ist dieser Beitrag benannt und nicht gesucht.
 WEG_ANKER_TEIL = "anker_teil"
+#: BUILD 752. Der Teilanker hat die Kreuzprobe NICHT bestanden, der
+#: Wortlaut kommt aber im Abzug in genau EINEM Beitrag vor. Dann traegt
+#: der Wortlaut - nicht weil er von Haus aus besser waere, sondern weil
+#: der Anker auf diesen Seiten messbar danebenzeigt (34 von 34 Faellen
+#: benennen einen Beitrag WEITER UNTEN, Alex' Lauf vom 31.08.2026).
+WEG_WORTLAUT_ANKER_AB = "wortlaut_anker_abweichend"
 WEG_UEBERSETZUNG = "uebersetzung"
 WEG_KEINER = "keiner"
 
 #: Die Wege, die als RUECKFALL gelten. Sie werden mit '--nur-anker'
 #: abgeschaltet und im Protokoll eigens ausgewiesen.
-WEGE_RUECKFALL = (WEG_WORTLAUT, WEG_WORTLAUT_EINDEUTIG)
+WEGE_RUECKFALL = (WEG_WORTLAUT, WEG_WORTLAUT_EINDEUTIG,
+                  WEG_WORTLAUT_ANKER_AB)
 
 # --- Was mit einer Zeile geschehen ist ---------------------------------------
 #: Die Nummer wurde ermittelt und (bei --ausfuehren) eingetragen.
@@ -251,6 +258,14 @@ class Zeilenbefund:
     #: Teilanker auf den richtigen Beitrag zeigt, wird von einer ZAHL
     #: beantwortet und nicht von einem Eindruck beim Lesen.
     kreuzprobe: str = ""
+    #: BUILD 752 - der gemessene Abstand IN BEITRAEGEN zwischen dem Beitrag,
+    #: den der Anker benennt, und dem, in dem der Wortlaut steht. Positiv
+    #: heisst: der Anker zeigt weiter unten. None, wenn nicht messbar.
+    #: Die Zahl steht als eigenes Feld da, damit der Lauf sie ZAEHLEN kann -
+    #: ist sie auf einer Seite durchweg gleich, ist die Verschiebung
+    #: systematisch und in einer Zahl zu fassen; ist sie es nicht, dann
+    #: nicht. Das ist zu messen und nicht zu schaetzen.
+    versatz: Optional[int] = None
 
     def als_protokollzeile(self) -> str:
         """Eine Zeile fuer Konsole und Protokolldatei."""
@@ -315,6 +330,20 @@ class Laufbefund:
         for z in self.zeilen:
             if z.ergebnis in (ERG_GETRAGEN, ERG_WUERDE):
                 aus[z.weg] = aus.get(z.weg, 0) + 1
+        return aus
+
+    def versaetze(self) -> Dict[int, int]:
+        """
+        Wie oft welcher Versatz gemessen wurde (Build 752).
+
+        IST DIESE VERTEILUNG EINGIPFELIG, ist die Verschiebung systematisch.
+        Streut sie, ist sie es nicht - und dann ist an den Ankern dieser
+        Altbestaende nichts zu heilen.
+        """
+        aus: Dict[int, int] = {}
+        for z in self.zeilen:
+            if z.versatz is not None:
+                aus[z.versatz] = aus.get(z.versatz, 0) + 1
         return aus
 
     def kreuzproben(self) -> Dict[str, int]:
@@ -816,63 +845,113 @@ class PostIdNachtrag:
             gefunden_bei = (", ".join("#%d" % n for n in wortlautnummern)
                             if wortlautnummern else "keinem Beitrag")
 
+            # WIE VIELE Beitraege den Wortlaut tragen, ist die Staerke
+            # der Probe und gehoert deshalb in jede Auskunft. BUILD 752, aus
+            # Alex' Lauf: Beleg #65 in evidence_2948078 hat die Kreuzprobe
+            # BESTANDEN - waehrend 13 andere Belege AM SELBEN Ankerknoten
+            # (div[52], derselbe Beitrag #291411) sie NICHT bestanden. Der
+            # Unterschied liegt nicht am Anker, sondern am Wortlaut: der von
+            # #65 kommt in vielen Beitraegen vor, und in vielen Beitraegen
+            # vorzukommen heisst auch, im falschen vorzukommen. EIN TREFFER
+            # IN EINEM VON VIELEN BEITRAEGEN BESTAETIGT NICHTS.
+            traeger = len(wortlautnummern)
             z.kreuzprobe = {True: "bestanden", False: "nicht bestanden",
                             None: "nicht pruefbar"}[probe]
 
-            if probe is False:
-                # NICHT BESTAETIGT - und das ist etwas anderes als WIDERLEGT.
+            # Der VERSATZ - die Messung, die entscheidet, ob sich die
+            # Verschiebung in einer Zahl fassen laesst (s. beitragsversatz).
+            if traeger == 1:
+                z.versatz = finder.beitragsversatz(teilnummer,
+                                                   wortlautnummern[0])
+
+            if probe is True and traeger == 1:
+                # DER STARKE FALL: der Wortlaut kommt im ganzen Abzug in
+                # GENAU EINEM Beitrag vor, und das ist der, den der Anker
+                # benennt. Anker und Inhalt sagen dasselbe.
+                z.bemerkung += (
+                    " KREUZPROBE BESTANDEN, und zwar eindeutig: der "
+                    "markierte Wortlaut kommt im Abzug in genau EINEM "
+                    "Beitrag vor - #%d, dem der Anker benennt." % teilnummer)
+                return teilnummer
+
+            if probe is True:
+                # Bestanden, aber der Wortlaut steht in %d Beitraegen. Dass
+                # er auch im angezeigten steht, ist dann kein Beleg.
+                z.kreuzprobe = "schwach"
                 z.ergebnis = ERG_ANKER_UNBESTAETIGT
                 z.bemerkung = (
-                    "%s ABER: der markierte Wortlaut steht im Klartext des "
-                    "Beitrags #%d NICHT. Es wird NICHTS eingetragen. Das ist "
-                    "kein Beweis, dass der Anker falsch ist - der Wortlaut "
-                    "kann ueber eine Beitragsgrenze hinweg markiert, in einer "
-                    "Uebersetzung erhoben oder anders gefaltet worden sein. "
-                    "Es ist ein Beweis, dass die Nummer NICHT BESTAETIGT ist, "
-                    "und eine unbestaetigte Nummer wird nicht eingetragen. "
-                    "Die Wortlautsuche findet die Stelle bei %s. BITTE VON "
-                    "HAND ANSEHEN." % (teilhinweis, teilnummer, gefunden_bei))
+                    "%s Der markierte Wortlaut steht zwar im Klartext des "
+                    "Beitrags #%d - er steht aber auch in %d anderen (%s). "
+                    "DAS BESTAETIGT NICHTS: wo ein Wortlaut in vielen "
+                    "Beitraegen vorkommt, kommt er auch im falschen vor. Es "
+                    "wird NICHTS eingetragen. BITTE VON HAND ANSEHEN."
+                    % (teilhinweis, teilnummer, traeger - 1, gefunden_bei))
                 return None
 
             if probe is None:
+                # Ohne Wortlaut ist nichts zu pruefen - und ohne Pruefung
+                # bleibt nur der Elementindex, dem nach dem Befund vom
+                # 31.08.2026 nicht mehr zu trauen ist.
+                z.ergebnis = ERG_ANKER_UNBESTAETIGT
                 z.bemerkung += (
                     " Die Kreuzprobe war nicht moeglich (kein brauchbarer "
-                    "Wortlaut in der Auswahl); die Nummer stammt allein aus "
-                    "den Elementindizes des Ankers und ist nicht am Inhalt "
-                    "gegengeprueft.")
-            else:
-                z.bemerkung += (
-                    " KREUZPROBE BESTANDEN: der markierte Wortlaut steht im "
-                    "Klartext des Beitrags #%d." % teilnummer)
+                    "Wortlaut in der Auswahl). Damit bliebe nur der "
+                    "Elementindex des Ankers, und der ist auf diesen Seiten "
+                    "nachweislich verschoben. Es wird NICHTS eingetragen. "
+                    "BITTE VON HAND ANSEHEN.")
+                return None
 
-            # WIDERSPRUCH NICHT VERSCHWEIGEN. Findet der Wortlaut einen
-            # ANDEREN Beitrag als der Anker, ist das ein Befund und keine
-            # Nebensache - er gehoert in die Zeile, damit ihn jemand ansieht.
+            # -- probe is False: DER ANKER IST WIDERLEGT ------------------
             #
-            # BUILD 751: Nach bestandener Kreuzprobe ist dieser Widerspruch
-            # AUFGEKLAERT und nicht mehr offen - der Wortlaut kommt dann in
-            # BEIDEN Beitraegen vor, und der Anker sagt, welcher gemeint war.
-            # Genau dafuer ist er da. Das wird jetzt so gesagt, statt die
-            # Stelle pauschal zum Ansehen zu geben; 34 gleichlautende
-            # Warnungen, von denen die meisten erklaerbar sind, lassen die
-            # eine mit Belang untergehen.
-            if wortlautnummern and teilnummer not in wortlautnummern:
-                if probe is True:
-                    z.bemerkung += (
-                        " Die Wortlautsuche haette %s geliefert - derselbe "
-                        "Wortlaut kommt also in mehreren Beitraegen vor. Der "
-                        "Widerspruch ist damit AUFGEKLAERT: eingetragen wird "
-                        "der Anker, weil er die Positionsangabe des "
-                        "Ermittlers ist, und der Inhalt bestaetigt ihn."
-                        % gefunden_bei)
-                else:
-                    z.bemerkung += (
-                        " ACHTUNG: die Wortlautsuche haette %s geliefert - "
-                        "der Anker und der Wortlaut zeigen auf VERSCHIEDENE "
-                        "Beitraege, und die Kreuzprobe konnte den Anker nicht "
-                        "bestaetigen. Eingetragen wird der Anker; die Stelle "
-                        "gehoert angesehen." % gefunden_bei)
-            return teilnummer
+            # BUILD 752, und das ist die Kehrtwende gegenueber Build 750.
+            # Alex' Lauf mit Build 751 ueber 462 Annotationen: von 37
+            # Teilankern haben 36 die Kreuzprobe NICHT bestanden. Und der
+            # Fehler hat eine RICHTUNG - in allen 34 Faellen, in denen der
+            # Wortlaut genau einen Beitrag nennt, benennt der Anker einen
+            # Beitrag mit HOEHERER Nummer, also einen weiter unten auf der
+            # Seite. Kein einziger Gegenfall.
+            #
+            # Damit ist die Frage aus Build 751 beantwortet: die fehlenden
+            # Zeilen des Abzugs stehen NICHT am Ende, sondern DAVOR. Der
+            # Elementindex des Ankers zaehlt Zeilen mit, die der Abzug nicht
+            # hat, und landet deshalb zu weit unten.
+            #
+            # DER WORTLAUT IST AUF DIESEN SEITEN DAS STAERKERE BELEGSTUECK -
+            # nicht weil er von Haus aus besser waere (er ist es nicht, s.
+            # Kopf), sondern weil der Anker hier MESSBAR danebenzeigt,
+            # waehrend der Wortlaut das einzige inhaltliche Band zwischen
+            # der Markierung und einem Beitrag ist. Kommt er in genau einem
+            # Beitrag vor, ist die Frage nach dem Beitrag beantwortet.
+            z.ergebnis = ERG_ANKER_UNBESTAETIGT
+            if traeger == 1:
+                z.weg = WEG_WORTLAUT_ANKER_AB
+                z.ergebnis = ERG_WUERDE
+                z.bemerkung = (
+                    "%s ABER: der markierte Wortlaut steht im Klartext des "
+                    "Beitrags #%d NICHT - er steht im Abzug in genau einem "
+                    "Beitrag, und das ist #%d. EINGETRAGEN WIRD DER "
+                    "WORTLAUT, nicht der Anker: der Anker zeigt auf dieser "
+                    "Seite messbar daneben (der Abzug traegt weniger Zeilen "
+                    "als der Browser hatte), der Wortlaut ist das einzige "
+                    "inhaltliche Band zur Markierung, und er ist hier "
+                    "eindeutig.%s DIE STELLE GEHOERT IN DIE STICHPROBE."
+                    % (teilhinweis, teilnummer, wortlautnummern[0],
+                       ("" if z.versatz is None else
+                        " Gemessener Versatz: der Anker benennt den %d. "
+                        "Beitrag NACH dem, in dem der Wortlaut steht."
+                        % z.versatz)))
+                return wortlautnummern[0]
+
+            z.bemerkung = (
+                "%s ABER: der markierte Wortlaut steht im Klartext des "
+                "Beitrags #%d NICHT, und er ist auch sonst nicht eindeutig - "
+                "er kommt im Abzug in %s vor. Es wird NICHTS eingetragen: "
+                "der Anker ist widerlegt und der Wortlaut entscheidet nicht. "
+                "BITTE VON HAND ANSEHEN."
+                % (teilhinweis, teilnummer,
+                   ("keinem Beitrag" if traeger == 0
+                    else "%d Beitraegen (%s)" % (traeger, gefunden_bei))))
+            return None
         if not fundstelle.treffer:
             z.ergebnis = ERG_NICHT_GEFUNDEN
             z.bemerkung = (fundstelle.hinweis
