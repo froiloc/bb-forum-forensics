@@ -94,3 +94,4 @@ MD5SUMS_Build*.txt
 *.sql.txt
 
 ignore/*
+*.orig
