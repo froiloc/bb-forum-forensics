@@ -1,0 +1,1032 @@
+==============================================================================
+NACHTRAG DER BEITRAGSNUMMER (annotations.post_id)
+  Beweismittel : data/evidence/evidence_2948078.db
+  Seitenabzug  : data/forensic/forensic_2948078.db (nur lesend)
+  Betriebsart  : Trockenuebung - es wird NICHTS geschrieben
+==============================================================================
+HERKUNFT DIESES LAUFS (Grundregel 8 - Dateiversionen)
+  Werkzeug : postid_nachtragen
+  Build    : 753
+  Python   : 3.14.6
+  html5lib : 1.1
+  tools/postid_nachtragen.py                           ff4caba2600db71a5a2565d47438c0de
+  management/maintenance/postid_nachtrag.py            a66f8afa164d40246306247670267f62
+  report_render/absatz_finder.py                       f477674d227194d328a4f1153743dbef
+  report_render/html5_zerleger.py                      9d09adf175c58036ac8ce40ace6e01c3
+  Diese Summen gehoeren gegen die MD5SUMS-Datei der Lieferung gehalten. Weichen sie ab, ist der Lauf mit einem anderen Stand gefahren worden, als angenommen.
+==============================================================================
+
+  #1       pn       wuerde eingetragen     post_id=348671     Weg=anker                  im Paket: ja          
+  #2       pn       wuerde eingetragen     post_id=348671     Weg=anker                  im Paket: ja          
+  #3       pn       wuerde eingetragen     post_id=348671     Weg=anker                  im Paket: ja          
+  #4       pn       wuerde eingetragen     post_id=348671     Weg=anker                  im Paket: ja          
+  #5       pn       wuerde eingetragen     post_id=349469     Weg=anker                  im Paket: ja          
+  #6       pn       wuerde eingetragen     post_id=349469     Weg=anker                  im Paket: ja          
+  #7       pn       wuerde eingetragen     post_id=349469     Weg=anker                  im Paket: ja          
+  #8       pn       wuerde eingetragen     post_id=349469     Weg=anker                  im Paket: ja          
+  #9       pn       wuerde eingetragen     post_id=349469     Weg=anker                  im Paket: ja          
+  #10      pn       wuerde eingetragen     post_id=349469     Weg=anker                  im Paket: ja          
+  #11      pn       wuerde eingetragen     post_id=349469     Weg=anker                  im Paket: ja          
+  #12      pn       wuerde eingetragen     post_id=349469     Weg=anker                  im Paket: ja          
+  #13      pn       wuerde eingetragen     post_id=337141     Weg=anker                  im Paket: ja          
+  #14      pn       wuerde eingetragen     post_id=337141     Weg=anker                  im Paket: ja          
+  #16      pn       wuerde eingetragen     post_id=337141     Weg=anker                  im Paket: ja          
+  #17      pn       wuerde eingetragen     post_id=337767     Weg=anker                  im Paket: ja          
+  #18      pn       wuerde eingetragen     post_id=337767     Weg=anker                  im Paket: ja          
+  #19      pn       wuerde eingetragen     post_id=337767     Weg=anker                  im Paket: ja          
+  #20      pn       wuerde eingetragen     post_id=337767     Weg=anker                  im Paket: ja          
+  #21      pn       wuerde eingetragen     post_id=338648     Weg=anker                  im Paket: ja          
+  #22      pn       wuerde eingetragen     post_id=265957     Weg=anker                  im Paket: ja          
+  #23      pn       wuerde eingetragen     post_id=265957     Weg=anker                  im Paket: ja          
+  #24      pn       wuerde eingetragen     post_id=265959     Weg=anker                  im Paket: ja          
+  #25      pn       wuerde eingetragen     post_id=266364     Weg=anker                  im Paket: ja          
+  #26      pn       wuerde eingetragen     post_id=266364     Weg=anker                  im Paket: ja          
+  #27      pn       wuerde eingetragen     post_id=266364     Weg=anker                  im Paket: ja          
+  #28      pn       wuerde eingetragen     post_id=266364     Weg=anker                  im Paket: ja          
+  #29      pn       wuerde eingetragen     post_id=273069     Weg=anker                  im Paket: ja          
+  #31      pn       wuerde eingetragen     post_id=273069     Weg=anker                  im Paket: ja          
+  #32      pn       wuerde eingetragen     post_id=273069     Weg=anker                  im Paket: ja          
+  #33      pn       wuerde eingetragen     post_id=273069     Weg=anker                  im Paket: ja          
+  #34      pn       wuerde eingetragen     post_id=275610     Weg=anker                  im Paket: ja          
+  #35      pn       wuerde eingetragen     post_id=276369     Weg=anker                  im Paket: ja          
+  #36      pn       wuerde eingetragen     post_id=276369     Weg=anker                  im Paket: ja          
+  #37      pn       wuerde eingetragen     post_id=276428     Weg=anker                  im Paket: ja          
+  #38      pn       wuerde eingetragen     post_id=276428     Weg=anker                  im Paket: ja          
+  #39      pn       wuerde eingetragen     post_id=276428     Weg=anker                  im Paket: ja          
+  #40      pn       wuerde eingetragen     post_id=277474     Weg=anker                  im Paket: ja          
+  #41      pn       wuerde eingetragen     post_id=277474     Weg=anker                  im Paket: ja          
+  #42      pn       wuerde eingetragen     post_id=284996     Weg=anker                  im Paket: ja          
+  #43      pn       wuerde eingetragen     post_id=284996     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #285261 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #284996. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 1. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[16]': der Browser hat 16 Textknoten gezaehlt, der Abzug hat 12. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[36]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #44      pn       wuerde eingetragen     post_id=285268     Weg=anker                  im Paket: ja          
+  #45      pn       wuerde eingetragen     post_id=291411     Weg=anker                  im Paket: ja          
+  #46      pn       wuerde eingetragen     post_id=291411     Weg=anker                  im Paket: ja          
+  #47      pn       wuerde eingetragen     post_id=291411     Weg=anker                  im Paket: ja          
+  #48      pn       wuerde eingetragen     post_id=291411     Weg=anker                  im Paket: ja          
+  #49      pn       wuerde eingetragen     post_id=291411     Weg=anker                  im Paket: ja          
+  #50      pn       wuerde eingetragen     post_id=291411     Weg=anker                  im Paket: ja          
+  #51      pn       wuerde eingetragen     post_id=291411     Weg=anker                  im Paket: ja          
+  #52      pn       wuerde eingetragen     post_id=291411     Weg=anker                  im Paket: ja          
+  #53      pn       wuerde eingetragen     post_id=291411     Weg=anker                  im Paket: ja          
+  #54      pn       wuerde eingetragen     post_id=291411     Weg=anker                  im Paket: ja          
+  #55      pn       wuerde eingetragen     post_id=291411     Weg=anker                  im Paket: ja          
+  #56      pn       wuerde eingetragen     post_id=291411     Weg=anker                  im Paket: ja          
+  #57      pn       wuerde eingetragen     post_id=291411     Weg=anker                  im Paket: ja          
+  #58      pn       wuerde eingetragen     post_id=291411     Weg=anker                  im Paket: ja          
+  #59      pn       wuerde eingetragen     post_id=291084     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #291411 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #291084. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 1. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[24]': der Browser hat 24 Textknoten gezaehlt, der Abzug hat 23. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[52]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #60      pn       wuerde eingetragen     post_id=291084     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #291411 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #291084. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 1. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[25]': der Browser hat 25 Textknoten gezaehlt, der Abzug hat 23. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[52]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #61      pn       wuerde eingetragen     post_id=291084     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #291411 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #291084. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 1. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[26]': der Browser hat 26 Textknoten gezaehlt, der Abzug hat 23. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[52]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #62      pn       wuerde eingetragen     post_id=291084     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #291411 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #291084. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 1. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[28]': der Browser hat 28 Textknoten gezaehlt, der Abzug hat 23. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[52]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #64      pn       wuerde eingetragen     post_id=273069     Weg=anker                  im Paket: ja          
+  #65      pn       Anker unbestaetigt     post_id=-          Weg=anker_teil             im Paket: ungeprueft  Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. Der markierte Wortlaut steht zwar im Klartext des Beitrags #291411 - er steht aber auch in 23 anderen (#271304, #273069, #274323, #275600, #275605, #275607, #275610, #276365, #276369, #276428, #277474, #277480, #277481, #277485, #284015, #284996, #285261, #285268, #290656, #290717, #290910, #291080, #291084, #291411). DAS BESTAETIGT NICHTS: wo ein Wortlaut in vielen Beitraegen vorkommt, kommt er auch im falschen vor. Es wird NICHTS eingetragen. BITTE VON HAND ANSEHEN.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[24]': der Browser hat 24 Textknoten gezaehlt, der Abzug hat 23. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[52]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #66      pn       wuerde eingetragen     post_id=291084     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #291411 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #291084. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 1. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[32]': der Browser hat 32 Textknoten gezaehlt, der Abzug hat 23. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[52]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #67      pn       wuerde eingetragen     post_id=291084     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #291411 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #291084. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 1. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[33]': der Browser hat 33 Textknoten gezaehlt, der Abzug hat 23. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[52]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #68      pn       wuerde eingetragen     post_id=291084     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #291411 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #291084. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 1. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[34]': der Browser hat 34 Textknoten gezaehlt, der Abzug hat 23. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[52]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #69      pn       wuerde eingetragen     post_id=291084     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #291411 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #291084. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 1. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[36]': der Browser hat 36 Textknoten gezaehlt, der Abzug hat 23. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[52]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #70      pn       wuerde eingetragen     post_id=291084     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #291411 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #291084. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 1. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[36]': der Browser hat 36 Textknoten gezaehlt, der Abzug hat 23. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[52]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #71      pn       wuerde eingetragen     post_id=291084     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #291411 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #291084. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 1. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[37]': der Browser hat 37 Textknoten gezaehlt, der Abzug hat 23. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[52]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #72      pn       wuerde eingetragen     post_id=291084     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #291411 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #291084. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 1. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[38]': der Browser hat 38 Textknoten gezaehlt, der Abzug hat 23. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[52]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #73      pn       wuerde eingetragen     post_id=291084     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #291411 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #291084. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 1. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[38]': der Browser hat 38 Textknoten gezaehlt, der Abzug hat 23. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[52]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #74      pn       wuerde eingetragen     post_id=291411     Weg=wortlaut               im Paket: ja          
+            Ankerweg: anker_bricht | Schritt 9 von 16 bricht bei 'div[54]': der Anker verlangt das 54. <div>, im Abzug stehen nur 53. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]. Im Abzug steht dort: <div>, <div.pagepost>, <div>, <div#p271304.blockpost.rowodd>, <div>, <div#p273069.blockpost.roweven>, <div>, <div#p274323.blockpost.rowodd>, ... (45 weitere). Die Zerlegung scheidet als Ursache aus - sie ist seit Build 742 an die Browser-Regeln angeglichen, und der Anker loest bis hierher auf. Bleibt zweierlei: der Ermittler war auf einer ANDEREN SEITE des Themas als der verglichene Abzug, oder der Abzug ist SPAETER neu gezogen worden als die Markierung.
+  #75      beitrag  wuerde eingetragen     post_id=1505188    Weg=anker                  im Paket: ja          
+  #76      beitrag  nicht gefunden         post_id=-          Weg=anker                  im Paket: ungeprueft  Die Stelle wurde im Abzug gefunden, aber kein Vorfahr traegt eine Beitragskennung ('p<Nummer>' / 'pp<Nummer>'). Das ist bei Uebersichts-, Such- und Profilseiten der Regelfall.
+  #77      beitrag  nicht gefunden         post_id=-          Weg=anker                  im Paket: ungeprueft  Die Stelle wurde im Abzug gefunden, aber kein Vorfahr traegt eine Beitragskennung ('p<Nummer>' / 'pp<Nummer>'). Das ist bei Uebersichts-, Such- und Profilseiten der Regelfall.
+  #78      beitrag  wuerde eingetragen     post_id=1416680    Weg=anker                  im Paket: ja          
+  #79      beitrag  wuerde eingetragen     post_id=1147528    Weg=anker                  im Paket: ja          
+  #80      beitrag  wuerde eingetragen     post_id=1147528    Weg=anker                  im Paket: ja          
+  #81      pn       wuerde eingetragen     post_id=275600     Weg=anker                  im Paket: ja          
+  #83      pn       wuerde eingetragen     post_id=275600     Weg=anker                  im Paket: ja          
+  #84      beitrag  wuerde eingetragen     post_id=1152593    Weg=anker                  im Paket: ja          
+  #85      beitrag  wuerde eingetragen     post_id=1152593    Weg=anker                  im Paket: ja          
+
+------------------------------------------------------------------------------
+ZAEHLUNG (81 Annotationen geprueft)
+  Anker unbestaetigt              1
+  nicht gefunden                  2
+  wuerde eingetragen             78
+  davon nach Weg:
+    anker                        64
+    wortlaut                      1   <- Rueckfall, Stichprobe empfohlen
+    wortlaut_anker_abweichend     13   <- Rueckfall, Stichprobe empfohlen
+
+KREUZPROBE ZUM TEILANKER - steht der Wortlaut im benannten Beitrag?
+  nicht bestanden              13   <- Anker widerlegt; traegt der Wortlaut eindeutig, wird ER eingetragen
+  schwach                       1   <- Wortlaut kommt in mehreren Beitraegen vor, bestaetigt also nichts
+
+VERSATZ - um wie viele BEITRAEGE der Anker danebenzeigt (positiv = weiter unten):
+      +1 Beitraege     13 Belege
+  EINGIPFELIG - die Verschiebung ist auf diesem Bestand systematisch.
+
+ANKERBILANZ - warum der Sollweg nicht getragen hat:
+  anker_bricht         15   Der Anker loest im gesicherten Seitenabzug nicht auf.
+
+------------------------------------------------------------------------------
+SO GLEICHEN WIR AB (Browserseite - das Werkzeug kann sie nicht sehen)
+
+  Der Bruch sitzt bei 13 von 81 Belegen an DERSELBEN Stelle: ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[52]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]
+  Was der Abzug dort hat, steht oben je Beleg ('Im Abzug steht
+  dort: ...'). Was der BROWSER dort hat, sagt dieser Einzeiler.
+
+  WANN:  Nachdem eine der betroffenen Seiten im Ermittlungsfenster
+         geladen ist - also genau so, wie beim Markieren.
+  WO:    Entwicklerkonsole des Ermittlungsfensters (F12).
+  WAS:   Die Liste, die er ausgibt, gegen die Abzug-Liste halten.
+
+  var vp = document.getElementById('forensic-viewport');
+  var ziel = document.evaluate('./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[52]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]', vp, null, 9, null)
+            .singleNodeValue || vp;
+  copy('PFAD ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[52]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1] -> ' + (ziel === vp ? '(nicht aufloesbar, Viewport)' : 'ok') + '\n' + Array.from(ziel.children)
+    .map((e,i) => (i+1) + ': <' + e.tagName.toLowerCase()
+     + (e.id ? '#'+e.id : '')
+     + (e.className ? '.'+String(e.className).trim().split(/\s+/).slice(0,2).join('.') : '') + '>'
+    ).join('\n'));
+
+  ZU BEOBACHTEN: Stehen dort MEHR Elemente als im Abzug, ist
+  zwischen Abzug und Markierung etwas in die Seite geschrieben
+  worden - dann nenne mir bitte die zusaetzlichen. Sind es
+  DIESELBEN, dann stimmt der verglichene Abzug nicht, und die
+  Ursache liegt bei der Seitenaufloesung, nicht am Anker.
+
+TROCKENUEBUNG - es wurde nichts geschrieben.
+Zum Anwenden denselben Aufruf mit '--ausfuehren --operator <Kuerzel>' wiederholen.
+
+STICHPROBE ZUERST HIER (14 ueber den Wortlaut statt ueber den Anker gefunden):
+  #43, #59, #60, #61, #62, #66, #67, #68, #69, #70, #71, #72, #73, #74
+
+VON HAND ZU KLAEREN (1):
+  #65: Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. Der markierte Wortlaut steht zwar im Klartext des Beitrags #291411 - er steht aber auch in 23 anderen (#271304, #273069, #274323, #275600, #275605, #275607, #275610, #276365, #276369, #276428, #277474, #277480, #277481, #277485, #284015, #284996, #285261, #285268, #290656, #290717, #290910, #291080, #291084, #291411). DAS BESTAETIGT NICHTS: wo ein Wortlaut in vielen Beitraegen vorkommt, kommt er auch im falschen vor. Es wird NICHTS eingetragen. BITTE VON HAND ANSEHEN.
+==============================================================================
+NACHTRAG DER BEITRAGSNUMMER (annotations.post_id)
+  Beweismittel : data/evidence/evidence_2664533.db
+  Seitenabzug  : data/forensic/forensic_2664533.db (nur lesend)
+  Betriebsart  : Trockenuebung - es wird NICHTS geschrieben
+==============================================================================
+HERKUNFT DIESES LAUFS (Grundregel 8 - Dateiversionen)
+  Werkzeug : postid_nachtragen
+  Build    : 753
+  Python   : 3.14.6
+  html5lib : 1.1
+  tools/postid_nachtragen.py                           ff4caba2600db71a5a2565d47438c0de
+  management/maintenance/postid_nachtrag.py            a66f8afa164d40246306247670267f62
+  report_render/absatz_finder.py                       f477674d227194d328a4f1153743dbef
+  report_render/html5_zerleger.py                      9d09adf175c58036ac8ce40ace6e01c3
+  Diese Summen gehoeren gegen die MD5SUMS-Datei der Lieferung gehalten. Weichen sie ab, ist der Lauf mit einem anderen Stand gefahren worden, als angenommen.
+==============================================================================
+
+  #1       beitrag  wuerde eingetragen     post_id=1508974    Weg=anker                  im Paket: ja          
+  #2       beitrag  wuerde eingetragen     post_id=1775227    Weg=anker                  im Paket: ja          
+  #3       beitrag  wuerde eingetragen     post_id=1775235    Weg=anker                  im Paket: ja          
+  #4       beitrag  wuerde eingetragen     post_id=1088484    Weg=anker                  im Paket: ja          
+  #5       beitrag  wuerde eingetragen     post_id=1088486    Weg=anker                  im Paket: ja          
+  #6       beitrag  wuerde eingetragen     post_id=1400769    Weg=anker                  im Paket: ja          
+  #7       beitrag  wuerde eingetragen     post_id=1452088    Weg=anker                  im Paket: ja          
+
+------------------------------------------------------------------------------
+ZAEHLUNG (7 Annotationen geprueft)
+  wuerde eingetragen              7
+  davon nach Weg:
+    anker                         7
+
+TROCKENUEBUNG - es wurde nichts geschrieben.
+Zum Anwenden denselben Aufruf mit '--ausfuehren --operator <Kuerzel>' wiederholen.
+==============================================================================
+NACHTRAG DER BEITRAGSNUMMER (annotations.post_id)
+  Beweismittel : data/evidence/evidence_155955.db
+  Seitenabzug  : data/forensic/forensic_155955.db (nur lesend)
+  Betriebsart  : Trockenuebung - es wird NICHTS geschrieben
+==============================================================================
+HERKUNFT DIESES LAUFS (Grundregel 8 - Dateiversionen)
+  Werkzeug : postid_nachtragen
+  Build    : 753
+  Python   : 3.14.6
+  html5lib : 1.1
+  tools/postid_nachtragen.py                           ff4caba2600db71a5a2565d47438c0de
+  management/maintenance/postid_nachtrag.py            a66f8afa164d40246306247670267f62
+  report_render/absatz_finder.py                       f477674d227194d328a4f1153743dbef
+  report_render/html5_zerleger.py                      9d09adf175c58036ac8ce40ace6e01c3
+  Diese Summen gehoeren gegen die MD5SUMS-Datei der Lieferung gehalten. Weichen sie ab, ist der Lauf mit einem anderen Stand gefahren worden, als angenommen.
+==============================================================================
+
+  #1       pn       wuerde eingetragen     post_id=63858      Weg=anker                  im Paket: ja          
+  #3       pn       wuerde eingetragen     post_id=64533      Weg=anker                  im Paket: ja          
+  #5       pn       wuerde eingetragen     post_id=64533      Weg=anker                  im Paket: ja          
+  #6       pn       wuerde eingetragen     post_id=64533      Weg=anker                  im Paket: ja          
+  #7       pn       wuerde eingetragen     post_id=64533      Weg=anker                  im Paket: ja          
+  #8       pn       wuerde eingetragen     post_id=64533      Weg=anker                  im Paket: ja          
+  #9       pn       wuerde eingetragen     post_id=63858      Weg=anker                  im Paket: ja          
+  #10      pn       wuerde eingetragen     post_id=64533      Weg=anker                  im Paket: ja          
+  #11      pn       wuerde eingetragen     post_id=65684      Weg=anker                  im Paket: ja          
+  #12      pn       wuerde eingetragen     post_id=66002      Weg=anker                  im Paket: ja          
+  #13      beitrag  wuerde eingetragen     post_id=169828     Weg=anker                  im Paket: ja          
+  #16      beitrag  wuerde eingetragen     post_id=10070      Weg=anker                  im Paket: ja          
+  #18      beitrag  wuerde eingetragen     post_id=10087      Weg=anker                  im Paket: ja          
+  #19      beitrag  wuerde eingetragen     post_id=328290     Weg=anker                  im Paket: ja          
+  #20      beitrag  wuerde eingetragen     post_id=328290     Weg=anker                  im Paket: ja          
+  #21      beitrag  wuerde eingetragen     post_id=328290     Weg=anker                  im Paket: ja          
+  #22      beitrag  wuerde eingetragen     post_id=848989     Weg=anker                  im Paket: ja          
+  #23      beitrag  wuerde eingetragen     post_id=1176987    Weg=anker                  im Paket: ja          
+  #24      beitrag  wuerde eingetragen     post_id=1176987    Weg=anker                  im Paket: ja          
+  #25      beitrag  wuerde eingetragen     post_id=10070      Weg=anker                  im Paket: ja          
+  #26      beitrag  wuerde eingetragen     post_id=1176987    Weg=anker                  im Paket: ja          
+  #27      beitrag  wuerde eingetragen     post_id=170206     Weg=anker                  im Paket: ja          
+  #28      beitrag  wuerde eingetragen     post_id=169828     Weg=anker                  im Paket: ja          
+  #29      beitrag  wuerde eingetragen     post_id=10087      Weg=anker                  im Paket: ja          
+
+------------------------------------------------------------------------------
+ZAEHLUNG (24 Annotationen geprueft)
+  wuerde eingetragen             24
+  davon nach Weg:
+    anker                        24
+
+TROCKENUEBUNG - es wurde nichts geschrieben.
+Zum Anwenden denselben Aufruf mit '--ausfuehren --operator <Kuerzel>' wiederholen.
+==============================================================================
+NACHTRAG DER BEITRAGSNUMMER (annotations.post_id)
+  Beweismittel : data/evidence/evidence_505734.db
+  Seitenabzug  : data/forensic/forensic_505734.db (nur lesend)
+  Betriebsart  : Trockenuebung - es wird NICHTS geschrieben
+==============================================================================
+HERKUNFT DIESES LAUFS (Grundregel 8 - Dateiversionen)
+  Werkzeug : postid_nachtragen
+  Build    : 753
+  Python   : 3.14.6
+  html5lib : 1.1
+  tools/postid_nachtragen.py                           ff4caba2600db71a5a2565d47438c0de
+  management/maintenance/postid_nachtrag.py            a66f8afa164d40246306247670267f62
+  report_render/absatz_finder.py                       f477674d227194d328a4f1153743dbef
+  report_render/html5_zerleger.py                      9d09adf175c58036ac8ce40ace6e01c3
+  Diese Summen gehoeren gegen die MD5SUMS-Datei der Lieferung gehalten. Weichen sie ab, ist der Lauf mit einem anderen Stand gefahren worden, als angenommen.
+==============================================================================
+
+  #6       beitrag  wuerde eingetragen     post_id=1829751    Weg=anker                  im Paket: ja          
+  #8       beitrag  wuerde eingetragen     post_id=1827684    Weg=anker                  im Paket: ja          
+  #9       beitrag  wuerde eingetragen     post_id=1570142    Weg=anker                  im Paket: ja          
+  #10      beitrag  wuerde eingetragen     post_id=1295166    Weg=anker                  im Paket: ja          
+  #11      beitrag  wuerde eingetragen     post_id=1570254    Weg=anker                  im Paket: ja          
+  #12      beitrag  wuerde eingetragen     post_id=239421     Weg=anker                  im Paket: ja          
+  #15      beitrag  wuerde eingetragen     post_id=1827773    Weg=anker                  im Paket: ja          
+  #23      beitrag  wuerde eingetragen     post_id=77569      Weg=anker                  im Paket: ja          
+  #24      beitrag  wuerde eingetragen     post_id=77569      Weg=anker                  im Paket: ja          
+  #25      beitrag  wuerde eingetragen     post_id=77569      Weg=anker                  im Paket: ja          
+
+------------------------------------------------------------------------------
+ZAEHLUNG (10 Annotationen geprueft)
+  wuerde eingetragen             10
+  davon nach Weg:
+    anker                        10
+
+TROCKENUEBUNG - es wurde nichts geschrieben.
+Zum Anwenden denselben Aufruf mit '--ausfuehren --operator <Kuerzel>' wiederholen.
+==============================================================================
+NACHTRAG DER BEITRAGSNUMMER (annotations.post_id)
+  Beweismittel : data/evidence/evidence_1088376.db
+  Seitenabzug  : data/forensic/forensic_1088376.db (nur lesend)
+  Betriebsart  : Trockenuebung - es wird NICHTS geschrieben
+==============================================================================
+HERKUNFT DIESES LAUFS (Grundregel 8 - Dateiversionen)
+  Werkzeug : postid_nachtragen
+  Build    : 753
+  Python   : 3.14.6
+  html5lib : 1.1
+  tools/postid_nachtragen.py                           ff4caba2600db71a5a2565d47438c0de
+  management/maintenance/postid_nachtrag.py            a66f8afa164d40246306247670267f62
+  report_render/absatz_finder.py                       f477674d227194d328a4f1153743dbef
+  report_render/html5_zerleger.py                      9d09adf175c58036ac8ce40ace6e01c3
+  Diese Summen gehoeren gegen die MD5SUMS-Datei der Lieferung gehalten. Weichen sie ab, ist der Lauf mit einem anderen Stand gefahren worden, als angenommen.
+==============================================================================
+
+  #1       beitrag  wuerde eingetragen     post_id=465419     Weg=anker                  im Paket: ja          
+  #2       beitrag  wuerde eingetragen     post_id=465419     Weg=anker                  im Paket: ja          
+  #4       beitrag  wuerde eingetragen     post_id=706614     Weg=anker                  im Paket: ja          
+  #5       beitrag  wuerde eingetragen     post_id=706614     Weg=anker                  im Paket: ja          
+  #6       beitrag  wuerde eingetragen     post_id=706614     Weg=anker                  im Paket: ja          
+  #7       beitrag  wuerde eingetragen     post_id=706614     Weg=anker                  im Paket: ja          
+  #8       beitrag  wuerde eingetragen     post_id=706614     Weg=anker                  im Paket: ja          
+  #9       beitrag  wuerde eingetragen     post_id=706614     Weg=anker                  im Paket: ja          
+  #10      beitrag  wuerde eingetragen     post_id=706614     Weg=anker                  im Paket: ja          
+  #11      beitrag  wuerde eingetragen     post_id=711872     Weg=anker                  im Paket: ja          
+  #12      beitrag  wuerde eingetragen     post_id=1014336    Weg=anker                  im Paket: ja          
+  #13      beitrag  wuerde eingetragen     post_id=1053324    Weg=anker                  im Paket: ja          
+  #14      beitrag  wuerde eingetragen     post_id=1161742    Weg=anker                  im Paket: ja          
+  #15      beitrag  wuerde eingetragen     post_id=1161742    Weg=anker                  im Paket: ja          
+  #16      beitrag  wuerde eingetragen     post_id=1170759    Weg=anker                  im Paket: ja          
+  #17      beitrag  wuerde eingetragen     post_id=1204141    Weg=anker                  im Paket: ja          
+  #19      beitrag  wuerde eingetragen     post_id=1287687    Weg=anker                  im Paket: ja          
+  #20      beitrag  wuerde eingetragen     post_id=1417412    Weg=anker                  im Paket: ja          
+  #21      beitrag  wuerde eingetragen     post_id=1441836    Weg=anker                  im Paket: ja          
+  #22      beitrag  wuerde eingetragen     post_id=1724974    Weg=anker                  im Paket: ja          
+  #23      beitrag  wuerde eingetragen     post_id=1751679    Weg=anker                  im Paket: ja          
+  #24      beitrag  wuerde eingetragen     post_id=1751707    Weg=anker                  im Paket: ja          
+
+------------------------------------------------------------------------------
+ZAEHLUNG (22 Annotationen geprueft)
+  wuerde eingetragen             22
+  davon nach Weg:
+    anker                        22
+
+TROCKENUEBUNG - es wurde nichts geschrieben.
+Zum Anwenden denselben Aufruf mit '--ausfuehren --operator <Kuerzel>' wiederholen.
+==============================================================================
+NACHTRAG DER BEITRAGSNUMMER (annotations.post_id)
+  Beweismittel : data/evidence/evidence_515056.db
+  Seitenabzug  : data/forensic/forensic_515056.db (nur lesend)
+  Betriebsart  : Trockenuebung - es wird NICHTS geschrieben
+==============================================================================
+HERKUNFT DIESES LAUFS (Grundregel 8 - Dateiversionen)
+  Werkzeug : postid_nachtragen
+  Build    : 753
+  Python   : 3.14.6
+  html5lib : 1.1
+  tools/postid_nachtragen.py                           ff4caba2600db71a5a2565d47438c0de
+  management/maintenance/postid_nachtrag.py            a66f8afa164d40246306247670267f62
+  report_render/absatz_finder.py                       f477674d227194d328a4f1153743dbef
+  report_render/html5_zerleger.py                      9d09adf175c58036ac8ce40ace6e01c3
+  Diese Summen gehoeren gegen die MD5SUMS-Datei der Lieferung gehalten. Weichen sie ab, ist der Lauf mit einem anderen Stand gefahren worden, als angenommen.
+==============================================================================
+
+  #1       beitrag  wuerde eingetragen     post_id=391788     Weg=anker                  im Paket: ja          
+  #2       beitrag  wuerde eingetragen     post_id=1689155    Weg=anker                  im Paket: ja          
+  #3       beitrag  wuerde eingetragen     post_id=1688077    Weg=anker                  im Paket: ja          
+  #4       beitrag  wuerde eingetragen     post_id=1553676    Weg=anker                  im Paket: ja          
+  #5       beitrag  wuerde eingetragen     post_id=1552618    Weg=anker                  im Paket: ja          
+  #6       beitrag  wuerde eingetragen     post_id=1688077    Weg=anker                  im Paket: ja          
+  #7       beitrag  wuerde eingetragen     post_id=1553676    Weg=anker                  im Paket: ja          
+
+------------------------------------------------------------------------------
+ZAEHLUNG (7 Annotationen geprueft)
+  wuerde eingetragen              7
+  davon nach Weg:
+    anker                         7
+
+TROCKENUEBUNG - es wurde nichts geschrieben.
+Zum Anwenden denselben Aufruf mit '--ausfuehren --operator <Kuerzel>' wiederholen.
+==============================================================================
+NACHTRAG DER BEITRAGSNUMMER (annotations.post_id)
+  Beweismittel : data/evidence/evidence_749569.db
+  Seitenabzug  : data/forensic/forensic_749569.db (nur lesend)
+  Betriebsart  : Trockenuebung - es wird NICHTS geschrieben
+==============================================================================
+HERKUNFT DIESES LAUFS (Grundregel 8 - Dateiversionen)
+  Werkzeug : postid_nachtragen
+  Build    : 753
+  Python   : 3.14.6
+  html5lib : 1.1
+  tools/postid_nachtragen.py                           ff4caba2600db71a5a2565d47438c0de
+  management/maintenance/postid_nachtrag.py            a66f8afa164d40246306247670267f62
+  report_render/absatz_finder.py                       f477674d227194d328a4f1153743dbef
+  report_render/html5_zerleger.py                      9d09adf175c58036ac8ce40ace6e01c3
+  Diese Summen gehoeren gegen die MD5SUMS-Datei der Lieferung gehalten. Weichen sie ab, ist der Lauf mit einem anderen Stand gefahren worden, als angenommen.
+==============================================================================
+
+  #6       beitrag  wuerde eingetragen     post_id=984707     Weg=anker                  im Paket: ja          
+  #9       beitrag  nicht gefunden         post_id=-          Weg=keiner                 im Paket: ungeprueft  Der umschliessende Absatz wurde im gesicherten Seitenabzug nicht wiedergefunden. Der Anker loest auf, der getroffene Textknoten gehoert aber nicht zum Klartext des gefundenen Absatzes. Auch der markierte Wortlaut kommt dort nicht vor - weder woertlich noch ohne Rand-Leerraum noch mit gefaltetem Leerraum.
+            Ankerweg: kein_versatz
+  #10      beitrag  wuerde eingetragen     post_id=1090013    Weg=anker                  im Paket: ja          
+  #11      beitrag  wuerde eingetragen     post_id=1089092    Weg=anker                  im Paket: ja          
+  #14      beitrag  wuerde eingetragen     post_id=183447     Weg=anker                  im Paket: ja          
+
+------------------------------------------------------------------------------
+ZAEHLUNG (5 Annotationen geprueft)
+  nicht gefunden                  1
+  wuerde eingetragen              4
+  davon nach Weg:
+    anker                         4
+
+ANKERBILANZ - warum der Sollweg nicht getragen hat:
+  kein_versatz          1   Der Anker loest auf, der getroffene Textknoten gehoert aber nicht zum Klartext des gefundenen Absatzes.
+
+TROCKENUEBUNG - es wurde nichts geschrieben.
+Zum Anwenden denselben Aufruf mit '--ausfuehren --operator <Kuerzel>' wiederholen.
+==============================================================================
+NACHTRAG DER BEITRAGSNUMMER (annotations.post_id)
+  Beweismittel : data/evidence/evidence_1547111.db
+  Seitenabzug  : data/forensic/forensic_1547111.db (nur lesend)
+  Betriebsart  : Trockenuebung - es wird NICHTS geschrieben
+==============================================================================
+HERKUNFT DIESES LAUFS (Grundregel 8 - Dateiversionen)
+  Werkzeug : postid_nachtragen
+  Build    : 753
+  Python   : 3.14.6
+  html5lib : 1.1
+  tools/postid_nachtragen.py                           ff4caba2600db71a5a2565d47438c0de
+  management/maintenance/postid_nachtrag.py            a66f8afa164d40246306247670267f62
+  report_render/absatz_finder.py                       f477674d227194d328a4f1153743dbef
+  report_render/html5_zerleger.py                      9d09adf175c58036ac8ce40ace6e01c3
+  Diese Summen gehoeren gegen die MD5SUMS-Datei der Lieferung gehalten. Weichen sie ab, ist der Lauf mit einem anderen Stand gefahren worden, als angenommen.
+==============================================================================
+
+  #1       beitrag  wuerde eingetragen     post_id=518856     Weg=anker                  im Paket: ja          
+  #3       beitrag  wuerde eingetragen     post_id=518856     Weg=anker                  im Paket: ja          
+  #5       beitrag  wuerde eingetragen     post_id=574748     Weg=anker                  im Paket: ja          
+  #6       beitrag  wuerde eingetragen     post_id=574748     Weg=anker                  im Paket: ja          
+  #7       beitrag  wuerde eingetragen     post_id=576225     Weg=anker                  im Paket: ja          
+  #8       beitrag  wuerde eingetragen     post_id=576225     Weg=anker                  im Paket: ja          
+  #9       beitrag  wuerde eingetragen     post_id=580448     Weg=anker                  im Paket: ja          
+  #10      beitrag  wuerde eingetragen     post_id=580513     Weg=anker                  im Paket: ja          
+  #11      beitrag  wuerde eingetragen     post_id=580513     Weg=anker                  im Paket: ja          
+  #16      beitrag  wuerde eingetragen     post_id=591351     Weg=anker                  im Paket: ja          
+  #17      beitrag  wuerde eingetragen     post_id=591351     Weg=anker                  im Paket: ja          
+  #18      beitrag  wuerde eingetragen     post_id=591351     Weg=anker                  im Paket: ja          
+  #19      beitrag  wuerde eingetragen     post_id=748668     Weg=anker                  im Paket: ja          
+
+------------------------------------------------------------------------------
+ZAEHLUNG (13 Annotationen geprueft)
+  wuerde eingetragen             13
+  davon nach Weg:
+    anker                        13
+
+TROCKENUEBUNG - es wurde nichts geschrieben.
+Zum Anwenden denselben Aufruf mit '--ausfuehren --operator <Kuerzel>' wiederholen.
+==============================================================================
+NACHTRAG DER BEITRAGSNUMMER (annotations.post_id)
+  Beweismittel : data/evidence/evidence_1823234.db
+  Seitenabzug  : data/forensic/forensic_1823234.db (nur lesend)
+  Betriebsart  : Trockenuebung - es wird NICHTS geschrieben
+==============================================================================
+HERKUNFT DIESES LAUFS (Grundregel 8 - Dateiversionen)
+  Werkzeug : postid_nachtragen
+  Build    : 753
+  Python   : 3.14.6
+  html5lib : 1.1
+  tools/postid_nachtragen.py                           ff4caba2600db71a5a2565d47438c0de
+  management/maintenance/postid_nachtrag.py            a66f8afa164d40246306247670267f62
+  report_render/absatz_finder.py                       f477674d227194d328a4f1153743dbef
+  report_render/html5_zerleger.py                      9d09adf175c58036ac8ce40ace6e01c3
+  Diese Summen gehoeren gegen die MD5SUMS-Datei der Lieferung gehalten. Weichen sie ab, ist der Lauf mit einem anderen Stand gefahren worden, als angenommen.
+==============================================================================
+
+  #2       beitrag  wuerde eingetragen     post_id=622171     Weg=anker                  im Paket: ja          
+  #3       beitrag  wuerde eingetragen     post_id=622171     Weg=anker                  im Paket: ja          
+  #4       beitrag  wuerde eingetragen     post_id=1369269    Weg=anker                  im Paket: ja          
+
+------------------------------------------------------------------------------
+ZAEHLUNG (3 Annotationen geprueft)
+  wuerde eingetragen              3
+  davon nach Weg:
+    anker                         3
+
+TROCKENUEBUNG - es wurde nichts geschrieben.
+Zum Anwenden denselben Aufruf mit '--ausfuehren --operator <Kuerzel>' wiederholen.
+==============================================================================
+NACHTRAG DER BEITRAGSNUMMER (annotations.post_id)
+  Beweismittel : data/evidence/evidence_583231.db
+  Seitenabzug  : data/forensic/forensic_583231.db (nur lesend)
+  Betriebsart  : Trockenuebung - es wird NICHTS geschrieben
+==============================================================================
+HERKUNFT DIESES LAUFS (Grundregel 8 - Dateiversionen)
+  Werkzeug : postid_nachtragen
+  Build    : 753
+  Python   : 3.14.6
+  html5lib : 1.1
+  tools/postid_nachtragen.py                           ff4caba2600db71a5a2565d47438c0de
+  management/maintenance/postid_nachtrag.py            a66f8afa164d40246306247670267f62
+  report_render/absatz_finder.py                       f477674d227194d328a4f1153743dbef
+  report_render/html5_zerleger.py                      9d09adf175c58036ac8ce40ace6e01c3
+  Diese Summen gehoeren gegen die MD5SUMS-Datei der Lieferung gehalten. Weichen sie ab, ist der Lauf mit einem anderen Stand gefahren worden, als angenommen.
+==============================================================================
+
+  #1       beitrag  mehrdeutig             post_id=-          Weg=wortlaut               im Paket: ungeprueft  Der markierte Wortlaut kommt im Abzug in 162 VERSCHIEDENEN Beitraegen vor (#1108454, #1108456, #1108457, #1109410, #1109887, #1109911, #1109931, #1110304, #1110310, #1110318, #1110335, #1110336, #1110339, #1110345, #1110348, #1110361, #1112802, #1114535, #1114575, #1114672, #1114722, #1115719, #1117977, #1118053, #1120498, #1120540, #1122958, #1123686, #1124797, #1126020, #1127317, #1127342, #1127783, #1128680, #1129775, #1129787, #1131620, #1132448, #1133015, #1133086, #1134993, #1135075, #1137166, #1137175, #1137196, #1137209, #1137309, #1138998, #1139051, #1139118, #1140792, #1141265, #1141279, #1141952, #1143872, #1143888, #1145629, #1146454, #1147803, #1151222, #1153284, #1158427, #1159727, #1164953, #1164989, #1165894, #1165898, #1170431, #1170466, #1175343, #1175348, #1180491, #1180633, #1180646, #1184407, #1184534, #1184684, #1191037, #1193227, #1203526, #1203612, #1216676, #1216876, #1217035, #1218516, #1224043, #1224048, #1231082, #1232482, #1235530, #1236777, #1244066, #1246779, #1248788, #1253220, #1262530, #1262554, #1262598, #1262619, #1267117, #1272777, #1272851, #1273056, #1273095, #1273098, #1273103, #1281659, #1281842, #1285850, #1291846, #1291852, #1292923, #1292959, #1296107, #1296122, #1302046, #1310473, #1323541, #1325082, #1325130, #1325292, #1326097, #1326852, #1326896, #1326919, #1326921, #1326938, #1327028, #1334688, #1334690, #1334736, #1334842, #1341524, #1344468, #1344476, #1344506, #1344526, #1346034, #1353184, #1353245, #1353364, #1359524, #1365879, #1365896, #1365912, #1365925, #1375252, #1375253, #1375255, #1375256, #1375266, #1375325, #1375329, #1375340, #1379547, #1379553, #1382188, #1382219, #1382881, #1389275, #1392141, #1395260). Es wird NICHTS eingetragen - eine geratene Nummer braechte falschen Betreff, falsches Datum und falsche Gruppierung mit sich und saehe dabei unauffaellig aus.
+            Ankerweg: kein_versatz
+  #2       beitrag  wuerde eingetragen     post_id=1248927    Weg=anker                  im Paket: ja          
+  #4       beitrag  wuerde eingetragen     post_id=1550541    Weg=anker                  im Paket: ja          
+  #5       beitrag  wuerde eingetragen     post_id=1549837    Weg=anker                  im Paket: ja          
+  #6       beitrag  nicht gefunden         post_id=-          Weg=anker                  im Paket: ungeprueft  Die Stelle wurde im Abzug gefunden, aber kein Vorfahr traegt eine Beitragskennung ('p<Nummer>' / 'pp<Nummer>'). Das ist bei Uebersichts-, Such- und Profilseiten der Regelfall.
+  #7       beitrag  wuerde eingetragen     post_id=1552170    Weg=anker                  im Paket: ja          
+  #8       beitrag  wuerde eingetragen     post_id=1630118    Weg=anker                  im Paket: ja          
+  #10      beitrag  wuerde eingetragen     post_id=1909403    Weg=anker                  im Paket: ja          
+  #11      beitrag  wuerde eingetragen     post_id=1905803    Weg=anker                  im Paket: ja          
+  #12      beitrag  wuerde eingetragen     post_id=1910718    Weg=anker                  im Paket: ja          
+  #14      beitrag  wuerde eingetragen     post_id=1891756    Weg=anker                  im Paket: ja          
+  #15      beitrag  wuerde eingetragen     post_id=1891242    Weg=anker                  im Paket: ja          
+  #21      beitrag  wuerde eingetragen     post_id=1381166    Weg=anker                  im Paket: ja          
+  #22      beitrag  wuerde eingetragen     post_id=1227026    Weg=anker                  im Paket: ja          
+  #23      beitrag  wuerde eingetragen     post_id=1911560    Weg=anker                  im Paket: ja          
+  #24      beitrag  wuerde eingetragen     post_id=1588030    Weg=anker                  im Paket: ja          
+
+------------------------------------------------------------------------------
+ZAEHLUNG (16 Annotationen geprueft)
+  mehrdeutig                      1
+  nicht gefunden                  1
+  wuerde eingetragen             14
+  davon nach Weg:
+    anker                        14
+
+ANKERBILANZ - warum der Sollweg nicht getragen hat:
+  kein_versatz          1   Der Anker loest auf, der getroffene Textknoten gehoert aber nicht zum Klartext des gefundenen Absatzes.
+
+TROCKENUEBUNG - es wurde nichts geschrieben.
+Zum Anwenden denselben Aufruf mit '--ausfuehren --operator <Kuerzel>' wiederholen.
+
+VON HAND ZU KLAEREN (1):
+  #1: Der markierte Wortlaut kommt im Abzug in 162 VERSCHIEDENEN Beitraegen vor (#1108454, #1108456, #1108457, #1109410, #1109887, #1109911, #1109931, #1110304, #1110310, #1110318, #1110335, #1110336, #1110339, #1110345, #1110348, #1110361, #1112802, #1114535, #1114575, #1114672, #1114722, #1115719, #1117977, #1118053, #1120498, #1120540, #1122958, #1123686, #1124797, #1126020, #1127317, #1127342, #1127783, #1128680, #1129775, #1129787, #1131620, #1132448, #1133015, #1133086, #1134993, #1135075, #1137166, #1137175, #1137196, #1137209, #1137309, #1138998, #1139051, #1139118, #1140792, #1141265, #1141279, #1141952, #1143872, #1143888, #1145629, #1146454, #1147803, #1151222, #1153284, #1158427, #1159727, #1164953, #1164989, #1165894, #1165898, #1170431, #1170466, #1175343, #1175348, #1180491, #1180633, #1180646, #1184407, #1184534, #1184684, #1191037, #1193227, #1203526, #1203612, #1216676, #1216876, #1217035, #1218516, #1224043, #1224048, #1231082, #1232482, #1235530, #1236777, #1244066, #1246779, #1248788, #1253220, #1262530, #1262554, #1262598, #1262619, #1267117, #1272777, #1272851, #1273056, #1273095, #1273098, #1273103, #1281659, #1281842, #1285850, #1291846, #1291852, #1292923, #1292959, #1296107, #1296122, #1302046, #1310473, #1323541, #1325082, #1325130, #1325292, #1326097, #1326852, #1326896, #1326919, #1326921, #1326938, #1327028, #1334688, #1334690, #1334736, #1334842, #1341524, #1344468, #1344476, #1344506, #1344526, #1346034, #1353184, #1353245, #1353364, #1359524, #1365879, #1365896, #1365912, #1365925, #1375252, #1375253, #1375255, #1375256, #1375266, #1375325, #1375329, #1375340, #1379547, #1379553, #1382188, #1382219, #1382881, #1389275, #1392141, #1395260). Es wird NICHTS eingetragen - eine geratene Nummer braechte falschen Betreff, falsches Datum und falsche Gruppierung mit sich und saehe dabei unauffaellig aus.
+==============================================================================
+NACHTRAG DER BEITRAGSNUMMER (annotations.post_id)
+  Beweismittel : data/evidence/evidence_1704143.db
+  Seitenabzug  : data/forensic/forensic_1704143.db (nur lesend)
+  Betriebsart  : Trockenuebung - es wird NICHTS geschrieben
+==============================================================================
+HERKUNFT DIESES LAUFS (Grundregel 8 - Dateiversionen)
+  Werkzeug : postid_nachtragen
+  Build    : 753
+  Python   : 3.14.6
+  html5lib : 1.1
+  tools/postid_nachtragen.py                           ff4caba2600db71a5a2565d47438c0de
+  management/maintenance/postid_nachtrag.py            a66f8afa164d40246306247670267f62
+  report_render/absatz_finder.py                       f477674d227194d328a4f1153743dbef
+  report_render/html5_zerleger.py                      9d09adf175c58036ac8ce40ace6e01c3
+  Diese Summen gehoeren gegen die MD5SUMS-Datei der Lieferung gehalten. Weichen sie ab, ist der Lauf mit einem anderen Stand gefahren worden, als angenommen.
+==============================================================================
+
+  #1       beitrag  nicht gefunden         post_id=-          Weg=keiner                 im Paket: ungeprueft  Der umschliessende Absatz wurde im gesicherten Seitenabzug nicht wiedergefunden. Der Anker loest auf, ueber der Fundstelle steht aber kein Absatz-Element und auch kein Beitragsbehaelter. Auch der markierte Wortlaut kommt dort nicht vor - weder woertlich noch ohne Rand-Leerraum noch mit gefaltetem Leerraum.
+            Ankerweg: kein_block
+  #2       pn       wuerde eingetragen     post_id=291109     Weg=anker                  im Paket: ja          
+  #3       pn       wuerde eingetragen     post_id=169303     Weg=anker                  im Paket: ja          
+
+------------------------------------------------------------------------------
+ZAEHLUNG (3 Annotationen geprueft)
+  nicht gefunden                  1
+  wuerde eingetragen              2
+  davon nach Weg:
+    anker                         2
+
+ANKERBILANZ - warum der Sollweg nicht getragen hat:
+  kein_block            1   Der Anker loest auf, ueber der Fundstelle steht aber kein Absatz-Element und auch kein Beitragsbehaelter.
+
+TROCKENUEBUNG - es wurde nichts geschrieben.
+Zum Anwenden denselben Aufruf mit '--ausfuehren --operator <Kuerzel>' wiederholen.
+==============================================================================
+NACHTRAG DER BEITRAGSNUMMER (annotations.post_id)
+  Beweismittel : data/evidence/evidence_2361843.db
+  Seitenabzug  : data/forensic/forensic_2361843.db (nur lesend)
+  Betriebsart  : Trockenuebung - es wird NICHTS geschrieben
+==============================================================================
+HERKUNFT DIESES LAUFS (Grundregel 8 - Dateiversionen)
+  Werkzeug : postid_nachtragen
+  Build    : 753
+  Python   : 3.14.6
+  html5lib : 1.1
+  tools/postid_nachtragen.py                           ff4caba2600db71a5a2565d47438c0de
+  management/maintenance/postid_nachtrag.py            a66f8afa164d40246306247670267f62
+  report_render/absatz_finder.py                       f477674d227194d328a4f1153743dbef
+  report_render/html5_zerleger.py                      9d09adf175c58036ac8ce40ace6e01c3
+  Diese Summen gehoeren gegen die MD5SUMS-Datei der Lieferung gehalten. Weichen sie ab, ist der Lauf mit einem anderen Stand gefahren worden, als angenommen.
+==============================================================================
+
+  #2       beitrag  nicht gefunden         post_id=-          Weg=keiner                 im Paket: ungeprueft  Der umschliessende Absatz wurde im gesicherten Seitenabzug nicht wiedergefunden. Der Anker loest auf, ueber der Fundstelle steht aber kein Absatz-Element und auch kein Beitragsbehaelter. Auch der markierte Wortlaut kommt dort nicht vor - weder woertlich noch ohne Rand-Leerraum noch mit gefaltetem Leerraum.
+            Ankerweg: kein_block
+
+------------------------------------------------------------------------------
+ZAEHLUNG (1 Annotationen geprueft)
+  nicht gefunden                  1
+
+ANKERBILANZ - warum der Sollweg nicht getragen hat:
+  kein_block            1   Der Anker loest auf, ueber der Fundstelle steht aber kein Absatz-Element und auch kein Beitragsbehaelter.
+
+TROCKENUEBUNG - es wurde nichts geschrieben.
+Zum Anwenden denselben Aufruf mit '--ausfuehren --operator <Kuerzel>' wiederholen.
+==============================================================================
+NACHTRAG DER BEITRAGSNUMMER (annotations.post_id)
+  Beweismittel : data/evidence/evidence_538299.db
+  Seitenabzug  : data/forensic/forensic_538299.db (nur lesend)
+  Betriebsart  : Trockenuebung - es wird NICHTS geschrieben
+==============================================================================
+HERKUNFT DIESES LAUFS (Grundregel 8 - Dateiversionen)
+  Werkzeug : postid_nachtragen
+  Build    : 753
+  Python   : 3.14.6
+  html5lib : 1.1
+  tools/postid_nachtragen.py                           ff4caba2600db71a5a2565d47438c0de
+  management/maintenance/postid_nachtrag.py            a66f8afa164d40246306247670267f62
+  report_render/absatz_finder.py                       f477674d227194d328a4f1153743dbef
+  report_render/html5_zerleger.py                      9d09adf175c58036ac8ce40ace6e01c3
+  Diese Summen gehoeren gegen die MD5SUMS-Datei der Lieferung gehalten. Weichen sie ab, ist der Lauf mit einem anderen Stand gefahren worden, als angenommen.
+==============================================================================
+
+  #1       beitrag  nicht gefunden         post_id=-          Weg=anker                  im Paket: ungeprueft  Die Stelle wurde im Abzug gefunden, aber kein Vorfahr traegt eine Beitragskennung ('p<Nummer>' / 'pp<Nummer>'). Das ist bei Uebersichts-, Such- und Profilseiten der Regelfall.
+  #2       beitrag  nicht gefunden         post_id=-          Weg=anker                  im Paket: ungeprueft  Die Stelle wurde im Abzug gefunden, aber kein Vorfahr traegt eine Beitragskennung ('p<Nummer>' / 'pp<Nummer>'). Das ist bei Uebersichts-, Such- und Profilseiten der Regelfall.
+  #3       beitrag  nicht gefunden         post_id=-          Weg=anker                  im Paket: ungeprueft  Die Stelle wurde im Abzug gefunden, aber kein Vorfahr traegt eine Beitragskennung ('p<Nummer>' / 'pp<Nummer>'). Das ist bei Uebersichts-, Such- und Profilseiten der Regelfall.
+  #4       beitrag  nicht gefunden         post_id=-          Weg=anker                  im Paket: ungeprueft  Die Stelle wurde im Abzug gefunden, aber kein Vorfahr traegt eine Beitragskennung ('p<Nummer>' / 'pp<Nummer>'). Das ist bei Uebersichts-, Such- und Profilseiten der Regelfall.
+  #5       beitrag  nicht gefunden         post_id=-          Weg=anker                  im Paket: ungeprueft  Die Stelle wurde im Abzug gefunden, aber kein Vorfahr traegt eine Beitragskennung ('p<Nummer>' / 'pp<Nummer>'). Das ist bei Uebersichts-, Such- und Profilseiten der Regelfall.
+  #6       beitrag  nicht gefunden         post_id=-          Weg=anker                  im Paket: ungeprueft  Die Stelle wurde im Abzug gefunden, aber kein Vorfahr traegt eine Beitragskennung ('p<Nummer>' / 'pp<Nummer>'). Das ist bei Uebersichts-, Such- und Profilseiten der Regelfall.
+
+------------------------------------------------------------------------------
+ZAEHLUNG (6 Annotationen geprueft)
+  nicht gefunden                  6
+
+TROCKENUEBUNG - es wurde nichts geschrieben.
+Zum Anwenden denselben Aufruf mit '--ausfuehren --operator <Kuerzel>' wiederholen.
+==============================================================================
+NACHTRAG DER BEITRAGSNUMMER (annotations.post_id)
+  Beweismittel : data/evidence/evidence_1488.db
+  Seitenabzug  : data/forensic/forensic_1488.db (nur lesend)
+  Betriebsart  : Trockenuebung - es wird NICHTS geschrieben
+==============================================================================
+HERKUNFT DIESES LAUFS (Grundregel 8 - Dateiversionen)
+  Werkzeug : postid_nachtragen
+  Build    : 753
+  Python   : 3.14.6
+  html5lib : 1.1
+  tools/postid_nachtragen.py                           ff4caba2600db71a5a2565d47438c0de
+  management/maintenance/postid_nachtrag.py            a66f8afa164d40246306247670267f62
+  report_render/absatz_finder.py                       f477674d227194d328a4f1153743dbef
+  report_render/html5_zerleger.py                      9d09adf175c58036ac8ce40ace6e01c3
+  Diese Summen gehoeren gegen die MD5SUMS-Datei der Lieferung gehalten. Weichen sie ab, ist der Lauf mit einem anderen Stand gefahren worden, als angenommen.
+==============================================================================
+
+  #1       pn       wuerde eingetragen     post_id=252553     Weg=anker                  im Paket: ja          
+  #2       pn       wuerde eingetragen     post_id=252553     Weg=anker                  im Paket: ja          
+  #3       pn       wuerde eingetragen     post_id=252645     Weg=anker                  im Paket: ja          
+  #4       pn       wuerde eingetragen     post_id=254638     Weg=anker                  im Paket: ja          
+  #5       pn       wuerde eingetragen     post_id=254651     Weg=anker                  im Paket: ja          
+  #6       pn       Anker unbestaetigt     post_id=-          Weg=anker_teil             im Paket: ungeprueft  Der Anker loest 14 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #262959 NICHT, und er ist auch sonst nicht eindeutig - er kommt im Abzug in keinem Beitrag vor. Es wird NICHTS eingetragen: der Anker ist widerlegt und der Wortlaut entscheidet nicht. BITTE VON HAND ANSEHEN.
+            Ankerweg: anker_bricht | Schritt 15 von 16 bricht bei 'p[3]': der Anker verlangt das 3. <p>, im Abzug stehen nur 1. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[138]/div[1]/div[1]/div[1]/div[2]/div[1]. Im Abzug steht dort: <p>. Die Zerlegung scheidet als Ursache aus - sie ist seit Build 742 an die Browser-Regeln angeglichen, und der Anker loest bis hierher auf. Bleibt zweierlei: der Ermittler war auf einer ANDEREN SEITE des Themas als der verglichene Abzug, oder der Abzug ist SPAETER neu gezogen worden als die Markierung.
+  #7       pn       wuerde eingetragen     post_id=263045     Weg=anker                  im Paket: ja          
+  #8       pn       wuerde eingetragen     post_id=263067     Weg=anker                  im Paket: ja          
+  #9       pn       wuerde eingetragen     post_id=263321     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #263323 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #263321. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 2. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[5]': der Browser hat 5 Textknoten gezaehlt, der Abzug hat 1. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[218]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #10      pn       wuerde eingetragen     post_id=265208     Weg=anker                  im Paket: ja          
+  #11      pn       wuerde eingetragen     post_id=268179     Weg=anker                  im Paket: ja          
+  #12      pn       wuerde eingetragen     post_id=268251     Weg=anker                  im Paket: ja          
+  #13      pn       wuerde eingetragen     post_id=280895     Weg=anker                  im Paket: ja          
+  #14      pn       wuerde eingetragen     post_id=281171     Weg=anker                  im Paket: ja          
+  #15      pn       wuerde eingetragen     post_id=286739     Weg=anker                  im Paket: ja          
+  #16      pn       wuerde eingetragen     post_id=286743     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #291212 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #286743. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 7. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[7]': der Browser hat 7 Textknoten gezaehlt, der Abzug hat 1. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[526]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #17      pn       wuerde eingetragen     post_id=292014     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #292149 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #292014. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 7. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[2]': der Browser hat 2 Textknoten gezaehlt, der Abzug hat 1. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[548]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #19      pn       wuerde eingetragen     post_id=298569     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #298718 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #298569. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 9. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[5]': der Browser hat 5 Textknoten gezaehlt, der Abzug hat 1. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[588]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #20      pn       wuerde eingetragen     post_id=298569     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #298718 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #298569. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 9. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[6]': der Browser hat 6 Textknoten gezaehlt, der Abzug hat 1. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[588]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #21      pn       wuerde eingetragen     post_id=298591     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #298807 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #298591. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 9. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[4]': der Browser hat 4 Textknoten gezaehlt, der Abzug hat 2. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[598]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #22      pn       wuerde eingetragen     post_id=300663     Weg=anker                  im Paket: ja          
+  #24      pn       wuerde eingetragen     post_id=301746     Weg=anker                  im Paket: ja          
+  #25      pn       wuerde eingetragen     post_id=301755     Weg=anker                  im Paket: ja          
+  #26      pn       wuerde eingetragen     post_id=300663     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #301755 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #300663. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 10. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[7]': der Browser hat 7 Textknoten gezaehlt, der Abzug hat 6. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[636]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #27      pn       wuerde eingetragen     post_id=305064     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #305439 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #305064. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 11. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[14]': der Browser hat 14 Textknoten gezaehlt, der Abzug hat 2. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[728]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #28      pn       wuerde eingetragen     post_id=307941     Weg=anker                  im Paket: ja          
+  #29      pn       wuerde eingetragen     post_id=307183     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #307959 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #307183. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 13. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[4]': der Browser hat 4 Textknoten gezaehlt, der Abzug hat 1. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[790]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #31      pn       wuerde eingetragen     post_id=308325     Weg=anker                  im Paket: ja          
+  #32      pn       wuerde eingetragen     post_id=310799     Weg=anker                  im Paket: ja          
+  #33      pn       wuerde eingetragen     post_id=309896     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #311292 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #309896. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 18. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[4]': der Browser hat 4 Textknoten gezaehlt, der Abzug hat 3. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[888]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #34      pn       wuerde eingetragen     post_id=311305     Weg=anker                  im Paket: ja          
+  #35      pn       wuerde eingetragen     post_id=311328     Weg=anker                  im Paket: ja          
+  #36      pn       wuerde eingetragen     post_id=311332     Weg=anker                  im Paket: ja          
+  #37      pn       wuerde eingetragen     post_id=311551     Weg=anker                  im Paket: ja          
+  #38      pn       wuerde eingetragen     post_id=311551     Weg=anker                  im Paket: ja          
+  #39      pn       wuerde eingetragen     post_id=310769     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #311945 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #310769. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 18. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[9]': der Browser hat 9 Textknoten gezaehlt, der Abzug hat 2. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[906]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #40      pn       wuerde eingetragen     post_id=311259     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #312458 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #311259. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 18. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[5]': der Browser hat 5 Textknoten gezaehlt, der Abzug hat 1. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[918]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #41      pn       wuerde eingetragen     post_id=314371     Weg=anker                  im Paket: ja          
+  #42      pn       wuerde eingetragen     post_id=314456     Weg=anker                  im Paket: ja          
+  #43      pn       wuerde eingetragen     post_id=312151     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #315333 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #312151. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 18. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[7]': der Browser hat 7 Textknoten gezaehlt, der Abzug hat 6. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[946]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #44      pn       wuerde eingetragen     post_id=317186     Weg=anker                  im Paket: ja          
+  #45      pn       wuerde eingetragen     post_id=317179     Weg=wortlaut               im Paket: ja          
+            Ankerweg: anker_bricht | Schritt 9 von 16 bricht bei 'div[1010]': der Anker verlangt das 1010. <div>, im Abzug stehen nur 1003. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]. Im Abzug steht dort: <div>, <div.pagepost>, <div>, <div#p246053.blockpost.rowodd>, <div>, <div#p246274.blockpost.roweven>, <div>, <div#p246279.blockpost.rowodd>, ... (995 weitere). Die Zerlegung scheidet als Ursache aus - sie ist seit Build 742 an die Browser-Regeln angeglichen, und der Anker loest bis hierher auf. Bleibt zweierlei: der Ermittler war auf einer ANDEREN SEITE des Themas als der verglichene Abzug, oder der Abzug ist SPAETER neu gezogen worden als die Markierung.
+  #46      pn       wuerde eingetragen     post_id=317193     Weg=wortlaut               im Paket: ja          
+            Ankerweg: anker_bricht | Schritt 9 von 16 bricht bei 'div[1016]': der Anker verlangt das 1016. <div>, im Abzug stehen nur 1003. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]. Im Abzug steht dort: <div>, <div.pagepost>, <div>, <div#p246053.blockpost.rowodd>, <div>, <div#p246274.blockpost.roweven>, <div>, <div#p246279.blockpost.rowodd>, ... (995 weitere). Die Zerlegung scheidet als Ursache aus - sie ist seit Build 742 an die Browser-Regeln angeglichen, und der Anker loest bis hierher auf. Bleibt zweierlei: der Ermittler war auf einer ANDEREN SEITE des Themas als der verglichene Abzug, oder der Abzug ist SPAETER neu gezogen worden als die Markierung.
+  #47      pn       wuerde eingetragen     post_id=281543     Weg=anker                  im Paket: ja          
+  #48      pn       wuerde eingetragen     post_id=281548     Weg=anker                  im Paket: ja          
+  #49      pn       wuerde eingetragen     post_id=281556     Weg=anker                  im Paket: ja          
+  #50      pn       wuerde eingetragen     post_id=301821     Weg=anker                  im Paket: ja          
+  #51      pn       wuerde eingetragen     post_id=301828     Weg=anker                  im Paket: ja          
+  #54      pn       wuerde eingetragen     post_id=301828     Weg=anker                  im Paket: ja          
+  #55      pn       wuerde eingetragen     post_id=301860     Weg=anker                  im Paket: ja          
+  #56      pn       wuerde eingetragen     post_id=305177     Weg=anker                  im Paket: ja          
+  #57      pn       wuerde eingetragen     post_id=306044     Weg=anker                  im Paket: ja          
+  #58      pn       wuerde eingetragen     post_id=306199     Weg=anker                  im Paket: ja          
+  #59      pn       wuerde eingetragen     post_id=306199     Weg=anker                  im Paket: ja          
+  #60      pn       wuerde eingetragen     post_id=306205     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #306244 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #306205. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 3. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[5]': der Browser hat 5 Textknoten gezaehlt, der Abzug hat 1. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[118]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #61      pn       wuerde eingetragen     post_id=315386     Weg=anker                  im Paket: ja          
+  #62      pn       wuerde eingetragen     post_id=315784     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #315798 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #315784. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 3. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[2]': der Browser hat 2 Textknoten gezaehlt, der Abzug hat 1. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[136]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #63      pn       wuerde eingetragen     post_id=315803     Weg=anker                  im Paket: ja          
+  #64      pn       wuerde eingetragen     post_id=315825     Weg=anker                  im Paket: ja          
+  #65      pn       wuerde eingetragen     post_id=315843     Weg=anker                  im Paket: ja          
+  #66      pn       wuerde eingetragen     post_id=316023     Weg=anker                  im Paket: ja          
+  #67      pn       wuerde eingetragen     post_id=317126     Weg=anker                  im Paket: ja          
+  #68      pn       wuerde eingetragen     post_id=322270     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #322385 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #322270. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 3. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[2]': der Browser hat 2 Textknoten gezaehlt, der Abzug hat 1. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[170]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #69      pn       wuerde eingetragen     post_id=322270     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #322385 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #322270. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 3. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[2]': der Browser hat 2 Textknoten gezaehlt, der Abzug hat 1. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[170]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #71      pn       wuerde eingetragen     post_id=350594     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #350601 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #350594. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 3. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[6]': der Browser hat 6 Textknoten gezaehlt, der Abzug hat 3. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[204]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #72      pn       wuerde eingetragen     post_id=349843     Weg=anker                  im Paket: ja          
+  #73      pn       wuerde eingetragen     post_id=348303     Weg=anker                  im Paket: ja          
+  #74      pn       wuerde eingetragen     post_id=332237     Weg=anker                  im Paket: ja          
+  #75      pn       wuerde eingetragen     post_id=332379     Weg=anker                  im Paket: ja          
+  #76      pn       wuerde eingetragen     post_id=332380     Weg=anker                  im Paket: ja          
+  #77      pn       wuerde eingetragen     post_id=334263     Weg=anker                  im Paket: ja          
+  #78      pn       wuerde eingetragen     post_id=340964     Weg=anker                  im Paket: ja          
+  #79      pn       wuerde eingetragen     post_id=341874     Weg=anker                  im Paket: ja          
+  #80      pn       wuerde eingetragen     post_id=346709     Weg=anker                  im Paket: ja          
+  #81      pn       wuerde eingetragen     post_id=346721     Weg=anker                  im Paket: ja          
+  #82      pn       wuerde eingetragen     post_id=321788     Weg=anker                  im Paket: ja          
+  #83      pn       wuerde eingetragen     post_id=321788     Weg=anker                  im Paket: ja          
+  #85      pn       wuerde eingetragen     post_id=329095     Weg=anker                  im Paket: ja          
+  #86      pn       wuerde eingetragen     post_id=330100     Weg=anker                  im Paket: ja          
+  #87      pn       wuerde eingetragen     post_id=331104     Weg=anker                  im Paket: ja          
+  #88      pn       wuerde eingetragen     post_id=331115     Weg=anker                  im Paket: ja          
+  #89      pn       wuerde eingetragen     post_id=221338     Weg=anker                  im Paket: ja          
+  #90      pn       wuerde eingetragen     post_id=221543     Weg=anker                  im Paket: ja          
+  #91      pn       wuerde eingetragen     post_id=335691     Weg=anker                  im Paket: ja          
+  #92      pn       wuerde eingetragen     post_id=343619     Weg=anker                  im Paket: ja          
+  #93      pn       wuerde eingetragen     post_id=342724     Weg=anker                  im Paket: ja          
+  #94      pn       wuerde eingetragen     post_id=340519     Weg=anker                  im Paket: ja          
+  #95      pn       wuerde eingetragen     post_id=340535     Weg=anker                  im Paket: ja          
+  #96      pn       wuerde eingetragen     post_id=340535     Weg=anker                  im Paket: ja          
+  #97      pn       wuerde eingetragen     post_id=338722     Weg=anker                  im Paket: ja          
+  #98      pn       wuerde eingetragen     post_id=337021     Weg=anker                  im Paket: ja          
+  #99      pn       wuerde eingetragen     post_id=337466     Weg=anker                  im Paket: ja          
+  #100     pn       wuerde eingetragen     post_id=337201     Weg=anker                  im Paket: ja          
+  #101     pn       wuerde eingetragen     post_id=346839     Weg=anker                  im Paket: ja          
+  #102     pn       wuerde eingetragen     post_id=336209     Weg=anker                  im Paket: ja          
+  #103     pn       wuerde eingetragen     post_id=304522     Weg=anker                  im Paket: ja          
+  #104     pn       wuerde eingetragen     post_id=317364     Weg=anker                  im Paket: ja          
+  #105     pn       Anker unbestaetigt     post_id=-          Weg=anker_teil             im Paket: ungeprueft  Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #322912 NICHT, und er ist auch sonst nicht eindeutig - er kommt im Abzug in keinem Beitrag vor. Es wird NICHTS eingetragen: der Anker ist widerlegt und der Wortlaut entscheidet nicht. BITTE VON HAND ANSEHEN.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[3]': der Browser hat 3 Textknoten gezaehlt, der Abzug hat 1. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[28]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #106     pn       wuerde eingetragen     post_id=335780     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 14 von 17 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #335790 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #335780. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 1. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 15 von 17 bricht bei 'p[2]': der Anker verlangt das 2. <p>, im Abzug stehen nur 1. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[44]/div[1]/div[1]/div[1]/div[2]/div[1]. Im Abzug steht dort: <p>. Die Zerlegung scheidet als Ursache aus - sie ist seit Build 742 an die Browser-Regeln angeglichen, und der Anker loest bis hierher auf. Bleibt zweierlei: der Ermittler war auf einer ANDEREN SEITE des Themas als der verglichene Abzug, oder der Abzug ist SPAETER neu gezogen worden als die Markierung.
+  #107     pn       wuerde eingetragen     post_id=215397     Weg=anker                  im Paket: ja          
+  #109     pn       wuerde eingetragen     post_id=333521     Weg=anker                  im Paket: ja          
+  #110     pn       wuerde eingetragen     post_id=333553     Weg=anker                  im Paket: ja          
+  #111     pn       wuerde eingetragen     post_id=333458     Weg=anker                  im Paket: ja          
+  #112     pn       wuerde eingetragen     post_id=330008     Weg=anker                  im Paket: ja          
+  #113     pn       wuerde eingetragen     post_id=329838     Weg=anker                  im Paket: ja          
+  #114     pn       wuerde eingetragen     post_id=329838     Weg=anker                  im Paket: ja          
+  #115     pn       wuerde eingetragen     post_id=329838     Weg=anker                  im Paket: ja          
+  #116     pn       wuerde eingetragen     post_id=330298     Weg=anker                  im Paket: ja          
+  #117     pn       wuerde eingetragen     post_id=330393     Weg=anker                  im Paket: ja          
+  #118     pn       wuerde eingetragen     post_id=331039     Weg=anker                  im Paket: ja          
+  #119     pn       wuerde eingetragen     post_id=331105     Weg=anker                  im Paket: ja          
+  #120     pn       wuerde eingetragen     post_id=331207     Weg=anker                  im Paket: ja          
+  #121     pn       wuerde eingetragen     post_id=331212     Weg=anker                  im Paket: ja          
+  #122     pn       wuerde eingetragen     post_id=331218     Weg=anker                  im Paket: ja          
+  #123     pn       wuerde eingetragen     post_id=331231     Weg=anker                  im Paket: ja          
+  #124     pn       wuerde eingetragen     post_id=324600     Weg=anker                  im Paket: ja          
+  #125     pn       wuerde eingetragen     post_id=317510     Weg=anker                  im Paket: ja          
+  #126     pn       wuerde eingetragen     post_id=322161     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #322228 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #322161. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 1. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[3]': der Browser hat 3 Textknoten gezaehlt, der Abzug hat 2. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[44]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #127     pn       wuerde eingetragen     post_id=317922     Weg=wortlaut_anker_abweichend im Paket: ja          Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #318082 NICHT - er steht im Abzug in genau einem Beitrag, und das ist #317922. EINGETRAGEN WIRD DER WORTLAUT, nicht der Anker: der Anker zeigt auf dieser Seite messbar daneben (der Abzug traegt weniger Zeilen als der Browser hatte), der Wortlaut ist das einzige inhaltliche Band zur Markierung, und er ist hier eindeutig. Gemessener Versatz: der Anker benennt den 1. Beitrag NACH dem, in dem der Wortlaut steht. DIE STELLE GEHOERT IN DIE STICHPROBE.
+            Ankerweg: anker_bricht | Schritt 16 von 16 bricht bei 'text()[17]': der Browser hat 17 Textknoten gezaehlt, der Abzug hat 6. Aufgeloest bis ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/div[14]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]. Die Zerlegung des Textes weicht ab.
+  #128     pn       wuerde eingetragen     post_id=305821     Weg=anker                  im Paket: ja          
+  #129     pn       wuerde eingetragen     post_id=305830     Weg=anker                  im Paket: ja          
+  #130     pn       wuerde eingetragen     post_id=307640     Weg=anker                  im Paket: ja          
+  #131     pn       wuerde eingetragen     post_id=310317     Weg=anker                  im Paket: ja          
+  #132     pn       wuerde eingetragen     post_id=317846     Weg=anker                  im Paket: ja          
+  #133     pn       wuerde eingetragen     post_id=309217     Weg=anker                  im Paket: ja          
+  #134     pn       wuerde eingetragen     post_id=309222     Weg=anker                  im Paket: ja          
+  #135     pn       wuerde eingetragen     post_id=295532     Weg=anker                  im Paket: ja          
+  #136     pn       wuerde eingetragen     post_id=296505     Weg=anker                  im Paket: ja          
+  #137     pn       wuerde eingetragen     post_id=250370     Weg=anker                  im Paket: ja          
+  #138     pn       wuerde eingetragen     post_id=250370     Weg=anker                  im Paket: ja          
+  #139     pn       wuerde eingetragen     post_id=250370     Weg=anker                  im Paket: ja          
+  #140     pn       wuerde eingetragen     post_id=250939     Weg=anker                  im Paket: ja          
+  #141     pn       wuerde eingetragen     post_id=250939     Weg=anker                  im Paket: ja          
+  #142     pn       wuerde eingetragen     post_id=264528     Weg=anker                  im Paket: ja          
+  #143     pn       wuerde eingetragen     post_id=268341     Weg=anker                  im Paket: ja          
+  #144     pn       wuerde eingetragen     post_id=268035     Weg=anker                  im Paket: ja          
+  #145     pn       wuerde eingetragen     post_id=268084     Weg=anker                  im Paket: ja          
+  #146     pn       wuerde eingetragen     post_id=252672     Weg=anker                  im Paket: ja          
+  #147     pn       wuerde eingetragen     post_id=265345     Weg=anker                  im Paket: ja          
+  #148     pn       wuerde eingetragen     post_id=265347     Weg=anker                  im Paket: ja          
+  #149     pn       wuerde eingetragen     post_id=265347     Weg=anker                  im Paket: ja          
+  #150     pn       wuerde eingetragen     post_id=259907     Weg=anker                  im Paket: ja          
+  #151     pn       wuerde eingetragen     post_id=248202     Weg=anker                  im Paket: ja          
+  #152     pn       wuerde eingetragen     post_id=217374     Weg=anker                  im Paket: ja          
+  #153     pn       wuerde eingetragen     post_id=219870     Weg=anker                  im Paket: ja          
+  #154     pn       wuerde eingetragen     post_id=225291     Weg=anker                  im Paket: ja          
+  #155     pn       wuerde eingetragen     post_id=226117     Weg=anker                  im Paket: ja          
+  #156     pn       wuerde eingetragen     post_id=226130     Weg=anker                  im Paket: ja          
+  #157     pn       wuerde eingetragen     post_id=227726     Weg=anker                  im Paket: ja          
+  #158     pn       wuerde eingetragen     post_id=230737     Weg=anker                  im Paket: ja          
+  #159     pn       wuerde eingetragen     post_id=232171     Weg=anker                  im Paket: ja          
+  #160     pn       wuerde eingetragen     post_id=232187     Weg=anker                  im Paket: ja          
+  #161     pn       wuerde eingetragen     post_id=232589     Weg=anker                  im Paket: ja          
+  #162     pn       wuerde eingetragen     post_id=232895     Weg=anker                  im Paket: ja          
+  #163     pn       wuerde eingetragen     post_id=232898     Weg=anker                  im Paket: ja          
+  #164     pn       wuerde eingetragen     post_id=232902     Weg=anker                  im Paket: ja          
+  #165     pn       wuerde eingetragen     post_id=233181     Weg=anker                  im Paket: ja          
+  #166     pn       wuerde eingetragen     post_id=233192     Weg=anker                  im Paket: ja          
+  #167     pn       wuerde eingetragen     post_id=233861     Weg=anker                  im Paket: ja          
+  #168     pn       wuerde eingetragen     post_id=234205     Weg=anker                  im Paket: ja          
+  #169     pn       wuerde eingetragen     post_id=235262     Weg=anker                  im Paket: ja          
+  #170     pn       wuerde eingetragen     post_id=237369     Weg=anker                  im Paket: ja          
+  #171     pn       wuerde eingetragen     post_id=237534     Weg=anker                  im Paket: ja          
+  #172     pn       wuerde eingetragen     post_id=239324     Weg=anker                  im Paket: ja          
+  #173     pn       wuerde eingetragen     post_id=239455     Weg=anker                  im Paket: ja          
+  #174     pn       wuerde eingetragen     post_id=241651     Weg=anker                  im Paket: ja          
+  #175     pn       wuerde eingetragen     post_id=241710     Weg=anker                  im Paket: ja          
+  #176     pn       wuerde eingetragen     post_id=241719     Weg=anker                  im Paket: ja          
+  #178     pn       wuerde eingetragen     post_id=243223     Weg=anker                  im Paket: ja          
+  #179     pn       wuerde eingetragen     post_id=243392     Weg=anker                  im Paket: ja          
+  #180     pn       wuerde eingetragen     post_id=244387     Weg=anker                  im Paket: ja          
+  #181     pn       wuerde eingetragen     post_id=245817     Weg=anker                  im Paket: ja          
+  #182     pn       wuerde eingetragen     post_id=244724     Weg=anker                  im Paket: ja          
+  #183     pn       wuerde eingetragen     post_id=243512     Weg=anker                  im Paket: ja          
+  #184     pn       wuerde eingetragen     post_id=230739     Weg=anker                  im Paket: ja          
+  #185     pn       wuerde eingetragen     post_id=241179     Weg=anker                  im Paket: ja          
+  #186     pn       wuerde eingetragen     post_id=115148     Weg=anker                  im Paket: ja          
+  #187     pn       wuerde eingetragen     post_id=116575     Weg=anker                  im Paket: ja          
+  #189     pn       wuerde eingetragen     post_id=116575     Weg=anker                  im Paket: ja          
+  #190     pn       wuerde eingetragen     post_id=116575     Weg=anker                  im Paket: ja          
+  #191     pn       wuerde eingetragen     post_id=118526     Weg=anker                  im Paket: ja          
+  #192     pn       wuerde eingetragen     post_id=118726     Weg=anker                  im Paket: ja          
+  #193     pn       wuerde eingetragen     post_id=119176     Weg=anker                  im Paket: ja          
+  #194     pn       wuerde eingetragen     post_id=119365     Weg=anker                  im Paket: ja          
+  #195     pn       wuerde eingetragen     post_id=120479     Weg=anker                  im Paket: ja          
+  #196     pn       wuerde eingetragen     post_id=121511     Weg=anker                  im Paket: ja          
+  #197     pn       wuerde eingetragen     post_id=125599     Weg=anker                  im Paket: ja          
+  #198     pn       wuerde eingetragen     post_id=142219     Weg=anker                  im Paket: ja          
+  #199     pn       wuerde eingetragen     post_id=192535     Weg=anker                  im Paket: ja          
+  #200     pn       wuerde eingetragen     post_id=196168     Weg=anker                  im Paket: ja          
+  #201     pn       wuerde eingetragen     post_id=240189     Weg=anker                  im Paket: ja          
+  #202     pn       wuerde eingetragen     post_id=233864     Weg=anker                  im Paket: ja          
+  #203     pn       wuerde eingetragen     post_id=232942     Weg=anker                  im Paket: ja          
+  #204     pn       wuerde eingetragen     post_id=232942     Weg=anker                  im Paket: ja          
+  #205     pn       wuerde eingetragen     post_id=231391     Weg=anker                  im Paket: ja          
+  #206     pn       wuerde eingetragen     post_id=225658     Weg=anker                  im Paket: ja          
+  #207     pn       wuerde eingetragen     post_id=187183     Weg=anker                  im Paket: ja          
+  #208     pn       wuerde eingetragen     post_id=187473     Weg=anker                  im Paket: ja          
+  #209     pn       wuerde eingetragen     post_id=187480     Weg=anker                  im Paket: ja          
+  #210     pn       wuerde eingetragen     post_id=188662     Weg=anker                  im Paket: ja          
+  #211     pn       wuerde eingetragen     post_id=189706     Weg=anker                  im Paket: ja          
+  #212     pn       wuerde eingetragen     post_id=191882     Weg=anker                  im Paket: ja          
+  #213     pn       wuerde eingetragen     post_id=191909     Weg=anker                  im Paket: ja          
+  #214     pn       wuerde eingetragen     post_id=192089     Weg=anker                  im Paket: ja          
+  #216     pn       wuerde eingetragen     post_id=193225     Weg=anker                  im Paket: ja          
+  #217     pn       wuerde eingetragen     post_id=195245     Weg=anker                  im Paket: ja          
+  #218     pn       wuerde eingetragen     post_id=198719     Weg=anker                  im Paket: ja          
+  #219     pn       wuerde eingetragen     post_id=199562     Weg=anker                  im Paket: ja          
+  #220     pn       wuerde eingetragen     post_id=201119     Weg=anker                  im Paket: ja          
+  #221     pn       wuerde eingetragen     post_id=201160     Weg=anker                  im Paket: ja          
+  #222     pn       wuerde eingetragen     post_id=201467     Weg=anker                  im Paket: ja          
+  #223     pn       wuerde eingetragen     post_id=205539     Weg=anker                  im Paket: ja          
+  #224     pn       wuerde eingetragen     post_id=207631     Weg=anker                  im Paket: ja          
+  #225     pn       wuerde eingetragen     post_id=209721     Weg=anker                  im Paket: ja          
+  #226     pn       wuerde eingetragen     post_id=218873     Weg=anker                  im Paket: ja          
+  #227     pn       wuerde eingetragen     post_id=219313     Weg=anker                  im Paket: ja          
+  #228     pn       wuerde eingetragen     post_id=220222     Weg=anker                  im Paket: ja          
+  #229     pn       wuerde eingetragen     post_id=220232     Weg=anker                  im Paket: ja          
+  #230     pn       wuerde eingetragen     post_id=225354     Weg=anker                  im Paket: ja          
+  #231     pn       wuerde eingetragen     post_id=209697     Weg=anker                  im Paket: ja          
+  #232     pn       wuerde eingetragen     post_id=212185     Weg=anker                  im Paket: ja          
+  #233     pn       wuerde eingetragen     post_id=211975     Weg=anker                  im Paket: ja          
+  #234     pn       wuerde eingetragen     post_id=212985     Weg=anker                  im Paket: ja          
+  #235     pn       wuerde eingetragen     post_id=218164     Weg=anker                  im Paket: ja          
+  #236     pn       wuerde eingetragen     post_id=215348     Weg=anker                  im Paket: ja          
+  #237     pn       wuerde eingetragen     post_id=206598     Weg=anker                  im Paket: ja          
+  #238     pn       wuerde eingetragen     post_id=192522     Weg=anker                  im Paket: ja          
+  #239     pn       wuerde eingetragen     post_id=192531     Weg=anker                  im Paket: ja          
+  #240     pn       wuerde eingetragen     post_id=192536     Weg=anker                  im Paket: ja          
+  #241     pn       wuerde eingetragen     post_id=192558     Weg=anker                  im Paket: ja          
+  #242     pn       wuerde eingetragen     post_id=202197     Weg=anker                  im Paket: ja          
+  #243     pn       wuerde eingetragen     post_id=194579     Weg=anker                  im Paket: ja          
+  #244     pn       wuerde eingetragen     post_id=182980     Weg=anker                  im Paket: ja          
+  #245     pn       wuerde eingetragen     post_id=179071     Weg=anker                  im Paket: ja          
+  #246     pn       wuerde eingetragen     post_id=179659     Weg=anker                  im Paket: ja          
+  #247     pn       wuerde eingetragen     post_id=179795     Weg=anker                  im Paket: ja          
+  #248     pn       wuerde eingetragen     post_id=179812     Weg=anker                  im Paket: ja          
+  #249     pn       wuerde eingetragen     post_id=179821     Weg=anker                  im Paket: ja          
+  #250     pn       wuerde eingetragen     post_id=177360     Weg=anker                  im Paket: ja          
+  #251     pn       wuerde eingetragen     post_id=177993     Weg=anker                  im Paket: ja          
+  #252     pn       wuerde eingetragen     post_id=171730     Weg=anker                  im Paket: ja          
+  #253     pn       wuerde eingetragen     post_id=171994     Weg=anker                  im Paket: ja          
+  #254     pn       wuerde eingetragen     post_id=167298     Weg=anker                  im Paket: ja          
+  #255     pn       wuerde eingetragen     post_id=166494     Weg=anker                  im Paket: ja          
+  #256     pn       nicht gefunden         post_id=-          Weg=keiner                 im Paket: ungeprueft  Der umschliessende Absatz wurde im gesicherten Seitenabzug nicht wiedergefunden. Der Anker loest auf, der getroffene Textknoten gehoert aber nicht zum Klartext des gefundenen Absatzes. Auch der markierte Wortlaut kommt dort nicht vor - weder woertlich noch ohne Rand-Leerraum noch mit gefaltetem Leerraum.
+            Ankerweg: kein_versatz
+  #257     pn       wuerde eingetragen     post_id=157120     Weg=anker                  im Paket: ja          
+  #258     pn       wuerde eingetragen     post_id=159406     Weg=anker                  im Paket: ja          
+  #259     pn       wuerde eingetragen     post_id=97125      Weg=anker                  im Paket: ja          
+  #260     pn       wuerde eingetragen     post_id=100216     Weg=anker                  im Paket: ja          
+  #261     pn       wuerde eingetragen     post_id=128615     Weg=anker                  im Paket: ja          
+  #262     pn       wuerde eingetragen     post_id=131268     Weg=anker                  im Paket: ja          
+  #263     pn       wuerde eingetragen     post_id=150440     Weg=anker                  im Paket: ja          
+  #264     pn       wuerde eingetragen     post_id=155269     Weg=anker                  im Paket: ja          
+  #265     pn       wuerde eingetragen     post_id=155269     Weg=anker                  im Paket: ja          
+  #266     pn       wuerde eingetragen     post_id=68384      Weg=anker                  im Paket: ja          
+  #267     pn       wuerde eingetragen     post_id=84540      Weg=anker                  im Paket: ja          
+  #268     pn       wuerde eingetragen     post_id=88927      Weg=anker                  im Paket: ja          
+  #269     pn       wuerde eingetragen     post_id=89402      Weg=anker                  im Paket: ja          
+  #270     pn       wuerde eingetragen     post_id=95995      Weg=anker                  im Paket: ja          
+  #271     pn       wuerde eingetragen     post_id=96005      Weg=anker                  im Paket: ja          
+  #272     pn       wuerde eingetragen     post_id=71829      Weg=anker                  im Paket: ja          
+
+------------------------------------------------------------------------------
+ZAEHLUNG (261 Annotationen geprueft)
+  Anker unbestaetigt              2
+  nicht gefunden                  1
+  wuerde eingetragen            258
+  davon nach Weg:
+    anker                       235
+    wortlaut                      2   <- Rueckfall, Stichprobe empfohlen
+    wortlaut_anker_abweichend     21   <- Rueckfall, Stichprobe empfohlen
+
+KREUZPROBE ZUM TEILANKER - steht der Wortlaut im benannten Beitrag?
+  nicht bestanden              23   <- Anker widerlegt; traegt der Wortlaut eindeutig, wird ER eingetragen
+
+VERSATZ - um wie viele BEITRAEGE der Anker danebenzeigt (positiv = weiter unten):
+      +1 Beitraege      3 Belege
+      +2 Beitraege      1 Belege
+      +3 Beitraege      5 Belege
+      +7 Beitraege      2 Belege
+      +9 Beitraege      3 Belege
+     +10 Beitraege      1 Belege
+     +11 Beitraege      1 Belege
+     +13 Beitraege      1 Belege
+     +18 Beitraege      4 Belege
+  STREUEND - die Verschiebung ist NICHT in einer Zahl zu fassen.
+
+ANKERBILANZ - warum der Sollweg nicht getragen hat:
+  anker_bricht         25   Der Anker loest im gesicherten Seitenabzug nicht auf.
+  kein_versatz          1   Der Anker loest auf, der getroffene Textknoten gehoert aber nicht zum Klartext des gefundenen Absatzes.
+
+------------------------------------------------------------------------------
+SO GLEICHEN WIR AB (Browserseite - das Werkzeug kann sie nicht sehen)
+
+  Der Bruch sitzt bei 2 von 261 Belegen an DERSELBEN Stelle: ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]
+  Was der Abzug dort hat, steht oben je Beleg ('Im Abzug steht
+  dort: ...'). Was der BROWSER dort hat, sagt dieser Einzeiler.
+
+  WANN:  Nachdem eine der betroffenen Seiten im Ermittlungsfenster
+         geladen ist - also genau so, wie beim Markieren.
+  WO:    Entwicklerkonsole des Ermittlungsfensters (F12).
+  WAS:   Die Liste, die er ausgibt, gegen die Abzug-Liste halten.
+
+  var vp = document.getElementById('forensic-viewport');
+  var ziel = document.evaluate('./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]', vp, null, 9, null)
+            .singleNodeValue || vp;
+  copy('PFAD ./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2] -> ' + (ziel === vp ? '(nicht aufloesbar, Viewport)' : 'ok') + '\n' + Array.from(ziel.children)
+    .map((e,i) => (i+1) + ': <' + e.tagName.toLowerCase()
+     + (e.id ? '#'+e.id : '')
+     + (e.className ? '.'+String(e.className).trim().split(/\s+/).slice(0,2).join('.') : '') + '>'
+    ).join('\n'));
+
+  ZU BEOBACHTEN: Stehen dort MEHR Elemente als im Abzug, ist
+  zwischen Abzug und Markierung etwas in die Seite geschrieben
+  worden - dann nenne mir bitte die zusaetzlichen. Sind es
+  DIESELBEN, dann stimmt der verglichene Abzug nicht, und die
+  Ursache liegt bei der Seitenaufloesung, nicht am Anker.
+
+TROCKENUEBUNG - es wurde nichts geschrieben.
+Zum Anwenden denselben Aufruf mit '--ausfuehren --operator <Kuerzel>' wiederholen.
+
+STICHPROBE ZUERST HIER (23 ueber den Wortlaut statt ueber den Anker gefunden):
+  #9, #16, #17, #19, #20, #21, #26, #27, #29, #33, #39, #40, #43, #45, #46, #60, #62, #68, #69, #71, #106, #126, #127
+
+VON HAND ZU KLAEREN (2):
+  #6: Der Anker loest 14 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #262959 NICHT, und er ist auch sonst nicht eindeutig - er kommt im Abzug in keinem Beitrag vor. Es wird NICHTS eingetragen: der Anker ist widerlegt und der Wortlaut entscheidet nicht. BITTE VON HAND ANSEHEN.
+  #105: Der Anker loest 15 von 16 Schritten auf und endet damit INNERHALB des Beitrags; die Nummer stammt aus dem Anker und nicht aus der Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die Zaehlung der Textknoten. ABER: der markierte Wortlaut steht im Klartext des Beitrags #322912 NICHT, und er ist auch sonst nicht eindeutig - er kommt im Abzug in keinem Beitrag vor. Es wird NICHTS eingetragen: der Anker ist widerlegt und der Wortlaut entscheidet nicht. BITTE VON HAND ANSEHEN.
+==============================================================================
+NACHTRAG DER BEITRAGSNUMMER (annotations.post_id)
+  Beweismittel : data/evidence/evidence_2153197.db
+  Seitenabzug  : data/forensic/forensic_2153197.db (nur lesend)
+  Betriebsart  : Trockenuebung - es wird NICHTS geschrieben
+==============================================================================
+HERKUNFT DIESES LAUFS (Grundregel 8 - Dateiversionen)
+  Werkzeug : postid_nachtragen
+  Build    : 753
+  Python   : 3.14.6
+  html5lib : 1.1
+  tools/postid_nachtragen.py                           ff4caba2600db71a5a2565d47438c0de
+  management/maintenance/postid_nachtrag.py            a66f8afa164d40246306247670267f62
+  report_render/absatz_finder.py                       f477674d227194d328a4f1153743dbef
+  report_render/html5_zerleger.py                      9d09adf175c58036ac8ce40ace6e01c3
+  Diese Summen gehoeren gegen die MD5SUMS-Datei der Lieferung gehalten. Weichen sie ab, ist der Lauf mit einem anderen Stand gefahren worden, als angenommen.
+==============================================================================
+
+  #1       beitrag  wuerde eingetragen     post_id=1089086    Weg=anker                  im Paket: ja          
+  #2       beitrag  wuerde eingetragen     post_id=1089086    Weg=anker                  im Paket: ja          
+  #3       beitrag  wuerde eingetragen     post_id=1731021    Weg=anker                  im Paket: ja          
+
+------------------------------------------------------------------------------
+ZAEHLUNG (3 Annotationen geprueft)
+  wuerde eingetragen              3
+  davon nach Weg:
+    anker                         3
+
+TROCKENUEBUNG - es wurde nichts geschrieben.
+Zum Anwenden denselben Aufruf mit '--ausfuehren --operator <Kuerzel>' wiederholen.
