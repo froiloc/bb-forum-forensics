@@ -109,6 +109,26 @@
         "quellenangabe"
       ],
       "related_to": []
+    },
+    {
+      "id": "3c05e7b9-8a14-4d62-b0f7-e219a4c85d30",
+      "type": "bug",
+      "title": "Testlauf meldet 28 nicht geschlossene Datenbankverbindungen",
+      "affected_version": "0.8.749",
+      "reporter": "Claude",
+      "reported_at": "2026-08-31T19:00:00+02:00",
+      "status": "open",
+      "priority": "low",
+      "severity": "minor",
+      "description": "Beim Bau von Build 749 fielen im Regressionslauf Zeilen der Form 'ResourceWarning: unclosed database in <sqlite3.Connection object ...>' auf. GEMESSEN, nicht vermutet: allein tests/test_vollzitat.py erzeugt 28 solcher Warnungen, wenn man die in diesem Build NEU hinzugekommenen Faelle (VersionsketteTests) ausschliesst; die neuen Faelle erzeugen keine. Es handelt sich also um eine bestehende Unsauberkeit im Testbestand und nicht um eine Folge dieses Builds. WIRKUNG: keine auf das Ergebnis - die Verbindungen zeigen auf ':memory:' und werden vom Aufraeumer geschlossen. ABER SIE VERRAUSCHEN DEN LAUF: eine Ausgabe, in der 28 Warnungen ohne Belang stehen, laesst die eine mit Belang untergehen. Das ist derselbe Grund, aus dem in Build 748 die Namensmeldungen des Zerlegers von stderr in die Befunde gewandert sind. ABSICHTLICH NICHT IN DIESEM BUILD BEHOBEN: es ist eine eigene Baustelle, und zwei Baustellen in einem Build haben in diesem Teilprojekt bereits Fehlspuren gekostet.",
+      "expected_behavior": "Ein gruener Testlauf ist auch still.",
+      "actual_behavior": "Er traegt 28 Warnungen ohne Belang.",
+      "tags": [
+        "tests",
+        "aufraeumen",
+        "lesbarkeit"
+      ],
+      "related_to": []
     }
   ]
 }
