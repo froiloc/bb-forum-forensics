@@ -1,0 +1,102 @@
+{
+  "issues": [
+    {
+      "id": "b41f7a08-3d55-4c62-9a1e-5c0e2f8d7b13",
+      "type": "bug",
+      "title": "Abzug traegt WENIGER Zeilen als der Browser hatte - Elementindizes unsicher",
+      "affected_version": "0.8.750",
+      "reporter": "Alex",
+      "reported_at": "2026-08-31T22:00:00+02:00",
+      "status": "open",
+      "priority": "critical",
+      "severity": "blocker",
+      "description": "AUS ALEX' ANKERDIAGNOSE VOM 31.08.2026 (Datei anker_diagnose_total.txt, MD5 4fdb5b30ad86c7a1d96288c4bbdec6f4, 61 auswertbare Laeufe ueber sieben Bestaende, gefahren mit Build 750). DIES IST DER BEFUND, DER DEN SCHARFEN LAUF AUFHAELT. Der Ebenenbericht der Diagnose nennt zu jeder Ankerstufe, wie viele gleichnamige Kinder der Abzug dort hat. Drei Anker verlangen an der BEITRAGSEBENE einen Index, den es im Abzug NICHT gibt: evidence_2948078 Beleg 74 auf /forum/pmsnew.php?mdl=topic&tid=64200 verlangt 'div[54]', der Abzug hat dort 53 Kinder; evidence_1488 Belege 45 und 46 auf ...&tid=57358 verlangen 'div[1010]' und 'div[1016]', der Abzug hat 1003. DER BROWSER HATTE AN DIESER EBENE ALSO MEHR ZEILEN ALS DER ABZUG - gemessen, nicht vermutet. Alle Indizes dieser Ebene sind ueberdies gerade (36, 52, 54; 138, 218, 526, 548, 588, 598, 636, 728, 790, 888, 906, 918, 946, 1010, 1016) bei ungerader Kinderzahl (53, 1003), was zu einer Abfolge Trenner/Zeile passt: 26 gegenueber mindestens 27 Zeilen, 501 gegenueber mindestens 508. DIE TRAGWEITE: stehen die fehlenden Zeilen am ENDE, stimmen alle kleineren Indizes weiter und der Teilanker aus Build 750 trifft den richtigen Beitrag. Stehen sie DAVOR, zeigt JEDER groessere Index auf den falschen Beitrag - und zwar lautlos, weil ein falscher Beitrag genauso aussieht wie ein richtiger. WELCHE DER BEIDEN LAGEN VORLIEGT, IST NICHT GEMESSEN, und sie wird hier ausdruecklich nicht geraten. Build 751 zieht daraus die Folge, die ohne weitere Messung moeglich ist: die Nummer aus dem Teilanker wird nur noch eingetragen, wenn der markierte Wortlaut im Klartext des benannten Beitrags STEHT (Kreuzprobe, s. e93a1d70). ZU KLAEREN BLEIBT DIE URSACHE: wurde der Abzug mit einer anderen Anmeldung geholt als der, unter der der Ermittler die Seite sah (pmsnew.php ist benutzerabhaengig), ist er abgeschnitten, oder wurde er zu einem anderen Zeitpunkt gezogen?",
+      "expected_behavior": "Der Abzug gibt dieselbe Seite wieder, auf der der Ermittler markiert hat.",
+      "actual_behavior": "An der Beitragsebene fehlen Zeilen; drei Anker verlangen Indizes jenseits des Bestands.",
+      "tags": [
+        "anker",
+        "seitenabzug",
+        "sicherung",
+        "pmsnew",
+        "messung-offen"
+      ],
+      "related_to": [
+        "4e19d7c2-0a63-4b58-9e14-7f2c68b035ae",
+        "8d3b62f5-14ca-4e07-b891-25a0f79ce463"
+      ]
+    },
+    {
+      "id": "e93a1d70-2f84-4c17-9b60-8a1d3e5c4f92",
+      "type": "improvement",
+      "title": "Kreuzprobe: der Teilanker wird am Inhalt geprueft, nicht geglaubt",
+      "affected_version": "0.8.750",
+      "reporter": "Claude",
+      "reported_at": "2026-08-31T22:10:00+02:00",
+      "status": "resolved",
+      "priority": "critical",
+      "severity": "critical",
+      "description": "Build 750 hat die Beitragsnummer aus dem teilweise aufgeloesten Anker genommen und dabei UNTERSTELLT, dass die Elementindizes des Ankers und die des Abzugs dieselben Elemente treffen. Der Befund b41f7a08 zeigt, dass das auf den PN-Seiten nicht durchweg gilt. Eine Unterstellung an dieser Stelle ist genau die Sorte Fehler, die in einer Akte nicht auffaellt: eine falsche Beitragsnummer bringt falschen Betreff, falsches Originaldatum und falsche Gruppierung mit sich und sieht dabei aus wie eine richtige. BEHOBEN: AbsatzFinder.post_behaelter_von() gibt das Element mit der Beitragskennung zurueck (post_id_von ist jetzt die Nummer dazu); AbsatzFinder.wortlaut_im_beitrag() prueft, ob der markierte Wortlaut im Klartext dieses Beitrags steht - in denselben Fassungen wie die Wortlautsuche (woertlich, gestrafft, gefaltet). PostIdNachtrag traegt die Nummer aus dem Teilanker nur noch ein, wenn die Probe BESTEHT. Besteht sie nicht, wird NICHTS eingetragen (neues Ergebnis 'Anker unbestaetigt'), und die Zeile steht in der Liste der von Hand anzusehenden Faelle. DIE AUSKUNFT BLEIBT DABEI EHRLICH: 'nicht bestanden' heisst NICHT 'falscher Beitrag'. Der Wortlaut kann ueber eine Beitragsgrenze hinweg markiert, in einer Uebersetzung erhoben oder anders gefaltet worden sein. Er heisst 'nicht bestaetigt' - und was nicht bestaetigt ist, wird nicht eingetragen. NEBENERTRAG, UND ER GEHOERT GENANNT: die 34 Zeilen mit 'ACHTUNG ... VERSCHIEDENE Beitraege' aus dem Lauf zu Build 750 werden jetzt aufgeteilt. Besteht die Kreuzprobe, ist der Widerspruch AUFGEKLAERT - derselbe Wortlaut kommt in mehreren Beitraegen vor, und der Anker sagt, welcher gemeint war; genau dafuer ist er da. Nur wo die Probe nicht besteht, bleibt die Warnung stehen. 34 gleichlautende Warnungen, von denen die meisten erklaerbar sind, lassen die eine mit Belang untergehen. Der Lauf ZAEHLT die Proben (Laufbefund.kreuzproben, Ausgabe in tools/postid_nachtragen.py) - die Frage, ob der Teilanker den richtigen Beitrag trifft, wird damit von einer Zahl beantwortet und nicht von einem Leseeindruck.",
+      "expected_behavior": "Eine Beitragsnummer wird eingetragen, wenn der Inhalt sie bestaetigt.",
+      "actual_behavior": "Ab Build 751 ist das so; ohne Bestaetigung wird nichts eingetragen.",
+      "resolved_in_version": "0.8.751",
+      "tags": [
+        "post-id",
+        "nachtrag",
+        "anker",
+        "belegkraft",
+        "kreuzprobe"
+      ],
+      "related_to": [
+        "b41f7a08-3d55-4c62-9a1e-5c0e2f8d7b13",
+        "4e19d7c2-0a63-4b58-9e14-7f2c68b035ae"
+      ]
+    },
+    {
+      "id": "a7c92b56-4e13-4f80-b2d7-9c05e8a1f374",
+      "type": "documentation",
+      "title": "Ankerbrueche stehen ausschliesslich auf PN-Seiten - gemessen",
+      "affected_version": "0.8.750",
+      "reporter": "Claude",
+      "reported_at": "2026-08-31T22:20:00+02:00",
+      "status": "open",
+      "priority": "high",
+      "severity": "major",
+      "description": "AUSZAEHLUNG DER ANKERDIAGNOSE VOM 31.08.2026 (61 auswertbare Laeufe): ALLE 40 gebrochenen Anker stehen auf '/forum/pmsnew.php' - kein einziger auf einer Themenseite. ALLE 13 fehlenden Seitenabzuege stehen auf '/forum/viewtopic.php' - kein einziger auf einer PN-Seite. Das sind zwei GETRENNTE Mengen mit zwei getrennten Ursachen, und die Trennung ist scharf. Von den acht aufloesenden Ankern stehen drei ebenfalls auf PN-Seiten (evidence_1704143 Belege 2 und 3, evidence_1488 Beleg 256) - 'PN bricht immer' waere also falsch; es bricht dort, wo der Abzug nicht zur Seite passt, die der Ermittler sah (s. b41f7a08). BRUCHSTUFEN der 40: 35-mal bricht erst die LETZTE Stufe ('text()[n]'), 2-mal die vorletzte ('p[n]'), 3-mal die Beitragsebene ('div[n]'). Das stuetzt die Aufteilung aus Build 750, sagt aber nichts darueber, ob die aufgeloesten Elementindizes dieselben Elemente treffen. ZUR ARBEITSWEISE, und das ist der Grund fuer diesen Eintrag: dieselbe Auszaehlung war an evidence_155955 allein nicht zu machen, und an zwoelf Bestaenden ohne die Seitenadresse daneben ebenfalls nicht. Die Seitenart gehoert deshalb kuenftig in jede Auszaehlung. HINWEIS ZUM LAUF SELBST: 24 der 85 Laeufe der Datei sind leer geblieben - die Schleife hat bei evidence_1088376 Bestand und Belegnummer als EIN Argument uebergeben ('Running diagnose for id: 1088376 1, beleg: 1088376 1'). Die 22 Annotationen dieses Bestands sind damit NICHT gemessen; die Aussage 'evidence_1088376 hat keinen Seitenabzug' stammt aus dem Nachtragslauf, nicht aus der Diagnose.",
+      "expected_behavior": "Auszaehlungen nennen die Seitenart, und jeder angestossene Lauf liefert auch ein Ergebnis.",
+      "actual_behavior": "Die Trennung PN/Thema war bis zur Auszaehlung nicht sichtbar; 24 Laeufe blieben leer.",
+      "tags": [
+        "anker",
+        "auszaehlung",
+        "pmsnew",
+        "diagnose"
+      ],
+      "related_to": [
+        "b41f7a08-3d55-4c62-9a1e-5c0e2f8d7b13",
+        "c7f04a91-6b28-4d53-8e70-13ba95c2d8f7"
+      ]
+    },
+    {
+      "id": "f0d84b21-6a97-4d35-8c12-3b7e9f45a608",
+      "type": "bug",
+      "title": "Testwortlaut stand im geprueften Beitrag gar nicht",
+      "affected_version": "0.8.750",
+      "reporter": "Claude",
+      "reported_at": "2026-08-31T22:30:00+02:00",
+      "status": "resolved",
+      "priority": "medium",
+      "severity": "major",
+      "description": "BEIM EINBAU DER KREUZPROBE ROT GEWORDEN, und der Fund ist mehr wert als der Fall: PN50 und PN53 fuehrten den Wortlaut 'Bahnhof' gegen den Abzug BODY_ECHT_FORUM. Dort steht 'Der Zug faehrt ab Hauptbahnhof.' - mit KLEINEM b. 'Bahnhof' kommt in diesem Beitrag also gar nicht vor; die Faelle liefen ueber den Anker und haben nie geprueft, was sie zu pruefen vorgaben. Der Wortlaut stammt aus dem ANDEREN Aufbau (BODY, 'Wir treffen uns am Bahnhof in Musterstadt.') - derselbe Fehlertyp, der schon bei ANKER_4711 in Build 750 aufgefallen ist: eine Angabe aus einem Aufbau gegen einen anderen gefahren. BEHOBEN: WORTLAUT_ECHT ('Hauptbahnhof') ist am Abzug abgelesen, WORTLAUT_FREMD dient der Gegenprobe; beide sind im Testkopf als abgelesen vermerkt. FESTGEHALTEN, WEIL ES EIN MUSTER IST: Testdaten, die aus einem anderen Aufbau stammen, machen einen Fall gruen, ohne ihn zu pruefen. Aufgefallen ist es nur, weil eine NEUE Pruefung dazukam - nicht durch die Tests selbst.",
+      "expected_behavior": "Testdaten stammen aus dem Aufbau, gegen den sie gefahren werden.",
+      "actual_behavior": "Sie stammten aus einem anderen - jetzt am Abzug abgelesen und so vermerkt.",
+      "resolved_in_version": "0.8.751",
+      "tags": [
+        "tests",
+        "belegbarkeit",
+        "gegenprobe"
+      ],
+      "related_to": [
+        "e93a1d70-2f84-4c17-9b60-8a1d3e5c4f92"
+      ]
+    }
+  ]
+}

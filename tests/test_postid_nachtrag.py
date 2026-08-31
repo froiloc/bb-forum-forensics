@@ -19,7 +19,7 @@
 # GEGENPROBEN sind eigens ausgewiesen (PN14, PN15): ein Test, der auch dann
 #   gruen bliebe, wenn die Pruefung fehlt, prueft nichts.
 #
-# Version: v0.8.728 - Build: 728 - 2026-08-28
+# Version: v0.8.751 - Build: 751 - 2026-08-31
 # =============================================================================
 
 from __future__ import annotations
@@ -36,6 +36,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from management.maintenance.postid_nachtrag import (  # noqa: E402
+    ERG_ANKER_UNBESTAETIGT,
     ERG_GETRAGEN,
     ERG_MEHRDEUTIG,
     ERG_NICHT_GEFUNDEN,
@@ -826,6 +827,17 @@ ANKER_ECHT_VOLL = _ABSATZ_ECHT + "/text()[1]"
 #: Derselbe Anker, aber die letzte Stufe verlangt einen Textknoten, den der
 #: Abzug nicht hat - genau Alex' Bruchbild ("Browser 7, Abzug 1").
 ANKER_4711_TEXTKNOTEN = _ABSATZ_ECHT + "/text()[7]"
+#: Ein Wortlaut, der im Klartext von Beitrag 1164441 WIRKLICH steht
+#: ("Der Zug faehrt ab Hauptbahnhof.") - am Abzug abgelesen, nicht gewaehlt.
+#:
+#: BUILD 751, und der Weg dorthin gehoert notiert: die Faelle standen bis
+#: hierher mit "Bahnhof" da, und das kommt in DIESEM Abzug nur als Teil von
+#: "Hauptbahnhof" vor - mit kleinem b. Die neue Kreuzprobe hat das bemerkt
+#: und PN50 rot gemacht. Ein Testwortlaut, der im geprueften Beitrag gar
+#: nicht steht, hat den Fall nie so geprueft, wie er gemeint war.
+WORTLAUT_ECHT = "Hauptbahnhof"
+#: Ein Wortlaut, der dort NICHT steht - fuer die Gegenprobe zur Kreuzprobe.
+WORTLAUT_FREMD = "Freitagabend am Containerhafen"
 
 
 class TeilankerTests(unittest.TestCase):
@@ -851,7 +863,7 @@ class TeilankerTests(unittest.TestCase):
     def test_PN50_letzte_stufe_bricht_nummer_kommt_aus_dem_anker(self):
         nr = self.auf.annotation(
             seite=SEITE_ECHT_FORUM,
-            auswahl=_auswahl(ANKER_4711_TEXTKNOTEN, "Bahnhof"))
+            auswahl=_auswahl(ANKER_4711_TEXTKNOTEN, WORTLAUT_ECHT))
         z = self._zeile(self._lauf(), nr)
         self.assertEqual(WEG_ANKER_TEIL, z.weg)
         self.assertEqual(1164441, z.post_id)
@@ -866,7 +878,7 @@ class TeilankerTests(unittest.TestCase):
         # Ratespiel mit gutem Namen.
         nr = self.auf.annotation(
             seite=SEITE_ECHT_FORUM,
-            auswahl=_auswahl(ANKER_KAPUTT, "Bahnhof"))
+            auswahl=_auswahl(ANKER_KAPUTT, WORTLAUT_ECHT))
         z = self._zeile(self._lauf(), nr)
         self.assertNotEqual(WEG_ANKER_TEIL, z.weg)
 
@@ -875,7 +887,7 @@ class TeilankerTests(unittest.TestCase):
         # verloere die Zaehlung die Unterscheidung, auf die es ankommt.
         nr = self.auf.annotation(
             seite=SEITE_ECHT_FORUM,
-            auswahl=_auswahl(ANKER_ECHT_VOLL, "Bahnhof"))
+            auswahl=_auswahl(ANKER_ECHT_VOLL, WORTLAUT_ECHT))
         z = self._zeile(self._lauf(), nr)
         self.assertEqual(WEG_ANKER, z.weg)
         self.assertEqual(1164441, z.post_id)
@@ -888,7 +900,7 @@ class TeilankerTests(unittest.TestCase):
         # Beitrag, wird KEIN Widerspruch behauptet.
         nr = self.auf.annotation(
             seite=SEITE_ECHT_FORUM,
-            auswahl=_auswahl(ANKER_4711_TEXTKNOTEN, "Bahnhof"))
+            auswahl=_auswahl(ANKER_4711_TEXTKNOTEN, WORTLAUT_ECHT))
         z = self._zeile(self._lauf(), nr)
         self.assertEqual(WEG_ANKER_TEIL, z.weg)
         self.assertNotIn("ACHTUNG", z.bemerkung)
@@ -929,20 +941,147 @@ class TeilankerMethodeTests(unittest.TestCase):
         # DAS IST DER GUARD IN DER METHODE. Ohne ihn haenge alles am
         # Aufrufer - und ein Schutz an nur einer Stelle faellt beim naechsten
         # Umbau still weg.
-        nummer, hinweis = self.nachtrag._nummer_aus_teilanker(
+        nummer, hinweis, behaelter = self.nachtrag._nummer_aus_teilanker(
             self._finder(), {"xpathStart": ANKER_ECHT_VOLL})
         self.assertIsNone(nummer)
         self.assertEqual("", hinweis)
+        self.assertIsNone(behaelter)
 
     def test_PN55_gebrochene_letzte_stufe_liefert_die_nummer(self):
-        nummer, hinweis = self.nachtrag._nummer_aus_teilanker(
+        nummer, hinweis, behaelter = self.nachtrag._nummer_aus_teilanker(
             self._finder(), {"xpathStart": ANKER_4711_TEXTKNOTEN})
         self.assertEqual(1164441, nummer)
         self.assertIn("aus dem Anker", hinweis)
+        # BUILD 751: der Behaelter MUSS mitkommen - ohne ihn ist die
+        # Kreuzprobe nicht zu fahren, und dann beruht die Nummer wieder
+        # allein auf Elementindizes.
+        self.assertIsNotNone(behaelter)
+        # AM ABZUG ABGELESEN: getroffen wird die INNERE Kennung 'pp<Nr>'
+        # am '<div class="box">', weil sie auf dem Weg nach oben zuerst
+        # kommt. Die Nummer ist dieselbe (s. _POST_KENNUNG); geprueft wird
+        # hier, dass wirklich der Beitragsbehaelter zurueckkommt und nicht
+        # irgendein Vorfahr.
+        self.assertEqual("pp1164441", behaelter.get("id"))
 
     def test_PN56_ohne_anker_liefert_er_nichts(self):
         for auswahl in ({}, {"xpathStart": ""}, None, "keine Abbildung"):
             with self.subTest(auswahl=auswahl):
-                nummer, _ = self.nachtrag._nummer_aus_teilanker(
+                nummer, _, behaelter = self.nachtrag._nummer_aus_teilanker(
                     self._finder(), auswahl)
                 self.assertIsNone(nummer)
+                self.assertIsNone(behaelter)
+
+
+# ---------------------------------------------------------------------------
+# BUILD 751 - DIE KREUZPROBE ZUM TEILANKER
+#
+# WARUM ES SIE GIBT, und der Grund ist gemessen: Alex' Ankerdiagnose ueber
+# zwoelf Bestaende (31.08.2026) zeigt auf den PN-Seiten Anker, die auf einer
+# Ebene MEHR Kinder verlangen, als der Abzug hat - 'div[54]' bei 53 Kindern
+# (evidence_2948078, /forum/pmsnew.php?mdl=topic&tid=64200), 'div[1010]' und
+# 'div[1016]' bei 1003 (evidence_1488, ...&tid=57358). DER BROWSER HATTE
+# DORT MEHR ZEILEN ALS DER ABZUG.
+#
+# Fehlen die zusaetzlichen Zeilen am ENDE, stimmen alle kleineren Indizes
+# weiter. Fehlen sie DAVOR, zeigt jeder groessere Index auf den falschen
+# Beitrag - lautlos, weil ein falscher Beitrag genauso aussieht wie ein
+# richtiger. WELCHE DER BEIDEN LAGEN VORLIEGT, IST NICHT GEMESSEN. Build 750
+# hat die guenstige unterstellt; Build 751 unterstellt nichts mehr, sondern
+# prueft am INHALT.
+#
+# PN57  steht der Wortlaut im benannten Beitrag, wird das vermerkt und die
+#       Nummer eingetragen
+# PN58  steht er NICHT darin, wird NICHTS eingetragen - das ist der Fall,
+#       um dessentwillen die Probe gebaut ist
+# PN59  ohne brauchbaren Wortlaut ist die Probe nicht moeglich, und DAS
+#       wird gesagt statt sie stillschweigend als bestanden zu fuehren
+# PN60  die Methode selbst: True / False / None
+# PN61  der Lauf ZAEHLT die Proben - eine Zahl, kein Leseeindruck
+# ---------------------------------------------------------------------------
+
+
+class KreuzprobeTests(unittest.TestCase):
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self._tmp.name)
+        self.auf = Aufbau(self.dir)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _lauf(self):
+        return PostIdNachtrag(evidence=self.auf.evidence,
+                              forensic=self.auf.forensic).lauf()
+
+    def _zeile(self, befund, ident):
+        for z in befund.zeilen:
+            if z.annotation_id == ident:
+                return z
+        self.fail("Beleg #%d fehlt im Befund (GR1)." % ident)
+
+    def test_PN57_wortlaut_im_beitrag_bestaetigt_die_nummer(self):
+        nr = self.auf.annotation(
+            seite=SEITE_ECHT_FORUM,
+            auswahl=_auswahl(ANKER_4711_TEXTKNOTEN, WORTLAUT_ECHT))
+        z = self._zeile(self._lauf(), nr)
+        self.assertEqual(WEG_ANKER_TEIL, z.weg)
+        self.assertEqual(1164441, z.post_id)
+        self.assertEqual("bestanden", z.kreuzprobe)
+        self.assertIn("KREUZPROBE BESTANDEN", z.bemerkung)
+
+    def test_PN58_wortlaut_nicht_im_beitrag_traegt_nichts_ein(self):
+        # DER FALL, UM DESSENTWILLEN DIE PROBE GEBAUT IST. Build 750 haette
+        # hier 1164441 eingetragen, ohne dass irgendetwas den Beitrag
+        # bestaetigt haette.
+        nr = self.auf.annotation(
+            seite=SEITE_ECHT_FORUM,
+            auswahl=_auswahl(ANKER_4711_TEXTKNOTEN, WORTLAUT_FREMD))
+        z = self._zeile(self._lauf(), nr)
+        self.assertIsNone(z.post_id)
+        self.assertEqual(ERG_ANKER_UNBESTAETIGT, z.ergebnis)
+        self.assertEqual("nicht bestanden", z.kreuzprobe)
+        # UND DIE AUSKUNFT MUSS EHRLICH BLEIBEN: nicht bestaetigt ist
+        # etwas anderes als widerlegt.
+        self.assertIn("NICHT", z.bemerkung)
+        self.assertIn("kein Beweis, dass der Anker falsch ist", z.bemerkung)
+
+    def test_PN59_ohne_wortlaut_ist_die_probe_nicht_moeglich(self):
+        nr = self.auf.annotation(
+            seite=SEITE_ECHT_FORUM,
+            auswahl=_auswahl(ANKER_4711_TEXTKNOTEN, ""))
+        z = self._zeile(self._lauf(), nr)
+        self.assertEqual("nicht pruefbar", z.kreuzprobe)
+        self.assertEqual(1164441, z.post_id)
+        self.assertIn("nicht am Inhalt", z.bemerkung)
+
+    def test_PN60_die_methode_selbst(self):
+        from report_render.absatz_finder import AbsatzFinder
+        finder = AbsatzFinder(BODY_ECHT_FORUM)
+        knoten, _g, _s = finder.anker_teilknoten(ANKER_4711_TEXTKNOTEN)
+        behaelter = AbsatzFinder.post_behaelter_von(knoten)
+        self.assertIs(True,
+                      AbsatzFinder.wortlaut_im_beitrag(behaelter,
+                                                       WORTLAUT_ECHT))
+        self.assertIs(False,
+                      AbsatzFinder.wortlaut_im_beitrag(behaelter,
+                                                       WORTLAUT_FREMD))
+        self.assertIsNone(AbsatzFinder.wortlaut_im_beitrag(behaelter, ""))
+        self.assertIsNone(AbsatzFinder.wortlaut_im_beitrag(None,
+                                                           WORTLAUT_ECHT))
+        # GEFALTET MUSS SIE AUCH TREFFEN: die Seitenvorlage bricht Zeilen
+        # und rueckt ein; ohne Faltung schluege die Probe an Leerraum fehl,
+        # ohne dass am Inhalt etwas fehlte.
+        self.assertIs(True, AbsatzFinder.wortlaut_im_beitrag(
+            behaelter, "Der  Zug\n  faehrt ab Hauptbahnhof."))
+
+    def test_PN61_der_lauf_zaehlt_die_proben(self):
+        self.auf.annotation(
+            seite=SEITE_ECHT_FORUM,
+            auswahl=_auswahl(ANKER_4711_TEXTKNOTEN, WORTLAUT_ECHT))
+        self.auf.annotation(
+            seite=SEITE_ECHT_FORUM,
+            auswahl=_auswahl(ANKER_4711_TEXTKNOTEN, WORTLAUT_FREMD))
+        proben = self._lauf().kreuzproben()
+        self.assertEqual(1, proben.get("bestanden"))
+        self.assertEqual(1, proben.get("nicht bestanden"))

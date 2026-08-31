@@ -142,7 +142,7 @@
 #   gar nicht - dieselbe Zusage wie bei CoordinatorWriter.audited_write.
 #
 # Grundregeln: GR1, GR2, GR6, GR10.
-# Version: v0.8.728 - Build: 728 - 2026-08-28
+# Version: v0.8.751 - Build: 751 - 2026-08-31
 # =============================================================================
 
 from __future__ import annotations
@@ -195,6 +195,12 @@ ERG_RUECKFALL_AUS = "Rueckfall abgeschaltet"
 ERG_WIDERSPRUCH = "Widerspruch"
 #: Die Zeile traegt bereits dieselbe post_id - nichts zu tun.
 ERG_SCHON_DA = "bereits gesetzt"
+#: BUILD 751. Der Teilanker benennt einen Beitrag, aber der markierte
+#: Wortlaut steht NICHT darin (AbsatzFinder.wortlaut_im_beitrag). Es wird
+#: nichts eingetragen. Das ist ausdruecklich KEIN Beweis, dass der Anker
+#: falsch ist - nur einer, dass er nicht bestaetigt ist; der Unterschied
+#: steht in der Bemerkung der Zeile.
+ERG_ANKER_UNBESTAETIGT = "Anker unbestaetigt"
 
 #: Ergebnisse, die einen Schreibvorgang bedeuten.
 ERGEBNISSE_SCHREIBEND = (ERG_GETRAGEN,)
@@ -238,6 +244,13 @@ class Zeilenbefund:
     #: Aussage, die es nicht gemessen hatte.
     anker_grund: str = ""
     anker_bruch: str = ""
+    #: BUILD 751 - das Ergebnis der Kreuzprobe zum Teilanker, als eines von
+    #: "" (nicht gelaufen) | "bestanden" | "nicht bestanden" | "nicht
+    #: pruefbar". Es steht als EIGENES Feld da und nicht nur im Fliesstext
+    #: der Bemerkung, damit der Lauf es zaehlen kann: die Frage, ob der
+    #: Teilanker auf den richtigen Beitrag zeigt, wird von einer ZAHL
+    #: beantwortet und nicht von einem Eindruck beim Lesen.
+    kreuzprobe: str = ""
 
     def als_protokollzeile(self) -> str:
         """Eine Zeile fuer Konsole und Protokolldatei."""
@@ -302,6 +315,21 @@ class Laufbefund:
         for z in self.zeilen:
             if z.ergebnis in (ERG_GETRAGEN, ERG_WUERDE):
                 aus[z.weg] = aus.get(z.weg, 0) + 1
+        return aus
+
+    def kreuzproben(self) -> Dict[str, int]:
+        """
+        Wie oft die Kreuzprobe zum Teilanker wie ausgegangen ist (Build 751).
+
+        DAS IST DIE ZAHL, DIE UEBER DEN SCHARFEN LAUF ENTSCHEIDET. Sie sagt,
+        ob der Teilanker den Beitrag am Inhalt bestaetigt bekommt oder ob er
+        nur auf Elementindizes beruht, deren Uebereinstimmung mit dem Abzug
+        auf den PN-Seiten gerade nicht durchweg gegeben ist.
+        """
+        aus: Dict[str, int] = {}
+        for z in self.zeilen:
+            if z.kreuzprobe:
+                aus[z.kreuzprobe] = aus.get(z.kreuzprobe, 0) + 1
         return aus
 
 
@@ -628,7 +656,13 @@ class PostIdNachtrag:
     @staticmethod
     def _nummer_aus_teilanker(finder, selection):
         """
-        (Beitragsnummer oder None, Hinweis im Klartext).
+        (Beitragsnummer oder None, Hinweis im Klartext, Beitragselement).
+
+        BUILD 751: der dritte Rueckgabewert ist das ELEMENT, das die
+        Beitragskennung traegt. Er wird fuer die Kreuzprobe gebraucht
+        (AbsatzFinder.wortlaut_im_beitrag) - ohne ihn liesse sich nur die
+        Nummer weiterreichen, und an einer Nummer ist nicht zu pruefen, ob
+        der markierte Wortlaut in diesem Beitrag steht.
 
         BUILD 750. Der Anker wird Schritt fuer Schritt gegangen; vom am
         weitesten erreichten ELEMENT aus wird der naechste Vorfahr mit einer
@@ -647,23 +681,26 @@ class PostIdNachtrag:
         """
         from report_render.absatz_finder import AbsatzFinder
         if not isinstance(selection, dict):
-            return None, ""
+            return None, "", None
         ausdruck = str(selection.get("xpathStart") or "")
         if not ausdruck:
-            return None, ""
+            return None, "", None
         knoten, gegangen, gesamt = finder.anker_teilknoten(ausdruck)
         if knoten is None or gegangen >= gesamt:
             # Ganz aufgeloest? Dann hat der Sollweg getragen und dieser
             # Zweig hat nichts beizutragen.
-            return None, ""
-        nummer = AbsatzFinder.post_id_von(knoten)
+            return None, "", None
+        behaelter = AbsatzFinder.post_behaelter_von(knoten)
+        if behaelter is None:
+            return None, "", None
+        nummer = AbsatzFinder.post_id_von(behaelter)
         if nummer is None:
-            return None, ""
+            return None, "", None
         return nummer, (
             "Der Anker loest %d von %d Schritten auf und endet damit INNERHALB "
             "des Beitrags; die Nummer stammt aus dem Anker und nicht aus der "
             "Wortlautsuche. Gebrochen ist erst die letzte Stufe - typisch die "
-            "Zaehlung der Textknoten." % (gegangen, gesamt))
+            "Zaehlung der Textknoten." % (gegangen, gesamt)), behaelter
 
     # ------------------------------------------------------------------
     def _nummer_bestimmen(self, r: sqlite3.Row, selection: Any,
@@ -675,7 +712,7 @@ class PostIdNachtrag:
         die Zeile dann unveraendert weiter. Kein Zweig endet stumm (GR1).
         """
         from report_render.absatz_finder import (
-            AbsatzFinder, WEG_XPATH, ist_uebersetzungsauswahl)
+            AbsatzFinder, WEG_XPATH, auswahl_text, ist_uebersetzungsauswahl)
 
         # (a) Uebersetzung: die Nummer steht bereits in der Auswahl.
         if ist_uebersetzungsauswahl(selection):
@@ -727,7 +764,8 @@ class PostIdNachtrag:
         # DIE PRUEFUNG STEHT VOR DER AUSWERTUNG DER FUNDSTELLE und nicht
         # dahinter: sie soll den Wortlaut ERSETZEN, wo der Anker traegt,
         # nicht ihn im Nachhinein bestaetigen.
-        teilnummer, teilhinweis = self._nummer_aus_teilanker(finder, selection)
+        teilnummer, teilhinweis, teilbehaelter = \
+            self._nummer_aus_teilanker(finder, selection)
         # ZWEI SCHRANKEN, UND DAS IST ABSICHT - aber sie decken einander,
         # und das gehoert gesagt: '_nummer_aus_teilanker' gibt bei einem
         # ganz aufgeloesten Anker schon nichts zurueck (PN54), und die
@@ -740,22 +778,100 @@ class PostIdNachtrag:
         if teilnummer is not None and fundstelle.weg != WEG_XPATH:
             z.weg = WEG_ANKER_TEIL
             z.bemerkung = teilhinweis
-            # WIDERSPRUCH NICHT VERSCHWEIGEN. Findet der Wortlaut einen
-            # ANDEREN Beitrag als der Anker, ist das ein Befund und keine
-            # Nebensache - er gehoert in die Zeile, damit ihn jemand ansieht.
+
+            # -- DIE KREUZPROBE (BUILD 751) -------------------------------
+            #
+            # SIE STEHT VOR ALLEM ANDEREN, weil sie ueber die Nummer selbst
+            # entscheidet und nicht ueber ihre Darstellung.
+            #
+            # Build 750 hat die Nummer aus dem teilweise aufgeloesten Anker
+            # genommen und dabei UNTERSTELLT, dass die Elementindizes des
+            # Ankers und die des Abzugs dieselben Elemente treffen. Alex'
+            # Ankerdiagnose vom 31.08.2026 zeigt, dass das nicht durchweg
+            # gilt: auf '/forum/pmsnew.php?mdl=topic&tid=64200' verlangt ein
+            # Anker 'div[54]' auf einer Ebene, die im Abzug 53 Kinder hat;
+            # auf '...&tid=57358' verlangen zwei Anker 'div[1010]' und
+            # 'div[1016]', wo der Abzug 1003 Kinder hat. DER BROWSER HATTE
+            # DORT MEHR ZEILEN ALS DER ABZUG - und ob die fehlenden am Ende
+            # oder davor stehen, ist NICHT gemessen. Stehen sie davor, zeigt
+            # jeder groessere Index lautlos auf den falschen Beitrag.
+            #
+            # Deshalb wird die Nummer nicht mehr geglaubt, sondern geprueft,
+            # und zwar am INHALT: steht der markierte Wortlaut in dem
+            # Beitrag, den der Anker benennt? Steht er dort nicht, wird
+            # NICHTS eingetragen. Eine falsche Nummer braechte falschen
+            # Betreff, falsches Datum und falsche Gruppierung mit sich und
+            # saehe dabei unauffaellig aus - dieselbe Ueberlegung wie beim
+            # mehrdeutigen Wortlaut weiter unten.
+            wortlaut = auswahl_text(selection)
+            probe = AbsatzFinder.wortlaut_im_beitrag(teilbehaelter, wortlaut)
+
+            # Der Wortlaut auf seine Beitraege gebracht - fuer den
+            # Widerspruch UND fuer die Auskunft im Misserfolgsfall.
             wortlautnummern = []
             for treffer in fundstelle.treffer:
                 nummer = AbsatzFinder.post_id_von(treffer.block)
                 if nummer is not None and nummer not in wortlautnummern:
                     wortlautnummern.append(nummer)
+            gefunden_bei = (", ".join("#%d" % n for n in wortlautnummern)
+                            if wortlautnummern else "keinem Beitrag")
+
+            z.kreuzprobe = {True: "bestanden", False: "nicht bestanden",
+                            None: "nicht pruefbar"}[probe]
+
+            if probe is False:
+                # NICHT BESTAETIGT - und das ist etwas anderes als WIDERLEGT.
+                z.ergebnis = ERG_ANKER_UNBESTAETIGT
+                z.bemerkung = (
+                    "%s ABER: der markierte Wortlaut steht im Klartext des "
+                    "Beitrags #%d NICHT. Es wird NICHTS eingetragen. Das ist "
+                    "kein Beweis, dass der Anker falsch ist - der Wortlaut "
+                    "kann ueber eine Beitragsgrenze hinweg markiert, in einer "
+                    "Uebersetzung erhoben oder anders gefaltet worden sein. "
+                    "Es ist ein Beweis, dass die Nummer NICHT BESTAETIGT ist, "
+                    "und eine unbestaetigte Nummer wird nicht eingetragen. "
+                    "Die Wortlautsuche findet die Stelle bei %s. BITTE VON "
+                    "HAND ANSEHEN." % (teilhinweis, teilnummer, gefunden_bei))
+                return None
+
+            if probe is None:
+                z.bemerkung += (
+                    " Die Kreuzprobe war nicht moeglich (kein brauchbarer "
+                    "Wortlaut in der Auswahl); die Nummer stammt allein aus "
+                    "den Elementindizes des Ankers und ist nicht am Inhalt "
+                    "gegengeprueft.")
+            else:
+                z.bemerkung += (
+                    " KREUZPROBE BESTANDEN: der markierte Wortlaut steht im "
+                    "Klartext des Beitrags #%d." % teilnummer)
+
+            # WIDERSPRUCH NICHT VERSCHWEIGEN. Findet der Wortlaut einen
+            # ANDEREN Beitrag als der Anker, ist das ein Befund und keine
+            # Nebensache - er gehoert in die Zeile, damit ihn jemand ansieht.
+            #
+            # BUILD 751: Nach bestandener Kreuzprobe ist dieser Widerspruch
+            # AUFGEKLAERT und nicht mehr offen - der Wortlaut kommt dann in
+            # BEIDEN Beitraegen vor, und der Anker sagt, welcher gemeint war.
+            # Genau dafuer ist er da. Das wird jetzt so gesagt, statt die
+            # Stelle pauschal zum Ansehen zu geben; 34 gleichlautende
+            # Warnungen, von denen die meisten erklaerbar sind, lassen die
+            # eine mit Belang untergehen.
             if wortlautnummern and teilnummer not in wortlautnummern:
-                z.bemerkung += (" ACHTUNG: die Wortlautsuche haette %s "
-                                "geliefert - der Anker und der Wortlaut "
-                                "zeigen auf VERSCHIEDENE Beitraege. "
-                                "Eingetragen wird der Anker; die Stelle "
-                                "gehoert angesehen."
-                                % ", ".join("#%d" % n
-                                            for n in wortlautnummern))
+                if probe is True:
+                    z.bemerkung += (
+                        " Die Wortlautsuche haette %s geliefert - derselbe "
+                        "Wortlaut kommt also in mehreren Beitraegen vor. Der "
+                        "Widerspruch ist damit AUFGEKLAERT: eingetragen wird "
+                        "der Anker, weil er die Positionsangabe des "
+                        "Ermittlers ist, und der Inhalt bestaetigt ihn."
+                        % gefunden_bei)
+                else:
+                    z.bemerkung += (
+                        " ACHTUNG: die Wortlautsuche haette %s geliefert - "
+                        "der Anker und der Wortlaut zeigen auf VERSCHIEDENE "
+                        "Beitraege, und die Kreuzprobe konnte den Anker nicht "
+                        "bestaetigen. Eingetragen wird der Anker; die Stelle "
+                        "gehoert angesehen." % gefunden_bei)
             return teilnummer
         if not fundstelle.treffer:
             z.ergebnis = ERG_NICHT_GEFUNDEN

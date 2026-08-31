@@ -83,7 +83,7 @@
 #       --protokoll nachtrag_700.log
 #
 # Grundregeln: GR1, GR2, GR6, GR10.
-# Version: v0.8.746 - Build: 746 - 2026-08-31
+# Version: v0.8.751 - Build: 751 - 2026-08-31
 # =============================================================================
 
 from __future__ import annotations
@@ -110,6 +110,7 @@ _GETRAGEN_VON = (
 
 from management.maintenance.postid_nachtrag import (        # noqa: E402
     ERG_GETRAGEN,
+    ERG_ANKER_UNBESTAETIGT,
     ERG_MEHRDEUTIG,
     ERG_WIDERSPRUCH,
     ERG_WUERDE,
@@ -406,7 +407,11 @@ def _lauf(args, sag: Mitschrift) -> int:
 
     # --- Was ein Mensch ansehen muss --------------------------------------
     offen = [z for z in befund.zeilen
-             if z.ergebnis in (ERG_MEHRDEUTIG, ERG_WIDERSPRUCH)]
+             # BUILD 751: der unbestaetigte Teilanker gehoert in DIESE
+             # Liste. Es wurde nichts eingetragen, und die Zeile bleibt
+             # sonst in der Zaehlung stehen, ohne dass jemand sie ansieht.
+             if z.ergebnis in (ERG_MEHRDEUTIG, ERG_WIDERSPRUCH,
+                               ERG_ANKER_UNBESTAETIGT)]
     rueckfall = [z for z in befund.zeilen
                  if z.weg in WEGE_RUECKFALL
                  and z.ergebnis in (ERG_GETRAGEN, ERG_WUERDE)]
@@ -425,6 +430,26 @@ def _lauf(args, sag: Mitschrift) -> int:
                    if weg in WEGE_RUECKFALL else ""))
     for h in befund.hinweise:
         sag("  Hinweis: %s" % h)
+
+    # BUILD 751: DIE KREUZPROBE ZUM TEILANKER. Sie ist die Zahl, die ueber
+    # den scharfen Lauf entscheidet. Der Teilanker (Build 750) nimmt die
+    # Nummer aus den ELEMENTINDIZES des Ankers; Alex' Ankerdiagnose vom
+    # 31.08.2026 zeigt, dass die auf den PN-Seiten nicht durchweg zum Abzug
+    # passen (verlangt 'div[54]' bei 53 Kindern, 'div[1010]' und 'div[1016]'
+    # bei 1003). Die Kreuzprobe fragt deshalb nicht den Index, sondern den
+    # INHALT: steht der markierte Wortlaut in dem benannten Beitrag?
+    proben = befund.kreuzproben()
+    if proben:
+        sag("")
+        sag("KREUZPROBE ZUM TEILANKER - steht der Wortlaut im benannten "
+            "Beitrag?")
+        for lage, anzahl in sorted(proben.items()):
+            sag("  %-24s %6d%s"
+                % (lage, anzahl,
+                   "   <- NICHTS eingetragen, von Hand ansehen"
+                   if lage == "nicht bestanden" else
+                   "   <- Nummer allein aus Elementindizes"
+                   if lage == "nicht pruefbar" else ""))
 
     # BUILD 729: DIE ANKER-BILANZ. Sie ist die Antwort auf die Frage, die
     # der Lauf von Build 728 offenlassen musste - dort stand 25-mal

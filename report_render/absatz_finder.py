@@ -87,7 +87,7 @@
 #   Eingriffe geschehen auf einer tiefen Kopie des gefundenen Absatzes.
 #
 # Grundregeln: GR1, GR6, GR10.
-# Version: v0.8.746 - Build: 746 - 2026-08-31
+# Version: v0.8.751 - Build: 751 - 2026-08-31
 # =============================================================================
 
 from __future__ import annotations
@@ -1250,15 +1250,97 @@ class AbsatzFinder:
         benutzte Weg wird ausgewiesen.
 
         None, wenn kein Vorfahr eine solche Kennung traegt.
+
+        BUILD 751: die Suche selbst steht jetzt in 'post_behaelter_von' -
+        diese Methode ist nur noch die Nummer dazu. Der Grund ist die
+        Kreuzprobe (s. dort): wer pruefen will, OB der markierte Wortlaut in
+        dem benannten Beitrag steht, braucht nicht die Nummer, sondern das
+        ELEMENT. Beides aus einer Quelle zu nehmen ist die einzige Weise, in
+        der die Probe ueber denselben Beitrag redet wie die Eintragung.
+        """
+        behaelter = AbsatzFinder.post_behaelter_von(block)
+        if behaelter is None:
+            return None
+        treffer = _POST_KENNUNG.match(str(behaelter.get("id") or "").strip())
+        return int(treffer.group(2)) if treffer else None
+
+    # ------------------------------------------------------------------
+    @staticmethod
+    def post_behaelter_von(block):
+        """
+        Das ELEMENT, das die Beitragskennung traegt - oder None.
+
+        Wortgleiche Suche wie bisher in 'post_id_von' (aufwaerts bis zur
+        ersten Kennung 'p<Nummer>' / 'pp<Nummer>'), nur gibt sie den Knoten
+        zurueck statt der Zahl.
         """
         el = block
         while el is not None:
             kennung = (el.get("id") or "") if hasattr(el, "get") else ""
-            treffer = _POST_KENNUNG.match(kennung.strip())
-            if treffer:
-                return int(treffer.group(2))
+            if _POST_KENNUNG.match(kennung.strip()):
+                return el
             el = el.getparent()
         return None
+
+    # ------------------------------------------------------------------
+    @staticmethod
+    def wortlaut_im_beitrag(behaelter, wortlaut: str) -> Optional[bool]:
+        """
+        KREUZPROBE: steht der markierte Wortlaut IN diesem Beitrag?
+
+        True / False / None (nicht pruefbar - kein Behaelter oder kein
+        brauchbarer Wortlaut).
+
+        WARUM ES DIESE PROBE GIBT - und das ist der Kern von Build 751:
+
+          Der Teilanker (Build 750) nimmt die Beitragsnummer aus dem am
+          weitesten aufgeloesten Element des Ankers. Das ist richtig, SOLANGE
+          die Elementindizes des Ankers und des Abzugs dieselben Elemente
+          treffen. Alex' Ankerdiagnose vom 31.08.2026 zeigt, dass genau das
+          nicht durchweg gilt: auf '/forum/pmsnew.php?mdl=topic&tid=64200'
+          verlangt ein Anker 'div[54]' auf einer Ebene, die im Abzug 53
+          Kinder hat; auf '...&tid=57358' verlangen zwei Anker 'div[1010]'
+          und 'div[1016]', wo der Abzug 1003 Kinder hat. DER BROWSER HATTE
+          DORT ALSO MEHR ZEILEN ALS DER ABZUG. Fehlen die zusaetzlichen
+          Zeilen am ENDE, stimmen alle kleineren Indizes weiter; fehlen sie
+          davor, zeigt JEDER groessere Index auf den falschen Beitrag - und
+          zwar lautlos, weil ein falscher Beitrag genauso aussieht wie ein
+          richtiger.
+
+          WELCHE DER BEIDEN LAGEN VORLIEGT, IST NICHT GEMESSEN. Diese Probe
+          misst es - nicht am Index, sondern am Inhalt: enthaelt der vom
+          Anker benannte Beitrag den Wortlaut, den der Ermittler markiert
+          hat, dann redet der Anker ueber diesen Beitrag. Enthaelt er ihn
+          nicht, ist die Nummer nicht zu gebrauchen.
+
+        WAS DIE PROBE NICHT KANN, und das gehoert dazu: ein 'False' beweist
+        nicht, dass der Anker falsch ist. Der Wortlaut kann ueber eine
+        Beitragsgrenze hinweg markiert, in einer Uebersetzung erhoben oder
+        durch Sonderzeichen anders gefaltet worden sein. 'False' heisst
+        deshalb NICHT 'falscher Beitrag', sondern 'nicht bestaetigt' - und
+        was nicht bestaetigt ist, wird nicht eingetragen.
+
+        Gesucht wird in denselben Fassungen wie die Wortlautsuche
+        (_wortlaut_varianten): woertlich, gestrafft, gefaltet. Der Klartext
+        des Beitrags wird ebenso gefaltet - sonst schluegen Zeilenumbruch
+        und Einrueckung der Seitenvorlage die Probe, ohne dass am Inhalt
+        etwas fehlte.
+        """
+        if behaelter is None:
+            return None
+        roh = (wortlaut or "").strip()
+        if not roh:
+            return None
+        inhalt = _klartext(behaelter)
+        gefalteter_inhalt = _falte(inhalt)
+        for fassung in _wortlaut_varianten(wortlaut):
+            if not fassung.strip():
+                continue
+            if fassung in inhalt:
+                return True
+            if _falte(fassung) and _falte(fassung) in gefalteter_inhalt:
+                return True
+        return False
 
     # ------------------------------------------------------------------
     def rendere(self, block, markierungen: Sequence[Markierung]) -> str:
