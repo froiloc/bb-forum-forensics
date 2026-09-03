@@ -1,0 +1,85 @@
+{
+ "issues": [
+  {
+   "id": "d00eac10-85b9-4742-a5d0-e106d0f68237",
+   "type": "bug",
+   "title": "M4 verglich Offsets ueber Knotengrenzen hinweg (Build 755)",
+   "affected_version": "0.8.756",
+   "reporter": "Claude",
+   "reported_at": "2026-09-02T11:00:00+02:00",
+   "status": "resolved",
+   "severity": "major",
+   "description": "WAS FALSCH WAR: management/maintenance/annotation_bestand.py verglich in Build 755 'offsetStart' mit 'offsetEnd', ohne zu pruefen, ob sich beide auf denselben Knoten beziehen. 'offsetStart' ist ein Zeichenversatz IM KNOTEN von 'xpathStart', 'offsetEnd' IM KNOTEN von 'xpathEnd'. Bei verschiedenen Knoten fehlt der gemeinsame Bezugspunkt; ihr Groessenverhaeltnis sagt nichts.\n\nWIE ES AUFGEFALLEN IST: Alex hat es an einem echten Beleg aus Bestand 1704143 nachgewiesen - xpathStart endet auf 'h2[1]/span[1]/a[1]/text()[1]' mit offsetStart=25, xpathEnd auf 'div[6]/.../p[1]/text()[2]' mit offsetEnd=19. Verschiedene Zweige des Baums, vollstaendig gueltiger Wortlaut, von Build 755 als sinnfrei gemeldet.\n\nAUSMASS: Von 25 gemeldeten Faellen sind MINDESTENS 12 nachweislich falsch. Nachgerechnet ueber M5.start_gleich_ende aus demselben Lauf: in Bestand 583231 stehen 7 Meldungen bei nur 1 Ausdruck im selben Knoten, in 2361843 zwei bei null, in 749569 zwei bei null, in 515056 und 1704143 je eine bei null. Die uebrigen 13 sind nicht bestaetigt, sondern nur nicht widerlegt.\n\nBEHOBEN: Drei getrennte Gruppen - vergleichbar (selber Knoten), nicht vergleichbar (andere Knoten, KEIN Urteil), ohne Offsets. Waechter AB05 prueft mit Alex' echtem Beleg als Vorrichtung.\n\nZWEITER MANGEL, IM SELBEN ZUG BEHOBEN: Build 755 lieferte nur Zaehlwerte. Als Alex die beanstandeten Faelle nachpruefen wollte, konnte das Werkzeug sie nicht benennen - er musste dem Ergebnis glauben, statt es pruefen zu koennen. Jede Beanstandung nennt jetzt 'annotations.id' (Waechter AB06).",
+   "tags": [
+    "annotationen",
+    "messung",
+    "etappe0",
+    "selbstverschuldet"
+   ],
+   "expected_behavior": "Ein Offsetvergleich findet nur dort statt, wo er einen gemeinsamen Bezugspunkt hat.",
+   "actual_behavior": "Build 755 verglich unbesehen und meldete mindestens 12 falsche Faelle.",
+   "updates": [
+    {
+     "timestamp": "2026-09-02T09:00:00+00:00",
+     "author": "Claude",
+     "action": "comment",
+     "comment": "Angelegt in Build 756."
+    }
+   ]
+  },
+  {
+   "id": "65cb453d-0d95-472b-96c9-87bd8cd32466",
+   "type": "improvement",
+   "title": "M8/M9: Urheber und Annotationsvariante messen",
+   "affected_version": "0.8.756",
+   "reporter": "Claude",
+   "reported_at": "2026-09-02T11:00:00+02:00",
+   "status": "testing",
+   "severity": "major",
+   "description": "M8 URHEBER: Die Trennlinie zwischen Ermittlerarbeit und Testbetrieb laeuft nicht ueber den Bestand und nicht ueber die Zeit, sondern ueber 'created_by'. Weisung Alex 02.09.2026: gueltig ist, was mit 'H0' oder 'h0' beginnt. Ausgenommen sind sein Produktivkonto 'H0A2898', sein Entwicklungskonto 'paul' und die faelschlich existierende Kennung 'uid_<Ziffern>'. Leer und NULL gelten als ungueltig.\n\nWOZU: Der Testbestand 2948078 traegt 82 Zeilen, also 17 Prozent aller Annotationen. Ihn pauschal zu verwerfen waere falsch - dort hat die Chefermittlerin (h082317) eine Arbeitssimulation gefahren, deren Ergebnisse wertvoll sind, und ein Kollege (H0D899) hat ernsthaft gearbeitet. Ihn pauschal zu behalten waere ebenso falsch.\n\nM9 ANNOTATIONSVARIANTE: Variante 1 'whole post' (ganzer Beitrag, kein selection_json, nur post_id) gegen Variante 2 'text range' (Textpassage, mit selection_json). Variante 2 wird zusaetzlich danach getrennt, ob die post_id bereits nachgetragen ist - das ist KEIN Fehler, sondern nach Etappe 4 der Normalfall. Beanstandet wird nur 'weder noch'.\n\nBuild 755 hatte den Verdacht auf zwei Varianten nur aus GLEICHEN ANZAHLEN geschoepft (14/14, 2/2, 3/3). Gleiche Anzahl ist kein Beweis fuer gleiche Zeilen; Alex hat es fuer drei Bestaende von Hand nachgeprueft. M9 fuehrt die Pruefung fuer alle Bestaende.\n\nSTAND: gebaut, 23 Tests, 11 Gegenproben, alle schlagen an. OFFEN: der Lauf gegen die echten Bestaende.",
+   "tags": [
+    "annotationen",
+    "messung",
+    "etappe0",
+    "created_by"
+   ],
+   "expected_behavior": "Aus der Messung ist ablesbar, welche Annotationen von Ermittlern stammen und welcher Variante sie angehoeren.",
+   "actual_behavior": "Gebaut und getestet; der Lauf gegen die echten Bestaende steht aus.",
+   "updates": [
+    {
+     "timestamp": "2026-09-02T09:00:00+00:00",
+     "author": "Claude",
+     "action": "comment",
+     "comment": "Angelegt in Build 756."
+    }
+   ]
+  },
+  {
+   "id": "7a3c7020-bbf1-4078-aa69-ad56a9dd6bb8",
+   "type": "improvement",
+   "title": "Regeln fuer leere Markierungen - noch NICHT umgesetzt",
+   "affected_version": "0.8.756",
+   "reporter": "Claude",
+   "reported_at": "2026-09-02T11:00:00+02:00",
+   "status": "open",
+   "severity": "major",
+   "description": "WEISUNG ALEX, 02.09.2026, hier festgehalten, damit sie nicht verloren geht:\n\n1. Eine Markierung, deren Wortlaut kein Wortzeichen enthaelt oder nur aus Leerraum besteht, darf GAR NICHT ERST zu einer Datenbankzeile werden. Nicht mit Loeschvermerk anlegen - dann waere sie wiederherstellbar. Die Meldung erfolgt ueber den ueblichen Weg von Meldungen. Betrifft forensic_api/annotate.py und toolbar/toolbar.js.\n\n2. Vorhandene solche Zeilen werden TATSAECHLICH entfernt, nicht mit Loeschvermerk versehen. Auch hier gilt: sie duerfen nicht wiederherstellbar sein.\n\n3. Bei umgekehrter Markierungsrichtung sind Anfang und Ende zu vertauschen, beim Erzeugen UND beim Korrigieren, sodass Start immer vor Ende liegt.\n\nVORAUSSETZUNG: Punkt 3 beruhte auf der Annahme, dass es negative Laengen gibt. Diese Annahme stammt aus dem FEHLERHAFTEN Lauf von Build 755. Ob es sie wirklich gibt, sagt erst der Lauf von Build 756 - dort wird 'ende_vor_anfang' nur noch fuer Markierungen IM SELBEN KNOTEN gezaehlt und mit annotations.id ausgewiesen.\n\nGEFAHR BEI PUNKT 1 UND 2: Die Loeschregel ist unumkehrbar. Wertete die Pruefung '\\\\w' als ASCII aus, meldete sie kyrillische, arabische und CJK-Markierungen als leer - und vernichtete echte Beweismittel ganzer Sprachraeume. Die Messung in Build 756 wertet deshalb mit Unicode-Semantik aus (Waechter AB07); jede Umsetzung von Punkt 1 und 2 MUSS denselben Waechter tragen.",
+   "tags": [
+    "annotationen",
+    "loeschung",
+    "unicode",
+    "vorgemerkt"
+   ],
+   "expected_behavior": "Leere und wortzeichenlose Markierungen entstehen nicht und werden endgueltig entfernt.",
+   "actual_behavior": "Noch nicht umgesetzt - erst messen, dann entscheiden, dann sperren.",
+   "updates": [
+    {
+     "timestamp": "2026-09-02T09:00:00+00:00",
+     "author": "Claude",
+     "action": "comment",
+     "comment": "Angelegt in Build 756."
+    }
+   ]
+  }
+ ]
+}

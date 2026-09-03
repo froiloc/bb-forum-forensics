@@ -337,6 +337,16 @@ _GEPRUEFT_754 = ("Build 754, 2026-08-31, gegen Wegwerf-Bestaende unter /tmp "
                  "Lagen, forensic_900.db mit einem Seitenabzug aus vier "
                  "Beitraegen), Python 3.13, lxml 6.1, html5lib 1.1")
 
+_GEPRUEFT_756 = ("Build 756, 2026-09-02, gegen zwei Wegwerf-Bestaende unter "
+                 "/tmp: evidence_901.db mit 14 Zeilen (Grundfaelle) und "
+                 "evidence_904.db mit 12 Zeilen fuer die Grenzfaelle - "
+                 "darunter Alex' echter Fall aus Bestand 1704143 "
+                 "(xpathStart != xpathEnd, offsetEnd 19 < offsetStart 25, "
+                 "gueltiger Wortlaut), eine Marke aus reiner Zeichensetzung, "
+                 "je eine kyrillische und arabische Marke, die sechs "
+                 "Kennungsklassen und eine Zeile ohne jeden Ortsbezug. "
+                 "Python 3.12.3")
+
 _GEPRUEFT_755 = ("Build 755, 2026-09-01, gegen einen Wegwerf-Bestand unter "
                  "/tmp: evidence_901.db mit 14 Zeilen (eine geloescht, eine "
                  "ueberholt, ein Kettenbruch, zwei sinnfreie Marken, zwei "
@@ -5905,13 +5915,14 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         aufruf="python tools/annotationen_bestand.py "
                "[--config ./config.yaml] [--evidence-dir <Verz>] "
                "[--forensic-dir <Verz>] [--uid <uid> ...] "
-               "[--kuerzeste 20] [--protokoll <Datei>] [--json <Datei>]",
+               "[--kuerzeste 20] [--ausschluss <Kennung,Kennung>] "
+               "[--protokoll <Datei>] [--json <Datei>]",
         titel="Bestandsaufnahme der Annotationen (Etappe 0)",
         gruppe="Diagnose",
-        zweck="ZAEHLEN, WAS DA IST: sieben Messbloecke ueber die Annotationen "
+        zweck="ZAEHLEN, WAS DA IST: neun Messbloecke ueber die Annotationen "
               "und die KOPFDATEN der Seiten - Zeilenbestand, "
               "Spaltenbelegung, page_url, selection_json, XPath-Syntax, "
-              "Zeit und Seitenzustand.",
+              "Zeit, Seitenzustand, Urheber und Annotationsvariante.",
         art="lesend",
         datenbanken=(
             "evidence_<uid>.db (lesend, mode=ro - annotations)",
@@ -5968,13 +5979,11 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "--evidence-dir /tmp/fall/evidence "
                      "--forensic-dir /tmp/fall/forensic",
                      "Alle gefundenen Bestaende. Im Versuch zwei Bestaende "
-                     "mit zusammen 15 Zeilen, davon 13 aktuell; die "
-                     "Gesamtbilanz nennt SIEBEN Befunde (zwei sinnfreie "
-                     "Marken, eine Marke ohne Wortlaut, ein Kettenbruch, "
-                     "zwei Seiten ohne Inhalt, eine Annotation ohne Seite, "
-                     "fuenf Annotationen auf leerer Seite, ein Bestand ohne "
-                     "Seitendaten) und der Rueckgabewert ist 1.",
-                     _GEPRUEFT_755),
+                     "mit zusammen 15 Zeilen, davon 13 aktuell und keine "
+                     "einzige mit gueltiger Ermittlerkennung; die "
+                     "Gesamtbilanz nennt die Befunde einzeln MIT "
+                     "annotations.id und der Rueckgabewert ist 1.",
+                     _GEPRUEFT_756),
                 _bsp("python tools/annotationen_bestand.py "
                      "--evidence-dir /tmp/fall/evidence "
                      "--forensic-dir /tmp/fall/forensic --uid 901 "
@@ -5983,9 +5992,18 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "Ein Bestand, mit Mitschrift und maschinenlesbarer "
                      "Fassung. Beide Dateien tragen dieselben Zahlen; die "
                      "JSON-Fassung ist ASCII-rein und nach Schluesseln "
-                     "sortiert (gemessen: 14 Zeilen, 12 aktuell, sechs "
-                     "Befunde, Rueckgabewert 1).",
-                     _GEPRUEFT_755),
+                     "sortiert (gemessen: 14 Zeilen, 12 aktuell, "
+                     "Rueckgabewert 1).",
+                     _GEPRUEFT_756),
+                _bsp("python tools/annotationen_bestand.py "
+                     "--ausschluss testkonto1,testkonto2 "
+                     "--json /tmp/bestand.json",
+                     "Zwei weitere Kennungen gelten nicht als "
+                     "Ermittlerarbeit. Die eingebaute Liste (H0A2898, paul, "
+                     "Muster uid_<Ziffern>) bleibt daneben bestehen; die "
+                     "wirksame Liste steht im Protokoll und in der "
+                     "JSON-Fassung.",
+                     _GEPRUEFT_756),
             ),
             exit_codes=(
                 (0, "durchgelaufen, kein Befund, der eine Entscheidung "
@@ -6015,6 +6033,32 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "misst, ob die Parametermenge einer Adresse VOLLSTAENDIG in "
                 "der einer anderen desselben Pfades liegt, und nennt die "
                 "Zusatzparameter beim Namen.",
+                "OFFSETS WERDEN NUR IM SELBEN KNOTEN VERGLICHEN. "
+                "'offsetStart' zaehlt Zeichen im Knoten von 'xpathStart', "
+                "'offsetEnd' im Knoten von 'xpathEnd'. Bei verschiedenen "
+                "Knoten fehlt der gemeinsame Bezugspunkt, und es gibt KEIN "
+                "Urteil - nur einen Zaehler. Build 755 hat das nicht "
+                "getrennt und meldete deshalb 25 Faelle, von denen "
+                "mindestens 12 nachweislich falsch waren.",
+                "DIE LEERPRUEFUNG LAEUFT UEBER 'textContent', NICHT UEBER "
+                "DIE OFFSETS. Vier Zaehler: fehlt, leer, nur Leerraum, ohne "
+                "Wortzeichen. '\\w' wird mit UNICODE-Semantik ausgewertet - "
+                "das Forum ist multilingual, und eine ASCII-Auswertung "
+                "meldete kyrillische, arabische und CJK-Markierungen als "
+                "leer.",
+                "JEDE BEANSTANDUNG WIRD MIT 'annotations.id' GENANNT. Build "
+                "755 lieferte nur Zaehlwerte; die beanstandeten Zeilen waren "
+                "nicht nachpruefbar. Bei einer forensischen Messung ist das "
+                "nicht hinnehmbar.",
+                "'--ausschluss' ERGAENZT die eingebaute Ausschlussliste und "
+                "ersetzt sie nicht. Eine Liste, die sich per Argument leeren "
+                "liesse, waere ein stiller Weg, Testmarkierungen zu "
+                "Beweismitteln zu machen.",
+                "M9: 'text range' MIT post_id ist KEIN Fehler. Seit der "
+                "Ueberarbeitung von Variante 2 wird die post_id "
+                "nachgetragen; nach Etappe 4 soll das der Normalfall sein. "
+                "Beanstandet wird nur 'weder noch' - keine Textauswahl und "
+                "kein Ort, also kein ermittelbarer Bezug.",
             ),
         ),
     ),

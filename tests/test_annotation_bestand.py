@@ -180,6 +180,91 @@ def _forensic_901(pfad: str) -> None:
     con.close()
 
 
+XP_A = ("./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/"
+        "div[4]/h2[1]/span[1]/a[1]/text()[1]")
+XP_B = ("./donate[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[2]/"
+        "div[6]/div[1]/div[1]/div[1]/div[2]/div[1]/p[1]/text()[2]")
+
+
+def _evidence_904(pfad: str) -> None:
+    """
+    Der Bestand fuer die Faelle, an denen Build 755 gescheitert ist.
+
+    Zeile 1 ist Alex' echter Fall aus Bestand 1704143: zwei VERSCHIEDENE
+    Knoten, offsetEnd (19) kleiner als offsetStart (25). Build 755 hat das
+    als sinnfrei gemeldet. Es ist keine Beanstandung, sondern eine ueber
+    zwei Knoten laufende Markierung.
+    """
+    con = sqlite3.connect(pfad)
+    con.executescript(ANN_DDL)
+    zeilen = [
+        # 1: verschiedene Knoten, Ende < Anfang -> KEINE Beanstandung
+        (U1, None, _ts("2026-07-10 08:00:00"),
+         _sel(xpathStart=XP_A, offsetStart=25, xpathEnd=XP_B, offsetEnd=19,
+              textContent="ein echter Wortlaut ueber zwei Knoten"),
+         "h082317", None),
+        # 2: selber Knoten, Ende < Anfang -> BEANSTANDUNG
+        (U1, None, _ts("2026-07-10 08:01:00"),
+         _sel(xpathStart=XP_A, offsetStart=25, xpathEnd=XP_A, offsetEnd=19,
+              textContent="wirklich verdreht"), "H0D899", None),
+        # 3: selber Knoten, Laenge null -> BEANSTANDUNG
+        (U1, None, _ts("2026-07-10 08:02:00"),
+         _sel(xpathStart=XP_A, offsetStart=7, xpathEnd=XP_A, offsetEnd=7,
+              textContent="Laenge null"), "H0D899", None),
+        # 4: nur Zeichensetzung -> ohne Wortzeichen
+        (U1, None, _ts("2026-07-10 08:03:00"),
+         _sel(xpathStart=XP_A, offsetStart=0, xpathEnd=XP_A, offsetEnd=3,
+              textContent="---"), "h082317", None),
+        # 5: kyrillisch -> MUSS als Wortlaut gelten
+        (U1, None, _ts("2026-07-10 08:04:00"),
+         _sel(xpathStart=XP_A, offsetStart=0, xpathEnd=XP_A, offsetEnd=6,
+              textContent="\u041f\u0440\u0438\u0432\u0435\u0442"),
+         "h082317", None),
+        # 6: arabisch -> MUSS als Wortlaut gelten
+        (U1, None, _ts("2026-07-10 08:05:00"),
+         _sel(xpathStart=XP_A, offsetStart=0, xpathEnd=XP_A, offsetEnd=5,
+              textContent="\u0645\u0631\u062d\u0628\u0627"),
+         "H0D899", None),
+        # 7: Alex' Produktivkonto -> ausgenommen
+        (U1, None, _ts("2026-07-10 08:06:00"),
+         _sel(xpathStart=XP_A, offsetStart=0, xpathEnd=XP_A, offsetEnd=4,
+              textContent="Test"), "H0A2898", None),
+        # 8: Alex' Entwicklungskonto -> ausgenommen
+        (U1, None, _ts("2026-05-10 08:07:00"),
+         _sel(xpathStart=XP_A, offsetStart=0, xpathEnd=XP_A, offsetEnd=4,
+              textContent="Test"), "paul", None),
+        # 9: faelschliche Entwicklungskennung -> ausgenommen
+        (U1, None, _ts("2026-05-10 08:08:00"),
+         _sel(xpathStart=XP_A, offsetStart=0, xpathEnd=XP_A, offsetEnd=4,
+              textContent="Test"), "uid_538299", None),
+        # 10: leere Kennung -> ungueltig
+        (U1, None, _ts("2026-07-10 08:09:00"),
+         _sel(xpathStart=XP_A, offsetStart=0, xpathEnd=XP_A, offsetEnd=4,
+              textContent="ohne Kennung"), "", None),
+        # 11: Variante 1 'whole post' -> selection_json NULL, post_id gesetzt
+        (U1, "p9001", _ts("2026-07-10 08:10:00"), None, "h082317", 9001),
+        # 12: weder noch -> darf es nicht geben
+        (U1, None, _ts("2026-07-10 08:11:00"), None, "h082317", None),
+    ]
+    for page, eid, tsw, seljson, urheber, pid in zeilen:
+        con.execute(
+            "INSERT INTO annotations (page_url, element_id, category, text, "
+            "ts, selection_json, created_by, post_id) "
+            "VALUES (?,?,'belastend','',?,?,?,?)",
+            (page, eid, tsw, seljson, urheber, pid))
+    con.commit()
+    con.close()
+
+
+def _befund_904(tmp_path, ausgenommen=None):
+    ev = tmp_path / "evidence904"
+    ev.mkdir()
+    pfad = str(ev / "evidence_904.db")
+    _evidence_904(pfad)
+    return AB.BestandsAufnahme("904", pfad, None,
+                               ausgenommen=ausgenommen).erheben()
+
+
 def _bestand(tmp_path):
     """Baut den Wegwerf-Bestand und gibt (evidence_dir, forensic_dir)."""
     ev = tmp_path / "evidence"
@@ -291,56 +376,150 @@ def test_ab04_dieselbe_seite_unter_zwei_adressen(tmp_path):
 # M4 - selection_json
 # ---------------------------------------------------------------------------
 
-def test_ab05_offsetende_gleich_offsetstart_gilt_als_sinnfrei(tmp_path):
+def test_ab05_offsets_werden_nur_im_selben_knoten_verglichen(tmp_path):
     """
-    ROT, wenn nur 'offsetEnd < offsetStart' gezaehlt wird.
+    ROT, wenn Offsets ueber Knotengrenzen hinweg verglichen werden.
 
-    WEISUNG ALEX, 01.09.2026: '<=' und nicht '<'. Eine Auswahl der Laenge
-    null traegt keinen Wortlaut und ist ebenso sinnfrei wie eine mit
-    vertauschten Grenzen. Faellt dieser Test weg, verschwindet die Haelfte
-    der Menge lautlos - genau die Art von stiller Auslassung, die
-    Grundregel 1 verbietet.
+    DAS IST DER FEHLER AUS BUILD 755. 'offsetStart' zaehlt Zeichen IM KNOTEN
+    von 'xpathStart', 'offsetEnd' IM KNOTEN von 'xpathEnd'. Bei
+    verschiedenen Knoten fehlt der gemeinsame Bezugspunkt; ihr
+    Groessenverhaeltnis sagt nichts.
+
+    Zeile 1 des Pruefbestands ist Alex' echter Fall aus Bestand 1704143:
+    zwei verschiedene Knoten, offsetEnd=19 < offsetStart=25, aber ein
+    vollstaendig gueltiger Wortlaut. Build 755 hat ihn beanstandet. Von 25
+    damals gemeldeten Faellen waren mindestens 12 auf diese Weise falsch.
     """
-    m4 = _befund_901(tmp_path).m4_selection
-    assert m4["offset_gleich"] == 1
-    assert m4["offset_vertauscht"] == 1
-    assert m4["offset_sinnfrei"] == 2
-    # GEGENPROBE: die Summe der beiden Einzelzaehler muss den Gesamtzaehler
-    # ergeben - sonst zaehlt einer von beiden etwas anderes.
-    assert m4["offset_gleich"] + m4["offset_vertauscht"] == \
-        m4["offset_sinnfrei"]
-
-
-def test_ab06_zwei_schluesselsignaturen_bleiben_getrennt(tmp_path):
-    """
-    ROT, wenn die Formen von selection_json zusammenfallen.
-
-    Im Quelltext stehen zwei Formen: die Fuenf-Feld-Form (toolbar.js
-    Z. 1129-1135) und die Uebersetzungsform (Z. 1115-1126). OB im Bestand
-    weitere liegen, weiss nur der Bestand - deshalb wird die Signatur
-    gemessen und nicht aus dem Quelltext angenommen.
-    """
-    m4 = _befund_901(tmp_path).m4_selection
-    assert m4["gueltig"] == 12
-    assert m4["null"] == 1
-    assert m4["ungueltig"] == 1
-    assert m4["signaturen_anzahl"] == 2
-    sig = {d["signatur"]: d["anzahl"] for d in m4["signaturen"]}
-    assert sig["offsetEnd|offsetStart|textContent|xpathEnd|xpathStart"] == 11
-    assert sig["charEnd|charStart|created|model|postId|textContent|"
-               "textHash|textLen"] == 1
+    m4 = _befund_904(tmp_path).m4_selection
+    off = m4["offsets"]
+    assert off["nicht_vergleichbar_andere_knoten"] == 1
+    assert off["beanstandet"] == 2          # NICHT 3
+    assert off["ende_vor_anfang"] == 1      # nur die Zeile im SELBEN Knoten
+    assert off["laenge_null"] == 1
+    ids = sorted(d["id"] for d in off["faelle"])
+    assert ids == [2, 3], "Zeile 1 darf NICHT beanstandet werden"
+    # GEGENPROBE: die drei Gruppen muessen die gueltigen Zeilen ausschoepfen.
+    assert (off["vergleichbar_selber_knoten"]
+            + off["nicht_vergleichbar_andere_knoten"]
+            + off["ohne_offsets"]) == m4["gueltig"]
 
 
-def test_ab07_wortlaut_aus_leerraum_wird_eigens_gezaehlt(tmp_path):
+def test_ab06_beanstandete_zeilen_werden_namentlich_genannt(tmp_path):
     """
-    ROT, wenn eine Markierung aus reinem Leerraum als gueltiger Wortlaut
-    durchgeht. Sie ist sinnfrei - aber auf einem anderen Weg als ein
-    vertauschter Offset, und beide Wege werden getrennt gefuehrt, weil
-    ihre Schnittmenge selbst eine Aussage ist.
+    ROT, wenn eine Beanstandung ohne annotations.id gemeldet wird.
+
+    Build 755 lieferte nur Zaehlwerte. Als Alex die Faelle nachpruefen
+    wollte, konnte das Werkzeug sie nicht benennen - er musste dem Ergebnis
+    glauben, statt es pruefen zu koennen. Bei einer forensischen Messung ist
+    das nicht hinnehmbar.
     """
-    m4 = _befund_901(tmp_path).m4_selection
-    assert m4["textcontent_nur_leerraum"] == 1
-    assert m4["textcontent_leer"] == 0
+    m4 = _befund_904(tmp_path).m4_selection
+    for d in m4["offsets"]["faelle"]:
+        assert isinstance(d["id"], int) and d["id"] > 0
+        assert d["art"] in ("ende_vor_anfang", "laenge_null")
+    for d in m4["wortlaut"]["faelle"]:
+        assert isinstance(d["id"], int) and d["id"] > 0
+    assert [d["id"] for d in m4["wortlaut"]["faelle"]] == [4]
+
+
+def test_ab07_wortzeichen_werden_unicode_ausgewertet(tmp_path):
+    """
+    ROT, wenn '\\w' nur ASCII erfasst.
+
+    DAS IST DER GEFAEHRLICHSTE EINZELFEHLER IN DIESEM BLOCK. Das Forum ist
+    multilingual. Wertete die Leerpruefung '\\w' als ASCII aus, meldete sie
+    kyrillische, arabische und CJK-Markierungen als leer - und die Regel
+    'Markierungen ohne Wortzeichen werden endgueltig geloescht' vernichtete
+    dann echte Beweismittel ganzer Sprachraeume.
+
+    Zeile 4 ist '---' und MUSS beanstandet werden. Zeile 5 ist kyrillisch,
+    Zeile 6 arabisch; beide MUESSEN unbeanstandet bleiben.
+    """
+    wl = _befund_904(tmp_path).m4_selection["wortlaut"]
+    assert wl["ohne_wortzeichen"] == 1
+    assert wl["beanstandet"] == 1
+    assert [d["id"] for d in wl["faelle"]] == [4]
+    assert wl["fehlt"] == 0 and wl["leer"] == 0 and wl["nur_leerraum"] == 0
+
+
+def test_ab20_urheber_werden_in_drei_klassen_getrennt(tmp_path):
+    """
+    ROT, wenn die Einordnung von 'created_by' danebenliegt.
+
+    Weisung Alex, 02.09.2026: gueltig ist, was mit 'H0' oder 'h0' beginnt.
+    Ausgenommen sind sein Produktivkonto 'H0A2898', sein Entwicklungskonto
+    'paul' und die faelschlich existierende Kennung 'uid_<Ziffern>'. Leer
+    und NULL gelten als ungueltig.
+
+    DIE REIHENFOLGE DER PRUEFUNG IST WESENTLICH: 'H0A2898' erfuellt die
+    Formregel. Stuende die Formpruefung vorn, zaehlte Alex' eigenes
+    Testkonto als Ermittlerarbeit.
+    """
+    m8 = _befund_904(tmp_path).m8_urheber
+    assert m8["gueltige_kennung"] == 8      # h082317 5x + H0D899 3x
+    assert m8["ausgenommen"] == 3           # H0A2898, paul, uid_538299
+    assert m8["ungueltige_kennung"] == 1    # leere Kennung
+    assert m8["leer_oder_null"] == 1
+    assert m8["gueltige_kennung"] + m8["ausgenommen"] \
+        + m8["ungueltige_kennung"] == 12
+
+
+def test_ab21_ausschlussliste_wird_ergaenzt_nicht_ersetzt(tmp_path):
+    """
+    ROT, wenn '--ausschluss' die eingebaute Liste verdraengt.
+
+    Wer eine eigene Liste uebergibt, soll ZUSAETZLICHE Kennungen ausnehmen
+    koennen - aber nicht versehentlich Alex' Testkonten wieder als
+    Ermittlerarbeit einstufen. Eine Ausschlussliste, die sich per Argument
+    LEEREN laesst, waere ein stiller Weg, Testdaten zu Beweismitteln zu
+    machen.
+    """
+    m8 = _befund_904(tmp_path, ausgenommen=("H0D899",)).m8_urheber
+    assert "H0A2898" in m8["ausschlussliste"]
+    assert "paul" in m8["ausschlussliste"]
+    assert "H0D899" in m8["ausschlussliste"]
+    assert m8["ausgenommen"] == 6           # 3 wie zuvor + 3x H0D899
+    assert m8["gueltige_kennung"] == 5      # nur noch h082317
+
+
+def test_ab22_zeitverteilung_je_kennung(tmp_path):
+    """
+    ROT, wenn die Zeitangabe je Kennung fehlt.
+
+    Eine gueltige Kennung, die ausschliesslich vor dem 01.07.2026 gearbeitet
+    hat, ist ein anderer Fall als eine, die durchgehend gearbeitet hat.
+    Beides zusammen sagt mehr als jedes fuer sich.
+    """
+    m8 = _befund_904(tmp_path).m8_urheber
+    nach = {d["wert"]: d for d in m8["je_wert"]}
+    assert nach["paul"]["vor_produktivbetrieb"] == 1
+    assert nach["paul"]["ab_produktivbetrieb"] == 0
+    assert nach["h082317"]["ab_produktivbetrieb"] == 5
+    assert nach["h082317"]["vor_produktivbetrieb"] == 0
+    assert nach["(leer oder NULL)"]["klasse"] == "ungueltig"
+
+
+def test_ab23_die_beiden_annotationsvarianten_werden_getrennt(tmp_path):
+    """
+    ROT, wenn 'whole post' und 'text range' zusammenfallen.
+
+    Beleg (Alex, 02.09.2026): Variante 1 markiert einen ganzen Beitrag -
+    kein selection_json, nur post_id. Variante 2 markiert eine Textpassage -
+    mit selection_json. Build 755 hatte den Verdacht nur aus GLEICHEN
+    ANZAHLEN geschoepft (14/14, 2/2, 3/3), was kein Beweis ist; Alex musste
+    es von Hand nachpruefen. Diese Messung nimmt ihm die Handarbeit ab.
+
+    'beides' und 'weder noch' duerfte es nach der Beschreibung nicht geben -
+    genau deshalb werden sie gezaehlt UND namentlich genannt.
+    """
+    m9 = _befund_904(tmp_path).m9_variante
+    assert m9["whole_post"] == 1
+    assert m9["text_range"] == 10
+    assert m9["text_range_ohne_ort"] == 10
+    assert m9["text_range_mit_ort"] == 0
+    assert m9["weder_noch"] == 1
+    assert m9["weder_noch_ids"] == [12]
+    assert (m9["whole_post"] + m9["text_range"] + m9["weder_noch"]) == 12
 
 
 # ---------------------------------------------------------------------------
@@ -610,8 +789,8 @@ def test_ab18_klartext_und_json_tragen_dieselben_zahlen(tmp_path):
     assert b901["m1_zeilenbestand"]["aktuell"] == 12
     assert any("AKTUELL (nicht geloescht, nicht ueberholt) 12" in z
                for z in zeilen)
-    assert b901["m4_selection"]["offset_sinnfrei"] == 2
-    assert any("offsetEnd <= offsetStart (gesamt)          2" in z
+    assert b901["m4_selection"]["offsets"]["beanstandet"] == 2
+    assert any("BEANSTANDET (nur aus der ersten Gruppe)    2" in z
                for z in zeilen)
     # Die JSON-Fassung muss ASCII-rein sein (Projektvorgabe fuer
     # maschinenlesbare Ausgaben, vgl. build.json).
@@ -631,7 +810,10 @@ def test_ab19_gesamtbilanz_summiert_ueber_alle_bestaende(tmp_path):
     ABT.lauf(ev, fo, [], zeilen.append, 20, None)
     summe = [z for z in zeilen if z.strip().startswith("SUMME")]
     assert len(summe) == 1
+    # Spalten: SUMME Zeilen AKTUELL wholeP textR ERMITTL ausgen unguelt
     # 14 Zeilen in 901 + 1 Zeile in 902 = 15; aktuell 12 + 1 = 13.
     werte = summe[0].split()
     assert werte[1] == "15"
-    assert werte[4] == "13"
+    assert werte[2] == "13"
+    # Beide Bestaende tragen created_by='pruefer' - keine gueltige Kennung.
+    assert werte[5] == "0"

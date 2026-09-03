@@ -74,8 +74,8 @@ from core import werkzeug_konfig                            # noqa: E402
 from core.config_loader import coded_default               # noqa: E402
 from management.help import cli_epilog                      # noqa: E402
 from management.maintenance.annotation_bestand import (     # noqa: E402
-    BestandsAufnahme, Bestandsbefund, PRODUKTIVBETRIEB_AB, TESTBESTAENDE,
-    zeit)
+    AUSGENOMMENE_KENNUNGEN, BestandsAufnahme, Bestandsbefund,
+    PRODUKTIVBETRIEB_AB, TESTBESTAENDE, zeit)
 
 RUECK_OHNE_BEFUND = 0
 RUECK_BEFUND = 1
@@ -207,7 +207,7 @@ def _bestand_ausgeben(b: Bestandsbefund, sag) -> None:
     sag("")
     sag("M4 SELECTION_JSON")
     _tabelle(sag, "", (
-        ("NULL", m4["null"]),
+        ("NULL (= Variante 'whole post')", m4["null"]),
         ("leere Zeichenkette", m4["leer"]),
         ("kein gueltiges JSON-Objekt", m4["ungueltig"]),
         ("gueltiges JSON-Objekt", m4["gueltig"]),
@@ -218,20 +218,46 @@ def _bestand_ausgeben(b: Bestandsbefund, sag) -> None:
         sag("    %s %s" % (_pad(d["anzahl"], 6), d["signatur"]))
     _tabelle(sag, "Haeufigkeit einzelner Schluessel:",
              list(m4["schluessel"].items()))
-    _tabelle(sag, "SINNFREIE MARKEN:", (
-        ("offsetEnd <= offsetStart (gesamt)", m4["offset_sinnfrei"]),
-        ("  davon offsetEnd < offsetStart (vertauscht)",
-         m4["offset_vertauscht"]),
-        ("  davon offsetEnd == offsetStart (Laenge null)",
-         m4["offset_gleich"]),
-        ("ohne verwertbare Offsets", m4["ohne_offsets"]),
-        ("textContent fehlt oder ist leer", m4["textcontent_leer"]),
-        ("textContent nur Leerraum", m4["textcontent_nur_leerraum"]),
+
+    off = m4["offsets"]
+    sag("  OFFSETS - ein Vergleich ist NUR bei xpathStart == xpathEnd "
+        "aussagekraeftig.")
+    sag("  offsetStart zaehlt im Knoten von xpathStart, offsetEnd im Knoten "
+        "von xpathEnd;")
+    sag("  bei verschiedenen Knoten fehlt der gemeinsame Bezugspunkt und es "
+        "gibt KEIN Urteil.")
+    _tabelle(sag, "", (
+        ("vergleichbar (selber Knoten)", off["vergleichbar_selber_knoten"]),
+        ("  davon in Ordnung (Ende nach Anfang)", off["in_ordnung"]),
+        ("  davon Ende VOR Anfang", off["ende_vor_anfang"]),
+        ("  davon Laenge null (Ende == Anfang)", off["laenge_null"]),
+        ("NICHT vergleichbar (andere Knoten)",
+         off["nicht_vergleichbar_andere_knoten"]),
+        ("ohne verwertbare Offsets", off["ohne_offsets"]),
+        ("BEANSTANDET (nur aus der ersten Gruppe)", off["beanstandet"]),
     ))
+    for d in off["faelle"][:40]:
+        sag("    BEANSTANDET id=%s %s offsetStart=%s offsetEnd=%s"
+            % (d["id"], _pad(d["art"], 18), d["offsetStart"], d["offsetEnd"]))
+
+    wl = m4["wortlaut"]
+    sag("  WORTLAUT - die belastbare Leerpruefung. Eine Markierung ohne "
+        "Wortzeichen")
+    sag("  traegt keinen Wortlaut, auch wenn sie Zeichen enthaelt "
+        "('---', '...').")
+    _tabelle(sag, "", (
+        ("textContent fehlt", wl["fehlt"]),
+        ("textContent ist leer", wl["leer"]),
+        ("textContent nur Leerraum", wl["nur_leerraum"]),
+        ("textContent OHNE Wortzeichen", wl["ohne_wortzeichen"]),
+        ("BEANSTANDET", wl["beanstandet"]),
+    ))
+    for d in wl["faelle"][:40]:
+        sag("    BEANSTANDET id=%s %s laenge=%s probe=%s"
+            % (d["id"], _pad(d["art"], 18), d["laenge"], d["probe"]))
     tl = m4["textcontent_laenge"]
     sag("    %s min=%s  median=%s  max=%s"
-        % (_pad("Laenge textContent (nur nichtleere)", 42),
-           tl["min"], tl["median"], tl["max"]))
+        % (_pad("Laenge textContent", 42), tl["min"], tl["median"], tl["max"]))
 
     m5 = b.m5_xpath
     sag("")
@@ -317,36 +343,95 @@ def _bestand_ausgeben(b: Bestandsbefund, sag) -> None:
             % (d["titel"], d["erstellt"]))
 
 
+def _m8_m9_ausgeben(b: Bestandsbefund, sag) -> None:
+    """M8 und M9 im Klartext. Getrennte Funktion, damit _bestand_ausgeben
+    nicht ueber die Lesbarkeitsgrenze waechst."""
+    m8 = b.m8_urheber
+    sag("")
+    sag("M8 URHEBER (created_by)")
+    sag("  Gueltig ist eine Kennung, die mit 'H0' oder 'h0' beginnt. "
+        "Ausgenommen sind")
+    sag("  nachweisliche Test- und Entwicklungskonten. Leer und NULL "
+        "gelten als ungueltig.")
+    _tabelle(sag, "", (
+        ("gueltige Ermittlerkennung", m8["gueltige_kennung"]),
+        ("ausgenommen (Test-/Entwicklungskonto)", m8["ausgenommen"]),
+        ("ungueltige Kennung", m8["ungueltige_kennung"]),
+        ("  davon leer oder NULL", m8["leer_oder_null"]),
+        ("verschiedene Kennungen", m8["verschiedene_kennungen"]),
+    ))
+    sag("  %s %7s %7s %7s  %s" % (_pad("Kennung", 22), "Anzahl", "vor", "ab",
+                                  "Zeitraum"))
+    for d in m8["je_wert"]:
+        marke = {"gueltig": "  ", "ausgenommen": "X ",
+                 "ungueltig": "! "}[d["klasse"]]
+        sag("  %s%s %7d %7d %7d  %s .. %s"
+            % (marke, _pad(d["wert"], 20), d["anzahl"],
+               d["vor_produktivbetrieb"], d["ab_produktivbetrieb"],
+               d["frueheste"], d["spaeteste"]))
+    sag("    X = ausgenommen, ! = ungueltige Kennung")
+    sag("    Ausschlussliste: %s" % ", ".join(m8["ausschlussliste"]))
+
+    m9 = b.m9_variante
+    sag("")
+    sag("M9 ANNOTATIONSVARIANTE")
+    sag("  Variante 1 'whole post': ganzer Beitrag, kein selection_json, "
+        "nur post_id.")
+    sag("  Variante 2 'text range': Textpassage, mit selection_json.")
+    _tabelle(sag, "", (
+        ("Variante 1 'whole post'", m9["whole_post"]),
+        ("Variante 2 'text range' gesamt", m9["text_range"]),
+        ("  davon OHNE post_id/element_id", m9["text_range_ohne_ort"]),
+        ("  davon MIT post_id/element_id (nachgetragen)",
+         m9["text_range_mit_ort"]),
+        ("WEDER NOCH (darf es nicht geben)", m9["weder_noch"]),
+    ))
+    sag("    'text range' MIT Ort ist kein Fehler: seit der Ueberarbeitung "
+        "wird die")
+    sag("    post_id nachgetragen. Nach Etappe 4 soll das der Normalfall "
+        "sein.")
+    if m9["weder_noch_ids"]:
+        sag("    WEDER NOCH, ids: %s"
+            % ", ".join(str(i) for i in m9["weder_noch_ids"]))
+
+
 def _gesamtbilanz(befunde, sag) -> int:
     """Die Summen ueber alle Bestaende. Rueckgabe: Anzahl der Befunde."""
     sag("=" * 78)
     sag("GESAMTBILANZ UEBER %d BESTAND/BESTAENDE" % len(befunde))
     sag("=" * 78)
-    sag("  %s %7s %7s %7s %7s %7s %7s %7s"
-        % (_pad("Bestand", 12), "Zeilen", "gelo.", "ueberh.", "AKTUELL",
-           "el_id", "post_id", "o.Seite"))
+    sag("  %s %7s %8s %7s %7s %8s %7s %7s"
+        % (_pad("Bestand", 12), "Zeilen", "AKTUELL", "wholeP", "textR",
+           "ERMITTL", "ausgen.", "unguelt"))
     sag("  " + "-" * 74)
-    s_zeilen = s_gel = s_ueb = s_akt = s_eid = s_pid = s_ohne = 0
+    s_zeilen = s_akt = s_wp = s_tr = s_erm = s_aus = s_ung = 0
     for b in befunde:
         if not b.evidence_lesbar:
             sag("  %s  NICHT LESBAR" % _pad(b.uid, 12))
             continue
-        m1, m2, m7 = b.m1_zeilenbestand, b.m2_spalten, b.m7_seiten
-        eid = m2["element_id"]["gesetzt"]
-        pid = m2["post_id"]["gesetzt"]
-        ohne = m7.get("annotationen_ohne_seite", 0) if m7.get("vorhanden") \
-            else m1["zeilen_gesamt"]
+        m1, m8, m9 = b.m1_zeilenbestand, b.m8_urheber, b.m9_variante
         kennung = b.uid + (" *" if b.testbestand else "")
-        sag("  %s %7d %7d %7d %7d %7d %7d %7d"
-            % (_pad(kennung, 12), m1["zeilen_gesamt"], m1["geloescht"],
-               m1["ueberholt"], m1["aktuell"], eid, pid, ohne))
-        s_zeilen += m1["zeilen_gesamt"]; s_gel += m1["geloescht"]
-        s_ueb += m1["ueberholt"]; s_akt += m1["aktuell"]
-        s_eid += eid; s_pid += pid; s_ohne += ohne
+        sag("  %s %7d %8d %7d %7d %8d %7d %7d"
+            % (_pad(kennung, 12), m1["zeilen_gesamt"], m1["aktuell"],
+               m9["whole_post"], m9["text_range"], m8["gueltige_kennung"],
+               m8["ausgenommen"], m8["ungueltige_kennung"]))
+        s_zeilen += m1["zeilen_gesamt"]; s_akt += m1["aktuell"]
+        s_wp += m9["whole_post"]; s_tr += m9["text_range"]
+        s_erm += m8["gueltige_kennung"]; s_aus += m8["ausgenommen"]
+        s_ung += m8["ungueltige_kennung"]
     sag("  " + "-" * 74)
-    sag("  %s %7d %7d %7d %7d %7d %7d %7d"
-        % (_pad("SUMME", 12), s_zeilen, s_gel, s_ueb, s_akt, s_eid, s_pid,
-           s_ohne))
+    sag("  %s %7d %8d %7d %7d %8d %7d %7d"
+        % (_pad("SUMME", 12), s_zeilen, s_akt, s_wp, s_tr, s_erm, s_aus,
+           s_ung))
+    sag("")
+    sag("  ERMITTL = created_by beginnt mit 'H0'/'h0' und steht NICHT auf "
+        "der Ausschlussliste.")
+    sag("  Diese Spalte ist die Trennlinie zwischen Ermittlerarbeit und "
+        "Testbetrieb - nicht")
+    sag("  der Bestand und nicht der Zeitpunkt. Die Zahlen umfassen ALLE "
+        "Zeilen, auch")
+    sag("  geloeschte und ueberholte; 'AKTUELL' steht daneben zum "
+        "Vergleich.")
     sag("")
     sag("  * = Testbestand (%s). Er wird MITGEZAEHLT und nicht "
         "herausgerechnet;" % ", ".join(TESTBESTAENDE))
@@ -364,14 +449,26 @@ def _gesamtbilanz(befunde, sag) -> int:
             befundzahl += 1
             continue
         m4, m7, m1 = b.m4_selection, b.m7_seiten, b.m1_zeilenbestand
-        if m4["offset_sinnfrei"]:
-            zeilen.append("Bestand %s: %d Marke(n) mit offsetEnd <= "
-                          "offsetStart" % (b.uid, m4["offset_sinnfrei"]))
-            befundzahl += 1
-        if m4["textcontent_leer"] or m4["textcontent_nur_leerraum"]:
+        m9 = b.m9_variante
+        if m4["offsets"]["beanstandet"]:
             zeilen.append(
-                "Bestand %s: %d Marke(n) ohne Wortlaut (leer oder Leerraum)"
-                % (b.uid, m4["textcontent_leer"] + m4["textcontent_nur_leerraum"]))
+                "Bestand %s: %d Marke(n) mit unbrauchbaren Offsets IM SELBEN "
+                "Knoten, ids %s"
+                % (b.uid, m4["offsets"]["beanstandet"],
+                   ", ".join(str(d["id"]) for d in m4["offsets"]["faelle"][:20])))
+            befundzahl += 1
+        if m4["wortlaut"]["beanstandet"]:
+            zeilen.append(
+                "Bestand %s: %d Marke(n) ohne Wortlaut, ids %s"
+                % (b.uid, m4["wortlaut"]["beanstandet"],
+                   ", ".join(str(d["id"]) for d in m4["wortlaut"]["faelle"][:20])))
+            befundzahl += 1
+        if m9["weder_noch"]:
+            zeilen.append("Bestand %s: %d Zeile(n) OHNE selection_json und "
+                          "OHNE post_id/element_id - Bezug nicht ermittelbar, "
+                          "ids %s"
+                          % (b.uid, m9["weder_noch"],
+                             ", ".join(str(i) for i in m9["weder_noch_ids"][:20])))
             befundzahl += 1
         if m1["kettenbruch_anzahl"]:
             zeilen.append("Bestand %s: %d Kettenbruch/-brueche bei prev_id"
@@ -411,7 +508,7 @@ def _gesamtbilanz(befunde, sag) -> int:
 
 
 def lauf(evidence_dir: str, forensic_dir: str, nur_uids, sag,
-         kuerzeste: int, json_ziel):
+         kuerzeste: int, json_ziel, ausgenommen=()):
     gefunden = _bestaende_finden(evidence_dir)
     if not gefunden:
         sag("Keine evidence_<uid>.db in %s gefunden." % evidence_dir)
@@ -433,10 +530,13 @@ def lauf(evidence_dir: str, forensic_dir: str, nur_uids, sag,
     befunde = []
     for uid, pfad in gefunden:
         f_pfad = os.path.join(forensic_dir, "forensic_%s.db" % uid)
-        aufnahme = BestandsAufnahme(uid, pfad, f_pfad, kuerzeste=kuerzeste)
+        aufnahme = BestandsAufnahme(uid, pfad, f_pfad,
+                                    kuerzeste=kuerzeste,
+                                    ausgenommen=tuple(ausgenommen))
         b = aufnahme.erheben()
         befunde.append(b)
         _bestand_ausgeben(b, sag)
+        _m8_m9_ausgeben(b, sag)
         sag("")
 
     befundzahl = _gesamtbilanz(befunde, sag)
@@ -449,6 +549,8 @@ def lauf(evidence_dir: str, forensic_dir: str, nur_uids, sag,
             "forensic_dir": forensic_dir,
             "produktivbetrieb_ab": PRODUKTIVBETRIEB_AB,
             "testbestaende": list(TESTBESTAENDE),
+            "ausschlussliste": list(AUSGENOMMENE_KENNUNGEN)
+                               + list(ausgenommen),
             "bestaende": [b.als_dict() for b in befunde],
         }
         try:
@@ -486,6 +588,12 @@ def main(argv=None) -> int:
     zerleger.add_argument("--kuerzeste", type=int, default=20,
                           help="wie viele der kuerzesten Seiten namentlich "
                                "genannt werden (Vorgabe: 20)")
+    zerleger.add_argument("--ausschluss", default="",
+                          help="weitere Kennungen, die NICHT als "
+                               "Ermittlerarbeit gelten sollen; "
+                               "kommagetrennt. ERGAENZT die eingebaute "
+                               "Liste (%s), ersetzt sie nicht."
+                               % ", ".join(AUSGENOMMENE_KENNUNGEN))
     zerleger.add_argument("--protokoll", default=None,
                           help="dieselben Zeilen zusaetzlich in diese Datei "
                                "schreiben (eingebautes 'tee')")
@@ -523,8 +631,10 @@ def main(argv=None) -> int:
             mitschrift.write(text + "\n")
 
     try:
+        zusatz = tuple(t.strip() for t in args.ausschluss.split(",")
+                       if t.strip())
         return lauf(str(evidence_dir), str(forensic_dir), args.uid, sag,
-                    args.kuerzeste, args.json_ziel)
+                    args.kuerzeste, args.json_ziel, zusatz)
     finally:
         if mitschrift is not None:
             mitschrift.close()
