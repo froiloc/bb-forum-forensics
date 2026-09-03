@@ -93,6 +93,34 @@ PRODUKTIVBETRIEB_AB = int(_dt.datetime(2026, 7, 1, 0, 0, 0,
 #: Beleg: Chat 01.09.2026 - "subject_id=2948078 wurde fuer Testzwecke benutzt".
 TESTBESTAENDE: Tuple[str, ...] = ("2948078",)
 
+#: Nur Leerraum, von Anfang bis Ende. re.UNICODE ist in Python 3 fuer str
+#: die Vorgabe - '\s' erfasst damit auch geschuetzte Leerzeichen (U+00A0)
+#: und ideographische Leerzeichen (U+3000), die in einem multilingualen
+#: Forum vorkommen.
+_RE_NUR_LEERRAUM = re.compile(r"^\s*$")
+
+#: Mindestens EIN Wortzeichen. Weisung Alex, 02.09.2026: eine Markierung ohne
+#: Wortzeichen traegt keinen Wortlaut und darf gar nicht erst entstehen.
+#: Die Unicode-Semantik ist hier nicht Beiwerk, sondern zwingend: das Forum
+#: ist multilingual, und '\w' MUSS kyrillische, arabische und CJK-Zeichen
+#: als Wortzeichen erkennen. Eine ASCII-Auswertung meldete ganze Sprachen
+#: als leer und loeschte damit echte Beweismittel.
+_RE_WORTZEICHEN = re.compile(r"\w")
+
+#: Kennungen, die trotz gueltiger Form NICHT als Ermittlerarbeit gelten.
+#: Beleg: Alex, 02.09.2026 - "H0A2898" ist sein Produktivkonto, "paul" sein
+#: Entwicklungskonto; beides sind Testmarkierungen. "uid_<Ziffern>" ist eine
+#: seinerzeit faelschlich existierende Kennung aus dem Entwicklungsbetrieb.
+AUSGENOMMENE_KENNUNGEN: Tuple[str, ...] = ("H0A2898", "paul")
+
+#: Form einer gueltigen Ermittlerkennung. Weisung Alex: nur Eintraege, die
+#: mit 'H0' oder 'h0' beginnen, wurden von tatsaechlichen Ermittlern mit
+#: gueltiger Kennung erzeugt.
+_RE_KENNUNG_GUELTIG = re.compile(r"^[Hh]0")
+
+#: Die faelschlich existierende Entwicklungskennung.
+_RE_KENNUNG_UID = re.compile(r"^uid_\d+$")
+
 #: Die Spalten aus 'annotations', deren Belegungsgrad M2 zaehlt.
 _M2_SPALTEN: Tuple[str, ...] = (
     "element_id", "post_id", "local_id", "investigator_id", "created_by",
@@ -199,6 +227,8 @@ class Bestandsbefund:
     m5_xpath: Dict[str, Any] = field(default_factory=dict)
     m6_zeit: Dict[str, Any] = field(default_factory=dict)
     m7_seiten: Dict[str, Any] = field(default_factory=dict)
+    m8_urheber: Dict[str, Any] = field(default_factory=dict)
+    m9_variante: Dict[str, Any] = field(default_factory=dict)
 
     def als_dict(self) -> Dict[str, Any]:
         return {
@@ -216,6 +246,8 @@ class Bestandsbefund:
             "m5_xpath": self.m5_xpath,
             "m6_zeit": self.m6_zeit,
             "m7_seiten": self.m7_seiten,
+            "m8_urheber": self.m8_urheber,
+            "m9_variante": self.m9_variante,
         }
 
 
@@ -230,11 +262,18 @@ class BestandsAufnahme:
 
     def __init__(self, uid: str, evidence_pfad: str,
                  forensic_pfad: Optional[str] = None,
-                 kuerzeste: int = 20) -> None:
+                 kuerzeste: int = 20,
+                 ausgenommen: Optional[Tuple[str, ...]] = None) -> None:
         self.uid = str(uid)
         self.evidence_pfad = evidence_pfad
         self.forensic_pfad = forensic_pfad
         self.kuerzeste = max(0, int(kuerzeste))
+        # Die Ausschlussliste ERGAENZT die Konstante, sie ersetzt sie nicht.
+        # Wer per Befehlszeile eine eigene Liste uebergibt, soll damit
+        # zusaetzliche Kennungen ausnehmen koennen - aber NICHT versehentlich
+        # Alex' eigene Testkonten wieder als Ermittlerarbeit einstufen.
+        zusatz = tuple(ausgenommen or ())
+        self.ausgenommen = tuple(AUSGENOMMENE_KENNUNGEN) + zusatz
         self._befund = Bestandsbefund(
             uid=self.uid, evidence_pfad=evidence_pfad,
             forensic_pfad=forensic_pfad,
@@ -264,6 +303,8 @@ class BestandsAufnahme:
             b.m5_xpath = self._m5(zeilen)
             b.m6_zeit = self._m6(zeilen)
             b.m7_seiten = self._m7(zeilen)
+            b.m8_urheber = self._m8(zeilen)
+            b.m9_variante = self._m9(zeilen)
         finally:
             con_e.close()
         return b
@@ -489,29 +530,67 @@ class BestandsAufnahme:
         """
         selection_json - Gueltigkeit, Schluessel, Signaturen, sinnfreie Marken.
 
-        'SIGNATUR' ist die sortierte Menge der vorhandenen Schluessel. Sie
-        beantwortet die Frage, wie viele verschiedene FORMEN im Bestand
-        wirklich liegen. Aus dem Quelltext ist das nicht zu beantworten: dort
-        stehen zwei Formen (die Fuenf-Feld-Form aus toolbar.js Z. 1129-1135
-        und die Uebersetzungsform aus Z. 1115-1126), aber ob im Bestand noch
-        weitere liegen, weiss nur der Bestand.
+        ── DER FEHLER, DEN DIESE FASSUNG BEHEBT (Build 755 -> 756) ───────────
 
-        SINNFREIE MARKEN werden nach zwei getrennten Kriterien gezaehlt:
-          * offsetEnd <= offsetStart  - eine Auswahl der Laenge null oder
-            eine mit vertauschten Grenzen. Beides traegt keinen Wortlaut.
-            Die Gleichheit ist auf Weisung Alex (01.09.2026) eingeschlossen;
-            bis Build 754 wurde nur '<' gezaehlt.
-          * textContent leer oder nur Leerraum - dasselbe Ergebnis auf dem
-            anderen Weg. Beide Zaehler werden getrennt gefuehrt, weil ihre
-            Schnittmenge selbst eine Aussage ist.
+        Build 755 verglich 'offsetStart' mit 'offsetEnd', OHNE zu pruefen, ob
+        sich beide auf denselben Knoten beziehen. Das ist falsch:
+
+          offsetStart ist ein Zeichenversatz IN DEM KNOTEN, den xpathStart
+          benennt. offsetEnd ist ein Zeichenversatz IN DEM KNOTEN, den
+          xpathEnd benennt.
+
+        Sind das verschiedene Knoten, haben die beiden Zahlen keinen
+        gemeinsamen Bezugspunkt und ihr Groessenverhaeltnis sagt nichts.
+        Beleg (Alex, Bestand 1704143): xpathStart endet auf
+        'h2[1]/span[1]/a[1]/text()[1]' mit offsetStart=25, xpathEnd auf
+        'div[6]/.../p[1]/text()[2]' mit offsetEnd=19. Verschiedene Zweige des
+        Baums - dass 19 kleiner als 25 ist, bedeutet nichts.
+
+        Von den 25 in Build 755 gemeldeten Faellen waren MINDESTENS 12
+        nachweislich falsch (nachgerechnet ueber M5.start_gleich_ende).
+
+        DESHALB WIRD JETZT GETRENNT: Ein Offsetvergleich findet nur dort
+        statt, wo xpathStart == xpathEnd gilt. Fuer alles andere gibt es
+        KEIN URTEIL, sondern nur einen Zaehler.
+
+        ── DIE LEERPRUEFUNG (Weisung Alex, 02.09.2026) ──────────────────────
+
+        Die belastbare Pruefung laeuft ueber 'textContent', nicht ueber die
+        Offsets. Vier getrennte Zaehler: fehlt, leer, nur Leerraum, und -
+        neu und schaerfer - OHNE WORTZEICHEN. Eine Markierung, die nur aus
+        Zeichensetzung besteht ('---', '...'), traegt keinen Wortlaut und
+        ist ebenso sinnfrei wie eine leere.
+
+        '\\w' wird mit Unicode-Semantik ausgewertet (in Python 3 die
+        Vorgabe fuer str). Das Forum ist multilingual; kyrillische,
+        arabische und CJK-Zeichen MUESSEN als Wortzeichen zaehlen, sonst
+        meldet die Pruefung ganze Sprachen als leer.
+
+        ── WARUM DIE ZEILEN NAMENTLICH GENANNT WERDEN ───────────────────────
+
+        Build 755 lieferte nur Zaehlwerte. Als Alex die beanstandeten Faelle
+        nachpruefen wollte, konnte das Werkzeug sie nicht benennen - er
+        musste dem Ergebnis glauben statt es pruefen zu koennen. Das ist bei
+        einer forensischen Messung nicht hinnehmbar. Jeder beanstandete Fall
+        wird jetzt mit annotations.id ausgewiesen.
+
+        AUSGEGEBEN WIRD KEIN BEWEISMITTELINHALT. Bei den Offsetfaellen nur
+        die Zahlen. Bei den Wortlautfaellen eine Zeichenprobe NUR dort, wo
+        per Definition kein Wortzeichen enthalten ist - dort kann kein
+        inhaltlicher Text austreten.
         """
         null = leer = ungueltig = gueltig = 0
         schluessel: Dict[str, int] = {}
         signaturen: Dict[str, int] = {}
-        offset_leer = offset_vertauscht = offset_gleich = 0
-        text_leer = text_leerraum = 0
+        # Offsets - streng getrennt nach Vergleichbarkeit.
+        selber_knoten = verschiedene_knoten = ohne_offsets = 0
+        end_kleiner = end_gleich = end_groesser = 0
+        offset_faelle: List[Dict[str, Any]] = []
+        # Wortlaut.
+        w_fehlt = w_leer = w_leerraum = w_ohne_wortzeichen = 0
+        wortlaut_faelle: List[Dict[str, Any]] = []
         laengen: List[int] = []
-        ohne_offsets = 0
+
         for z in zeilen:
             roh = z["selection_json"]
             if roh is None:
@@ -534,24 +613,59 @@ class BestandsAufnahme:
             sig = "|".join(sorted(str(k) for k in sel))
             signaturen[sig] = signaturen.get(sig, 0) + 1
 
+            # -- Offsets ------------------------------------------------------
             a, e = sel.get("offsetStart"), sel.get("offsetEnd")
-            if isinstance(a, int) and isinstance(e, int):
-                if e < a:
-                    offset_vertauscht += 1
-                    offset_leer += 1
-                elif e == a:
-                    offset_gleich += 1
-                    offset_leer += 1
-            else:
+            xs, xe = sel.get("xpathStart"), sel.get("xpathEnd")
+            if not (isinstance(a, int) and isinstance(e, int)):
                 ohne_offsets += 1
+            elif xs != xe:
+                # KEIN URTEIL. Die beiden Zahlen zaehlen in verschiedenen
+                # Knoten; ihr Verhaeltnis ist bedeutungslos.
+                verschiedene_knoten += 1
+            else:
+                selber_knoten += 1
+                if e < a:
+                    end_kleiner += 1
+                    offset_faelle.append({
+                        "id": z["id"], "art": "ende_vor_anfang",
+                        "offsetStart": a, "offsetEnd": e})
+                elif e == a:
+                    end_gleich += 1
+                    offset_faelle.append({
+                        "id": z["id"], "art": "laenge_null",
+                        "offsetStart": a, "offsetEnd": e})
+                else:
+                    end_groesser += 1
 
+            # -- Wortlaut -----------------------------------------------------
             txt = sel.get("textContent")
-            if txt is None or str(txt) == "":
-                text_leer += 1
-            elif str(txt).strip() == "":
-                text_leerraum += 1
+            if txt is None:
+                w_fehlt += 1
+                wortlaut_faelle.append({"id": z["id"], "art": "fehlt",
+                                        "laenge": None, "probe": None})
+            elif str(txt) == "":
+                w_leer += 1
+                wortlaut_faelle.append({"id": z["id"], "art": "leer",
+                                        "laenge": 0, "probe": ""})
+            elif _RE_NUR_LEERRAUM.match(str(txt)):
+                w_leerraum += 1
+                wortlaut_faelle.append({
+                    "id": z["id"], "art": "nur_leerraum",
+                    "laenge": len(str(txt)), "probe": repr(str(txt)[:20])})
+                laengen.append(len(str(txt)))
+            elif _RE_WORTZEICHEN.search(str(txt)) is None:
+                # Enthaelt Zeichen, aber KEIN Wortzeichen - also nur
+                # Zeichensetzung oder Sonderzeichen. Die Probe ist hier
+                # unbedenklich: was kein Wortzeichen ist, traegt keinen
+                # inhaltlichen Text.
+                w_ohne_wortzeichen += 1
+                wortlaut_faelle.append({
+                    "id": z["id"], "art": "ohne_wortzeichen",
+                    "laenge": len(str(txt)), "probe": repr(str(txt)[:20])})
+                laengen.append(len(str(txt)))
             else:
                 laengen.append(len(str(txt)))
+
         return {
             "null": null, "leer": leer, "ungueltig": ungueltig,
             "gueltig": gueltig,
@@ -560,12 +674,24 @@ class BestandsAufnahme:
                 ({"signatur": s, "anzahl": n} for s, n in signaturen.items()),
                 key=lambda d: -d["anzahl"]),
             "signaturen_anzahl": len(signaturen),
-            "offset_sinnfrei": offset_leer,
-            "offset_vertauscht": offset_vertauscht,
-            "offset_gleich": offset_gleich,
-            "ohne_offsets": ohne_offsets,
-            "textcontent_leer": text_leer,
-            "textcontent_nur_leerraum": text_leerraum,
+            "offsets": {
+                "vergleichbar_selber_knoten": selber_knoten,
+                "nicht_vergleichbar_andere_knoten": verschiedene_knoten,
+                "ohne_offsets": ohne_offsets,
+                "ende_vor_anfang": end_kleiner,
+                "laenge_null": end_gleich,
+                "in_ordnung": end_groesser,
+                "beanstandet": end_kleiner + end_gleich,
+                "faelle": offset_faelle,
+            },
+            "wortlaut": {
+                "fehlt": w_fehlt, "leer": w_leer,
+                "nur_leerraum": w_leerraum,
+                "ohne_wortzeichen": w_ohne_wortzeichen,
+                "beanstandet": (w_fehlt + w_leer + w_leerraum
+                                + w_ohne_wortzeichen),
+                "faelle": wortlaut_faelle,
+            },
             "textcontent_laenge": _kennzahlen(laengen),
         }
 
@@ -686,6 +812,152 @@ class BestandsAufnahme:
             "frueheste": zeit(min(werte)) if werte else None,
             "spaeteste": zeit(max(werte)) if werte else None,
             "trennlinie": zeit(PRODUKTIVBETRIEB_AB),
+        }
+
+    # -- M8 ------------------------------------------------------------------
+
+    def _kennung_klasse(self, wert) -> str:
+        """
+        Einordnung einer Kennung aus 'created_by'.
+
+        DREI KLASSEN, und die Reihenfolge der Pruefung ist wesentlich:
+          'ausgenommen' - Form waere gueltig, die Kennung gehoert aber
+                          nachweislich zum Entwicklungs- oder Testbetrieb.
+                          MUSS VOR der Formpruefung stehen, sonst faellt
+                          'H0A2898' als gueltige Ermittlerkennung durch.
+          'gueltig'     - beginnt mit 'H0' oder 'h0'.
+          'ungueltig'   - alles Uebrige, EINSCHLIESSLICH leer und NULL.
+                          Weisung Alex, 02.09.2026: solche Treffer sollten
+                          gar nicht auftauchen und sind Relikte aus dem
+                          Entwicklungszeitraum.
+        """
+        if wert is None:
+            return "ungueltig"
+        w = str(wert).strip()
+        if w == "":
+            return "ungueltig"
+        if w in self.ausgenommen or _RE_KENNUNG_UID.match(w):
+            return "ausgenommen"
+        if _RE_KENNUNG_GUELTIG.match(w):
+            return "gueltig"
+        return "ungueltig"
+
+    def _m8(self, zeilen: List[sqlite3.Row]) -> Dict[str, Any]:
+        """
+        Wer hat markiert - und ist das Ermittlerarbeit oder Testbetrieb?
+
+        WOZU: Der Testbestand 2948078 traegt 82 Zeilen, also 17 Prozent aller
+        Annotationen. Ihn pauschal zu verwerfen waere falsch - laut Alex hat
+        dort die Chefermittlerin eine Arbeitssimulation gefahren, deren
+        Ergebnisse wertvoll sind. Ihn pauschal zu behalten waere ebenso
+        falsch, denn daneben stehen reine Testmarkierungen. DIE TRENNLINIE
+        LAEUFT NICHT UEBER DEN BESTAND UND NICHT UEBER DIE ZEIT, SONDERN
+        UEBER DIE KENNUNG.
+
+        Die Zeitverteilung wird je Kennung mitgefuehrt, weil beides zusammen
+        mehr sagt als jedes fuer sich: eine gueltige Kennung, die
+        ausschliesslich vor dem 01.07.2026 gearbeitet hat, ist ein anderer
+        Fall als eine, die durchgehend gearbeitet hat.
+        """
+        je_wert: Dict[str, Dict[str, Any]] = {}
+        klassen = {"gueltig": 0, "ausgenommen": 0, "ungueltig": 0}
+        leer_oder_null = 0
+        for z in zeilen:
+            roh = z["created_by"]
+            if roh is None or str(roh).strip() == "":
+                leer_oder_null += 1
+                schl = "(leer oder NULL)"
+            else:
+                schl = str(roh).strip()
+            kl = self._kennung_klasse(roh)
+            klassen[kl] += 1
+            eintrag = je_wert.setdefault(schl, {
+                "wert": schl, "klasse": kl, "anzahl": 0,
+                "vor_produktivbetrieb": 0, "ab_produktivbetrieb": 0,
+                "ohne_zeitstempel": 0, "frueheste": None, "spaeteste": None})
+            eintrag["anzahl"] += 1
+            n = sekunden(z["ts"])
+            if n is None:
+                eintrag["ohne_zeitstempel"] += 1
+            else:
+                if n < PRODUKTIVBETRIEB_AB:
+                    eintrag["vor_produktivbetrieb"] += 1
+                else:
+                    eintrag["ab_produktivbetrieb"] += 1
+                if eintrag["frueheste"] is None or n < eintrag["frueheste"]:
+                    eintrag["frueheste"] = n
+                if eintrag["spaeteste"] is None or n > eintrag["spaeteste"]:
+                    eintrag["spaeteste"] = n
+        for e in je_wert.values():
+            e["frueheste"] = zeit(e["frueheste"]) if e["frueheste"] else None
+            e["spaeteste"] = zeit(e["spaeteste"]) if e["spaeteste"] else None
+        return {
+            "je_wert": sorted(je_wert.values(), key=lambda d: -d["anzahl"]),
+            "verschiedene_kennungen": len(je_wert),
+            "gueltige_kennung": klassen["gueltig"],
+            "ausgenommen": klassen["ausgenommen"],
+            "ungueltige_kennung": klassen["ungueltig"],
+            "leer_oder_null": leer_oder_null,
+            "ausschlussliste": list(self.ausgenommen),
+        }
+
+    # -- M9 ------------------------------------------------------------------
+
+    def _m9(self, zeilen: List[sqlite3.Row]) -> Dict[str, Any]:
+        """
+        Die beiden Annotationsvarianten - und ob sie sich wirklich ausschliessen.
+
+        BELEG FUER DIE UNTERSCHEIDUNG (Alex, 02.09.2026): Es gab zwei Arten,
+        eine Annotation zu setzen.
+          Variante 1 'whole post'  - ein vollstaendiger Beitrag wird markiert.
+                                     Kein selection_json, nur post_id. Das war
+                                     die erste Bauform.
+          Variante 2 'text range'  - eine Textpassage wird markiert. Erzeugt
+                                     selection_json, urspruenglich ohne post_id.
+
+        Build 755 hat den Verdacht aufgebracht, weil je Bestand die Zahl der
+        Zeilen mit element_id EXAKT der Zahl mit selection_json IS NULL
+        entsprach (14/14, 2/2, 3/3). GLEICHE ANZAHL IST ABER KEIN BEWEIS
+        FUER GLEICHE ZEILEN. Alex hat es fuer die drei Bestaende von Hand
+        nachgeprueft (je 0 Zeilen mit beidem). Diese Messung nimmt ihm die
+        Handarbeit ab und fuehrt sie fuer ALLE Bestaende.
+
+        SELECTION_JSON UND POST_ID ZUGLEICH IST KEIN FEHLER. Alex' Angabe
+        vom 02.09.2026: Variante 2 wurde "vor ein paar Tagen ueberarbeitet" -
+        seither wird die post_id nachgetragen. Eine Zeile mit beidem ist also
+        eine Variante-2-Zeile MIT bereits nachgetragenem Ort, und nach
+        Etappe 4 soll das der Normalfall sein. Sie bekommt deshalb eine
+        eigene Klasse und keine Beanstandung.
+
+        BEANSTANDET WIRD NUR 'weder noch': keine Textauswahl und kein Ort.
+        Aus einer solchen Zeile ist nicht zu ermitteln, worauf sie sich
+        bezieht. Diese Faelle werden namentlich ausgewiesen - eine Zaehlung
+        ohne Zeilennummer koennte niemand nachpruefen.
+        """
+        whole_post = ohne_ort = mit_ort = weder_noch = 0
+        weder_ids: List[int] = []
+        for z in zeilen:
+            hat_sel = (z["selection_json"] is not None
+                       and str(z["selection_json"]).strip() != "")
+            hat_ort = (z["post_id"] is not None
+                       or (z["element_id"] is not None
+                           and str(z["element_id"]).strip() != ""))
+            if hat_sel and hat_ort:
+                mit_ort += 1
+            elif hat_sel:
+                ohne_ort += 1
+            elif hat_ort:
+                whole_post += 1
+            else:
+                weder_noch += 1
+                weder_ids.append(z["id"])
+        return {
+            "whole_post": whole_post,
+            "text_range_ohne_ort": ohne_ort,
+            "text_range_mit_ort": mit_ort,
+            "text_range": ohne_ort + mit_ort,
+            "weder_noch": weder_noch,
+            "weder_noch_ids": weder_ids[:50],
         }
 
     # -- M7 ------------------------------------------------------------------
