@@ -337,6 +337,15 @@ _GEPRUEFT_754 = ("Build 754, 2026-08-31, gegen Wegwerf-Bestaende unter /tmp "
                  "Lagen, forensic_900.db mit einem Seitenabzug aus vier "
                  "Beitraegen), Python 3.13, lxml 6.1, html5lib 1.1")
 
+_GEPRUEFT_755 = ("Build 755, 2026-09-01, gegen einen Wegwerf-Bestand unter "
+                 "/tmp: evidence_901.db mit 14 Zeilen (eine geloescht, eine "
+                 "ueberholt, ein Kettenbruch, zwei sinnfreie Marken, zwei "
+                 "Schluesselsignaturen, ein Ausdruck in der Altform '//' mit "
+                 "'#text[n]'), evidence_902.db mit einer Zeile und OHNE "
+                 "forensic_902.db, forensic_901.db mit vier Seiten - eine "
+                 "heil, eine mit html IS NULL, eine mit Laenge 0 und eine "
+                 "Anmeldeseite mit HTTP 200 und 919 Byte. Python 3.12.3")
+
 _GEPRUEFT_753 = ("Build 753, 2026-08-31, gegen einen Wegwerf-Bestand unter "
                  "/tmp (evidence_999.db mit vier Annotationen, forensic_999.db "
                  "mit einem Seitenabzug aus vier Beitraegen, deren "
@@ -5887,6 +5896,125 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "gegen jeden Beitrag der Seite gehalten. Auf einer Seite mit "
                 "500 Beitraegen und 260 Markierungen sind das 130.000 "
                 "Vergleiche - das dauert und ist kein Aufhaenger.",
+            ),
+        ),
+    ),
+    CliEintrag(
+        schluessel="annotationen_bestand",
+        pfad="tools/annotationen_bestand.py",
+        aufruf="python tools/annotationen_bestand.py "
+               "[--config ./config.yaml] [--evidence-dir <Verz>] "
+               "[--forensic-dir <Verz>] [--uid <uid> ...] "
+               "[--kuerzeste 20] [--protokoll <Datei>] [--json <Datei>]",
+        titel="Bestandsaufnahme der Annotationen (Etappe 0)",
+        gruppe="Diagnose",
+        zweck="ZAEHLEN, WAS DA IST: sieben Messbloecke ueber die Annotationen "
+              "und die KOPFDATEN der Seiten - Zeilenbestand, "
+              "Spaltenbelegung, page_url, selection_json, XPath-Syntax, "
+              "Zeit und Seitenzustand.",
+        art="lesend",
+        datenbanken=(
+            "evidence_<uid>.db (lesend, mode=ro - annotations)",
+            "forensic_<uid>.db (lesend, mode=ro - pages, page_aliases; "
+            "NUR typeof(html), length(html), http_status, title, "
+            "fetched_at - der BLOB-Inhalt wird nicht gelesen)",
+        ),
+        betrieb="Darf jederzeit laufen. Beide Verbindungen sind "
+                "schreibgeschuetzt; ein Wartungsfenster ist nicht noetig.",
+        beleg=False,
+        ausgabe="Je Bestand sieben Messbloecke im Klartext, danach eine "
+                "Gesamtbilanz mit einer Zeile je Bestand und der Liste der "
+                "Befunde, die eine Entscheidung verlangen. '--protokoll' "
+                "schreibt dieselben Zeilen zusaetzlich in eine Datei, "
+                "'--json' dieselben Zahlen maschinenlesbar. Beide Ausgaben "
+                "entstehen aus demselben Befund und nicht auseinander.",
+        hinweis="WOZU ES DA IST: In allen Laeufen der Builds 727 bis 754 war "
+                "von '477 Annotationen' die Rede, ohne dass feststand, ob "
+                "das die Zahl ALLER Zeilen ist oder die der AKTUELLEN. "
+                "Geloeschte Zeilen (deleted_at) und ueberholte Generationen "
+                "(prev_id) waren nie getrennt ausgewiesen. Etappe 4 des "
+                "Arbeitsblocks schreibt fuer jede Annotation eine NEUE Zeile "
+                "mit Rueckverweis; steht die Ausgangsmenge vorher nicht "
+                "fest, stehen danach zwei Gesamtzahlen nebeneinander. "
+                "DER SEITEN-BLOB WIRD BEWUSST NICHT GELESEN: er ist die eine "
+                "Groesse, deren Verlaesslichkeit selbst in Frage steht - die "
+                "forensic_<uid>.db ist mehrfach neu erstellt worden und "
+                "enthielt in mindestens zwei Faellen leere BLOBs. Eine "
+                "Zahlenbasis, die darauf aufsetzt, koennte durch genau "
+                "diesen Defekt verfaelscht sein. "
+                "ES WIRD KEINE SCHWELLE FESTGELEGT, ab der eine Seite als "
+                "defekt oder eine Annotation als sinnfrei gilt. Das Werkzeug "
+                "zaehlt und nennt die kuerzesten Seiten namentlich; "
+                "entschieden wird am Befund.",
+        konfiguration=(
+            _k("paths.evidence_db_dir",
+               "Verzeichnis, in dem nach evidence_<uid>.db gesucht wird.",
+               "./data/evidence/",
+               "tools/annotationen_bestand.py, main() - aufgeloest ueber "
+               "core/werkzeug_konfig.wert()",
+               "--evidence-dir"),
+            _k("paths.forensic_db_dir",
+               "Verzeichnis, in dem die zugehoerige forensic_<uid>.db "
+               "gesucht wird. Fehlt sie, entfaellt M7 und das wird als "
+               "Befund gemeldet - der Bestand wird NICHT uebersprungen.",
+               "./data/forensic/",
+               "tools/annotationen_bestand.py, main() - aufgeloest ueber "
+               "core/werkzeug_konfig.wert()",
+               "--forensic-dir"),
+        ),
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/annotationen_bestand.py "
+                     "--evidence-dir /tmp/fall/evidence "
+                     "--forensic-dir /tmp/fall/forensic",
+                     "Alle gefundenen Bestaende. Im Versuch zwei Bestaende "
+                     "mit zusammen 15 Zeilen, davon 13 aktuell; die "
+                     "Gesamtbilanz nennt SIEBEN Befunde (zwei sinnfreie "
+                     "Marken, eine Marke ohne Wortlaut, ein Kettenbruch, "
+                     "zwei Seiten ohne Inhalt, eine Annotation ohne Seite, "
+                     "fuenf Annotationen auf leerer Seite, ein Bestand ohne "
+                     "Seitendaten) und der Rueckgabewert ist 1.",
+                     _GEPRUEFT_755),
+                _bsp("python tools/annotationen_bestand.py "
+                     "--evidence-dir /tmp/fall/evidence "
+                     "--forensic-dir /tmp/fall/forensic --uid 901 "
+                     "--protokoll /tmp/bestand_901.log "
+                     "--json /tmp/bestand_901.json",
+                     "Ein Bestand, mit Mitschrift und maschinenlesbarer "
+                     "Fassung. Beide Dateien tragen dieselben Zahlen; die "
+                     "JSON-Fassung ist ASCII-rein und nach Schluesseln "
+                     "sortiert (gemessen: 14 Zeilen, 12 aktuell, sechs "
+                     "Befunde, Rueckgabewert 1).",
+                     _GEPRUEFT_755),
+            ),
+            exit_codes=(
+                (0, "durchgelaufen, kein Befund, der eine Entscheidung "
+                    "verlangt"),
+                (1, "durchgelaufen, es gibt Befunde (sinnfreie Marken, "
+                    "leere Seiten, Annotationen ohne Seite, Kettenbruch)"),
+                (2, "nicht zustande gekommen (Verzeichnis fehlt, keine "
+                    "evidence_<uid>.db gefunden, Protokoll- oder "
+                    "JSON-Datei nicht schreibbar)"),
+            ),
+            warnungen=(
+                "DIESES WERKZEUG DEUTET NICHTS. Es sagt nicht, ob eine Seite "
+                "defekt ist - es sagt, wie lang sie ist und welchen Titel "
+                "sie traegt. Eine fehlgeschlagene Anmeldung liefert eine "
+                "gueltige Seite mit HTTP 200 und nennenswerter Laenge; "
+                "erkennbar ist sie am TITEL, nicht an der Laenge. Deshalb "
+                "steht der Titel in der Ausgabe.",
+                "'AKTUELL' HEISST: nicht geloescht UND nicht ueberholt. Das "
+                "ist die Menge, ueber die in Etappe 4 entschieden wird. "
+                "Geloeschte und ueberholte Zeilen werden getrennt "
+                "ausgewiesen und NIRGENDS weggelassen.",
+                "DER TESTBESTAND WIRD MITGEZAEHLT und nicht herausgerechnet. "
+                "Auch im Testbetrieb koennen verwertbare Spuren erhoben "
+                "worden sein; ob eine dort gesetzte Annotation zu erhalten "
+                "ist, ist eine Einzelfallentscheidung des Ermittlers.",
+                "M3 RAET NICHT, welche Query-Parameter Beiwerk sind. Es "
+                "misst, ob die Parametermenge einer Adresse VOLLSTAENDIG in "
+                "der einer anderen desselben Pfades liegt, und nennt die "
+                "Zusatzparameter beim Namen.",
             ),
         ),
     ),
