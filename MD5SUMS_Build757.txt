@@ -1,0 +1,8 @@
+b7a80e870d743e0df2e53ab4dc97be10  build.json
+8429183f8275b827b151f91f75710a89  issue-tracker/eintraege_claude_Build755.json
+8c80e69d95a54f6906de8d9c2a361fa0  issue-tracker/eintraege_claude_Build756.json
+a86ddce080616b87bc65642aef234013  issue-tracker/eintraege_claude_Build757.json
+7b33f02e52037f5a1c73b43b7d6d3c68  management/help/cli_katalog.py
+ab51214f5bca2ff31196589959e4b20e  management/maintenance/annotation_bestand.py
+b7d825ebc54d44d3ff5772a4272f57c3  tests/test_annotation_bestand.py
+ac436d0595e71d71b5898382cb0c28aa  tools/annotationen_bestand.py

@@ -118,8 +118,41 @@ AUSGENOMMENE_KENNUNGEN: Tuple[str, ...] = ("H0A2898", "paul")
 #: gueltiger Kennung erzeugt.
 _RE_KENNUNG_GUELTIG = re.compile(r"^[Hh]0")
 
-#: Die faelschlich existierende Entwicklungskennung.
-_RE_KENNUNG_UID = re.compile(r"^uid_\d+$")
+#: Die faelschlich existierende Entwicklungskennung. Schreibungsunabhaengig,
+#: weil die Normalisierung auf Grossschreibung sonst 'UID_538299' erzeugte
+#: und dieses Muster nicht mehr traefe.
+_RE_KENNUNG_UID = re.compile(r"^uid_\d+$", re.IGNORECASE)
+
+#: ── WARUM KENNUNGEN AUF GROSSSCHREIBUNG NORMALISIERT WERDEN ────────────────
+#:
+#: Beleg (Alex, 03.09.2026): Das Produktivsystem bezieht die Kennungen aus dem
+#: Active Directory und verwendet AUSSCHLIESSLICH Grossbuchstaben. Die
+#: kleingeschriebene Form stammt aus dem Testsystem, wo die Kennung von Hand
+#: eingetragen wurde. 'h082317' und 'H082317' sind dieselbe Person - die
+#: Chefermittlerin.
+#:
+#: DAS IST KEIN DARSTELLUNGSPROBLEM. Die Rechtepruefung vergleicht die
+#: Kennung des Anmeldenden mit 'annotations.created_by'. Stimmen sie nicht
+#: zeichengenau ueberein, gelten die Eintraege nicht als eigene, und die
+#: Person kann ihre eigenen Annotationen weder bearbeiten noch loeschen.
+#: Im Bestand betrifft das 77 Zeilen in evidence_2948078.db.
+#:
+#: DIESE MESSUNG BEHEBT DAS NICHT. Sie STELLT ES FEST und weist die
+#: betroffenen Zeilen namentlich aus. Geschrieben wird erst in Etappe 4
+#: (Weisung Alex, 03.09.2026: bis dahin ausschliesslich lesend).
+
+
+def kennung_normal(wert) -> str:
+    """
+    Eine Kennung in ihrer Vergleichsform: getrimmt und in Grossbuchstaben.
+
+    Nur fuer den VERGLEICH. Die vorgefundene Schreibweise wird daneben
+    unveraendert mitgefuehrt - eine Messung, die die Rohform wegwirft, koennte
+    die Abweichung anschliessend nicht mehr belegen.
+    """
+    if wert is None:
+        return ""
+    return str(wert).strip().upper()
 
 #: Die Spalten aus 'annotations', deren Belegungsgrad M2 zaehlt.
 _M2_SPALTEN: Tuple[str, ...] = (
@@ -274,6 +307,11 @@ class BestandsAufnahme:
         # Alex' eigene Testkonten wieder als Ermittlerarbeit einstufen.
         zusatz = tuple(ausgenommen or ())
         self.ausgenommen = tuple(AUSGENOMMENE_KENNUNGEN) + zusatz
+        # Der Vergleich laeuft ueber die Grossform. Sonst rutschte ein
+        # 'h0a2898' an der Ausschlussliste vorbei und zaehlte als
+        # Ermittlerarbeit - genau der Fall, den 'h082317' belegt.
+        self._ausgenommen_normal = frozenset(
+            kennung_normal(k) for k in self.ausgenommen)
         self._befund = Bestandsbefund(
             uid=self.uid, evidence_pfad=evidence_pfad,
             forensic_pfad=forensic_pfad,
@@ -836,7 +874,8 @@ class BestandsAufnahme:
         w = str(wert).strip()
         if w == "":
             return "ungueltig"
-        if w in self.ausgenommen or _RE_KENNUNG_UID.match(w):
+        if (kennung_normal(w) in self._ausgenommen_normal
+                or _RE_KENNUNG_UID.match(w)):
             return "ausgenommen"
         if _RE_KENNUNG_GUELTIG.match(w):
             return "gueltig"
@@ -846,13 +885,18 @@ class BestandsAufnahme:
         """
         Wer hat markiert - und ist das Ermittlerarbeit oder Testbetrieb?
 
-        WOZU: Der Testbestand 2948078 traegt 82 Zeilen, also 17 Prozent aller
-        Annotationen. Ihn pauschal zu verwerfen waere falsch - laut Alex hat
-        dort die Chefermittlerin eine Arbeitssimulation gefahren, deren
-        Ergebnisse wertvoll sind. Ihn pauschal zu behalten waere ebenso
-        falsch, denn daneben stehen reine Testmarkierungen. DIE TRENNLINIE
-        LAEUFT NICHT UEBER DEN BESTAND UND NICHT UEBER DIE ZEIT, SONDERN
-        UEBER DIE KENNUNG.
+        WOZU: Der Testbestand 2948078 traegt 82 Zeilen, also 16 Prozent aller
+        Annotationen. Ihn pauschal zu verwerfen waere falsch - dort hat die
+        Chefermittlerin eine Arbeitssimulation gefahren, deren Ergebnisse
+        wertvoll sind und die zu bewahren sind (Weisung Alex, 03.09.2026).
+        Ihn pauschal zu behalten waere ebenso falsch. DIE TRENNLINIE LAEUFT
+        NICHT UEBER DEN BESTAND UND NICHT UEBER DIE ZEIT, SONDERN UEBER DIE
+        KENNUNG.
+
+        GRUPPIERT WIRD UEBER DIE GROSSFORM, ausgewiesen wird die Rohform.
+        Beides ist noetig: ohne Normalisierung stehen 'H082317' und
+        'h082317' als zwei Personen nebeneinander, ohne die Rohform liesse
+        sich die Abweichung anschliessend nicht mehr belegen.
 
         Die Zeitverteilung wird je Kennung mitgefuehrt, weil beides zusammen
         mehr sagt als jedes fuer sich: eine gueltige Kennung, die
@@ -866,16 +910,24 @@ class BestandsAufnahme:
             roh = z["created_by"]
             if roh is None or str(roh).strip() == "":
                 leer_oder_null += 1
-                schl = "(leer oder NULL)"
+                roh_form = "(leer oder NULL)"
+                schl = "(LEER ODER NULL)"
             else:
-                schl = str(roh).strip()
+                roh_form = str(roh).strip()
+                schl = kennung_normal(roh)
             kl = self._kennung_klasse(roh)
             klassen[kl] += 1
             eintrag = je_wert.setdefault(schl, {
                 "wert": schl, "klasse": kl, "anzahl": 0,
                 "vor_produktivbetrieb": 0, "ab_produktivbetrieb": 0,
-                "ohne_zeitstempel": 0, "frueheste": None, "spaeteste": None})
+                "ohne_zeitstempel": 0, "frueheste": None, "spaeteste": None,
+                "schreibweisen": {}})
             eintrag["anzahl"] += 1
+            sw = eintrag["schreibweisen"].setdefault(
+                roh_form, {"roh": roh_form, "anzahl": 0, "ids": []})
+            sw["anzahl"] += 1
+            if len(sw["ids"]) < 100:
+                sw["ids"].append(z["id"])
             n = sekunden(z["ts"])
             if n is None:
                 eintrag["ohne_zeitstempel"] += 1
@@ -888,7 +940,36 @@ class BestandsAufnahme:
                     eintrag["frueheste"] = n
                 if eintrag["spaeteste"] is None or n > eintrag["spaeteste"]:
                     eintrag["spaeteste"] = n
+
+        # Kennungen, die in MEHR ALS EINER Schreibweise vorkommen, und die
+        # Zeilen, deren Rohform von der Produktivform abweicht.
+        #
+        # WARUM DAS EIN BEFUND IST: Die Rechtepruefung vergleicht die Kennung
+        # des Anmeldenden mit 'created_by'. Weichen sie in der Schreibweise
+        # ab, gelten die Eintraege nicht als eigene - die Person kann ihre
+        # eigenen Annotationen weder bearbeiten noch loeschen. Das
+        # Produktivsystem bezieht die Kennungen aus dem Active Directory und
+        # verwendet ausschliesslich Grossbuchstaben.
+        mehrfach: List[Dict[str, Any]] = []
+        abweichend: List[Dict[str, Any]] = []
         for e in je_wert.values():
+            formen = sorted(e["schreibweisen"])
+            e["schreibweisen"] = sorted(e["schreibweisen"].values(),
+                                        key=lambda d: -d["anzahl"])
+            if len(formen) > 1:
+                mehrfach.append({"kennung": e["wert"], "schreibweisen": formen,
+                                 "anzahl": e["anzahl"]})
+            for sw in e["schreibweisen"]:
+                # NUR BEI GUELTIGEN KENNUNGEN. Das Rechteproblem entsteht
+                # daraus, dass die Person im Active Directory ein Konto hat
+                # und die Rechtepruefung zeichengenau gegen 'created_by'
+                # vergleicht. Eine ungueltige Kennung ('pruefer', leer) hat
+                # kein AD-Konto - dort gibt es niemanden, der ausgesperrt
+                # wuerde, und eine Meldung waere blosses Rauschen.
+                if (sw["roh"] != e["wert"] and e["klasse"] == "gueltig"):
+                    abweichend.append({
+                        "kennung": e["wert"], "roh": sw["roh"],
+                        "anzahl": sw["anzahl"], "ids": sw["ids"][:50]})
             e["frueheste"] = zeit(e["frueheste"]) if e["frueheste"] else None
             e["spaeteste"] = zeit(e["spaeteste"]) if e["spaeteste"] else None
         return {
@@ -899,6 +980,10 @@ class BestandsAufnahme:
             "ungueltige_kennung": klassen["ungueltig"],
             "leer_oder_null": leer_oder_null,
             "ausschlussliste": list(self.ausgenommen),
+            "mehrfachschreibweisen": mehrfach,
+            "abweichende_schreibweise": abweichend,
+            "zeilen_mit_abweichender_schreibweise": sum(
+                d["anzahl"] for d in abweichend),
         }
 
     # -- M9 ------------------------------------------------------------------

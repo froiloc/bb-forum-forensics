@@ -337,6 +337,16 @@ _GEPRUEFT_754 = ("Build 754, 2026-08-31, gegen Wegwerf-Bestaende unter /tmp "
                  "Lagen, forensic_900.db mit einem Seitenabzug aus vier "
                  "Beitraegen), Python 3.13, lxml 6.1, html5lib 1.1")
 
+_GEPRUEFT_757 = ("Build 757, 2026-09-03, gegen zwei Wegwerf-Bestaende unter "
+                 "/tmp: evidence_901.db mit 14 Zeilen (Grundfaelle) und "
+                 "evidence_904.db mit 14 Zeilen fuer die Grenzfaelle - "
+                 "darunter dieselbe Ermittlerkennung in Gross- und "
+                 "Kleinschreibung, das Testkonto in Kleinschreibung, Alex' "
+                 "echter Fall aus Bestand 1704143 (xpathStart != xpathEnd, "
+                 "offsetEnd 19 < offsetStart 25, gueltiger Wortlaut), eine "
+                 "Marke aus reiner Zeichensetzung sowie je eine kyrillische "
+                 "und arabische Marke. Python 3.12.3")
+
 _GEPRUEFT_756 = ("Build 756, 2026-09-02, gegen zwei Wegwerf-Bestaende unter "
                  "/tmp: evidence_901.db mit 14 Zeilen (Grundfaelle) und "
                  "evidence_904.db mit 12 Zeilen fuer die Grenzfaelle - "
@@ -5983,7 +5993,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "einzige mit gueltiger Ermittlerkennung; die "
                      "Gesamtbilanz nennt die Befunde einzeln MIT "
                      "annotations.id und der Rueckgabewert ist 1.",
-                     _GEPRUEFT_756),
+                     _GEPRUEFT_757),
                 _bsp("python tools/annotationen_bestand.py "
                      "--evidence-dir /tmp/fall/evidence "
                      "--forensic-dir /tmp/fall/forensic --uid 901 "
@@ -5994,7 +6004,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "JSON-Fassung ist ASCII-rein und nach Schluesseln "
                      "sortiert (gemessen: 14 Zeilen, 12 aktuell, "
                      "Rueckgabewert 1).",
-                     _GEPRUEFT_756),
+                     _GEPRUEFT_757),
                 _bsp("python tools/annotationen_bestand.py "
                      "--ausschluss testkonto1,testkonto2 "
                      "--json /tmp/bestand.json",
@@ -6003,7 +6013,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "Muster uid_<Ziffern>) bleibt daneben bestehen; die "
                      "wirksame Liste steht im Protokoll und in der "
                      "JSON-Fassung.",
-                     _GEPRUEFT_756),
+                     _GEPRUEFT_757),
             ),
             exit_codes=(
                 (0, "durchgelaufen, kein Befund, der eine Entscheidung "
@@ -6054,6 +6064,22 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "ersetzt sie nicht. Eine Liste, die sich per Argument leeren "
                 "liesse, waere ein stiller Weg, Testmarkierungen zu "
                 "Beweismitteln zu machen.",
+                "KENNUNGEN WERDEN AUF GROSSSCHREIBUNG NORMALISIERT, die "
+                "vorgefundene Rohform bleibt daneben stehen. Das "
+                "Produktivsystem bezieht die Kennungen aus dem Active "
+                "Directory und verwendet ausschliesslich Grossbuchstaben; "
+                "kleingeschriebene Formen stammen aus dem Testsystem. Ohne "
+                "Normalisierung steht dieselbe Person zweimal in der "
+                "Auswertung; ohne die Rohform liesse sich die Abweichung "
+                "anschliessend nicht mehr belegen - deshalb beides.",
+                "ABWEICHENDE SCHREIBWEISE IST EIN BEFUND, keine "
+                "Schoenheitsfrage: Die Rechtepruefung vergleicht die Kennung "
+                "des Anmeldenden zeichengenau mit 'created_by'. Weichen sie "
+                "ab, gelten die Eintraege nicht als eigene, und die Person "
+                "kann ihre eigenen Annotationen weder bearbeiten noch "
+                "loeschen. Gemeldet wird nur bei GUELTIGER Kennung - eine "
+                "ungueltige hat kein Konto im Active Directory, dort wuerde "
+                "niemand ausgesperrt.",
                 "M9: 'text range' MIT post_id ist KEIN Fehler. Seit der "
                 "Ueberarbeitung von Variante 2 wird die post_id "
                 "nachgetragen; nach Etappe 4 soll das der Normalfall sein. "
