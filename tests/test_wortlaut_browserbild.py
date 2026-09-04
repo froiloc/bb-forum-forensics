@@ -519,3 +519,97 @@ def test_br10_kein_gespeicherter_wortlaut_gegen_klartext():
     assert "browser_wortlaut(" in kern
     assert "_klartext(" not in kern, \
         "Die Kreuzprobe vergleicht wieder gegen den Quelltext."
+
+
+# ---------------------------------------------------------------------------
+# NE01 bis NE05 - Naehe-Eskalation (Build 762)
+#
+# Weisung Alex, 05.09.2026: Vom aufgeloesten Knoten zur Wurzel aufsteigen und
+# die nahen Geschwister bevorzugen, BEVOR der ganze page BLOB durchsucht wird.
+# Aufwendiger, aber zielgenauer - denn derselbe Wortlaut kann mehrfach auf
+# einer Seite stehen, am haeufigsten wegen eines Zitats.
+# ---------------------------------------------------------------------------
+
+def _seite_mit_zitat():
+    from report_render.html5_zerleger import Html5Zerleger
+
+    def post(n, txt):
+        return ('<div id="p%d" class="blockpost"><div class="postright">'
+                '<div class="postmsg"><p>%s</p></div></div></div>' % (n, txt))
+    roh = ("<div id='page-body'>"
+           + post(10, "Alpha eins.<br>Alpha zwei.")
+           + post(11, "Beta hier.")
+           + post(12, "Gamma dort.")
+           + post(50, "Zitat: Alpha eins.<br>Alpha zwei. -- so war es")
+           + "</div>")
+    wurzel, _b = Html5Zerleger().zerlege(roh)
+    return wurzel
+
+
+def test_ne01_container_werden_in_dokumentreihenfolge_gefunden():
+    """
+    ROT, wenn die Container fehlen oder doppelt gezaehlt werden.
+
+    Die Reihenfolge traegt die Abstandsrechnung der zweiten Stufe. Wuerde
+    der innere 'pp<n>' mitgefuehrt, zaehlte jeder Beitrag doppelt und
+    'benachbart' bedeutete etwas anderes.
+    """
+    from report_render.absatz_finder import AbsatzFinder as A
+    K = A._container_der_seite(_seite_mit_zitat())
+    assert [A.beitragsnummer(e) for e in K] == [10, 11, 12, 50]
+
+
+def test_ne02_treffer_im_benannten_container_ist_stufe_anker():
+    """ROT, wenn der starke Fall nicht als solcher gemeldet wird."""
+    from report_render.absatz_finder import AbsatzFinder as A
+    w = _seite_mit_zitat()
+    K = A._container_der_seite(w)
+    stufe, treffer = A.fundstellen_nach_naehe(
+        w, K[0], "Alpha eins." + chr(10) + "Alpha zwei.", K)
+    assert stufe == A.NAEHE_ANKER
+    assert [A.beitragsnummer(e) for e in treffer] == [10]
+
+
+def test_ne03_nachbar_wird_vor_dem_zitat_gefunden():
+    """
+    ROT, wenn die Naehe nicht wirkt. DAS IST DER ZWECK DER ESKALATION.
+
+    Der Ausdruck benennt Container 11, der Wortlaut steht in 10 und in 50.
+    Eine flache Suche lieferte zwei Treffer und muesste aufgeben. Ueber die
+    Naehe gewinnt 10 - Abstand 1 gegen Abstand 39.
+    """
+    from report_render.absatz_finder import AbsatzFinder as A
+    w = _seite_mit_zitat()
+    K = A._container_der_seite(w)
+    stufe, treffer = A.fundstellen_nach_naehe(
+        w, K[1], "Alpha eins." + chr(10) + "Alpha zwei.", K)
+    assert stufe == A.NAEHE_GESCHWISTER
+    assert [A.beitragsnummer(e) for e in treffer] == [10]
+
+
+def test_ne04_ohne_anker_bleibt_die_mehrdeutigkeit_sichtbar():
+    """
+    ROT, wenn ohne Bezugspunkt eine Eindeutigkeit vorgetaeuscht wird.
+
+    Ohne benannten Container gibt es kein 'nah'. Dann werden ALLE Treffer
+    gemeldet, und die Zahl ist die Aussage: nach der Vorgabe vom 05.09.2026
+    gilt ohne Rueckfrage nur, was an genau EINER Stelle steht.
+    """
+    from report_render.absatz_finder import AbsatzFinder as A
+    w = _seite_mit_zitat()
+    K = A._container_der_seite(w)
+    stufe, treffer = A.fundstellen_nach_naehe(
+        w, None, "Alpha eins." + chr(10) + "Alpha zwei.", K)
+    assert stufe == A.NAEHE_SEITE
+    assert sorted(A.beitragsnummer(e) for e in treffer) == [10, 50]
+
+
+def test_ne05_kein_treffer_wird_nicht_erfunden():
+    """ROT, wenn eine Stufe gemeldet wird, obwohl nichts gefunden wurde."""
+    from report_render.absatz_finder import AbsatzFinder as A
+    w = _seite_mit_zitat()
+    K = A._container_der_seite(w)
+    assert A.fundstellen_nach_naehe(w, K[0], "Kommt nirgends vor", K) \
+        == (None, [])
+    assert A.fundstellen_nach_naehe(w, K[0], "   ", K) == (None, [])
+    assert A.NAEHE_STUFEN == ("anker", "geschwister", "seite")

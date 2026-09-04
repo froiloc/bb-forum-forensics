@@ -1,0 +1,58 @@
+{
+ "issues": [
+  {
+   "id": "c886e47d-6ada-4e1a-b589-fd09a06c5714",
+   "type": "improvement",
+   "title": "Naehe-Eskalation fuer die Wortlautsuche in absatz_finder",
+   "affected_version": "0.8.762",
+   "reporter": "Claude",
+   "reported_at": "2026-09-05T11:00:00+02:00",
+   "status": "testing",
+   "severity": "major",
+   "description": "AbsatzFinder.fundstellen_nach_naehe() sucht den gespeicherten Wortlaut vom benannten post container aus nach aussen: erst im container selbst, dann in den Nachbarn mit wachsendem Abstand, zuletzt auf der ganzen Seite.\n\nWARUM (Weisung Alex, 05.09.2026): Derselbe Wortlaut steht oft mehrfach auf einer Seite, am haeufigsten weil ein spaeterer Beitrag einen frueheren zitiert. Eine flache Suche liefert dann mehrere Treffer und muss aufgeben. Die Entfernung im Baum entscheidet.\n\nGEMESSEN an einer Seite mit vier containern (10, 11, 12, 50), wobei 50 den Text von 10 zitiert: Ausdruck benennt 10 -> Stufe 'anker', Treffer [10]. Ausdruck benennt 11 -> Stufe 'geschwister', Treffer [10]. Kein Ausdruck -> Stufe 'seite', Treffer [10, 50], also mehrdeutig.\n\nDIE STUFE IST DAS MASS DER BELEGKRAFT und gehoert in das selection_json der geheilten Annotation. Ohne sie steht spaeter eine Fundstelle im Bericht, deren Herkunft niemand kennt.\n\nNOCH NICHT EINGESETZT. Die Methode wird erst gebraucht, wenn nach dem Lauf aus Build 761 feststeht, wie viele Annotationen zu heilen sind. Tests NE01 bis NE05.",
+   "tags": [
+    "annotationen",
+    "wortlaut",
+    "naehe",
+    "heilung"
+   ],
+   "expected_behavior": "Ein Wortlaut, der mehrfach auf der Seite steht, wird der naechstgelegenen Fundstelle zugeordnet.",
+   "actual_behavior": "Gebaut und geprueft, noch nicht eingesetzt.",
+   "updates": [
+    {
+     "timestamp": "2026-09-05T09:00:00+00:00",
+     "author": "Claude",
+     "action": "comment",
+     "comment": "Angelegt in Build 762."
+    }
+   ]
+  },
+  {
+   "id": "e8727950-0f1b-47e1-969f-1839deefdaff",
+   "type": "bug",
+   "title": "anker_inventar Block C leitete post_id ohne Kreuzprobe ab",
+   "affected_version": "0.8.762",
+   "reporter": "Claude",
+   "reported_at": "2026-09-05T11:00:00+02:00",
+   "status": "resolved",
+   "severity": "critical",
+   "description": "Block C in anker_inventar (Build 758) leitete die post_id aus dem aufgeloesten Knoten ab und stieg zum post container auf - OHNE Kreuzprobe gegen den gespeicherten Wortlaut.\n\nZeigt der XPath expression auf einen falschen container, liefert das eine post_id, die plausibel aussieht und falsch ist. Alex hat es am 05.09.2026 an Bestand 2948078 nachgewiesen: dort gehoert der gespeicherte Wortlaut zu einem voellig anderen Beitrag als dem, den der Ausdruck benennt.\n\nDIE ZAHL '412 VON 456 ZUGEORDNET' AUS DEM LAUF VOM 04.09.2026 IST NICHT BELASTBAR und darf nirgends verwendet werden.\n\nmanagement/maintenance/annotation_pruefung.py beantwortet dieselbe Frage seit dem 31.08.2026 und tut es richtig. Block C und der von ihm abhaengige Block D sind in Build 762 entfallen; A und B bleiben.\n\nURSACHE AUF MEINER SEITE: Ich habe ein vorhandenes Werkzeug nicht gesucht, bevor ich ein zweites gebaut habe. Derselbe Fehlertyp wie bei browser_wortlaut in Build 758.",
+   "tags": [
+    "annotationen",
+    "kreuzprobe",
+    "selbstverschuldet",
+    "rueckbau"
+   ],
+   "expected_behavior": "Eine post_id gilt erst als belegt, wenn der Wortlaut im benannten Beitrag steht.",
+   "actual_behavior": "Block C uebernahm sie ungeprueft aus dem Index.",
+   "updates": [
+    {
+     "timestamp": "2026-09-05T09:00:00+00:00",
+     "author": "Claude",
+     "action": "comment",
+     "comment": "Angelegt in Build 762."
+    }
+   ]
+  }
+ ]
+}

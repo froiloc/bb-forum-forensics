@@ -84,8 +84,7 @@ def _ausgeben(b, sag) -> None:
         sag("  FEHLER: %s" % f)
     if not b.a_behaelter:
         return
-    s, a, bb, c, d = b.seiten, b.a_behaelter, b.b_anker, b.c_aufloesung, \
-        b.d_wortlaut
+    s, a, bb = b.seiten, b.a_behaelter, b.b_anker
 
     _tab(sag, "SEITEN", (
         ("Adressen mit Annotationen", s["adressen"]),
@@ -132,95 +131,52 @@ def _ausgeben(b, sag) -> None:
         sag("    den Textausdruck. Der exakte Attributvergleich sollte die")
         sag("    Signatur ('postsignature postmsg') ausschliessen.")
 
-    sag("")
-    sag("C  AUFLOESUNG DER GESPEICHERTEN AUSDRUECKE")
-    _tab(sag, "", (
-        ("Annotationen mit Ausdruck", c["mit_ausdruck"]),
-        ("  Ausdruck findet einen Knoten", c["aufgeloest"]),
-        ("  Ausdruck findet KEINEN Knoten", c["kein_knoten"]),
-        ("  Knoten ohne Beitragsbehaelter darueber",
-         c["knoten_ohne_behaelter"]),
-        ("  POST_ID BESTIMMT", c["post_id_bestimmt"]),
-        ("Variante 1 'whole post'", c["whole_post"]),
-        ("  Behaelter im Seiteninhalt vorhanden",
-         c["whole_post_behaelter_da"]),
-    ))
-    for f in c["whole_post_behaelter_fehlt"]:
-        sag("      BEHAELTER FEHLT: id=%s Nummer=%s auf %s"
-            % (f["id"], f["nummer"], f["url"]))
-    for e in c["beispiele"][:5]:
-        sag("      Beispiel: annotations.id=%s -> post_id=%s"
-            % (e["id"], e["post_id"]))
-
-    sag("")
-    sag("D  GEGENPROBE UEBER DEN WORTLAUT  (nur fuer die Faelle aus C, die")
-    sag("   nicht aufgeloest haben)")
-    _tab(sag, "", (
-        ("geprueft", d["geprueft"]),
-        ("Wortlaut steht in GENAU EINEM Behaelter", d["wortlaut_eindeutig"]),
-        ("Wortlaut steht in MEHREREN", d["wortlaut_mehrfach"]),
-        ("Wortlaut steht NIRGENDS", d["wortlaut_nirgends"]),
-    ))
-    if d.get("fassung"):
-        sag("    Getroffene Vergleichsfassung (die Reihenfolge ist die")
-        sag("    Rangfolge - 'gefaltet' ist der schwaechste Treffer):")
-        for name in ("woertlich", "ohne_randleerraum", "gefaltet"):
-            if name in d["fassung"]:
-                sag("      %s %s" % (_pad(name, 24), d["fassung"][name]))
-    for f in d["faelle"][:20]:
-        sag("      id=%s %s Traeger=%s (%d) Laenge=%s Umbrueche=%s %s"
-            % (f["id"], _pad(f["lage"], 22), f["traeger"],
-               f["traeger_anzahl"], f["wortlaut_laenge"],
-               f.get("zeilenumbrueche"), f.get("fassung") or ""))
-        if f["traeger_anzahl"] != 1:
-            sag("         url: %s" % f["url"])
-            sag("         post_ids auf dieser Seite (%d): %s"
-                % (f.get("post_ids_anzahl", 0),
-                   ", ".join(str(i) for i in f.get("post_ids_auf_seite", []))
-                   or "(keine)"))
 
 
 def _bilanz(befunde, sag) -> int:
+    """
+    Die Summen ueber alle Bestaende.
+
+    ES WIRD KEINE ZUORDNUNGSQUOTE MEHR AUSGEWIESEN. Bis Build 761 stand
+    hier '412 von 456 zugeordnet'. Diese Zahl war nicht belastbar: sie
+    entstand ohne Kreuzprobe gegen den gespeicherten Wortlaut. Wer die
+    Zuordnung wissen will, faehrt tools/annotationen_verifizieren.py - dort
+    wird gegen den Inhalt geprueft und in sechs benannten Lagen berichtet.
+    """
     sag("=" * 78)
     sag("GESAMTBILANZ")
     sag("=" * 78)
-    sag("  %s %8s %8s %9s %9s %9s"
-        % (_pad("Bestand", 12), "Ausdruck", "aufgel.", "post_id", "wholeP",
-           "W-eind."))
+    sag("  %s %9s %9s %9s %9s %9s"
+        % (_pad("Bestand", 12), "Seiten", "container", "m.Text", "m.Verf",
+           "m.Zeit"))
     sag("  " + "-" * 66)
-    su = dict.fromkeys(("mit", "auf", "pid", "wp", "we"), 0)
+    su = dict.fromkeys(("s", "c", "t", "v", "z"), 0)
     for b in befunde:
-        if not b.c_aufloesung:
+        if not b.a_behaelter:
             sag("  %s  NICHT AUSGEWERTET" % _pad(b.uid, 12))
             continue
-        c, d = b.c_aufloesung, b.d_wortlaut
-        sag("  %s %8d %8d %9d %9d %9d"
-            % (_pad(b.uid, 12), c["mit_ausdruck"], c["aufgeloest"],
-               c["post_id_bestimmt"], c["whole_post"],
-               d["wortlaut_eindeutig"]))
-        su["mit"] += c["mit_ausdruck"]; su["auf"] += c["aufgeloest"]
-        su["pid"] += c["post_id_bestimmt"]; su["wp"] += c["whole_post"]
-        su["we"] += d["wortlaut_eindeutig"]
+        a, bb = b.a_behaelter, b.b_anker
+        g = bb["behaelter_geprueft"]
+        t = g - bb["text"].get("(keiner)", 0)
+        v = g - bb["verfasser"].get("(keiner)", 0)
+        z = g - bb["zeitstempel"].get("(keiner)", 0)
+        sag("  %s %9d %9d %9d %9d %9d"
+            % (_pad(b.uid, 12), a["seiten_zerlegt"], g, t, v, z))
+        su["s"] += a["seiten_zerlegt"]; su["c"] += g
+        su["t"] += t; su["v"] += v; su["z"] += z
     sag("  " + "-" * 66)
-    sag("  %s %8d %8d %9d %9d %9d"
-        % (_pad("SUMME", 12), su["mit"], su["auf"], su["pid"], su["wp"],
-           su["we"]))
+    sag("  %s %9d %9d %9d %9d %9d"
+        % (_pad("SUMME", 12), su["s"], su["c"], su["t"], su["v"], su["z"]))
     sag("")
-    tragend = su["pid"] + su["we"]
-    sag("  MIT BESTIMMBARER BEITRAGSNUMMER: %d von %d Textmarkierungen"
-        % (su["pid"], su["mit"]))
-    sag("  ZUZUEGLICH ueber den Wortlaut eindeutig zuzuordnen: %d"
-        % su["we"])
-    sag("  Zusammen: %d von %d." % (tragend, su["mit"]))
-    sag("  DIE ZWEITE ZAHL IST KEINE ZUSAGE. Sie sagt, dass der Wortlaut in")
-    sag("  genau einem Behaelter steht - ob das die richtige Stelle ist,")
-    sag("  entscheidet der Ermittler, nicht dieses Werkzeug.")
-    offen = su["mit"] - tragend
-    sag("")
-    sag("  OFFEN: %d Textmarkierung(en) ohne Zuordnung." % offen)
+    sag("  Fehlend: Text %d, Verfasser %d, Zeitstempel %d."
+        % (su["c"] - su["t"], su["c"] - su["v"], su["c"] - su["z"]))
+    sag("  DIE ZUORDNUNG ANNOTATION -> post_id BEANTWORTET DIESES WERKZEUG")
+    sag("  NICHT. Dafuer ist tools/annotationen_verifizieren.py zustaendig;")
+    sag("  es prueft den Wortlaut gegen den benannten Beitrag und berichtet")
+    sag("  in sechs benannten Lagen.")
     sag("=" * 78)
     sag("Es wurde nichts am Bestand geaendert.")
-    return offen
+    return su["c"] - su["v"]
 
 
 def lauf(evidence_dir, forensic_dir, nur_uids, sag, beispiele, json_ziel):

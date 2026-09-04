@@ -12,8 +12,25 @@
 #   Vier Messbloecke:
 #     A  Behaelter-Inventar   - welche Elemente tragen 'id="p<n>"'?
 #     B  Anker je Behaelter   - Beitragstext, Verfasser, Zeitstempel
-#     C  Aufloesung           - wohin zeigen die gespeicherten Ausdruecke?
-#     D  Gegenprobe Wortlaut  - wo sie nicht aufloesen: liegt es am Baum?
+#
+# ── BLOCK C IST IN BUILD 762 ENTFALLEN ──────────────────────────────────────
+#
+#   Er leitete die post_id aus dem aufgeloesten Knoten ab und stieg zum
+#   post container auf - OHNE Kreuzprobe gegen den gespeicherten Wortlaut.
+#   Zeigt der Index auf den falschen Container, liefert das eine post_id,
+#   die plausibel aussieht und falsch ist. Die Zahl '412 von 456' aus dem
+#   Lauf vom 04.09.2026 ist deshalb NICHT BELASTBAR.
+#
+#   management/maintenance/annotation_pruefung.py beantwortet dieselbe
+#   Frage seit dem 31.08.2026 und tut es richtig: es haelt den Wortlaut
+#   gegen den benannten Beitrag (AbsatzFinder.wortlaut_im_beitrag) und
+#   benennt sechs Lagen, darunter WIDERLEGT - 'der Wortlaut steht eindeutig
+#   in einem ANDEREN Beitrag'.
+#
+#   ZWEI WERKZEUGE MIT DERSELBEN FRAGE UND VERSCHIEDENEN ANTWORTEN SIND
+#   SCHLIMMER ALS EINES. Block C und der von ihm abhaengige Block D sind
+#   deshalb entfallen. A und B bleiben: sie beantworten Fragen, die
+#   annotation_pruefung nicht stellt.
 #
 # ── WAS DER FORENQUELLTEXT VORGIBT (Etappe 1, Quelltextteil) ────────────────
 #
@@ -144,15 +161,12 @@ class Inventarbefund:
     fehler: List[str] = field(default_factory=list)
     a_behaelter: Dict[str, Any] = field(default_factory=dict)
     b_anker: Dict[str, Any] = field(default_factory=dict)
-    c_aufloesung: Dict[str, Any] = field(default_factory=dict)
-    d_wortlaut: Dict[str, Any] = field(default_factory=dict)
     seiten: Dict[str, Any] = field(default_factory=dict)
 
     def als_dict(self) -> Dict[str, Any]:
         return {"uid": self.uid, "fehler": list(self.fehler),
                 "a_behaelter": self.a_behaelter, "b_anker": self.b_anker,
-                "c_aufloesung": self.c_aufloesung,
-                "d_wortlaut": self.d_wortlaut, "seiten": self.seiten}
+                "seiten": self.seiten}
 
 
 class AnkerInventar:
@@ -287,12 +301,6 @@ class AnkerInventar:
         bb = {"behaelter_geprueft": 0, "text": {}, "verfasser": {},
               "zeitstempel": {}, "text_mehrfach": 0,
               "ohne_text": [], "ohne_verfasser": [], "ohne_zeit": []}
-        c = {"mit_ausdruck": 0, "aufgeloest": 0, "kein_knoten": 0,
-             "knoten_ohne_behaelter": 0, "post_id_bestimmt": 0,
-             "whole_post": 0, "whole_post_behaelter_da": 0,
-             "whole_post_behaelter_fehlt": [], "beispiele": []}
-        d = {"geprueft": 0, "wortlaut_eindeutig": 0, "wortlaut_mehrfach": 0,
-             "wortlaut_nirgends": 0, "fassung": {}, "faelle": []}
         seiten = {"adressen": len(je_url), "ohne_seite": 0, "ohne_inhalt": 0}
 
         for url, gruppe in sorted(je_url.items()):
@@ -312,10 +320,8 @@ class AnkerInventar:
             a["seiten_zerlegt"] += 1
             behaelter = self._behaelter_sammeln(wurzel, a, url)
             self._anker_pruefen(behaelter, bb)
-            self._aufloesen(wurzel, behaelter, gruppe, c, d, url)
 
-        b.a_behaelter, b.b_anker = a, bb
-        b.c_aufloesung, b.d_wortlaut, b.seiten = c, d, seiten
+        b.a_behaelter, b.b_anker, b.seiten = a, bb, seiten
 
     # -- Block A -------------------------------------------------------------
 
@@ -418,206 +424,3 @@ class AnkerInventar:
             if zname is None and len(bb["ohne_zeit"]) < self.beispiele:
                 bb["ohne_zeit"].append(nummer)
 
-    # -- Block C und D -------------------------------------------------------
-
-    @staticmethod
-    def _behaelter_ueber(knoten, behaelter: Dict[int, Any]) -> Optional[int]:
-        """
-        Die Beitragsnummer des naechsten Vorfahren mit Beitragskennung.
-
-        Aufstieg statt Suche: der Knoten kann tief in der Nachricht liegen,
-        und nur der Weg nach oben sagt, ZU WELCHEM Beitrag er gehoert.
-        """
-        el = knoten
-        # Textknoten aus lxml-XPath sind 'smart strings' mit
-        # getparent(); Elementknoten haben es ohnehin.
-        if hasattr(el, "getparent") and not hasattr(el, "iter"):
-            el = el.getparent()
-        while el is not None:
-            zerlegt = kennung_zerlegen(el.get("id")
-                                       if hasattr(el, "get") else None)
-            if zerlegt is not None:
-                return zerlegt[1]
-            el = el.getparent() if hasattr(el, "getparent") else None
-        return None
-
-    def _aufloesen(self, wurzel, behaelter, gruppe, c, d, url) -> None:
-        """
-        Block C: Wohin zeigen die gespeicherten Ausdruecke?
-        Block D: Wo sie nicht aufloesen - liegt es am Baum oder am Ausdruck?
-
-        BLOCK D IST DIE GEGENPROBE ZU EINER OFFENEN FRAGE. Loest ein Ausdruck
-        nicht auf, gibt es zwei Erklaerungen: der Baum ist ein anderer als
-        beim Markieren (etwa weil der <mark>-Rueckfallweg von toolbar.js
-        Z. 1419 Textknoten zerlegt hatte), oder der Ausdruck war nie
-        richtig. Steht der gespeicherte Wortlaut trotzdem in genau EINEM
-        Behaelter, ist die Markierung inhaltlich einwandfrei und nur ihr
-        Weg unbrauchbar - dann traegt der Wortlaut die Zuordnung.
-        """
-        for z in gruppe:
-            roh = z["selection_json"]
-            sel = None
-            if roh:
-                try:
-                    geladen = json.loads(roh)
-                    sel = geladen if isinstance(geladen, dict) else None
-                except (ValueError, TypeError):
-                    sel = None
-            if sel is None or not sel.get("xpathStart"):
-                # Variante 1 'whole post': kein Ausdruck, aber ein Ort.
-                # Die Pruefung laeuft umgekehrt - gibt es den Behaelter?
-                zerlegt = kennung_zerlegen(z["element_id"])
-                nummer = zerlegt[1] if zerlegt else z["post_id"]
-                if nummer is None:
-                    continue
-                c["whole_post"] += 1
-                if int(nummer) in behaelter:
-                    c["whole_post_behaelter_da"] += 1
-                elif len(c["whole_post_behaelter_fehlt"]) < self.beispiele:
-                    c["whole_post_behaelter_fehlt"].append(
-                        {"id": z["id"], "nummer": int(nummer), "url": url})
-                continue
-
-            c["mit_ausdruck"] += 1
-            ausdruck = str(sel["xpathStart"])
-            try:
-                treffer = wurzel.xpath(ausdruck)
-            except Exception:                             # noqa: BLE001
-                treffer = []
-            if not treffer:
-                c["kein_knoten"] += 1
-                self._wortlaut_gegenprobe(z, sel, behaelter, d, url,
-                                          "ausdruck_ohne_knoten")
-                continue
-            c["aufgeloest"] += 1
-            nummer = self._behaelter_ueber(treffer[0], behaelter)
-            if nummer is None:
-                c["knoten_ohne_behaelter"] += 1
-                self._wortlaut_gegenprobe(z, sel, behaelter, d, url,
-                                          "knoten_ohne_behaelter")
-                continue
-            c["post_id_bestimmt"] += 1
-            if len(c["beispiele"]) < self.beispiele:
-                c["beispiele"].append({"id": z["id"], "post_id": nummer,
-                                       "url": url})
-
-    def _wortlaut_gegenprobe(self, z, sel, behaelter, d, url, lage) -> None:
-        """
-        Steht der gespeicherte Wortlaut in genau EINEM Behaelter?
-
-        ── DER FEHLER, DEN DIESE FASSUNG BEHEBT (Build 758 -> 759) ──────────
-
-        Die erste Fassung verglich den gespeicherten Wortlaut gegen
-        ''.join(el.itertext()) - also gegen den QUELLTEXT des Teilbaums. Das
-        kann nur fehlschlagen, sobald eine Markierung ueber mehr als eine
-        Zeile geht:
-
-          toolbar.js Z. 1101:  var text = sel.toString().trim();
-
-        'Selection.toString()' ist in Blink LAYOUTABHAENGIG. Jedes <br> wird
-        darin zu '\n', jede Blockgrenze ebenso, und Rand-Leerraum faellt weg.
-        Im Quelltext traegt ein <br> dagegen gar nichts bei: aus
-        '<p>A<br>B</p>' wird im Browser 'A\nB', in itertext() aber 'AB'.
-        Die beiden Zeichenketten koennen sich nicht treffen.
-
-        BELEG, DASS DIES BEREITS BEKANNT WAR: Alex hat denselben Befund am
-        28.08.2026 gemeldet; die Rueckabwicklung steht seit Build 729 in
-        report_render/absatz_finder.browser_wortlaut() und ist dort mit
-        BR01-BR07 abgesichert. Die erste Fassung dieses Werkzeugs hat sie
-        nicht benutzt, sondern einen zweiten, schlechteren Weg gebaut. Das
-        ist der Fehler - nicht die Zeichenkette selbst.
-
-        ── WIE JETZT VERGLICHEN WIRD ────────────────────────────────────────
-
-        browser_wortlaut() bildet den Text eines Teilbaums so, wie der
-        Browser ihn bildet. Verglichen wird in den drei Fassungen aus
-        _wortlaut_varianten(), UND DIE REIHENFOLGE IST DIE RANGFOLGE:
-        woertlich, dann ohne Rand-Leerraum, zuletzt mit gefaltetem Leerraum.
-        Welche Fassung getroffen hat, wird MITGEMELDET - ein Treffer der
-        dritten ist schwaecher als einer der ersten, und wer das nicht
-        auseinanderhaelt, verkauft eine Naeherung als Feststellung.
-        """
-        from report_render.absatz_finder import _falte
-
-        d["geprueft"] += 1
-        roh = str(sel.get("textContent") or "")
-        if not roh.strip():
-            d["wortlaut_nirgends"] += 1
-            return
-
-        # DIE DREI STUFEN AUSDRUECKLICH, in der Rangfolge aus
-        # absatz_finder._wortlaut_varianten(): woertlich, ohne Rand-Leerraum,
-        # mit gefaltetem Leerraum.
-        #
-        # WARUM NICHT _wortlaut_varianten() SELBST: Die Funktion laesst eine
-        # Fassung weg, wenn sie mit einer frueheren uebereinstimmt. Ist die
-        # gespeicherte Zeichenkette bereits gefaltet, enthaelt die Liste nur
-        # EINEN Eintrag - und die gefaltete Stufe liefe nie an, ohne dass es
-        # auffiele. Genau dieser Fall trat auf: 'Zeile zwei. Zeile drei.'
-        # gegen einen Beitrag, dessen Zeilen durch <br> getrennt sind.
-        #
-        # GEFALTET WIRD AUF BEIDEN SEITEN. Nur die Suchzeichenkette zu falten
-        # kann nicht treffen: 'A B' findet sich nicht in 'A\nB'.
-        stufen = [("woertlich", roh, False),
-                  ("ohne_randleerraum", roh.strip(), False),
-                  ("gefaltet", _falte(roh), True)]
-
-        traeger: List[int] = []
-        stufe = None
-        for name, nadel, falten in stufen:
-            if not nadel:
-                continue
-            for nummer, el in behaelter.items():
-                text = self._browsertext(el)
-                if falten:
-                    text = _falte(text)
-                if nadel in text:
-                    traeger.append(nummer)
-            if traeger:
-                stufe = name
-                break
-
-        if len(traeger) == 1:
-            d["wortlaut_eindeutig"] += 1
-            d["fassung"][stufe] = d["fassung"].get(stufe, 0) + 1
-        elif len(traeger) > 1:
-            d["wortlaut_mehrfach"] += 1
-        else:
-            d["wortlaut_nirgends"] += 1
-        if len(d["faelle"]) < self.beispiele:
-            # DIE post_ids DER GANZEN SEITE GEHOEREN DAZU (Build 760).
-            # Ohne sie ist ein Fall nicht nachpruefbar: 'der Text steht in
-            # keinem post container' sagt nichts darueber, WELCHE container
-            # auf der Seite standen. Erst damit laesst sich am Original
-            # nachsehen, ob die Markierung ueber mehrere Beitraege lief,
-            # ob die Seite ueberhaupt Beitraege hatte, oder ob der Inhalt
-            # sich geaendert hat.
-            alle = sorted(behaelter)
-            d["faelle"].append({
-                "id": z["id"], "lage": lage, "url": url,
-                "traeger": traeger[:5], "traeger_anzahl": len(traeger),
-                "fassung": stufe,
-                "wortlaut_laenge": len(roh),
-                "zeilenumbrueche": roh.count("\n"),
-                "post_ids_auf_seite": alle[:400],
-                "post_ids_anzahl": len(alle)})
-
-    def _browsertext(self, el) -> str:
-        """
-        Der Browsertext eines Behaelters, einmal gebildet und gemerkt.
-
-        Die Bildung laeuft ueber den gesamten Teilbaum. Ohne Merken wuerde
-        sie fuer jede der drei Fassungen und fuer jede offene Annotation
-        erneut ausgefuehrt - bei 500 Behaeltern je Seite ist das der
-        Unterschied zwischen Sekunden und Minuten.
-        """
-        from report_render.absatz_finder import browser_wortlaut
-
-        schluessel = id(el)
-        if schluessel not in self._textspeicher:
-            try:
-                text, _versaetze = browser_wortlaut(el)
-            except Exception:                             # noqa: BLE001
-                text = "".join(el.itertext())
-            self._textspeicher[schluessel] = text
-        return self._textspeicher[schluessel]
