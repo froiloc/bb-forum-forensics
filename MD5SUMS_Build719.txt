@@ -1,8 +1,0 @@
-fd2a479a989c899679ce2bb614cb1deb  build.json
-d029a1238264591668a92fa0fad10cf4  issue-tracker/eintraege_claude_Build719.json
-c60568a08dfd1e864c4319d7571b7913  report_render/docx_renderer.py
-666e3cb48d728f11b406e7a56bfb01b1  report_render/html_renderer.py
-37a32e9e9b30f000c75833ef03c3867d  report_render/pdf_renderer.py
-078fcaa1c785dcac54a4f8ab90967868  report_render/quote_typen.py
-9eed45d12ccb2f742f19b1178f3a8f97  report_render/report_source.py
-3a27d8befac9ed56f0999c2ffba33c34  tests/test_quote_varianten.py

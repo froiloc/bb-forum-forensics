@@ -1,8 +1,0 @@
-8b98fa010c891f33d4aa8e5b13452fc1  build.json
-9ba5c00d22645dcefaa78f1ac5afeddb  db/assets_db.py
-8cee3294b6a2f1a4c8ad33392d96faae  forensic_api/__init__.py
-ecc8bbb5dd2b04201ccdf7d4d84f1756  forensic_api/fileasset.py
-e8810911ead1a913403f3c662ee4ee17  forensic_api/placeholders.py
-62ee195d67811637d5da5bf9ef8352fe  issue-tracker/eintraege_claude_Build722.json
-08928a4b31c9a89ef87d0c1ca21703c4  tests/test_db_guard_ausdehnung.py
-85fd1757f26400ad4a6da73e4a900d27  tests/test_placeholders.py
