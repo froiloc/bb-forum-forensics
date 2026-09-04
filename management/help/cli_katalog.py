@@ -337,6 +337,11 @@ _GEPRUEFT_754 = ("Build 754, 2026-08-31, gegen Wegwerf-Bestaende unter /tmp "
                  "Lagen, forensic_900.db mit einem Seitenabzug aus vier "
                  "Beitraegen), Python 3.13, lxml 6.1, html5lib 1.1")
 
+_GEPRUEFT_760 = ("Build 760, 2026-09-04, gegen denselben Wegwerf-Bestand wie "
+                 "759, erweitert um die Pruefung, dass nicht zugeordnete "
+                 "Faelle die post_ids ihrer Seite mitfuehren. Python 3.12.3, "
+                 "html5lib.")
+
 _GEPRUEFT_759 = ("Build 759, 2026-09-04, gegen einen Wegwerf-Bestand unter "
                  "/tmp mit nachgebauter Forenstruktur, erweitert um einen "
                  "MEHRZEILIGEN Beitrag mit <br>: 8 Ausdruecke, 5 aufgeloest, "
@@ -5992,12 +5997,12 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "Textmarkierungen eine Beitragsnummer bestimmbar ist "
                      "und wie viele nur ueber den Wortlaut zuzuordnen "
                      "waeren.",
-                     _GEPRUEFT_759),
+                     _GEPRUEFT_760),
                 _bsp("python tools/anker_inventar.py --uid 1488 "
                      "--beispiele 50",
                      "Ein Bestand, mit mehr namentlich genannten "
                      "Einzelfaellen.",
-                     _GEPRUEFT_759),
+                     _GEPRUEFT_760),
             ),
             exit_codes=(
                 (0, "durchgelaufen, jede Textmarkierung ist zugeordnet"),
@@ -6030,6 +6035,10 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "Treffer der dritten ist schwaecher als einer der ersten. "
                 "Gefaltet wird auf BEIDEN Seiten; nur die Suchzeichenkette "
                 "zu falten kann nicht treffen.",
+                "NICHT ZUGEORDNETE FAELLE FUEHREN DIE post_ids IHRER SEITE "
+                "MIT. 'Der Text steht in keinem post container' sagt nichts "
+                "darueber, WELCHE container auf der Seite standen; ohne die "
+                "Liste ist der Fall nicht nachpruefbar.",
                 "GELOESCHTE UND UEBERHOLTE ZEILEN werden nicht mitgemessen. "
                 "Sie zeigen auf denselben Ort wie ihre Nachfolger und "
                 "verfaelschten jede Quote.",

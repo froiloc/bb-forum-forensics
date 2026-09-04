@@ -378,3 +378,28 @@ def test_ai12_die_getroffene_fassung_wird_gemeldet(tmp_path):
         if f["traeger_anzahl"] == 1:
             assert f["fassung"] in ("woertlich", "ohne_randleerraum",
                                     "gefaltet")
+
+
+def test_ai13_post_ids_der_seite_werden_mitgeliefert(tmp_path):
+    """
+    ROT, wenn ein nicht zugeordneter Fall ohne die post_ids seiner Seite
+    gemeldet wird.
+
+    'Der Text steht in keinem post container' sagt nichts darueber, WELCHE
+    container auf der Seite standen. Ohne diese Liste ist der Fall nicht
+    nachpruefbar: es laesst sich nicht unterscheiden, ob die Markierung
+    ueber mehrere Beitraege lief, ob die Seite ueberhaupt Beitraege hatte,
+    oder ob der Seiteninhalt sich geaendert hat.
+
+    Annotation 4 der Vorrichtung zeigt in den Seitenkopf. Auf ihrer Seite
+    stehen die post container 8801, 8802 und 8803.
+    """
+    d = _befund(tmp_path).d_wortlaut
+    fall = [f for f in d["faelle"] if f["id"] == 4][0]
+    assert fall["traeger_anzahl"] == 0
+    assert fall["post_ids_auf_seite"] == [8801, 8802, 8803]
+    assert fall["post_ids_anzahl"] == 3
+    # Auch bei einem Treffer steht die Liste da - sie kostet nichts und
+    # erlaubt die Gegenprobe, ob der Treffer plausibel ist.
+    treffer = [f for f in d["faelle"] if f["traeger_anzahl"] == 1][0]
+    assert treffer["post_ids_anzahl"] >= 1
