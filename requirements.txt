@@ -39,7 +39,7 @@ ldap3>=2.9.1
 pyasn1>=0.6.4
 dotenv>=0.9.9
 python_dotenv>=1.2.2
-python_ldap==3.4.5
+python_ldap==3.4.5; sys_platform == 'win32'  # Windows only
 setuptools>=83.0.0
 pyasn1_modules>=0.4.2
 ms_active_directory>=1.14.1
@@ -47,4 +47,4 @@ dnspython>=2.8.0
 pycryptodome>=3.23.0
 pytz>=2026.2
 six>=1.17.0
-winkerberos>=0.13.0
+winkerberos>=0.13.0; sys_platform == 'win32'  # Windows only
