@@ -337,6 +337,16 @@ _GEPRUEFT_754 = ("Build 754, 2026-08-31, gegen Wegwerf-Bestaende unter /tmp "
                  "Lagen, forensic_900.db mit einem Seitenabzug aus vier "
                  "Beitraegen), Python 3.13, lxml 6.1, html5lib 1.1")
 
+_GEPRUEFT_758 = ("Build 758, 2026-09-04, gegen einen Wegwerf-Bestand unter "
+                 "/tmp mit nachgebauter Forenstruktur: PN-Seite nach "
+                 "include/pms_new/mdl/topic.php Z. 462 ff. mit Signatur, "
+                 "viewtopic-Seite mit aeusserem <article id=\"p9001\"> und "
+                 "innerem <div id=\"pp9001\"> nach viewtopic0.php Z. 886 "
+                 "und 975, sowie einem Systembeitrag ohne 'postmsg' mit "
+                 "Text in <td>. Python 3.12.3, html5lib. Gemessen: 6 "
+                 "Ausdruecke, 5 aufgeloest, 4 post_id bestimmt, 1 ueber den "
+                 "Wortlaut eindeutig.")
+
 _GEPRUEFT_757 = ("Build 757, 2026-09-03, gegen zwei Wegwerf-Bestaende unter "
                  "/tmp: evidence_901.db mit 14 Zeilen (Grundfaelle) und "
                  "evidence_904.db mit 14 Zeilen fuer die Grenzfaelle - "
@@ -5916,6 +5926,92 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "gegen jeden Beitrag der Seite gehalten. Auf einer Seite mit "
                 "500 Beitraegen und 260 Markierungen sind das 130.000 "
                 "Vergleiche - das dauert und ist kein Aufhaenger.",
+            ),
+        ),
+    ),
+    CliEintrag(
+        schluessel="anker_inventar",
+        pfad="tools/anker_inventar.py",
+        aufruf="python tools/anker_inventar.py [--config ./config.yaml] "
+               "[--evidence-dir <Verz>] [--forensic-dir <Verz>] "
+               "[--uid <uid> ...] [--beispiele 20] [--protokoll <Datei>] "
+               "[--json <Datei>]",
+        titel="Inventar der Ankerpunkte in den Seiten-BLOBs (Etappe 1)",
+        gruppe="Diagnose",
+        zweck="Zerlegt die Seiten-BLOBs mit html5lib und haelt sie gegen die "
+              "Annotationen: welche Beitragsbehaelter gibt es, welche "
+              "Metadaten tragen sie, und wie viele der gespeicherten "
+              "XPath-Ausdruecke finden damit ihren Beitrag.",
+        art="lesend",
+        datenbanken=(
+            "evidence_<uid>.db (lesend, mode=ro - annotations)",
+            "forensic_<uid>.db (lesend, mode=ro - pages, page_aliases; "
+            "hier WIRD der BLOB-Inhalt gelesen und zerlegt)",
+        ),
+        betrieb="Darf jederzeit laufen. Beide Verbindungen sind "
+                "schreibgeschuetzt. Die Zerlegung ist der teuerste Schritt; "
+                "je Adresse wird nur einmal zerlegt.",
+        beleg=False,
+        ausgabe="Je Bestand vier Bloecke - A Behaelter, B Anker, "
+                "C Aufloesung, D Wortlaut-Gegenprobe - danach eine "
+                "Gesamtbilanz. '--protokoll' schreibt dieselben Zeilen in "
+                "eine Datei, '--json' dieselben Zahlen maschinenlesbar.",
+        hinweis="WOZU: Etappe 0 hat gezaehlt, was in den Annotationen steht - "
+                "497 Textmarkierungen, alle mit rein positionsbezogenem "
+                "Ausdruck, KEINE mit post_id. Dieses Werkzeug beantwortet "
+                "die Vorfrage, ob der gespeicherte Seiteninhalt die "
+                "Zuordnung ueberhaupt hergibt. "
+                "DIE KENNUNG LAUTET '^p+(\\d+)$' UND NICHT '^p(\\d+)$': "
+                "viewtopic0.php Z. 975 schreibt das 'p' doppelt, einmal als "
+                "Literal und einmal in der Ausgabe. Ein Zerleger ohne '+' "
+                "verloere diesen Zweig stillschweigend. Dieselbe Form "
+                "benutzen db/forensic_db.py und toolbar.js. "
+                "html5lib IST PFLICHT und hat keinen Rueckfall: es fuehrt "
+                "denselben Baumaufbau aus wie die Blink-Engine, die den "
+                "Ausdruck erzeugt hat.",
+        konfiguration=(
+            _k("paths.evidence_db_dir",
+               "Verzeichnis der evidence_<uid>.db.", "./data/evidence/",
+               "tools/anker_inventar.py, main()", "--evidence-dir"),
+            _k("paths.forensic_db_dir",
+               "Verzeichnis der forensic_<uid>.db.", "./data/forensic/",
+               "tools/anker_inventar.py, main()", "--forensic-dir"),
+        ),
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/anker_inventar.py "
+                     "--protokoll /tmp/anker.log --json /tmp/anker.json",
+                     "Alle Bestaende. Die Gesamtbilanz nennt, fuer wie viele "
+                     "Textmarkierungen eine Beitragsnummer bestimmbar ist "
+                     "und wie viele nur ueber den Wortlaut zuzuordnen "
+                     "waeren.",
+                     _GEPRUEFT_758),
+                _bsp("python tools/anker_inventar.py --uid 1488 "
+                     "--beispiele 50",
+                     "Ein Bestand, mit mehr namentlich genannten "
+                     "Einzelfaellen.",
+                     _GEPRUEFT_758),
+            ),
+            exit_codes=(
+                (0, "durchgelaufen, jede Textmarkierung ist zugeordnet"),
+                (1, "durchgelaufen, es bleiben Textmarkierungen ohne "
+                    "Zuordnung"),
+                (2, "nicht zustande gekommen (Verzeichnis fehlt, keine "
+                    "evidence_<uid>.db, JSON-Datei nicht schreibbar)"),
+            ),
+            warnungen=(
+                "DIE ZAHL AUS BLOCK D IST KEINE ZUSAGE. Sie sagt, dass der "
+                "Wortlaut in genau einem Behaelter steht - ob das die "
+                "richtige Stelle ist, entscheidet der Ermittler.",
+                "'.postmsg' TRIFFT ZWEIMAL, wenn nicht exakt verglichen "
+                "wird: die Signatur traegt 'postsignature postmsg'. Der "
+                "benutzte Ausdruck vergleicht das Attribut exakt.",
+                "SYSTEMBEITRAEGE (posts.type=4) HABEN KEIN 'postmsg'. Ihr "
+                "Text steht in <td>-Zellen (viewtopic0.php Z. 354). Das "
+                "betrifft 27.346 Beitraege.",
+                "GELOESCHTE UND UEBERHOLTE ZEILEN werden nicht mitgemessen. "
+                "Sie zeigen auf denselben Ort wie ihre Nachfolger und "
+                "verfaelschten jede Quote.",
             ),
         ),
     ),
