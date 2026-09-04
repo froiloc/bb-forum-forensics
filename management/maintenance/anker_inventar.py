@@ -585,12 +585,22 @@ class AnkerInventar:
         else:
             d["wortlaut_nirgends"] += 1
         if len(d["faelle"]) < self.beispiele:
+            # DIE post_ids DER GANZEN SEITE GEHOEREN DAZU (Build 760).
+            # Ohne sie ist ein Fall nicht nachpruefbar: 'der Text steht in
+            # keinem post container' sagt nichts darueber, WELCHE container
+            # auf der Seite standen. Erst damit laesst sich am Original
+            # nachsehen, ob die Markierung ueber mehrere Beitraege lief,
+            # ob die Seite ueberhaupt Beitraege hatte, oder ob der Inhalt
+            # sich geaendert hat.
+            alle = sorted(behaelter)
             d["faelle"].append({
                 "id": z["id"], "lage": lage, "url": url,
                 "traeger": traeger[:5], "traeger_anzahl": len(traeger),
                 "fassung": stufe,
                 "wortlaut_laenge": len(roh),
-                "zeilenumbrueche": roh.count("\n")})
+                "zeilenumbrueche": roh.count("\n"),
+                "post_ids_auf_seite": alle[:400],
+                "post_ids_anzahl": len(alle)})
 
     def _browsertext(self, el) -> str:
         """

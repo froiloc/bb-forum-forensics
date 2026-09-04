@@ -167,11 +167,17 @@ def _ausgeben(b, sag) -> None:
         for name in ("woertlich", "ohne_randleerraum", "gefaltet"):
             if name in d["fassung"]:
                 sag("      %s %s" % (_pad(name, 24), d["fassung"][name]))
-    for f in d["faelle"][:10]:
+    for f in d["faelle"][:20]:
         sag("      id=%s %s Traeger=%s (%d) Laenge=%s Umbrueche=%s %s"
             % (f["id"], _pad(f["lage"], 22), f["traeger"],
                f["traeger_anzahl"], f["wortlaut_laenge"],
                f.get("zeilenumbrueche"), f.get("fassung") or ""))
+        if f["traeger_anzahl"] != 1:
+            sag("         url: %s" % f["url"])
+            sag("         post_ids auf dieser Seite (%d): %s"
+                % (f.get("post_ids_anzahl", 0),
+                   ", ".join(str(i) for i in f.get("post_ids_auf_seite", []))
+                   or "(keine)"))
 
 
 def _bilanz(befunde, sag) -> int:
