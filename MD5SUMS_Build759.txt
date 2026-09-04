@@ -3,7 +3,7 @@ ba5b2c4108d5dd0fd42aacadb10163ee  build.json
 8c80e69d95a54f6906de8d9c2a361fa0  issue-tracker/eintraege_claude_Build756.json
 a86ddce080616b87bc65642aef234013  issue-tracker/eintraege_claude_Build757.json
 0b1c24602d235f38894f154928d15180  issue-tracker/eintraege_claude_Build758.json
-fbb6d7a8267a80d3e6960d7dbfb0433c  issue-tracker/eintraege_claude_Build759.json
+03a3bcf04d3781338470f7fc5520b07d  issue-tracker/eintraege_claude_Build759.json
 4931ee3400d636125d9317f2a7ccb172  management/help/cli_katalog.py
 f967d432e17f938c3573a95ca4aa010b  management/maintenance/anker_inventar.py
 ab51214f5bca2ff31196589959e4b20e  management/maintenance/annotation_bestand.py
