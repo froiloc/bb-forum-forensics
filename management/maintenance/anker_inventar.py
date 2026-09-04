@@ -168,6 +168,8 @@ class AnkerInventar:
         self.forensic_pfad = forensic_pfad
         self.beispiele = max(0, int(beispiele))
         self._befund = Inventarbefund(uid=self.uid)
+        #: Browsertexte je Behaelter, s. _browsertext().
+        self._textspeicher: Dict[int, str] = {}
         self._zerleger = None
 
     # -- Werkzeug ------------------------------------------------------------
@@ -290,7 +292,7 @@ class AnkerInventar:
              "whole_post": 0, "whole_post_behaelter_da": 0,
              "whole_post_behaelter_fehlt": [], "beispiele": []}
         d = {"geprueft": 0, "wortlaut_eindeutig": 0, "wortlaut_mehrfach": 0,
-             "wortlaut_nirgends": 0, "faelle": []}
+             "wortlaut_nirgends": 0, "fassung": {}, "faelle": []}
         seiten = {"adressen": len(je_url), "ohne_seite": 0, "ohne_inhalt": 0}
 
         for url, gruppe in sorted(je_url.items()):
@@ -500,22 +502,84 @@ class AnkerInventar:
                                        "url": url})
 
     def _wortlaut_gegenprobe(self, z, sel, behaelter, d, url, lage) -> None:
-        """Steht der gespeicherte Wortlaut in genau EINEM Behaelter?"""
+        """
+        Steht der gespeicherte Wortlaut in genau EINEM Behaelter?
+
+        ── DER FEHLER, DEN DIESE FASSUNG BEHEBT (Build 758 -> 759) ──────────
+
+        Die erste Fassung verglich den gespeicherten Wortlaut gegen
+        ''.join(el.itertext()) - also gegen den QUELLTEXT des Teilbaums. Das
+        kann nur fehlschlagen, sobald eine Markierung ueber mehr als eine
+        Zeile geht:
+
+          toolbar.js Z. 1101:  var text = sel.toString().trim();
+
+        'Selection.toString()' ist in Blink LAYOUTABHAENGIG. Jedes <br> wird
+        darin zu '\n', jede Blockgrenze ebenso, und Rand-Leerraum faellt weg.
+        Im Quelltext traegt ein <br> dagegen gar nichts bei: aus
+        '<p>A<br>B</p>' wird im Browser 'A\nB', in itertext() aber 'AB'.
+        Die beiden Zeichenketten koennen sich nicht treffen.
+
+        BELEG, DASS DIES BEREITS BEKANNT WAR: Alex hat denselben Befund am
+        28.08.2026 gemeldet; die Rueckabwicklung steht seit Build 729 in
+        report_render/absatz_finder.browser_wortlaut() und ist dort mit
+        BR01-BR07 abgesichert. Die erste Fassung dieses Werkzeugs hat sie
+        nicht benutzt, sondern einen zweiten, schlechteren Weg gebaut. Das
+        ist der Fehler - nicht die Zeichenkette selbst.
+
+        ── WIE JETZT VERGLICHEN WIRD ────────────────────────────────────────
+
+        browser_wortlaut() bildet den Text eines Teilbaums so, wie der
+        Browser ihn bildet. Verglichen wird in den drei Fassungen aus
+        _wortlaut_varianten(), UND DIE REIHENFOLGE IST DIE RANGFOLGE:
+        woertlich, dann ohne Rand-Leerraum, zuletzt mit gefaltetem Leerraum.
+        Welche Fassung getroffen hat, wird MITGEMELDET - ein Treffer der
+        dritten ist schwaecher als einer der ersten, und wer das nicht
+        auseinanderhaelt, verkauft eine Naeherung als Feststellung.
+        """
+        from report_render.absatz_finder import _falte
+
         d["geprueft"] += 1
-        wortlaut = str(sel.get("textContent") or "").strip()
-        if not wortlaut:
+        roh = str(sel.get("textContent") or "")
+        if not roh.strip():
             d["wortlaut_nirgends"] += 1
             return
-        traeger = []
-        for nummer, el in behaelter.items():
-            try:
-                text = "".join(el.itertext())
-            except Exception:                             # noqa: BLE001
+
+        # DIE DREI STUFEN AUSDRUECKLICH, in der Rangfolge aus
+        # absatz_finder._wortlaut_varianten(): woertlich, ohne Rand-Leerraum,
+        # mit gefaltetem Leerraum.
+        #
+        # WARUM NICHT _wortlaut_varianten() SELBST: Die Funktion laesst eine
+        # Fassung weg, wenn sie mit einer frueheren uebereinstimmt. Ist die
+        # gespeicherte Zeichenkette bereits gefaltet, enthaelt die Liste nur
+        # EINEN Eintrag - und die gefaltete Stufe liefe nie an, ohne dass es
+        # auffiele. Genau dieser Fall trat auf: 'Zeile zwei. Zeile drei.'
+        # gegen einen Beitrag, dessen Zeilen durch <br> getrennt sind.
+        #
+        # GEFALTET WIRD AUF BEIDEN SEITEN. Nur die Suchzeichenkette zu falten
+        # kann nicht treffen: 'A B' findet sich nicht in 'A\nB'.
+        stufen = [("woertlich", roh, False),
+                  ("ohne_randleerraum", roh.strip(), False),
+                  ("gefaltet", _falte(roh), True)]
+
+        traeger: List[int] = []
+        stufe = None
+        for name, nadel, falten in stufen:
+            if not nadel:
                 continue
-            if wortlaut in text:
-                traeger.append(nummer)
+            for nummer, el in behaelter.items():
+                text = self._browsertext(el)
+                if falten:
+                    text = _falte(text)
+                if nadel in text:
+                    traeger.append(nummer)
+            if traeger:
+                stufe = name
+                break
+
         if len(traeger) == 1:
             d["wortlaut_eindeutig"] += 1
+            d["fassung"][stufe] = d["fassung"].get(stufe, 0) + 1
         elif len(traeger) > 1:
             d["wortlaut_mehrfach"] += 1
         else:
@@ -524,4 +588,26 @@ class AnkerInventar:
             d["faelle"].append({
                 "id": z["id"], "lage": lage, "url": url,
                 "traeger": traeger[:5], "traeger_anzahl": len(traeger),
-                "wortlaut_laenge": len(wortlaut)})
+                "fassung": stufe,
+                "wortlaut_laenge": len(roh),
+                "zeilenumbrueche": roh.count("\n")})
+
+    def _browsertext(self, el) -> str:
+        """
+        Der Browsertext eines Behaelters, einmal gebildet und gemerkt.
+
+        Die Bildung laeuft ueber den gesamten Teilbaum. Ohne Merken wuerde
+        sie fuer jede der drei Fassungen und fuer jede offene Annotation
+        erneut ausgefuehrt - bei 500 Behaeltern je Seite ist das der
+        Unterschied zwischen Sekunden und Minuten.
+        """
+        from report_render.absatz_finder import browser_wortlaut
+
+        schluessel = id(el)
+        if schluessel not in self._textspeicher:
+            try:
+                text, _versaetze = browser_wortlaut(el)
+            except Exception:                             # noqa: BLE001
+                text = "".join(el.itertext())
+            self._textspeicher[schluessel] = text
+        return self._textspeicher[schluessel]

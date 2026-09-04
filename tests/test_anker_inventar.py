@@ -71,6 +71,8 @@ def _seiten():
           '<div id="page-body"><div class="blockpost"><h2>Thema</h2>'
           + _pn_beitrag(8801, 1, "alpha", "Erster Wortlaut zum Belegen.")
           + _pn_beitrag(8802, 2, "beta", "Zweiter Wortlaut, ganz anders.")
+          + _pn_beitrag(8803, 3, "delta",
+                        "Zeile eins.<br>Zeile zwei.<br>Zeile drei.")
           + '</div></div><div id="page-footer"></div></div>')
     vt = ('<donate></donate><div id="wrap"><div id="brdleft"></div>'
           '<div id="page-header"></div><div id="page-body">'
@@ -128,6 +130,16 @@ def _bestand(tmp_path):
             offsetStart=0,
             xpathEnd=VT + "/article[2]/table[1]/tbody[1]/tr[1]/td[2]/text()[1]",
             offsetEnd=4, textContent="Link als DEAD"), None, None),
+        (U_PN, None, _sel(xpathStart=PN + "/div[98]/p[1]/text()[1]",
+                          offsetStart=0, xpathEnd=PN + "/div[98]/p[1]",
+                          offsetEnd=5,
+                          textContent="Zeile eins.\nZeile zwei."),
+         None, None),
+        (U_PN, None, _sel(xpathStart=PN + "/div[97]/p[1]/text()[1]",
+                          offsetStart=0, xpathEnd=PN + "/div[97]/p[1]",
+                          offsetEnd=5,
+                          textContent="Zeile zwei. Zeile drei."),
+         None, None),
         (U_PN, "p8801", None, 8801, None),
         (U_PN, "p7777", None, 7777, None),
         (U_PN, None, _sel(xpathStart=PN, offsetStart=0, xpathEnd=PN,
@@ -165,8 +177,8 @@ def test_ai01_doppeltes_p_wird_erkannt(tmp_path):
     assert AI.kennung_zerlegen("pp123") == ("pp", 123)
     assert AI.kennung_zerlegen("forum7") is None
     a = _befund(tmp_path).a_behaelter
-    assert a["praefix"] == {"p": 4, "pp": 1}
-    assert a["behaelter_gesamt"] == 5
+    assert a["praefix"] == {"p": 5, "pp": 1}
+    assert a["behaelter_gesamt"] == 6
 
 
 def test_ai02_signatur_wird_nicht_fuer_den_beitragstext_gehalten(tmp_path):
@@ -181,7 +193,7 @@ def test_ai02_signatur_wird_nicht_fuer_den_beitragstext_gehalten(tmp_path):
     """
     bb = _befund(tmp_path).b_anker
     assert bb["text_mehrfach"] == 0
-    assert bb["text"]["postright_postmsg"] == 3
+    assert bb["text"]["postright_postmsg"] == 4
 
 
 def test_ai03_systembeitrag_hat_keinen_postmsg(tmp_path):
@@ -208,7 +220,7 @@ def test_ai04_aufloesung_bestimmt_die_post_id(tmp_path):
     wird. Das ist der Zweck des ganzen Werkzeugs.
     """
     c = _befund(tmp_path).c_aufloesung
-    assert c["mit_ausdruck"] == 6
+    assert c["mit_ausdruck"] == 8
     assert c["aufgeloest"] == 5
     assert c["post_id_bestimmt"] == 4
     nach = {e["id"]: e["post_id"] for e in c["beispiele"]}
@@ -242,7 +254,7 @@ def test_ai06_wortlaut_gegenprobe_bei_totem_ausdruck(tmp_path):
     darf nicht als verloren gelten.
     """
     d = _befund(tmp_path).d_wortlaut
-    assert d["wortlaut_eindeutig"] == 1
+    assert d["wortlaut_eindeutig"] == 3
     fall = [f for f in d["faelle"] if f["id"] == 3][0]
     assert fall["lage"] == "ausdruck_ohne_knoten"
     assert fall["traeger"] == [8802]
@@ -272,7 +284,7 @@ def test_ai08_geloeschte_zeilen_werden_nicht_mitgemessen(tmp_path):
     verfaelschte jede Aussage darueber, wie gross Etappe 4 wird.
     """
     c = _befund(tmp_path).c_aufloesung
-    assert c["mit_ausdruck"] + c["whole_post"] == 8      # nicht 9
+    assert c["mit_ausdruck"] + c["whole_post"] == 10     # nicht 11
 
 
 def test_ai09_body_wird_wie_im_auslieferungspfad_ausgeschnitten():
@@ -309,3 +321,60 @@ def test_ai10_verbindungen_sind_schreibgeschuetzt(tmp_path):
             con.execute("UPDATE annotations SET category='x'")
     finally:
         con.close()
+
+
+def test_ai11_mehrzeiliger_wortlaut_wird_gefunden(tmp_path):
+    """
+    ROT, wenn der Wortlaut gegen den QUELLTEXT statt gegen den Browsertext
+    gehalten wird.
+
+    DAS IST DER FEHLER AUS BUILD 758. toolbar.js Z. 1101 speichert
+    'sel.toString().trim()' - 'Selection.toString()' ist in Blink
+    layoutabhaengig: jedes <br> wird zu '\\n', jede Blockgrenze ebenso. Im
+    Quelltext traegt ein <br> gar nichts bei. Aus '<p>A<br>B</p>' wird im
+    Browser 'A\\nB', in itertext() aber 'AB' - die beiden Zeichenketten
+    koennen sich nicht treffen, und JEDE mehrzeilige Markierung fiel durch.
+
+    Alex hat denselben Befund bereits am 28.08.2026 gemeldet; die
+    Rueckabwicklung steht seit Build 729 in
+    report_render.absatz_finder.browser_wortlaut(). Der Fehler war, sie
+    nicht zu benutzen.
+
+    Annotation 7 der Vorrichtung traegt einen toten Ausdruck und den
+    Wortlaut 'Zeile eins.\\nZeile zwei.' - mit Zeilenumbruch. Er steht in
+    Beitrag 8803, wo die Zeilen durch <br> getrennt sind.
+    """
+    b = _befund(tmp_path)
+    d = b.d_wortlaut
+    fall = [f for f in d["faelle"] if f["id"] == 7][0]
+    assert fall["zeilenumbrueche"] == 1
+    assert fall["traeger"] == [8803], "mehrzeiliger Wortlaut nicht gefunden"
+    assert fall["fassung"] == "woertlich"
+    # GEGENPROBE: der Quelltextvergleich haette ihn NICHT gefunden.
+    # 'Zeile eins.Zeile zwei.' ohne Umbruch steht so im Quelltext, mit
+    # Umbruch nicht.
+    assert "Zeile eins.\nZeile zwei." not in "Zeile eins.Zeile zwei."
+
+
+def test_ai12_die_getroffene_fassung_wird_gemeldet(tmp_path):
+    """
+    ROT, wenn nicht mitgeteilt wird, WELCHE Vergleichsfassung getroffen hat.
+
+    _wortlaut_varianten() sucht in drei Fassungen, und die Reihenfolge ist
+    die Rangfolge: woertlich, ohne Rand-Leerraum, mit gefaltetem Leerraum.
+    Ein Treffer der dritten ist schwaecher als einer der ersten. Wer das
+    nicht auseinanderhaelt, verkauft eine Naeherung als Feststellung.
+    """
+    d = _befund(tmp_path).d_wortlaut
+    assert "fassung" in d
+    # Annotation 8 ist NUR ueber die gefaltete Fassung zu finden: gespeichert
+    # ist 'Zeile zwei. Zeile drei.' mit Leerzeichen, im Beitrag stehen die
+    # Zeilen durch <br> getrennt, der Browsertext traegt dort '\n'.
+    fall = [f for f in d["faelle"] if f["id"] == 8][0]
+    assert fall["fassung"] == "gefaltet"
+    assert fall["traeger"] == [8803]
+    assert sum(d["fassung"].values()) == d["wortlaut_eindeutig"]
+    for f in d["faelle"]:
+        if f["traeger_anzahl"] == 1:
+            assert f["fassung"] in ("woertlich", "ohne_randleerraum",
+                                    "gefaltet")
