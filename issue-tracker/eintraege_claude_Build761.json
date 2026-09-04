@@ -1,0 +1,31 @@
+{
+ "issues": [
+  {
+   "id": "8502092e-c448-4105-9b7b-bafe7c15a984",
+   "type": "bug",
+   "title": "Kreuzprobe verglich gegen den Quelltext statt den Browsertext",
+   "affected_version": "0.8.761",
+   "reporter": "Claude",
+   "reported_at": "2026-09-05T09:00:00+02:00",
+   "status": "resolved",
+   "severity": "blocker",
+   "description": "AbsatzFinder.wortlaut_im_beitrag() ist die Kreuzprobe, die entscheidet, ob eine aus einem XPath expression abgeleitete Beitragsnummer als belegt gilt. Sie verglich bis Build 760 gegen _klartext(behaelter) - die Verkettung von '.text' und '.tail', also den QUELLTEXT.\n\nDer gespeicherte Wortlaut ist 'Selection.toString()' aus toolbar.js Z. 1101 und damit die gerenderte Fassung. Jedes <br> steht darin als Zeilenumbruch; im Quelltext steht dort nichts.\n\nGEMESSEN am 04.09.2026 an '<p>Zeile eins.<br>Zeile zwei.</p>': Probe gegen _klartext False, Probe gefaltet gegen gefaltet False, Probe gegen Browsertext True. Die Faltung rettet nichts - sie macht aus dem Umbruch der Suchseite ein Leerzeichen, aber auf der Quelltextseite steht dort gar kein Zeichen.\n\nFOLGE: Die Lagen UNKLAR (111) und WIDERLEGT (87) aus dem Lauf vom 31.08.2026 ueber 477 Annotationen sind nicht belastbar. 'WIDERLEGT' heisst 'der Wortlaut steht in einem ANDEREN Beitrag' - eine schwerwiegende Aussage, die bei jeder mehrzeiligen Markierung allein am Massstab scheitern konnte. 198 von 456 Textmarkierungen laufen ueber mehrere Knoten. Die bestaetigenden Lagen (208 + 54 + 2) bleiben gueltig.\n\nBEHOBEN in Build 761. Waechter BR08 bis BR10; BR10 ist eine Schranke gegen den dritten Anlauf, denn derselbe Fehler trat zweimal auf - hier und in anker_inventar (Build 758). Beide Male stand browser_wortlaut() bereits im Projekt, seit Build 729, in derselben Datei unmittelbar unterhalb der fehlerhaften Methode.\n\nDREI WEITERE AUFRUFER VON _klartext() WURDEN GEPRUEFT UND SIND RICHTIG: absatz_finder Z. 1119 und Z. 1186 sowie vollzitat_bauer Z. 275. 'versaetze[i]' aus browser_wortlaut() bildet den Browsertext-Index auf den Quelltext-Index ab; 'von' und 'bis' leben in Quelltext-Koordinaten. Eine Umstellung dort verschoebe jede Hervorhebung im Bericht.",
+   "tags": [
+    "annotationen",
+    "kreuzprobe",
+    "browsertext",
+    "blocker"
+   ],
+   "expected_behavior": "Die Kreuzprobe misst mit dem Massstab, in dem der Wortlaut gespeichert wurde.",
+   "actual_behavior": "Sie mass gegen den Quelltext; mehrzeilige Markierungen konnten nur verfehlt werden.",
+   "updates": [
+    {
+     "timestamp": "2026-09-05T07:00:00+00:00",
+     "author": "Claude",
+     "action": "comment",
+     "comment": "Angelegt in Build 761."
+    }
+   ]
+  }
+ ]
+}

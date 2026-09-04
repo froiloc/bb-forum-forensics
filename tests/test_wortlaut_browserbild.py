@@ -427,3 +427,95 @@ def test_BM05_gegenprobe_nebeneinander_ist_keine_kaskade():
     # Und HIER darf der Schlusssatz stehen - ohne Schachtelung ist die
     # Zerlegung tatsaechlich ausgeraeumt.
     assert "Zerlegung scheidet als Ursache aus" in meldung, meldung
+
+
+# ---------------------------------------------------------------------------
+# BR08 bis BR10 - Build 761
+#
+# DIE KREUZPROBE selbst benutzte bis Build 760 den falschen Massstab. Sie
+# verglich gegen _klartext(behaelter), also den Quelltext, waehrend der
+# gespeicherte Wortlaut 'Selection.toString()' ist. Die Rueckabwicklung stand
+# seit Build 729 in derselben Datei, unmittelbar darunter - sie wurde hier
+# nicht benutzt.
+#
+# Folge: Die Lagen UNKLAR (111) und WIDERLEGT (87) aus dem Lauf vom
+# 31.08.2026 sind nicht belastbar. Ein 'WIDERLEGT' bedeutet 'der Wortlaut
+# steht in einem ANDEREN Beitrag' - eine schwerwiegende Aussage, die bei
+# jeder mehrzeiligen Markierung allein am Massstab scheitern konnte.
+# ---------------------------------------------------------------------------
+
+
+def test_br08_kreuzprobe_findet_mehrzeiligen_wortlaut():
+    """
+    ROT, wenn die Kreuzprobe gegen den Quelltext vergleicht.
+
+    Gemessen am 04.09.2026: '<p>Zeile eins.<br>Zeile zwei.</p>' liefert als
+    Quelltext 'Zeile eins.Zeile zwei.', als Browsertext
+    'Zeile eins.' + Umbruch + 'Zeile zwei.'. Der gespeicherte Wortlaut
+    traegt den Umbruch, weil toolbar.js Z. 1101 'sel.toString()' ablegt.
+    """
+    from report_render.absatz_finder import AbsatzFinder
+    from report_render.html5_zerleger import Html5Zerleger
+
+    roh = ('<div id="p111"><div class="postright"><div class="postmsg">'
+           '<p>Zeile eins.<br>Zeile zwei.<br>Zeile drei.</p>'
+           '</div></div></div>')
+    wurzel, _b = Html5Zerleger().zerlege(roh)
+    behaelter = wurzel.xpath("//div[@id='p111']")[0]
+
+    gespeichert = "Zeile eins." + chr(10) + "Zeile zwei."
+    assert AbsatzFinder.wortlaut_im_beitrag(behaelter, gespeichert) is True
+    # GEGENPROBE: der Quelltext enthaelt den Umbruch NICHT - haette die
+    # Probe gegen ihn verglichen, waere sie False.
+    from report_render.absatz_finder import _klartext
+    assert gespeichert not in _klartext(behaelter)
+
+
+def test_br09_kreuzprobe_bleibt_bei_fremdem_wortlaut_negativ():
+    """
+    ROT, wenn die Umstellung die Probe zu grosszuegig macht.
+
+    Ein 'True' aus dieser Probe ist die Grundlage dafuer, eine
+    Beitragsnummer als belegt zu behandeln. Wenn sie jeden Wortlaut
+    bestaetigt, ist sie wertlos - schlimmer als gar keine Probe, weil sie
+    Sicherheit vortaeuscht.
+    """
+    from report_render.absatz_finder import AbsatzFinder
+    from report_render.html5_zerleger import Html5Zerleger
+
+    roh = '<div id="p1"><p>Alpha<br>Beta</p></div>'
+    wurzel, _b = Html5Zerleger().zerlege(roh)
+    behaelter = wurzel.xpath("//div[@id='p1']")[0]
+    assert AbsatzFinder.wortlaut_im_beitrag(behaelter, "Gamma") is False
+    assert AbsatzFinder.wortlaut_im_beitrag(behaelter, "") is None
+    assert AbsatzFinder.wortlaut_im_beitrag(None, "Alpha") is None
+
+
+def test_br10_kein_gespeicherter_wortlaut_gegen_klartext():
+    """
+    ROT, wenn irgendwo im Projekt ein gespeicherter 'textContent' gegen
+    _klartext() gehalten wird.
+
+    DIE SCHRANKE GEGEN DEN DRITTEN ANLAUF. Derselbe Fehler ist zweimal
+    aufgetreten: in annotation_pruefung ueber wortlaut_im_beitrag (bis
+    Build 760) und in anker_inventar (Build 758). Beide Male stand die
+    richtige Funktion bereits im Projekt.
+
+    GEPRUEFT WIRD ENG: nur die Kreuzprobe selbst. Die drei uebrigen
+    Aufrufer von _klartext() sind RICHTIG und duerfen nicht umgestellt
+    werden - 'versaetze[i]' aus browser_wortlaut() bildet den
+    Browsertext-Index auf den QUELLTEXT-Index ab, also leben 'von' und
+    'bis' in Quelltext-Koordinaten:
+        absatz_finder Z. 1119  bis = min(bis, len(_klartext(block)))
+        absatz_finder Z. 1186  return (0, len(_klartext(block)), rang)
+        vollzitat_bauer Z. 275 text=_klartext(element)
+    Wer diese umstellte, verschoebe jede Hervorhebung im Bericht.
+    """
+    import inspect
+    from report_render.absatz_finder import AbsatzFinder
+
+    quelle = inspect.getsource(AbsatzFinder.wortlaut_im_beitrag)
+    kern = quelle.split('"""')[-1]      # nur der Rumpf, nicht der Docstring
+    assert "browser_wortlaut(" in kern
+    assert "_klartext(" not in kern, \
+        "Die Kreuzprobe vergleicht wieder gegen den Quelltext."

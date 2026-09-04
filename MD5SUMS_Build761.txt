@@ -1,0 +1,16 @@
+2d96f838a766b1cc64d22d35d80d0bb0  build.json
+8429183f8275b827b151f91f75710a89  issue-tracker/eintraege_claude_Build755.json
+8c80e69d95a54f6906de8d9c2a361fa0  issue-tracker/eintraege_claude_Build756.json
+a86ddce080616b87bc65642aef234013  issue-tracker/eintraege_claude_Build757.json
+0b1c24602d235f38894f154928d15180  issue-tracker/eintraege_claude_Build758.json
+03a3bcf04d3781338470f7fc5520b07d  issue-tracker/eintraege_claude_Build759.json
+94d2ab464e0f8cd1e9f793025144d4e9  issue-tracker/eintraege_claude_Build761.json
+c953c082d092c289265d6a2ee7e9b684  management/help/cli_katalog.py
+528a1c5c4f13bbdee36569fc5f49e051  management/maintenance/anker_inventar.py
+ab51214f5bca2ff31196589959e4b20e  management/maintenance/annotation_bestand.py
+2920ad5a1f7db017fda9533912323fc9  report_render/absatz_finder.py
+f4ab5da1c2e41d7c4ab086bb41a5b2fe  tests/test_anker_inventar.py
+b7d825ebc54d44d3ff5772a4272f57c3  tests/test_annotation_bestand.py
+91a17363b62d200a155c3fbdffefbbe9  tests/test_wortlaut_browserbild.py
+cb467c4828f557da3b1af41d18eabf6f  tools/anker_inventar.py
+ac436d0595e71d71b5898382cb0c28aa  tools/annotationen_bestand.py
