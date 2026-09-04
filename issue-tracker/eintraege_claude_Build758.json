@@ -1,0 +1,138 @@
+{
+ "issues": [
+  {
+   "id": "a51ef4f7-5f9a-4bed-b14c-f2f3045414e1",
+   "type": "improvement",
+   "title": "Ankerkatalog als Single Point of Truth fuer Pfadangaben",
+   "affected_version": "0.8.758",
+   "reporter": "Claude",
+   "reported_at": "2026-09-04T10:00:00+02:00",
+   "status": "open",
+   "severity": "major",
+   "description": "ZIEL (Alex, 03.09.2026): Bei der Einbindung eines weiteren Forums soll aus Programmieraufwand Konfigurationsaufwand werden. Innerhalb der naechsten sechs Monate kommen weitere Foren hinzu.\n\nIDEE: Eine standardisierte Beschreibung der Pfade zu den inhaltstragenden Elementen - als YAML-Katalog, Datenbank oder Vergleichbares -, aus der ALLE Anwendungsteile lesen. Heute steht dieses Wissen verstreut: db/forensic_db.py (_anker_muster), toolbar.js (_POST_KENNUNG, STABLE_ID_RE in scroll_memory.js), report_render, und ab Build 758 auch management/maintenance/anker_inventar.py.\n\nOFFENE ENTWURFSFRAGE: Ein reiner XPath-Ausdruck reicht vermutlich nicht. Die Messung aus Build 758 zeigt, warum: fuenf Renderer erzeugen verschiedene Behaelterformen, Systembeitraege haben kein 'postmsg' und geben ihren Text in <td>-Zellen aus. Es wird eine Ausdruckslogik MIT ENTSCHEIDUNGEN noetig sein - 'nimm A, sonst B, sonst C' - und die Reihenfolge muss Teil des Katalogs sein.\n\nNICHT JETZT UMZUSETZEN. Festgehalten wird aber die Nebenbedingung: es darf jetzt nichts gebaut werden, was diese Migration spaeter zusaetzlich erschwert. Das Werkzeug aus Build 758 haelt seine Ausdruecke deshalb in benannten Modulkonstanten (XPATH_BEITRAGSTEXT, XPATH_TEXT_ALTERNATIVEN, XPATH_VERFASSER, XPATH_ZEITSTEMPEL) und nicht verstreut im Code.",
+   "tags": [
+    "anker",
+    "katalog",
+    "mehrere-foren",
+    "architektur"
+   ],
+   "expected_behavior": "Ein neues Forum wird konfiguriert, nicht programmiert.",
+   "actual_behavior": "Das Pfadwissen liegt verstreut in mindestens vier Modulen.",
+   "updates": [
+    {
+     "timestamp": "2026-09-04T08:00:00+00:00",
+     "author": "Claude",
+     "action": "comment",
+     "comment": "Angelegt in Build 758."
+    }
+   ]
+  },
+  {
+   "id": "b0c277d5-b2f3-4159-8c10-35e3b380fe2d",
+   "type": "documentation",
+   "title": "Leitfaden fuer die Adaption an ein weiteres Forum",
+   "affected_version": "0.8.758",
+   "reporter": "Claude",
+   "reported_at": "2026-09-04T10:00:00+02:00",
+   "status": "open",
+   "severity": "major",
+   "description": "AUFTRAG (Alex, 03.09.2026): Ein Leitfaden, wie bei der Einbindung eines weiteren Forums vorzugehen ist.\n\nKERNAUSSAGE, die aus Etappe 1 folgt: ERSTER SCHRITT ist die Analyse der Bauform der inhaltstragenden Elemente im Quelltext des Forums, mit dem Ziel, feste Ankerpunkte und Identifikationsmuster zu bestimmen. Genau das hat Etappe 1 getan, und es hat drei Dinge zutage gefoerdert, die aus den Daten allein nicht ablesbar gewesen waeren: den doppelten 'p'-Praefix aus viewtopic0.php Z. 975, die Doppeldeutigkeit von 'postmsg' durch 'postsignature postmsg', und dass Systembeitraege ueberhaupt kein 'postmsg' haben.\n\nREGEL: Der zaehlende Vollpfad in XPath bleibt RUECKFALLWEG und ist nie erste Wahl. Er wird nur verwendet, wenn kein fester Ankerpunkt angegeben ist. Wo es keine Kennung gibt, muessen Muster aufeinander folgender Knoten als Positionsbarke dienen.\n\nDer Leitfaden ist noch nicht geschrieben.",
+   "tags": [
+    "leitfaden",
+    "mehrere-foren",
+    "dokumentation"
+   ],
+   "expected_behavior": "Ein Leitfaden beschreibt das Vorgehen, bevor das naechste Forum kommt.",
+   "actual_behavior": "Das Vorgehen steht bisher nur in Chatverlaeufen.",
+   "updates": [
+    {
+     "timestamp": "2026-09-04T08:00:00+00:00",
+     "author": "Claude",
+     "action": "comment",
+     "comment": "Angelegt in Build 758."
+    }
+   ]
+  },
+  {
+   "id": "ecc9d3d6-93a1-4736-bec6-40c774df7521",
+   "type": "documentation",
+   "title": "posts.type ist Endstand ohne Historie - forensischer Vorbehalt",
+   "affected_version": "0.8.758",
+   "reporter": "Claude",
+   "reported_at": "2026-09-04T10:00:00+02:00",
+   "status": "open",
+   "severity": "major",
+   "description": "BEFUND aus dem Forenquelltext (Build 758):\n\n'posts.type' ist keine Versionskennzeichnung, sondern eine funktionale Kennzeichnung, und sie wird von Moderatoren gesetzt und zurueckgesetzt:\n  type=1 'content flag'  - moderate.php Z. 313, Aktion 'setcontentflag'. Setzt zugleich tags=NULL und erhoeht users.num_share.\n  type=5 'Bewertung gesperrt' - moderate.php Z. 58, Aktion 'blockThumb'. Arbeitsliste der Moderation: mcp/tomato.php.\n  type=3 Modellangaben, type=4 Meldung ueber tote Downloadlinks.\n\nDAS PROBLEM: 'unBlockThumb' (Z. 64) und 'decontenize' (Z. 279) setzen type=0, NICHT den vorherigen Wert. Weitere Aktionen tun dasselbe: brokenpost, brokentopic, trashpost. Ein Beitrag, der heute type=0 traegt, kann frueher type=1 oder type=5 gewesen sein.\n\nFOLGE: 'posts.type' ist der ENDSTAND und kein historischer Zustand. Jede Aussage ueber die Vergangenheit eines Beitrags, die sich auf diese Spalte stuetzt, ist unzulaessig. Ebenso geht bei jedem Wechsel 'posts.tags' verloren - beide Richtungen setzen tags=NULL.\n\nDas gehoert in die Beleglinie fuer die Staatsanwaeltin.",
+   "tags": [
+    "forensik",
+    "posts-type",
+    "beleglinie",
+    "vorbehalt"
+   ],
+   "expected_behavior": "Aussagen ueber den Zustand eines Beitrags nennen ihre Grenzen.",
+   "actual_behavior": "posts.type wird leicht als historischer Zustand missverstanden.",
+   "updates": [
+    {
+     "timestamp": "2026-09-04T08:00:00+00:00",
+     "author": "Claude",
+     "action": "comment",
+     "comment": "Angelegt in Build 758."
+    }
+   ]
+  },
+  {
+   "id": "217edba7-e986-4acd-a5cb-8e9f25f226d6",
+   "type": "improvement",
+   "title": "<mark>-Bereinigung bei der XPath-Bestimmung",
+   "affected_version": "0.8.758",
+   "reporter": "Claude",
+   "reported_at": "2026-09-04T10:00:00+02:00",
+   "status": "open",
+   "severity": "minor",
+   "description": "AUSGANGSLAGE: toolbar.js Z. 1502 stellt Annotationen ueber die CSS Custom Highlight API dar - OHNE DOM-Eingriff. Nur wenn diese fehlt, greift der Rueckfallweg _wrapRangeInMark() (Z. 1419) und erzeugt echte <mark>-Elemente.\n\nWARUM DAS ZAEHLT: Ein <mark> mitten in einem Absatz zerlegt einen Textknoten in drei. Der Teil dahinter wird von text()[1] zu text()[2]. 502 der Ausdruecke im Bestand enden auf einem Textknoten.\n\nVERFAHREN (Alex, 04.09.2026): Beim Bestimmen eines neuen Ausdrucks wird virtuell eine Kopie angelegt, darin werden die <mark> restlos aufgeloest, und erst darauf wird gerechnet.\n  BEREINIGT WIRD NUR, WO EIN <mark> ALS VORANGEHENDES GESCHWISTER AUF DEM DIREKTEN WEG STEHT. Was in einem Nachbarzweig geschieht, ist ohne Wirkung: _xpathOf() zaehlt bei Elementknoten nur Geschwister GLEICHEN Tag-Namens, ein <mark> kann also 'div[3]' oder 'p[1]' nicht verschieben.\n  NACH DEM AUFLOESEN MUSS normalize() LAUFEN. Sonst bleiben drei benachbarte Textknoten statt einem stehen, und text()[n] zaehlt weiterhin falsch. Das ist der Teil, der leicht vergessen wird und den Zweck der Uebung zunichtemacht.\n  SONDERFALL UEBERSCHNEIDUNG: Ueberlappende Markierungen sind zulaessig. Liegt der Zielknoten INNERHALB einer bestehenden Marke, ist <mark> nicht Geschwister, sondern Elternelement - der Weg fuehrt dann durch ein Element, das im bereinigten Baum nicht existiert. Eigene Behandlung noetig.\n  RUECKWEG: bereinigte Kopie herstellen, Ausdruck darauf aufloesen, Zeichenversatz im bereinigten Text bestimmen, diesen Versatz auf den echten DOM abbilden, indem die Textknoten in Dokumentreihenfolge durchlaufen und Zeichen gezaehlt werden. Kommt ohne Wortvergleich aus und traegt auch bei Ueberschneidungen.\n\nNIEDRIGE PRIORITAET: Der Browser wird mitgeliefert, der Rueckfallweg ist praktisch tot. Mittelfristig soll es dennoch geloest werden.",
+   "tags": [
+    "toolbar",
+    "xpath",
+    "mark",
+    "rueckfallweg"
+   ],
+   "expected_behavior": "Der Ausdruck ist unabhaengig davon, ob Marken im DOM stehen.",
+   "actual_behavior": "Bei aktivem Rueckfallweg wuerden verschobene Textknotenindizes gespeichert.",
+   "updates": [
+    {
+     "timestamp": "2026-09-04T08:00:00+00:00",
+     "author": "Claude",
+     "action": "comment",
+     "comment": "Angelegt in Build 758."
+    }
+   ]
+  },
+  {
+   "id": "71098caf-0955-47e8-aee7-2f266d60184d",
+   "type": "improvement",
+   "title": "Protokolltabellen des Forums pruefen: logs, logs_edit, logs_post",
+   "affected_version": "0.8.758",
+   "reporter": "Claude",
+   "reported_at": "2026-09-04T10:00:00+02:00",
+   "status": "open",
+   "severity": "major",
+   "description": "BEFUND aus dem Forenquelltext (Build 758). Es gibt DREI Protokolltabellen, die bisher nicht betrachtet wurden:\n\n  logs       - include/functions.php Z. 1107, admin_log(). Felder username, action, topic, post, reason, msg. Schreibt NUR, wenn $self['is_admmod'].\n  logs_edit  - Z. 1129, logs_edit(). Felder pid, uid, editby, likes, time, diff, res. Haelt Bearbeiter, Zeitpunkt, Laengendifferenz und Endlaenge fest - NICHT den Inhalt.\n  logs_post  - Ereignisse je Beitrag.\n\nZWEI STELLEN UNTERLAUFEN DAS:\n  delete.php Z. 83 ruft logs_edit($id,0,0,$is_mop). Der vierte Parameter heisst in der Signatur '$fake', und der INSERT steht INNERHALB von 'if (!$fake)'. Loescht ein Moderator einen Beitrag, entsteht KEIN Eintrag.\n  edit.php Z. 302-312: Der Kommentar sagt 'Add a note into logs_post (history)', der Code fuehrt aber 'DELETE FROM logs_post WHERE post_id=...' aus; die INSERT-Zeile steht auskommentiert darueber. Wird ein Content-Beitrag bearbeitet, VERSCHWINDET seine bisherige Historie samt der Eintraege in 'broken'.\n\nWERT FUER DIE ERMITTLUNG: noch nicht beurteilt. Es handelt sich ueberwiegend um Taetigkeiten von Administratoren und um Meldungen ueber tote Links; fuer die Primaeraufgabe - die Identifikation von Taetern - nachrangig (Einschaetzung Alex, 04.09.2026).\n\nZU MESSEN, BEVOR ueber eine Aufnahme in den Prepper entschieden wird: Zeilenzahl, Zeitraum, und wie viele der 1.483 auffaelligen type=1-Beitraege ohne Downloadlink dort einen Eintrag haben. Das ist eine Messung gegen MariaDB, kein Codelesen.",
+   "tags": [
+    "prepper",
+    "protokoll",
+    "logs",
+    "forensik"
+   ],
+   "expected_behavior": "Der Informationswert der Protokolltabellen ist beurteilt.",
+   "actual_behavior": "Die Tabellen sind bekannt, aber ihr Inhalt ist ungemessen.",
+   "updates": [
+    {
+     "timestamp": "2026-09-04T08:00:00+00:00",
+     "author": "Claude",
+     "action": "comment",
+     "comment": "Angelegt in Build 758."
+    }
+   ]
+  }
+ ]
+}

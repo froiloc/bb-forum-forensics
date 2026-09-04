@@ -1,0 +1,12 @@
+3d1f64d8fceb84590660a862c33ae40d  build.json
+8429183f8275b827b151f91f75710a89  issue-tracker/eintraege_claude_Build755.json
+8c80e69d95a54f6906de8d9c2a361fa0  issue-tracker/eintraege_claude_Build756.json
+a86ddce080616b87bc65642aef234013  issue-tracker/eintraege_claude_Build757.json
+0b1c24602d235f38894f154928d15180  issue-tracker/eintraege_claude_Build758.json
+0bd6c46eb30e7210547fc1368cd2cc59  management/help/cli_katalog.py
+008428bc7443762fa4a9e19dbf4893ce  management/maintenance/anker_inventar.py
+ab51214f5bca2ff31196589959e4b20e  management/maintenance/annotation_bestand.py
+97910b115bb2f04575840d7e70f444a5  tests/test_anker_inventar.py
+b7d825ebc54d44d3ff5772a4272f57c3  tests/test_annotation_bestand.py
+9fb0d9a3f5a88feef88d84f8bcd64e37  tools/anker_inventar.py
+ac436d0595e71d71b5898382cb0c28aa  tools/annotationen_bestand.py
