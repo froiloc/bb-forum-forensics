@@ -337,6 +337,11 @@ _GEPRUEFT_754 = ("Build 754, 2026-08-31, gegen Wegwerf-Bestaende unter /tmp "
                  "Lagen, forensic_900.db mit einem Seitenabzug aus vier "
                  "Beitraegen), Python 3.13, lxml 6.1, html5lib 1.1")
 
+_GEPRUEFT_762 = ("Build 762, 2026-09-05, gegen den Wegwerf-Bestand unter "
+                 "/tmp: 2 Seiten zerlegt, 4 post container, Text in allen 4 "
+                 "gefunden, Verfasser und Zeitstempel je in 3 - der "
+                 "Systembeitrag hat beides nicht. Python 3.12.3, html5lib.")
+
 _GEPRUEFT_760 = ("Build 760, 2026-09-04, gegen denselben Wegwerf-Bestand wie "
                  "759, erweitert um die Pruefung, dass nicht zugeordnete "
                  "Faelle die post_ids ihrer Seite mitfuehren. Python 3.12.3, "
@@ -5950,10 +5955,9 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "[--json <Datei>]",
         titel="Inventar der Ankerpunkte in den Seiten-BLOBs (Etappe 1)",
         gruppe="Diagnose",
-        zweck="Zerlegt die Seiten-BLOBs mit html5lib und haelt sie gegen die "
-              "Annotationen: welche Beitragsbehaelter gibt es, welche "
-              "Metadaten tragen sie, und wie viele der gespeicherten "
-              "XPath-Ausdruecke finden damit ihren Beitrag.",
+        zweck="Zerlegt die page BLOBs mit html5lib und nimmt auf, welche "
+              "post container es gibt und welche Metadaten sie tragen - "
+              "Beitragstext, Verfasser, Zeitstempel.",
         art="lesend",
         datenbanken=(
             "evidence_<uid>.db (lesend, mode=ro - annotations)",
@@ -5997,24 +6001,28 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "Textmarkierungen eine Beitragsnummer bestimmbar ist "
                      "und wie viele nur ueber den Wortlaut zuzuordnen "
                      "waeren.",
-                     _GEPRUEFT_760),
+                     _GEPRUEFT_762),
                 _bsp("python tools/anker_inventar.py --uid 1488 "
                      "--beispiele 50",
                      "Ein Bestand, mit mehr namentlich genannten "
                      "Einzelfaellen.",
-                     _GEPRUEFT_760),
+                     _GEPRUEFT_762),
             ),
             exit_codes=(
-                (0, "durchgelaufen, jede Textmarkierung ist zugeordnet"),
-                (1, "durchgelaufen, es bleiben Textmarkierungen ohne "
-                    "Zuordnung"),
+                (0, "durchgelaufen, jeder post container traegt einen "
+                    "Verfasser"),
+                (1, "durchgelaufen, bei mindestens einem post container ist "
+                    "kein Verfasser auffindbar"),
                 (2, "nicht zustande gekommen (Verzeichnis fehlt, keine "
                     "evidence_<uid>.db, JSON-Datei nicht schreibbar)"),
             ),
             warnungen=(
-                "DIE ZAHL AUS BLOCK D IST KEINE ZUSAGE. Sie sagt, dass der "
-                "Wortlaut in genau einem Behaelter steht - ob das die "
-                "richtige Stelle ist, entscheidet der Ermittler.",
+                "DIESES WERKZEUG BEANTWORTET NICHT, WELCHER ANNOTATION "
+                "WELCHE post_id GEHOERT. Bis Build 761 tat es das (Block C) "
+                "- ohne Kreuzprobe gegen den gespeicherten Wortlaut, und "
+                "damit falsch: zeigt der Index auf den falschen container, "
+                "entsteht eine post_id, die plausibel aussieht. Zustaendig "
+                "ist tools/annotationen_verifizieren.py.",
                 "'.postmsg' TRIFFT ZWEIMAL, wenn nicht exakt verglichen "
                 "wird: die Signatur traegt 'postsignature postmsg'. Der "
                 "benutzte Ausdruck vergleicht das Attribut exakt.",

@@ -1309,6 +1309,132 @@ class AbsatzFinder:
         return None
 
     # ------------------------------------------------------------------
+    #: Die Stufen der Naehe-Eskalation, von stark nach schwach. Sie sind
+    #: zugleich die Rangfolge der Belegkraft und gehoeren in das
+    #: 'selection_json' der geheilten Annotation - ohne diese Angabe steht
+    #: spaeter eine Fundstelle im Bericht, deren Herkunft niemand kennt.
+    NAEHE_ANKER = "anker"          # im Container, den der Ausdruck benannte
+    NAEHE_GESCHWISTER = "geschwister"   # in einem Nachbarcontainer
+    NAEHE_SEITE = "seite"          # irgendwo sonst auf der Seite
+    NAEHE_STUFEN = (NAEHE_ANKER, NAEHE_GESCHWISTER, NAEHE_SEITE)
+
+    @staticmethod
+    def fundstellen_nach_naehe(wurzel, behaelter, wortlaut: str,
+                               kandidaten=None):
+        """
+        Wo steht der Wortlaut - und wie weit vom benannten Container entfernt?
+
+        Rueckgabe: (stufe, treffer) mit 'stufe' aus NAEHE_STUFEN und
+        'treffer' als Liste von Containern. Findet nichts, kommt
+        (None, []).
+
+        ── WARUM NAEHE UND NICHT EINFACH SUCHEN (Weisung Alex, 05.09.2026) ──
+
+        Derselbe Wortlaut kann mehrfach auf einer Seite stehen - am
+        haeufigsten, weil ein spaeterer Beitrag einen frueheren ZITIERT.
+        Eine flache Suche ueber den ganzen page BLOB liefert dann zwei
+        Treffer und muss aufgeben. Die Entfernung im Baum entscheidet:
+        stand der Ausdruck auf Container N und findet sich der Wortlaut in
+        N und in N+40, ist N gemeint.
+
+        DIE STUFE IST DAS MASS DER BELEGKRAFT:
+          'anker'       Der Wortlaut steht in dem Container, den der
+                        Ausdruck benannte. Der Ausdruck war also richtig,
+                        nur die Position darin stimmte nicht. Starker Fall.
+          'geschwister' Der Wortlaut steht in einem benachbarten Container.
+                        Passt zu einem Indexversatz, wie ihn eingeschobene
+                        Elemente erzeugen - der Ausdruck war um wenige
+                        Positionen verschoben.
+          'seite'       Der Wortlaut steht irgendwo sonst. Der Ausdruck
+                        traegt nichts mehr bei; die Zuordnung haengt allein
+                        am Inhalt.
+
+        EINDEUTIGKEIT WIRD NICHT ERZWUNGEN. Die Methode gibt ALLE Treffer
+        der ersten Stufe zurueck, die welche hat. Ob ein Treffer genuegt,
+        entscheidet der Aufrufer - und nach der Vorgabe vom 05.09.2026 gilt
+        ohne Rueckfrage nur, was an genau EINER Stelle steht.
+        """
+        roh = (wortlaut or "").strip()
+        if not roh:
+            return None, []
+        if kandidaten is None:
+            kandidaten = AbsatzFinder._container_der_seite(wurzel)
+
+        nummer = AbsatzFinder.beitragsnummer(behaelter) \
+            if behaelter is not None else None
+
+        # Stufe 1: der benannte Container selbst.
+        if behaelter is not None:
+            if AbsatzFinder.wortlaut_im_beitrag(behaelter, roh) is True:
+                return AbsatzFinder.NAEHE_ANKER, [behaelter]
+
+        # Stufe 2: die Nachbarn, von innen nach aussen. Die Reihenfolge
+        # ist die Dokumentreihenfolge; 'nah' heisst hier: wenige Positionen
+        # entfernt. Ohne einen benannten Container entfaellt diese Stufe -
+        # es gibt dann keinen Bezugspunkt, von dem aus 'nah' definiert
+        # waere, und alles ist gleich weit weg.
+        if behaelter is not None and kandidaten:
+            try:
+                pos = kandidaten.index(behaelter)
+            except ValueError:
+                pos = None
+            if pos is not None:
+                for abstand in range(1, len(kandidaten)):
+                    ring = []
+                    for k in (pos - abstand, pos + abstand):
+                        if 0 <= k < len(kandidaten):
+                            ring.append(kandidaten[k])
+                    if not ring:
+                        break
+                    gefunden = [el for el in ring
+                                if AbsatzFinder.wortlaut_im_beitrag(el, roh)
+                                is True]
+                    if gefunden:
+                        return AbsatzFinder.NAEHE_GESCHWISTER, gefunden
+
+        # Stufe 3: die ganze Seite. Hier zaehlt keine Naehe mehr, deshalb
+        # werden ALLE Treffer gemeldet - die Zahl ist die Aussage.
+        alle = [el for el in kandidaten
+                if el is not behaelter
+                and AbsatzFinder.wortlaut_im_beitrag(el, roh) is True]
+        if alle:
+            return AbsatzFinder.NAEHE_SEITE, alle
+        return None, []
+
+    @staticmethod
+    def _container_der_seite(wurzel) -> List[Any]:
+        """
+        Alle post container einer Seite, in Dokumentreihenfolge.
+
+        Erkannt wird ueber '^p+(\\d+)$' und NICHT ueber '^p(\\d+)$':
+        viewtopic0.php Z. 975 schreibt das 'p' doppelt, einmal als Literal
+        und einmal in der Ausgabe. Dieselbe Form benutzen db/forensic_db.py
+        und toolbar.js (_POST_KENNUNG).
+
+        NUR DER AEUSSERE CONTAINER JE NUMMER. Der innere 'pp<n>' liegt im
+        aeusseren 'p<n>'; beide zu fuehren zaehlte jeden Beitrag doppelt und
+        machte die Abstandsrechnung der zweiten Stufe unbrauchbar.
+        """
+        gesehen = set()
+        aus: List[Any] = []
+        for el in wurzel.iter():
+            if not hasattr(el, "get"):
+                continue
+            nummer = AbsatzFinder.beitragsnummer(el)
+            if nummer is None or nummer in gesehen:
+                continue
+            gesehen.add(nummer)
+            aus.append(el)
+        return aus
+
+    @staticmethod
+    def beitragsnummer(el) -> Optional[int]:
+        """Die Beitragsnummer aus 'id=\"p<n>\"' oder 'id=\"pp<n>\"'."""
+        if el is None or not hasattr(el, "get"):
+            return None
+        treffer = _POST_KENNUNG.match(str(el.get("id") or "").strip())
+        return int(treffer.group(2)) if treffer else None
+
     @staticmethod
     def wortlaut_im_beitrag(behaelter, wortlaut: str) -> Optional[bool]:
         """
