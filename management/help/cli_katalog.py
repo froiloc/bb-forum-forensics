@@ -337,6 +337,13 @@ _GEPRUEFT_754 = ("Build 754, 2026-08-31, gegen Wegwerf-Bestaende unter /tmp "
                  "Lagen, forensic_900.db mit einem Seitenabzug aus vier "
                  "Beitraegen), Python 3.13, lxml 6.1, html5lib 1.1")
 
+_GEPRUEFT_759 = ("Build 759, 2026-09-04, gegen einen Wegwerf-Bestand unter "
+                 "/tmp mit nachgebauter Forenstruktur, erweitert um einen "
+                 "MEHRZEILIGEN Beitrag mit <br>: 8 Ausdruecke, 5 aufgeloest, "
+                 "4 post_id bestimmt, 3 ueber den Wortlaut eindeutig - "
+                 "davon einer nur ueber die gefaltete Fassung. "
+                 "Python 3.12.3, html5lib.")
+
 _GEPRUEFT_758 = ("Build 758, 2026-09-04, gegen einen Wegwerf-Bestand unter "
                  "/tmp mit nachgebauter Forenstruktur: PN-Seite nach "
                  "include/pms_new/mdl/topic.php Z. 462 ff. mit Signatur, "
@@ -5985,12 +5992,12 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "Textmarkierungen eine Beitragsnummer bestimmbar ist "
                      "und wie viele nur ueber den Wortlaut zuzuordnen "
                      "waeren.",
-                     _GEPRUEFT_758),
+                     _GEPRUEFT_759),
                 _bsp("python tools/anker_inventar.py --uid 1488 "
                      "--beispiele 50",
                      "Ein Bestand, mit mehr namentlich genannten "
                      "Einzelfaellen.",
-                     _GEPRUEFT_758),
+                     _GEPRUEFT_759),
             ),
             exit_codes=(
                 (0, "durchgelaufen, jede Textmarkierung ist zugeordnet"),
@@ -6009,6 +6016,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "SYSTEMBEITRAEGE (posts.type=4) HABEN KEIN 'postmsg'. Ihr "
                 "Text steht in <td>-Zellen (viewtopic0.php Z. 354). Das "
                 "betrifft 27.346 Beitraege.",
+                "DER WORTLAUT WIRD GEGEN DEN BROWSERTEXT GEHALTEN, NICHT "
+                "GEGEN DEN QUELLTEXT. toolbar.js Z. 1101 speichert "
+                "'sel.toString().trim()'; 'Selection.toString()' ist in "
+                "Blink layoutabhaengig - jedes <br> wird zu einem "
+                "Zeilenumbruch, jede Blockgrenze ebenso. Im Quelltext traegt "
+                "ein <br> gar nichts bei. Die Rueckabwicklung laeuft ueber "
+                "report_render.absatz_finder.browser_wortlaut() (Build 729). "
+                "Ohne sie faellt JEDE mehrzeilige Markierung durch.",
+                "VERGLICHEN WIRD IN DREI STUFEN, und die Reihenfolge ist die "
+                "Rangfolge: woertlich, ohne Rand-Leerraum, mit gefaltetem "
+                "Leerraum. Die getroffene Stufe steht in der Ausgabe - ein "
+                "Treffer der dritten ist schwaecher als einer der ersten. "
+                "Gefaltet wird auf BEIDEN Seiten; nur die Suchzeichenkette "
+                "zu falten kann nicht treffen.",
                 "GELOESCHTE UND UEBERHOLTE ZEILEN werden nicht mitgemessen. "
                 "Sie zeigen auf denselben Ort wie ihre Nachfolger und "
                 "verfaelschten jede Quote.",
