@@ -1347,17 +1347,47 @@ class AbsatzFinder:
         was nicht bestaetigt ist, wird nicht eingetragen.
 
         Gesucht wird in denselben Fassungen wie die Wortlautsuche
-        (_wortlaut_varianten): woertlich, gestrafft, gefaltet. Der Klartext
-        des Beitrags wird ebenso gefaltet - sonst schluegen Zeilenumbruch
-        und Einrueckung der Seitenvorlage die Probe, ohne dass am Inhalt
-        etwas fehlte.
+        (_wortlaut_varianten): woertlich, gestrafft, gefaltet. Der Text des
+        Beitrags wird ebenso gefaltet - sonst schluegen Zeilenumbruch und
+        Einrueckung der Seitenvorlage die Probe, ohne dass am Inhalt etwas
+        fehlte.
+
+        ── BUILD 761: VERGLICHEN WIRD GEGEN DEN BROWSERTEXT ─────────────────
+
+        Bis Build 760 lief der Vergleich gegen _klartext(behaelter) - die
+        Verkettung von '.text' und '.tail', also den QUELLTEXT. Der
+        gespeicherte Wortlaut ist aber 'Selection.toString()' aus
+        toolbar.js Z. 1101 und damit die GERENDERTE Fassung: jedes <br>
+        steht darin als Zeilenumbruch, im Quelltext steht dort nichts.
+
+        GEMESSEN (04.09.2026) an '<p>Zeile eins.<br>Zeile zwei.</p>':
+            gespeichert          'Zeile eins.\nZeile zwei.'
+            _klartext()          'Zeile eins.Zeile zwei.'
+            browser_wortlaut()   'Zeile eins.\nZeile zwei.'
+            Probe gegen _klartext        -> False
+            Probe gefaltet gegen gefaltet-> False
+            Probe gegen Browsertext      -> True
+
+        DIE FALTUNG RETTET NICHTS: sie macht aus dem Zeilenumbruch der
+        Suchseite ein Leerzeichen, aber auf der Quelltextseite steht dort
+        GAR KEIN Zeichen. 'A B' findet sich nicht in 'AB'.
+
+        Die Rueckabwicklung steht seit Build 729 in derselben Datei,
+        unmittelbar unterhalb dieser Methode. Sie wurde hier nicht benutzt.
+        Folge: JEDE mehrzeilige Markierung konnte die Kreuzprobe nur
+        verfehlen, und die Lagen UNKLAR und WIDERLEGT aus dem Lauf vom
+        31.08.2026 (111 und 87 von 477) sind damit nicht belastbar.
+
+        DIE BESTAETIGENDEN LAGEN BLEIBEN GUELTIG: wer den Wortlaut im
+        Quelltext gefunden hat, findet ihn im Browsertext erst recht - der
+        Browsertext enthaelt den Quelltext und zusaetzlich die Umbrueche.
         """
         if behaelter is None:
             return None
         roh = (wortlaut or "").strip()
         if not roh:
             return None
-        inhalt = _klartext(behaelter)
+        inhalt, _versaetze = browser_wortlaut(behaelter)
         gefalteter_inhalt = _falte(inhalt)
         for fassung in _wortlaut_varianten(wortlaut):
             if not fassung.strip():
