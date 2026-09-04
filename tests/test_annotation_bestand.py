@@ -245,6 +245,14 @@ def _evidence_904(pfad: str) -> None:
         (U1, "p9001", _ts("2026-07-10 08:10:00"), None, "h082317", 9001),
         # 12: weder noch -> darf es nicht geben
         (U1, None, _ts("2026-07-10 08:11:00"), None, "h082317", None),
+        # 13: DIESELBE Kennung in Grossschreibung (Produktivform aus dem AD)
+        (U1, None, _ts("2026-08-01 09:00:00"),
+         _sel(xpathStart=XP_A, offsetStart=0, xpathEnd=XP_A, offsetEnd=4,
+              textContent="aus dem AD"), "H082317", None),
+        # 14: Alex' Testkonto in Kleinschreibung -> MUSS ausgenommen bleiben
+        (U1, None, _ts("2026-08-01 09:01:00"),
+         _sel(xpathStart=XP_A, offsetStart=0, xpathEnd=XP_A, offsetEnd=4,
+              textContent="Test"), "h0a2898", None),
     ]
     for page, eid, tsw, seljson, urheber, pid in zeilen:
         con.execute(
@@ -456,12 +464,12 @@ def test_ab20_urheber_werden_in_drei_klassen_getrennt(tmp_path):
     Testkonto als Ermittlerarbeit.
     """
     m8 = _befund_904(tmp_path).m8_urheber
-    assert m8["gueltige_kennung"] == 8      # h082317 5x + H0D899 3x
-    assert m8["ausgenommen"] == 3           # H0A2898, paul, uid_538299
+    assert m8["gueltige_kennung"] == 9      # h082317 5x + H082317 + H0D899 3x
+    assert m8["ausgenommen"] == 4           # H0A2898, h0a2898, paul, uid_...
     assert m8["ungueltige_kennung"] == 1    # leere Kennung
     assert m8["leer_oder_null"] == 1
     assert m8["gueltige_kennung"] + m8["ausgenommen"] \
-        + m8["ungueltige_kennung"] == 12
+        + m8["ungueltige_kennung"] == 14
 
 
 def test_ab21_ausschlussliste_wird_ergaenzt_nicht_ersetzt(tmp_path):
@@ -478,8 +486,8 @@ def test_ab21_ausschlussliste_wird_ergaenzt_nicht_ersetzt(tmp_path):
     assert "H0A2898" in m8["ausschlussliste"]
     assert "paul" in m8["ausschlussliste"]
     assert "H0D899" in m8["ausschlussliste"]
-    assert m8["ausgenommen"] == 6           # 3 wie zuvor + 3x H0D899
-    assert m8["gueltige_kennung"] == 5      # nur noch h082317
+    assert m8["ausgenommen"] == 7           # 4 wie zuvor + 3x H0D899
+    assert m8["gueltige_kennung"] == 6      # nur noch h082317/H082317
 
 
 def test_ab22_zeitverteilung_je_kennung(tmp_path):
@@ -491,12 +499,13 @@ def test_ab22_zeitverteilung_je_kennung(tmp_path):
     Beides zusammen sagt mehr als jedes fuer sich.
     """
     m8 = _befund_904(tmp_path).m8_urheber
+    # Gruppiert wird ueber die GROSSFORM - deshalb 'PAUL' und 'H082317'.
     nach = {d["wert"]: d for d in m8["je_wert"]}
-    assert nach["paul"]["vor_produktivbetrieb"] == 1
-    assert nach["paul"]["ab_produktivbetrieb"] == 0
-    assert nach["h082317"]["ab_produktivbetrieb"] == 5
-    assert nach["h082317"]["vor_produktivbetrieb"] == 0
-    assert nach["(leer oder NULL)"]["klasse"] == "ungueltig"
+    assert nach["PAUL"]["vor_produktivbetrieb"] == 1
+    assert nach["PAUL"]["ab_produktivbetrieb"] == 0
+    assert nach["H082317"]["ab_produktivbetrieb"] == 6
+    assert nach["H082317"]["vor_produktivbetrieb"] == 0
+    assert nach["(LEER ODER NULL)"]["klasse"] == "ungueltig"
 
 
 def test_ab23_die_beiden_annotationsvarianten_werden_getrennt(tmp_path):
@@ -514,12 +523,12 @@ def test_ab23_die_beiden_annotationsvarianten_werden_getrennt(tmp_path):
     """
     m9 = _befund_904(tmp_path).m9_variante
     assert m9["whole_post"] == 1
-    assert m9["text_range"] == 10
-    assert m9["text_range_ohne_ort"] == 10
+    assert m9["text_range"] == 12
+    assert m9["text_range_ohne_ort"] == 12
     assert m9["text_range_mit_ort"] == 0
     assert m9["weder_noch"] == 1
     assert m9["weder_noch_ids"] == [12]
-    assert (m9["whole_post"] + m9["text_range"] + m9["weder_noch"]) == 12
+    assert (m9["whole_post"] + m9["text_range"] + m9["weder_noch"]) == 14
 
 
 # ---------------------------------------------------------------------------
@@ -817,3 +826,96 @@ def test_ab19_gesamtbilanz_summiert_ueber_alle_bestaende(tmp_path):
     assert werte[2] == "13"
     # Beide Bestaende tragen created_by='pruefer' - keine gueltige Kennung.
     assert werte[5] == "0"
+
+
+def test_ab24_kennungen_werden_auf_grossschreibung_normalisiert(tmp_path):
+    """
+    ROT, wenn 'h082317' und 'H082317' als zwei Personen gezaehlt werden.
+
+    Beleg (Alex, 03.09.2026): Das Produktivsystem bezieht die Kennungen aus
+    dem Active Directory und verwendet ausschliesslich Grossbuchstaben. Die
+    kleingeschriebene Form stammt aus dem Testsystem, wo die Kennung von Hand
+    eingetragen wurde. Es ist dieselbe Person - die Chefermittlerin.
+
+    Im echten Bestand betrifft das 178 Zeilen: 77 als 'h082317' in
+    evidence_2948078.db, 101 als 'H082317' in 1488 und 1088376. Ohne
+    Normalisierung steht sie in jeder Auswertung zweimal.
+    """
+    m8 = _befund_904(tmp_path).m8_urheber
+    werte = {d["wert"] for d in m8["je_wert"]}
+    assert "H082317" in werte
+    assert "h082317" not in werte, "Rohform darf nicht als eigene Kennung stehen"
+    eintrag = [d for d in m8["je_wert"] if d["wert"] == "H082317"][0]
+    assert eintrag["anzahl"] == 6          # 5x klein + 1x gross
+    # DIE ROHFORM MUSS ERHALTEN BLEIBEN. Eine Messung, die sie wegwirft,
+    # koennte die Abweichung anschliessend nicht mehr belegen.
+    formen = {sw["roh"]: sw["anzahl"] for sw in eintrag["schreibweisen"]}
+    assert formen == {"h082317": 5, "H082317": 1}
+
+
+def test_ab25_abweichende_schreibweise_wird_mit_ids_gemeldet(tmp_path):
+    """
+    ROT, wenn die abweichend geschriebenen Zeilen nicht benannt werden.
+
+    WARUM DAS EIN BEFUND IST UND KEINE SCHOENHEITSFRAGE: Die Rechtepruefung
+    vergleicht die Kennung des Anmeldenden zeichengenau mit
+    'annotations.created_by'. Weichen sie ab, gelten die Eintraege nicht als
+    eigene - die Person kann ihre eigenen Annotationen weder bearbeiten noch
+    loeschen. Im Bestand sind davon 77 Zeilen der Chefermittlerin betroffen.
+
+    GEMELDET WIRD NUR BEI GUELTIGER KENNUNG. Eine ungueltige Kennung hat kein
+    Konto im Active Directory; dort gibt es niemanden, der ausgesperrt wuerde,
+    und eine Meldung waere blosses Rauschen.
+    """
+    m8 = _befund_904(tmp_path).m8_urheber
+    abw = {d["roh"]: d for d in m8["abweichende_schreibweise"]}
+    assert "h082317" in abw
+    assert abw["h082317"]["kennung"] == "H082317"
+    assert abw["h082317"]["anzahl"] == 5
+    assert abw["h082317"]["ids"] == [1, 4, 5, 11, 12]
+    assert m8["zeilen_mit_abweichender_schreibweise"] == 5
+    # Die ungueltige Kennung '(leer oder NULL)' darf NICHT gemeldet werden.
+    assert all(d["kennung"] != "(LEER ODER NULL)"
+               for d in m8["abweichende_schreibweise"])
+    # 'h0a2898' ist ausgenommen, nicht gueltig - also ebenfalls keine Meldung.
+    assert "h0a2898" not in abw
+
+
+def test_ab26_ausschlussliste_ist_schreibungsunabhaengig(tmp_path):
+    """
+    ROT, wenn 'h0a2898' an der Ausschlussliste vorbeirutscht.
+
+    Die Liste enthaelt 'H0A2898'. Waere der Vergleich schreibungsabhaengig,
+    zaehlte die kleingeschriebene Form als Ermittlerarbeit - und Alex'
+    eigene Testmarkierungen wuerden zu Beweismitteln. Dass es diese Form
+    wirklich geben kann, belegt 'h082317' im echten Bestand.
+    """
+    m8 = _befund_904(tmp_path).m8_urheber
+    # GEPRUEFT WIRD AM SUMMENZAEHLER, nicht am Gruppeneintrag. Die Klasse
+    # eines Gruppeneintrags stammt von der zuerst gelesenen Zeile; stuende
+    # 'H0A2898' vorn, bliebe die Gruppe auch dann als 'ausgenommen' stehen,
+    # wenn 'h0a2898' danebenlaeuft. Der Summenzaehler zaehlt jede Zeile
+    # einzeln und kann sich nicht hinter der Lesereihenfolge verstecken.
+    assert m8["ausgenommen"] == 4          # H0A2898, h0a2898, paul, uid_...
+    assert m8["gueltige_kennung"] == 9
+    eintrag = [d for d in m8["je_wert"] if d["wert"] == "H0A2898"][0]
+    assert eintrag["klasse"] == "ausgenommen"
+    assert eintrag["anzahl"] == 2          # 'H0A2898' und 'h0a2898'
+
+
+def test_ab27_buildnummer_stammt_aus_build_json():
+    """
+    ROT, wenn die Buildnummer wieder im Quelltext steht.
+
+    Der Lauf vom 03.09.2026 wurde als 'build: 755' ausgewiesen, obwohl er von
+    Build 756 stammte - die Zahl war fest verdrahtet. Fuer die Zahlen war das
+    harmlos, fuer die Herkunftsangabe einer forensischen Messung nicht: eine
+    Auswertung, die sich auf die falsche Fassung des Werkzeugs beruft, ist
+    nicht nachvollziehbar.
+    """
+    erwartet = json.load(open(os.path.join(WURZEL, "build.json"),
+                              encoding="utf-8"))["build"]
+    assert ABT._buildnummer() == erwartet
+    quelle = open(ABT.__file__, encoding="utf-8").read()
+    assert '"build": 755' not in quelle
+    assert '"build": 756' not in quelle

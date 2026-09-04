@@ -65,6 +65,7 @@ import json
 import os
 import re
 import sys
+from typing import Any
 
 _WURZEL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _WURZEL not in sys.path:
@@ -76,6 +77,26 @@ from management.help import cli_epilog                      # noqa: E402
 from management.maintenance.annotation_bestand import (     # noqa: E402
     AUSGENOMMENE_KENNUNGEN, BestandsAufnahme, Bestandsbefund,
     PRODUKTIVBETRIEB_AB, TESTBESTAENDE, zeit)
+
+def _buildnummer() -> Any:
+    """
+    Die Buildnummer aus build.json.
+
+    SIE STAND BIS BUILD 756 ALS ZAHL IM QUELLTEXT. Der Lauf vom 03.09.2026
+    wurde deshalb als 'build: 755' ausgewiesen, obwohl er von Build 756
+    stammte. Fuer die Zahlen war das harmlos, fuer die Herkunftsangabe einer
+    forensischen Messung nicht: eine Auswertung, die sich auf die falsche
+    Fassung des Werkzeugs beruft, ist nicht nachvollziehbar.
+
+    Bei Unlesbarkeit wird None zurueckgegeben und nicht geraten - eine
+    erfundene Nummer waere schlimmer als gar keine.
+    """
+    try:
+        with open(os.path.join(_WURZEL, "build.json"), encoding="utf-8") as fh:
+            return json.load(fh).get("build")
+    except (OSError, ValueError):
+        return None
+
 
 RUECK_OHNE_BEFUND = 0
 RUECK_BEFUND = 1
@@ -360,6 +381,8 @@ def _m8_m9_ausgeben(b: Bestandsbefund, sag) -> None:
         ("  davon leer oder NULL", m8["leer_oder_null"]),
         ("verschiedene Kennungen", m8["verschiedene_kennungen"]),
     ))
+    sag("  Gruppiert wird ueber die Grossform; die vorgefundene Schreibweise "
+        "steht daneben.")
     sag("  %s %7s %7s %7s  %s" % (_pad("Kennung", 22), "Anzahl", "vor", "ab",
                                   "Zeitraum"))
     for d in m8["je_wert"]:
@@ -369,8 +392,30 @@ def _m8_m9_ausgeben(b: Bestandsbefund, sag) -> None:
             % (marke, _pad(d["wert"], 20), d["anzahl"],
                d["vor_produktivbetrieb"], d["ab_produktivbetrieb"],
                d["frueheste"], d["spaeteste"]))
+        if len(d["schreibweisen"]) > 1 or (
+                d["schreibweisen"] and d["schreibweisen"][0]["roh"]
+                != d["wert"]):
+            for sw in d["schreibweisen"]:
+                zeichen = "=" if sw["roh"] == d["wert"] else "ABWEICHEND"
+                sag("      Schreibweise %s : %4d  %s"
+                    % (_pad(repr(sw["roh"]), 16), sw["anzahl"], zeichen))
     sag("    X = ausgenommen, ! = ungueltige Kennung")
     sag("    Ausschlussliste: %s" % ", ".join(m8["ausschlussliste"]))
+    if m8["abweichende_schreibweise"]:
+        sag("  KENNUNG IN ABWEICHENDER SCHREIBWEISE - %d Zeile(n):"
+            % m8["zeilen_mit_abweichender_schreibweise"])
+        sag("  Das Produktivsystem bezieht die Kennungen aus dem Active "
+            "Directory und")
+        sag("  verwendet ausschliesslich Grossbuchstaben. Die Rechtepruefung "
+            "vergleicht")
+        sag("  zeichengenau: bei abweichender Schreibweise gelten die "
+            "Eintraege nicht als")
+        sag("  eigene, und die Person kann sie weder bearbeiten noch "
+            "loeschen.")
+        for d in m8["abweichende_schreibweise"]:
+            sag("    %s statt %s : %d Zeile(n), ids %s"
+                % (repr(d["roh"]), d["kennung"], d["anzahl"],
+                   ", ".join(str(i) for i in d["ids"])))
 
     m9 = b.m9_variante
     sag("")
@@ -474,6 +519,18 @@ def _gesamtbilanz(befunde, sag) -> int:
             zeilen.append("Bestand %s: %d Kettenbruch/-brueche bei prev_id"
                           % (b.uid, m1["kettenbruch_anzahl"]))
             befundzahl += 1
+        m8 = b.m8_urheber
+        if m8["zeilen_mit_abweichender_schreibweise"]:
+            zeilen.append(
+                "Bestand %s: %d Zeile(n) mit abweichend geschriebener "
+                "Kennung (%s) - die Rechtepruefung erkennt sie nicht als "
+                "eigene, ids %s"
+                % (b.uid, m8["zeilen_mit_abweichender_schreibweise"],
+                   ", ".join("%s statt %s" % (d["roh"], d["kennung"])
+                             for d in m8["abweichende_schreibweise"]),
+                   ", ".join(str(i) for d in m8["abweichende_schreibweise"]
+                             for i in d["ids"][:20])))
+            befundzahl += 1
         if not m7.get("vorhanden"):
             zeilen.append("Bestand %s: keine Seitendaten (%s)"
                           % (b.uid, m7.get("hinweis", "")))
@@ -544,7 +601,7 @@ def lauf(evidence_dir: str, forensic_dir: str, nur_uids, sag,
     if json_ziel:
         inhalt = {
             "werkzeug": "annotationen_bestand",
-            "build": 755,
+            "build": _buildnummer(),
             "evidence_dir": evidence_dir,
             "forensic_dir": forensic_dir,
             "produktivbetrieb_ab": PRODUKTIVBETRIEB_AB,
