@@ -77,6 +77,8 @@ from management.help import cli_epilog                      # noqa: E402
 from management.maintenance.annotation_bestand import (     # noqa: E402
     AUSGENOMMENE_KENNUNGEN, BestandsAufnahme, Bestandsbefund,
     PRODUKTIVBETRIEB_AB, TESTBESTAENDE, zeit)
+from management.maintenance.bestandsliste import (          # noqa: E402
+    bestaende_finden)
 
 def _buildnummer() -> Any:
     """
@@ -111,6 +113,11 @@ def _pad(s, n) -> str:
     return s + " " * max(0, n - len(s))
 
 
+#: BUILD 763: Die Aufzaehlung selbst steht jetzt in
+#: management/maintenance/bestandsliste.py, weil die Ankerdiagnose sie
+#: ebenfalls braucht. Der hiesige Name bleibt als Verweis stehen - er wird an
+#: einer Stelle aufgerufen (lauf()) und ist in den Tests dieses Werkzeugs
+#: genannt; ihn umzubenennen waere ein Refactoring ohne Auftrag.
 def _bestaende_finden(evidence_dir: str) -> list:
     """
     Alle evidence_<uid>.db im Verzeichnis, nach uid sortiert.
@@ -119,14 +126,7 @@ def _bestaende_finden(evidence_dir: str) -> list:
     Bestand ohne Seitenkopfdaten ist ein BEFUND und kein Grund, ihn
     wegzulassen (Grundregel 1).
     """
-    if not os.path.isdir(evidence_dir):
-        return []
-    gefunden = []
-    for name in sorted(os.listdir(evidence_dir)):
-        m = _RE_EVIDENCE.match(name)
-        if m:
-            gefunden.append((m.group(1), os.path.join(evidence_dir, name)))
-    return sorted(gefunden, key=lambda p: int(p[0]))
+    return bestaende_finden(evidence_dir)
 
 
 def _tabelle(sag, ueberschrift: str, paare, breite: int = 42) -> None:

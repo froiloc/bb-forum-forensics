@@ -531,3 +531,342 @@ def test_AD25_gegenprobe_bei_article_wird_sie_sehr_wohl_ausgelegt(tmp_path):
     text = "\n".join(befund.seiten[0].verteilung_genaehert)
     assert "Vorlage dieses Forums" in text, text
     assert "gewoehnlich und fuer sich KEIN Befund" not in text, text
+
+
+# =============================================================================
+# BUILD 763 - DER POST-BEZUG UND DIE FALLZUORDNUNG
+# =============================================================================
+# AD22 und AD23 sind in der Reihe frei geblieben und werden NICHT
+# nachbelegt - eine Kennung, die spaeter etwas anderes bezeichnet als beim
+# ersten Lesen, macht jeden Verweis darauf unbrauchbar. Die neuen Waechter
+# beginnen deshalb bei AD26.
+#
+# AD26  BEIDE Ausdruecke werden gemessen, nicht nur 'xpathStart'
+# AD27  GEGENPROBE zu AD26: bricht NUR der zweite, faellt der Fall auf 0 -
+#       ohne die zweite Messung waere er faelschlich bestimmbar
+# AD28  der Aufstieg zaehlt 'pN' und 'ppN' als EINEN Beitrag, nicht als zwei
+# AD29  ein Knoten oberhalb der Beitragsebene liefert KEINE post_id
+# AD30  GEGENPROBE zu AD29: ein Knoten ausserhalb liefert auch keine
+#       container unter sich - sonst waere AD29 auch mit einer Fassung gruen,
+#       die immer 'oberhalb' meldet
+# AD31  die Seitenart schaltet die Erkennung NICHT ab; der Widerspruch wird
+#       benannt (Grundregel 1)
+# AD32  die Faelle 1 bis 6 werden an gebauten Lagen richtig zugeordnet
+# AD33  verschachtelte container mit VERSCHIEDENEN Nummern werden gemeldet,
+#       mit gleicher Nummer nicht
+# AD34  --uid schraenkt ein, ohne --uid laufen alle Bestaende, und die
+#       JSON-Ausgabe ist gueltiges JSON
+# =============================================================================
+
+from management.maintenance.anker_postbezug import (          # noqa: E402
+    ZUSTAND_AUSSERHALB, ZUSTAND_IM_POST, ZUSTAND_OBERHALB, seitenklasse)
+
+#: Ein Knoten im page-header - vor allen Beitraegen.
+VOR = "./div[1]/div[1]/h1[1]/text()[1]"
+#: Ein Knoten im page-footer - nach allen Beitraegen.
+NACH = "./div[1]/div[3]/text()[1]"
+
+
+def _in_post(platz: int) -> str:
+    """Ein Ausdruck, der IN den Beitrag an dieser Stelle zeigt."""
+    return "./div[1]/div[2]/article[%d]/div[1]/p[1]/text()[1]" % platz
+
+
+def _seite_mit_posts(nummern, doppelte_kennung: bool = True,
+                     schachtel: bool = False) -> bytes:
+    """
+    Ein Abzug mit so vielen Beitraegen, wie Nummern genannt sind.
+
+    'doppelte_kennung' bildet die Vollansicht nach: aussen
+    '<article id="pN">', darin '<div class="box" id="ppN">' - beide mit
+    DERSELBEN Nummer (viewtopic0.php Z. 886/975/1212).
+
+    'schachtel' legt den ZWEITEN Beitrag in den ersten. Das bildet nach, was
+    verschraenkt geschlossener BB-Code erzeugen kann: verschachtelte
+    container mit VERSCHIEDENEN Nummern.
+    """
+    def einer(n):
+        innen = ('<div class="box" id="pp%d"><p>Text von Beitrag %d</p></div>'
+                 % (n, n)) if doppelte_kennung else \
+                ('<div class="box"><p>Text von Beitrag %d</p></div>' % n)
+        return '<article class="post" id="p%d">%s</article>' % (n, innen)
+
+    if schachtel and len(nummern) >= 2:
+        aussen = nummern[0]
+        inneres = "".join(einer(n) for n in nummern[1:])
+        posts = ('<article class="post" id="p%d">'
+                 '<div class="box" id="pp%d"><p>Text von Beitrag %d</p>%s'
+                 '</div></article>' % (aussen, aussen, aussen, inneres))
+    else:
+        posts = "".join(einer(n) for n in nummern)
+
+    return ("<html><head><title>t</title></head><body>"
+            "<div id=\"wrap\"><div id=\"page-header\"><h1>Forum</h1></div>"
+            "<div id=\"page-body\">" + posts + "</div>"
+            "<div id=\"page-footer\">F</div></div></body></html>").encode(
+                "utf-8")
+
+
+def _bau(tmp_path, seiten, markierungen, uid: str = "9"):
+    """
+    Ein Bestand aus mehreren Seiten und Markierungen.
+
+    'seiten'       : {url: bytes}
+    'markierungen' : [(id, url, xpathStart, xpathEnd)] - xpathEnd darf None
+                     sein; dann fehlt 'xpathEnd' im selection_json.
+    Rueckgabe: (evidence_verzeichnis, forensic_verzeichnis)
+    """
+    tmp_path = Path(tmp_path)
+    ev_dir = tmp_path / "evidence"
+    fo_dir = tmp_path / "forensic"
+    ev_dir.mkdir(parents=True, exist_ok=True)
+    fo_dir.mkdir(parents=True, exist_ok=True)
+
+    c = sqlite3.connect(fo_dir / ("forensic_%s.db" % uid))
+    c.executescript(
+        "CREATE TABLE pages (id INTEGER PRIMARY KEY, url_canonical TEXT,"
+        " method TEXT, html BLOB);"
+        "CREATE TABLE page_aliases (page_id INTEGER, url_raw TEXT);")
+    for nr, (url, roh) in enumerate(seiten.items(), 1):
+        c.execute("INSERT INTO pages (id,url_canonical,method,html) "
+                  "VALUES (?,?,'GET',?)", (nr, url, roh))
+    c.commit()
+    c.close()
+
+    c = sqlite3.connect(ev_dir / ("evidence_%s.db" % uid))
+    c.execute("CREATE TABLE annotations (id INTEGER PRIMARY KEY,"
+              " page_url TEXT, selection_json TEXT, post_id INTEGER,"
+              " deleted_at TEXT)")
+    for kennung, url, anfang, ende in markierungen:
+        sel = {"xpathStart": anfang, "offsetStart": 0, "offsetEnd": 4,
+               "textContent": "Text"}
+        if ende is not None:
+            sel["xpathEnd"] = ende
+        c.execute("INSERT INTO annotations (id,page_url,selection_json) "
+                  "VALUES (?,?,?)", (kennung, url, json.dumps(sel)))
+    c.commit()
+    c.close()
+    return ev_dir, fo_dir
+
+
+def _lauf(tmp_path, seiten, markierungen, uid: str = "9"):
+    """Ein Lauf ueber einen gebauten Bestand. Gibt den Laufbefund zurueck."""
+    ev_dir, fo_dir = _bau(tmp_path, seiten, markierungen, uid=uid)
+    d = AnkerDiagnose(evidence=ev_dir / ("evidence_%s.db" % uid),
+                      forensic=fo_dir / ("forensic_%s.db" % uid))
+    return d.lauf(grenze=0)
+
+
+URL_T = "/forum/viewtopic.php?id=1"
+
+
+# ---------------------------------------------------------------------------
+def test_AD26_beide_ausdruecke_werden_gemessen(tmp_path):
+    """
+    Bis Build 762 sah das Werkzeug nur 'xpathStart' an. Rot, sobald der
+    zweite Ausdruck wieder unter den Tisch faellt.
+    """
+    befund = _lauf(tmp_path, {URL_T: _seite_mit_posts([100, 101])},
+                   [(1, URL_T, _in_post(1), _in_post(2))])
+    b = befund.belege[0]
+    assert b.anker_end == _in_post(2), b.anker_end
+    assert b.zweite_end is not None
+    assert b.zweite_end.position_vorhanden is True
+    assert b.bezug_end is not None
+    assert b.bezug_end.post_id == 101, b.bezug_end
+
+
+def test_AD27_gegenprobe_bricht_nur_der_zweite_ist_der_fall_unbestimmt(
+        tmp_path):
+    """
+    OHNE DIESE PROBE waere AD26 auch mit einer Fassung gruen, die den
+    zweiten Ausdruck zwar liest, sein Ergebnis aber nicht auswertet: der
+    Fall stuende dann allein auf dem ersten Endpunkt.
+
+    Und sie haelt zugleich die Festlegung fest, dass aus einem GEBROCHENEN
+    Ausdruck KEIN Fall abgeleitet wird - der ueberlebende Prefix sagt etwas
+    ueber sich aus, nicht ueber die Lage der Markierung (Rueckbau Block C,
+    Build 762).
+    """
+    kaputt = "./div[1]/div[2]/article[99]/p[1]/text()[1]"
+    befund = _lauf(tmp_path, {URL_T: _seite_mit_posts([100, 101])},
+                   [(1, URL_T, _in_post(1), kaputt)])
+    b = befund.belege[0]
+    assert b.zweite.position_vorhanden is True, "der ERSTE traegt"
+    assert b.zweite_end.position_vorhanden is False, "der ZWEITE bricht"
+    assert b.fall == 0, b.fall
+    assert b.fall_typ == "", b.fall_typ
+    assert "xpathEnd" in b.fall_grund, b.fall_grund
+
+
+def test_AD28_aussen_p_und_innen_pp_sind_EIN_beitrag(tmp_path):
+    """
+    'p<n>' aussen und 'pp<n>' innen tragen DIESELBE Nummer und gehoeren zu
+    demselben Beitrag (viewtopic0.php Z. 886/975/1212). Rot, sobald der
+    Aufstieg oder die Aufzaehlung sie als zwei zaehlt.
+    """
+    befund = _lauf(tmp_path, {URL_T: _seite_mit_posts([100])},
+                   [(1, URL_T, _in_post(1), _in_post(1))])
+    b = befund.belege[0]
+    assert b.bezug_start.post_id == 100, b.bezug_start
+    assert b.bezug_start.zustand == ZUSTAND_IM_POST
+    assert befund.seiten[0].container_zahl == 1, "EIN Beitrag, nicht zwei"
+    assert befund.seiten[0].verschachtelungen == [], \
+        "gleiche Nummer ist der Regelfall und KEIN Befund"
+
+
+def test_AD29_oberhalb_der_beitragsebene_gibt_es_keine_post_id(tmp_path):
+    """
+    Bricht der Ausdruck frueh, ueberlebt ein hoher Prefix. Unter ihm liegen
+    ALLE Beitraege der Seite - eine einzelne Nummer daraus zu waehlen waere
+    geraten. Rot, sobald das Werkzeug es doch tut.
+    """
+    kaputt = "./div[1]/div[2]/article[99]/p[1]/text()[1]"
+    befund = _lauf(tmp_path, {URL_T: _seite_mit_posts([100, 101, 102])},
+                   [(1, URL_T, kaputt, kaputt)])
+    b = befund.belege[0]
+    assert b.bezug_start.zustand == ZUSTAND_OBERHALB, b.bezug_start
+    assert b.bezug_start.post_id is None, b.bezug_start
+    assert b.bezug_start.nachkommen_zahl == 3, b.bezug_start
+    assert b.bezug_start.erste_nummer == 100
+    assert b.bezug_start.letzte_nummer == 102
+
+
+def test_AD30_gegenprobe_ausserhalb_meldet_keine_container(tmp_path):
+    """
+    OHNE DIESE PROBE waere AD29 auch mit einer Fassung gruen, die IMMER
+    'oberhalb' meldet. Ein Knoten im page-footer hat keine Beitraege unter
+    sich und keinen ueber sich.
+    """
+    befund = _lauf(tmp_path, {URL_T: _seite_mit_posts([100, 101, 102])},
+                   [(1, URL_T, NACH, NACH)])
+    b = befund.belege[0]
+    assert b.bezug_start.zustand == ZUSTAND_AUSSERHALB, b.bezug_start
+    assert b.bezug_start.nachkommen_zahl == 0, b.bezug_start
+    assert b.bezug_start.post_id is None
+
+
+def test_AD31_die_seitenart_schaltet_die_erkennung_nicht_ab(tmp_path):
+    """
+    DIE ENTSCHEIDENDE PROBE ZUR SEITENART. '/forum/search.php' gilt als
+    beitragsfrei. Wuerde die Erkennung anhand der Adresse UEBERSPRUNGEN,
+    bliebe ein Abzug, der doch Beitraege traegt, unbemerkt - ein stiller
+    Sprung (Grundregel 1). Gemessen wird trotzdem, und der Widerspruch wird
+    benannt.
+    """
+    url = "/forum/search.php?action=show"
+    befund = _lauf(tmp_path, {url: _seite_mit_posts([400])},
+                   [(1, url, VOR, NACH)])
+    s = befund.seiten[0]
+    assert s.seitenklasse == "search", s.seitenklasse
+    assert s.container_zahl == 1, "die Erkennung ist GELAUFEN"
+    assert "beitragsfrei" in s.widerspruch, s.widerspruch
+    assert befund.belege[0].fall == 4, befund.belege[0].fall
+
+
+def test_AD32_die_faelle_eins_bis_sechs(tmp_path):
+    """
+    Die Fallzuordnung an gebauten Lagen. Sie ist die Grundlage der
+    Entscheidung 'text range' gegen 'whole post' und damit die Zahl, auf die
+    Etappe 4 aufsetzt.
+    """
+    zwei = "/forum/viewtopic.php?id=2"      # zwei Beitraege
+    eins = "/forum/viewtopic.php?id=3"      # ein Beitrag
+    drei = "/forum/viewtopic.php?id=4"      # drei Beitraege
+    seiten = {
+        zwei: _seite_mit_posts([200, 201]),
+        eins: _seite_mit_posts([300]),
+        drei: _seite_mit_posts([500, 501, 502]),
+    }
+    markierungen = [
+        (1, zwei, _in_post(1), _in_post(1)),   # Fall 1
+        (2, zwei, VOR, _in_post(1)),           # Fall 2
+        (3, zwei, _in_post(2), NACH),          # Fall 3
+        (4, eins, VOR, NACH),                  # Fall 4
+        (5, eins, VOR, VOR),                   # Fall 5
+        (6, drei, _in_post(1), _in_post(3)),   # Fall 6
+    ]
+    befund = _lauf(tmp_path, seiten, markierungen)
+    nach_id = {b.beleg_id: b for b in befund.belege}
+    erwartet = {1: (1, "text range", [200]),
+                2: (2, "whole post", [200]),
+                3: (3, "whole post", [201]),
+                4: (4, "whole post", [300]),
+                5: (5, "text range", []),
+                6: (6, "whole post", [500, 501, 502])}
+    for kennung, (fall, typ, posts) in erwartet.items():
+        b = nach_id[kennung]
+        assert b.fall == fall, (kennung, b.fall, b.fall_grund)
+        assert b.fall_typ == typ, (kennung, b.fall_typ)
+        assert b.fall_posts == posts, (kennung, b.fall_posts)
+    # Fall 6 nennt den eingeschlossenen Beitrag ausdruecklich - ohne ihn
+    # waere die Spanne eine blosse Behauptung.
+    assert nach_id[6].spanne.posts_dazwischen == [501], \
+        nach_id[6].spanne
+
+
+def test_AD33_verschachtelte_container_mit_verschiedenen_nummern(tmp_path):
+    """
+    DER FALL, DEN VERSCHRAENKTER BB-CODE ERZEUGEN KANN. Er ist am Markup
+    daran zu erkennen, dass die verschachtelten container VERSCHIEDENE
+    Nummern tragen - im Unterschied zum Regelfall 'p<n>' / 'pp<n>'.
+    """
+    url = "/forum/viewtopic.php?id=7"
+    befund = _lauf(tmp_path,
+                   {url: _seite_mit_posts([600, 601], schachtel=True)},
+                   [(1, url, VOR, NACH)])
+    s = befund.seiten[0]
+    paare = [(v.aussen, v.innen) for v in s.verschachtelungen]
+    assert (600, 601) in paare, paare
+    # GEGENPROBE IN DERSELBEN PROBE: das Paar (600, 600) - aussen 'p600',
+    # innen 'pp600' - darf NICHT erscheinen.
+    assert all(a != i for a, i in paare), paare
+
+
+def test_AD34_uid_schraenkt_ein_und_die_json_ausgabe_ist_gueltig(
+        tmp_path, capsys):
+    """
+    Der Verzeichnisbetrieb: ohne --uid laufen alle Bestaende, mit --uid nur
+    die genannten. Und die JSON-Datei muss sich wieder einlesen lassen -
+    eine Ausgabe, die nur fast JSON ist, hilft beim Zusammenfuehren nicht.
+    """
+    import tools.anker_diagnose as cli
+
+    seiten = {URL_T: _seite_mit_posts([100, 101])}
+    ev_dir, fo_dir = _bau(tmp_path, seiten,
+                          [(1, URL_T, _in_post(1), _in_post(1))], uid="11")
+    _bau(tmp_path, seiten, [(1, URL_T, _in_post(1), _in_post(2))], uid="12")
+
+    ziel = tmp_path / "befund.json"
+    code = cli.main(["--evidence-dir", str(ev_dir),
+                     "--forensic-dir", str(fo_dir),
+                     "--json", str(ziel)])
+    capsys.readouterr()
+    assert code == 0, code
+    with open(ziel, "r", encoding="utf-8") as fh:
+        inhalt = json.load(fh)
+    kennungen = sorted(b["subject_id"] for b in inhalt["bestaende"])
+    assert kennungen == ["11", "12"], kennungen
+
+    ziel2 = tmp_path / "nur11.json"
+    code = cli.main(["--evidence-dir", str(ev_dir),
+                     "--forensic-dir", str(fo_dir),
+                     "--uid", "11", "--json", str(ziel2)])
+    capsys.readouterr()
+    assert code == 0, code
+    with open(ziel2, "r", encoding="utf-8") as fh:
+        inhalt2 = json.load(fh)
+    assert [b["subject_id"] for b in inhalt2["bestaende"]] == ["11"]
+
+
+def test_AD35_seitenklasse_unterscheidet_beginner_von_viewtopic():
+    """
+    '/forum/beginner/viewtopic.php' traegt Beitraege und darf NICHT als
+    beitragsfrei eingeordnet werden. Rot, sobald die Zuordnung nur auf den
+    Dateinamen sieht.
+    """
+    assert seitenklasse("/forum/beginner/viewtopic.php?id=3") == \
+        "beginner_viewtopic"
+    assert seitenklasse("/forum/viewtopic.php?id=3") == "viewtopic"
+    assert seitenklasse("/forum/search.php") == "search"
+    assert seitenklasse("/forum/irgendwas.php") == "sonstige"

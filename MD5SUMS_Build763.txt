@@ -1,0 +1,9 @@
+e72b41fce44b0fbc3e19204ffe872446  build.json
+1ed8f4beeb255dccc7a8a2e380e5de82  issue-tracker/eintraege_claude_Build763.json
+b8492d512959e2f8fa12aa244c606118  management/help/cli_katalog.py
+bb0107b1ae7167b2a5ec4a855ceb5df7  management/maintenance/anker_diagnose.py
+9b2e068011ce93e0b77fee6f18e119fa  management/maintenance/anker_postbezug.py
+ecd02e4be930dc18a98f40c1229bd864  management/maintenance/bestandsliste.py
+a65149479387838ef8dc9784af7f3c3c  tests/test_anker_diagnose.py
+e0b8fae15553e887be4144c146a19e4a  tools/anker_diagnose.py
+7489d58ec47bb8860fe006e6c1fba1d4  tools/annotationen_bestand.py
