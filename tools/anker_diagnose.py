@@ -72,6 +72,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -80,9 +81,15 @@ from pathlib import Path
 # Werkzeugen unter tools/.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from core import werkzeug_konfig                                # noqa: E402
+from core.config_loader import coded_default                    # noqa: E402
 from management.help import cli_epilog                          # noqa: E402
+from management.maintenance import bestandsliste                # noqa: E402
+from management.maintenance.bestandsliste import (              # noqa: E402
+    bestaende_finden)
 from management.maintenance.laufkopf import Laufkopf            # noqa: E402
 from management.maintenance.anker_diagnose import AnkerDiagnose  # noqa: E402
+from management.maintenance.anker_postbezug import FALL_TEXT     # noqa: E402
 
 
 #: Die Dateien, die das ERGEBNIS dieses Laufs tragen. Nicht alle
@@ -91,6 +98,7 @@ from management.maintenance.anker_diagnose import AnkerDiagnose  # noqa: E402
 _GETRAGEN_VON = (
     "tools/anker_diagnose.py",
     "management/maintenance/anker_diagnose.py",
+    "management/maintenance/anker_postbezug.py",
     "report_render/html5_zerleger.py",
     "report_render/absatz_finder.py",
 )
@@ -136,17 +144,110 @@ def _argumente(argv):
                     "Seitenabzug nicht aufloesen. Rein lesend.",
         epilog=cli_epilog.epilog("anker_diagnose"),
         formatter_class=cli_epilog.HilfeFormat)
-    p.add_argument("--evidence", required=True,
+    # EINZELBESTAND - der Aufruf, den es seit Build 739 gibt. Er bleibt
+    # unveraendert; die Katalogbeispiele und die Waechter AD03/AD05/AD08
+    # nennen ihn. Er ist nur nicht mehr PFLICHT.
+    p.add_argument("--evidence", default=None,
                    help="Pfad zu evidence_<uid>.db (wird NUR gelesen)")
-    p.add_argument("--forensic", required=True,
+    p.add_argument("--forensic", default=None,
                    help="Pfad zu forensic_<uid>.db (wird NUR gelesen)")
+    # ALLE BESTAENDE - Build 763. Ohne --uid werden alle gefahren; die
+    # Verzeichnisse kommen aus der config.yaml, damit sie EINMAL im Projekt
+    # stehen (Waechter PH04).
+    p.add_argument("--config", default="./config.yaml",
+                   help="Konfigurationsdatei fuer die Verzeichnisvorgaben")
+    p.add_argument("--evidence-dir", default=None,
+                   help="Verzeichnis der evidence_<uid>.db; "
+                        "ueberstimmt paths.evidence_db_dir")
+    p.add_argument("--forensic-dir", default=None,
+                   help="Verzeichnis der forensic_<uid>.db; "
+                        "ueberstimmt paths.forensic_db_dir")
+    p.add_argument("--uid", action="append", default=[],
+                   help="nur diesen Bestand (mehrfach angebbar); "
+                        "ohne Angabe alle im Verzeichnis")
     p.add_argument("--beleg", type=int, default=None,
                    help="nur diesen einen Beleg ansehen")
-    p.add_argument("--grenze", type=int, default=50,
-                   help="hoechstens so viele Belege (Vorgabe 50)")
+    # VORGABE ABHAENGIG VOM BETRIEB, s. _grenze_bestimmen(): 50 im
+    # Einzelbestand, OHNE GRENZE ueber alle Bestaende. Eine feste 50 haette
+    # beim Gesamtlauf still abgeschnitten.
+    p.add_argument("--grenze", type=int, default=None,
+                   help="hoechstens so viele Belege je Bestand; 0 = alle. "
+                        "Vorgabe: 50 bei --evidence/--forensic, sonst 0")
     p.add_argument("--protokoll", default="",
                    help="die Ausgabe zusaetzlich in diese Datei schreiben")
+    p.add_argument("--json", dest="json_ziel", default=None,
+                   help="den Befund zusaetzlich maschinenlesbar hierhin "
+                        "schreiben")
     return p.parse_args(argv)
+
+
+def _grenze_bestimmen(a) -> int:
+    """
+    Die Grenze, mit der gelesen wird.
+
+    Der Einzelbestandsaufruf behaelt seine Vorgabe 50 - er dient dem
+    schnellen Blick auf einen Bestand, und daran soll sich nichts aendern.
+    Der Lauf ueber alle Bestaende hat keine Vorgabe, weil eine Obergrenze
+    dort ein stilles Weglassen waere (Grundregel 1). Wo die Grenze doch
+    greift, sagt es der Bericht.
+    """
+    if a.grenze is not None:
+        return int(a.grenze)
+    return 50 if (a.evidence or a.forensic) else 0
+
+
+def _bestaende_bestimmen(a, m):
+    """
+    Die Liste (uid, evidence_pfad, forensic_pfad), die gefahren wird.
+
+    Zwei Betriebsarten, die sich nicht mischen: entweder ein ausdruecklich
+    genannter Bestand (--evidence/--forensic) oder das Verzeichnis. Wer
+    beides angibt, bekommt eine Ansage statt einer stillen Vorrangregel.
+    """
+    if a.evidence or a.forensic:
+        if not (a.evidence and a.forensic):
+            m("Aufruffehler: --evidence und --forensic gehoeren zusammen.")
+            return None
+        if a.uid:
+            m("Aufruffehler: --uid gilt dem Verzeichnisbetrieb und passt "
+              "nicht zu --evidence/--forensic.")
+            return None
+        uid = _uid_aus_pfad(a.evidence)
+        return [(uid, a.evidence, a.forensic)]
+
+    # Vorrang Argument > config.yaml > Vorgabewert - derselbe Aufloeser wie
+    # in tools/annotationen_bestand.py, damit beide Werkzeuge dieselben
+    # Verzeichnisse finden und dieselbe Herkunftszeile schreiben.
+    aufl = werkzeug_konfig.resolver(a)
+    evidence_dir = werkzeug_konfig.wert(
+        "anker_diagnose", a, arg_attribut="evidence_dir",
+        arg_name="--evidence-dir", config_schluessel="paths.evidence_db_dir",
+        default=coded_default("paths.evidence_db_dir"),
+        name="evidence_db_dir", r=aufl)
+    forensic_dir = werkzeug_konfig.wert(
+        "anker_diagnose", a, arg_attribut="forensic_dir",
+        arg_name="--forensic-dir", config_schluessel="paths.forensic_db_dir",
+        default=coded_default("paths.forensic_db_dir"),
+        name="forensic_db_dir", r=aufl)
+
+    gefunden = bestaende_finden(evidence_dir)
+    if not gefunden:
+        m("Keine evidence_<uid>.db in %s gefunden." % evidence_dir)
+        return None
+    if a.uid:
+        gewuenscht = {str(u) for u in a.uid}
+        gefunden = [g for g in gefunden if g[0] in gewuenscht]
+        if not gefunden:
+            m("Keiner der genannten Bestaende liegt in %s." % evidence_dir)
+            return None
+    return [(uid, pfad, str(Path(forensic_dir) / ("forensic_%s.db" % uid)))
+            for uid, pfad in gefunden]
+
+
+def _uid_aus_pfad(pfad: str) -> str:
+    """Die Kennung aus 'evidence_<uid>.db'. Leer, wenn nicht ablesbar."""
+    treffer = bestandsliste.RE_EVIDENCE.match(Path(pfad).name)
+    return treffer.group(1) if treffer else ""
 
 
 def main(argv=None) -> int:
@@ -156,9 +257,6 @@ def main(argv=None) -> int:
         m("=" * 78)
         m("ANKER-DIAGNOSE - rein lesend, es wird nichts veraendert")
         m("=" * 78)
-        m("evidence: %s" % a.evidence)
-        m("forensic: %s" % a.forensic)
-        m()
         # HERKUNFT ZUERST (Build 746). Am 31.08.2026 lag eine Ausgabe vor,
         # die zeichengleich mit der aus dem Build davor war - 'nicht
         # eingespielt' und 'eingespielt, aber ohne Wirkung an dieser Stelle'
@@ -167,127 +265,344 @@ def main(argv=None) -> int:
             m(zeile)
         m()
 
-        d = AnkerDiagnose(evidence=Path(a.evidence), forensic=Path(a.forensic),
-                          nur_beleg=a.beleg)
-        befund = d.lauf(grenze=a.grenze)
+        bestaende = _bestaende_bestimmen(a, m)
+        if bestaende is None:
+            return 2
+        grenze = _grenze_bestimmen(a)
 
-        if befund.fehler:
-            m("BEFUND: %s" % befund.fehler)
-            # Ein Leerbefund ist KEIN Fehler - er sagt, dass es nichts zu
-            # diagnostizieren gibt, und das ist eine Auskunft.
-            leer = befund.fehler.startswith("Keine Markierung")
-            m.schliessen()
-            return 0 if leer else 1
+        # EIN FEHLSCHLAG BEENDET DEN LAUF NICHT. Ein Bestand, der nicht
+        # lesbar ist, ist ein BEFUND und kein Grund, die uebrigen dreizehn
+        # wegzulassen (Grundregel 1). Der Rueckgabewert traegt ihn trotzdem.
+        rueck = 0
+        befunde = []
+        for uid, ev_pfad, fo_pfad in bestaende:
+            code, befund = _ein_bestand(m, a, uid, ev_pfad, fo_pfad, grenze)
+            if befund is not None:
+                befunde.append(befund)
+            rueck = max(rueck, code)
 
-        # -- Die Belege ---------------------------------------------------
-        m("-" * 78)
-        m("DIE BELEGE")
-        m("-" * 78)
-        for b in befund.belege:
-            if b.hinweis:
-                m("Beleg %-6d %s" % (b.beleg_id, b.hinweis))
-                continue
-            roh = "JA " if (b.lxml and b.lxml.position_vorhanden) else "nein"
-            gen = "JA " if (b.zweite and b.zweite.position_vorhanden) else "nein"
-            marke = "   <== DIE ANNAEHERUNG HEILT DIESEN" if b.entscheidend \
-                else ""
-            # BUILD 754: 'POSITION' statt 'traegt'. Die alte Beschriftung hat
-            # gesagt, was gemessen wurde, und ist gelesen worden als das,
-            # was NICHT gemessen wurde. Ein Feld, das 'traegt' heisst, wird
-            # als 'stimmt' gelesen - das hat dieses Projekt eine Woche
-            # gekostet.
-            m("Beleg %-6d POSITION roh=%s  html5=%s%s"
-              % (b.beleg_id, roh, gen, marke))
-            if b.lxml and not b.lxml.position_vorhanden:
-                m("             roh: %s" % b.lxml.kurz)
-            if b.zweite and not b.zweite.position_vorhanden:
-                m("             html5: %s" % b.zweite.kurz)
-            # -- DIE INHALTSPROBE ---------------------------------------
-            #
-            # SIE STEHT UNMITTELBAR UNTER DER POSITIONSANGABE und nicht in
-            # einer eigenen Rubrik weiter unten: die beiden Angaben gehoeren
-            # zusammengelesen, sonst entsteht wieder der Eindruck, eine
-            # vorhandene Position sei ein Beleg.
-            p = getattr(b, "pruefung", None)
-            if p is None:
-                m("             INHALT   nicht geprueft (kein Abzug oder "
-                  "Pruefung fehlgeschlagen - s. Protokoll)")
-            else:
-                wl = ("#%d" % p.beitraege_wortlaut[0]
-                      if len(p.beitraege_wortlaut) == 1
-                      else ("%d Beitraege" % len(p.beitraege_wortlaut)
-                            if p.beitraege_wortlaut else "kein Beitrag"))
-                m("             INHALT   %s   Anker->%s, Wortlaut->%s, "
-                  "Textprobe: %s"
-                  % (p.urteil,
-                     "#%d" % p.beitrag_anker if p.beitrag_anker is not None
-                     else "-", wl, p.textprobe))
-                if p.urteil in ("WIDERLEGT", "UNKLAR"):
-                    m("             %s" % p.bemerkung)
-        m()
-
-        # -- Die Seiten ---------------------------------------------------
-        m("-" * 78)
-        m("DIE SEITEN")
-        m("-" * 78)
-        for s in befund.seiten:
-            m("Seite %s" % s.page_url)
-            if not s.vorhanden:
-                m("   kein GET-Abzug zu dieser Adresse")
-                m()
-                continue
-            m("   Abzug: %d Zeichen im <body>" % s.laenge)
-            # M4 zuerst: das Fehlerprotokoll von libxml2 benennt die Ursache
-            # oft unmittelbar und ist deshalb die wichtigste Zeile der Seite.
-            m("   M4 Fehlerprotokoll des Zerlegers:")
-            for zeile in s.fehlerprotokoll[:12]:
-                m("      %s" % zeile)
-            if len(s.fehlerprotokoll) > 12:
-                m("      ... (%d weitere)" % (len(s.fehlerprotokoll) - 12))
-            m("   M5 Wo die bekannten Kennungen WIRKLICH stehen:")
-            for zeile in s.verortung:
-                m("      %s" % zeile.replace("\n", "\n   "))
-            if s.quelltext:
-                m("   M6 Die Quelltextzeilen, die der Zerleger genannt hat:")
-                for zeile in s.quelltext:
-                    m("      %s" % zeile)
-            if s.verteilung_marke:
-                # M7 steht VOR M3: wenn ein Anker bricht, ist die Frage
-                # 'wo stehen die verlangten Elemente' die naechste, die
-                # gestellt wird - und die Antwort entscheidet, ob ueberhaupt
-                # noch ein Zerlegungsfehler in Betracht kommt.
-                m("   M7 Wo die <%s> WIRKLICH stehen:" % s.verteilung_marke)
-                m("      -- roh (libxml2) --")
-                for zeile in s.verteilung_roh:
-                    m("      %s" % zeile)
-                m("      -- nach der Annaeherung (der Weg des Berichts) --")
-                for zeile in s.verteilung_genaehert:
-                    m("      %s" % zeile)
-            if s.rohtext:
-                m("   M3 %s" % s.rohtext)
-            for zeile in s.annaeherung:
-                m("   Annaeherung: %s" % zeile)
-            for zeile in s.zeilen:
-                m("   %s" % zeile)
-            m()
-
-        # -- Die Zaehlung -------------------------------------------------
-        z = befund.zaehlung()
-        m("=" * 78)
-        m("ZAEHLUNG")
-        m("=" * 78)
-        m("Belege mit Anker geprueft:        %d" % z["belege"])
-        m("davon roh aufgeloest:             %d" % z["lxml_traegt"])
-        m("davon nach Annaeherung:           %d" % z["genaehert_traegt"])
-        m("davon NUR nach Annaeherung:       %d" % z["entscheidend"])
-        m("Seiten:                           %d" % z["seiten"])
-        m()
-        m(_urteil(z))
-        m()
-        m(_gegenprobe_browser())
-        return 0
+        if len(bestaende) > 1:
+            _gesamtzaehlung(m, befunde)
+        if a.json_ziel:
+            if not _json_schreiben(m, a.json_ziel, befunde):
+                rueck = max(rueck, 1)
+        return rueck
     finally:
         m.schliessen()
+
+
+def _ein_bestand(m, a, uid: str, ev_pfad: str, fo_pfad: str, grenze: int):
+    """
+    Ein Bestand - der Ablauf, der bis Build 762 den ganzen Lauf ausmachte.
+
+    Rueckgabe: (rueckgabewert, Laufbefund oder None).
+    """
+    m("=" * 78)
+    m("BESTAND %s" % (uid or "(Kennung nicht ablesbar)"))
+    m("=" * 78)
+    m("evidence: %s" % ev_pfad)
+    m("forensic: %s" % fo_pfad)
+    m()
+
+    d = AnkerDiagnose(evidence=Path(ev_pfad), forensic=Path(fo_pfad),
+                      nur_beleg=a.beleg)
+    befund = d.lauf(grenze=grenze)
+    befund.uid = uid
+
+    if befund.fehler:
+        m("BEFUND: %s" % befund.fehler)
+        m()
+        # Ein Leerbefund ist KEIN Fehler - er sagt, dass es nichts zu
+        # diagnostizieren gibt, und das ist eine Auskunft.
+        leer = befund.fehler.startswith("Keine Markierung")
+        return (0 if leer else 1), befund
+
+    if befund.abgeschnitten:
+        # Grundregel 1: die Grenze hat wirklich abgeschnitten, und das steht
+        # da - nicht nur als Vermutung aus der Trefferzahl.
+        m("ACHTUNG: Die Grenze hat abgeschnitten. Der Bestand haelt %d "
+          "Markierungen mit Anker, gelesen wurden %d. Mit '--grenze 0' "
+          "werden alle gelesen."
+          % (befund.gesamtzahl, len(befund.belege)))
+        m()
+
+    _bericht(m, befund)
+    return 0, befund
+
+
+def _bericht(m, befund) -> None:
+    """Der Klartextbericht zu EINEM Bestand. Deutsch, ohne Beitragstext."""
+    # -- Die Belege ---------------------------------------------------
+    m("-" * 78)
+    m("DIE BELEGE")
+    m("-" * 78)
+    for b in befund.belege:
+        if b.hinweis:
+            m("Beleg %-6d %s" % (b.beleg_id, b.hinweis))
+            continue
+        roh = "JA " if (b.lxml and b.lxml.position_vorhanden) else "nein"
+        gen = "JA " if (b.zweite and b.zweite.position_vorhanden) else "nein"
+        marke = "   <== DIE ANNAEHERUNG HEILT DIESEN" if b.entscheidend \
+            else ""
+        # BUILD 754: 'POSITION' statt 'traegt'. Die alte Beschriftung hat
+        # gesagt, was gemessen wurde, und ist gelesen worden als das,
+        # was NICHT gemessen wurde. Ein Feld, das 'traegt' heisst, wird
+        # als 'stimmt' gelesen - das hat dieses Projekt eine Woche
+        # gekostet.
+        m("Beleg %-6d POSITION roh=%s  html5=%s%s"
+          % (b.beleg_id, roh, gen, marke))
+        if b.lxml and not b.lxml.position_vorhanden:
+            m("             roh: %s" % b.lxml.kurz)
+        if b.zweite and not b.zweite.position_vorhanden:
+            m("             html5: %s" % b.zweite.kurz)
+        # -- DIE INHALTSPROBE ---------------------------------------
+        #
+        # SIE STEHT UNMITTELBAR UNTER DER POSITIONSANGABE und nicht in
+        # einer eigenen Rubrik weiter unten: die beiden Angaben gehoeren
+        # zusammengelesen, sonst entsteht wieder der Eindruck, eine
+        # vorhandene Position sei ein Beleg.
+        p = getattr(b, "pruefung", None)
+        if p is None:
+            m("             INHALT   nicht geprueft (kein Abzug oder "
+              "Pruefung fehlgeschlagen - s. Protokoll)")
+        else:
+            wl = ("#%d" % p.beitraege_wortlaut[0]
+                  if len(p.beitraege_wortlaut) == 1
+                  else ("%d Beitraege" % len(p.beitraege_wortlaut)
+                        if p.beitraege_wortlaut else "kein Beitrag"))
+            m("             INHALT   %s   Anker->%s, Wortlaut->%s, "
+              "Textprobe: %s"
+              % (p.urteil,
+                 "#%d" % p.beitrag_anker if p.beitrag_anker is not None
+                 else "-", wl, p.textprobe))
+            if p.urteil in ("WIDERLEGT", "UNKLAR"):
+                m("             %s" % p.bemerkung)
+        # -- BUILD 763: DER POST-BEZUG UND DIE FALLZUORDNUNG -------------
+        #
+        # Sie steht UNTER der Inhaltsprobe, weil sie eine andere Frage
+        # beantwortet: nicht 'stimmt der Ausdruck', sondern 'welchen Umfang
+        # hat die Markierung'. Die Fallnummer ist ABGELEITET; die Messung
+        # sind die beiden Zustaende und die Spanne, und die stehen daneben.
+        m("             LAGE     Start=%s  Ende=%s  dazwischen=%s"
+          % (_lage(b.bezug_start), _lage(b.bezug_end),
+             _spanne_kurz(b.spanne)))
+        m("             FALL %d   %s"
+          % (b.fall, FALL_TEXT.get(b.fall, "")))
+        if b.fall:
+            m("             Vorschlag: %s%s   (%s)"
+              % (b.fall_typ,
+                 (" fuer " + ", ".join("#%d" % n for n in b.fall_posts))
+                 if b.fall_posts else "",
+                 b.fall_grund))
+        else:
+            m("             %s" % b.fall_grund)
+        if b.anker_end_fehlt:
+            m("             ACHTUNG: 'xpathEnd' fehlt - der Anfang wurde "
+              "auch als Ende gemessen.")
+    m()
+
+    # -- Die Seiten ---------------------------------------------------
+    m("-" * 78)
+    m("DIE SEITEN")
+    m("-" * 78)
+    for s in befund.seiten:
+        m("Seite %s" % s.page_url)
+        if not s.vorhanden:
+            m("   kein GET-Abzug zu dieser Adresse")
+            m()
+            continue
+        m("   Abzug: %d Zeichen im <body>" % s.laenge)
+        # -- BUILD 763: Seitenart und post container ---------------------
+        m("   Seitenart: %s   post container im Abzug: %d"
+          % (s.seitenklasse, s.container_zahl))
+        if s.widerspruch:
+            m("   WIDERSPRUCH: %s" % s.widerspruch)
+        if s.verschachtelungen:
+            # DER FALL, DEN VERSCHRAENKTER BB-CODE ERZEUGEN KANN. Gleiche
+            # Nummer aussen und innen ('pN' / 'ppN') ist der Regelfall und
+            # erscheint hier NICHT - nur verschiedene Nummern.
+            m("   VERSCHACHTELTE post container mit VERSCHIEDENEN Nummern "
+              "(%d):" % len(s.verschachtelungen))
+            for v in s.verschachtelungen[:12]:
+                m("      #%d liegt in #%d" % (v.innen, v.aussen))
+            if len(s.verschachtelungen) > 12:
+                m("      ... (%d weitere)" % (len(s.verschachtelungen) - 12))
+        # M4 zuerst: das Fehlerprotokoll von libxml2 benennt die Ursache
+        # oft unmittelbar und ist deshalb die wichtigste Zeile der Seite.
+        m("   M4 Fehlerprotokoll des Zerlegers:")
+        for zeile in s.fehlerprotokoll[:12]:
+            m("      %s" % zeile)
+        if len(s.fehlerprotokoll) > 12:
+            m("      ... (%d weitere)" % (len(s.fehlerprotokoll) - 12))
+        m("   M5 Wo die bekannten Kennungen WIRKLICH stehen:")
+        for zeile in s.verortung:
+            m("      %s" % zeile.replace("\n", "\n   "))
+        if s.quelltext:
+            m("   M6 Die Quelltextzeilen, die der Zerleger genannt hat:")
+            for zeile in s.quelltext:
+                m("      %s" % zeile)
+        if s.verteilung_marke:
+            # M7 steht VOR M3: wenn ein Anker bricht, ist die Frage
+            # 'wo stehen die verlangten Elemente' die naechste, die
+            # gestellt wird - und die Antwort entscheidet, ob ueberhaupt
+            # noch ein Zerlegungsfehler in Betracht kommt.
+            m("   M7 Wo die <%s> WIRKLICH stehen:" % s.verteilung_marke)
+            m("      -- roh (libxml2) --")
+            for zeile in s.verteilung_roh:
+                m("      %s" % zeile)
+            m("      -- nach der Annaeherung (der Weg des Berichts) --")
+            for zeile in s.verteilung_genaehert:
+                m("      %s" % zeile)
+        if s.rohtext:
+            m("   M3 %s" % s.rohtext)
+        for zeile in s.annaeherung:
+            m("   Annaeherung: %s" % zeile)
+        for zeile in s.zeilen:
+            m("   %s" % zeile)
+        m()
+
+    # -- Die Zaehlung -------------------------------------------------
+    z = befund.zaehlung()
+    m("=" * 78)
+    m("ZAEHLUNG")
+    m("=" * 78)
+    m("Belege mit Anker geprueft:        %d" % z["belege"])
+    m("davon roh aufgeloest:             %d" % z["lxml_traegt"])
+    m("davon nach Annaeherung:           %d" % z["genaehert_traegt"])
+    m("davon NUR nach Annaeherung:       %d" % z["entscheidend"])
+    m("Seiten:                           %d" % z["seiten"])
+    m()
+    # -- BUILD 763: die Fallverteilung -----------------------------------
+    m("FALLZUORDNUNG (abgeleitet aus Lage und Spanne):")
+    for nummer, zahl in sorted(befund.fallzaehlung().items()):
+        if zahl or nummer == 0:
+            m("   Fall %d  %-4d %s" % (nummer, zahl, FALL_TEXT.get(nummer, "")))
+    m()
+    # -- BUILD 763: welche Seitenarten kommen ueberhaupt vor? -------------
+    #
+    # Die Liste der beitragsfreien Seitenarten ist bisher eine Erwartung.
+    # Erst diese Verteilung sagt, welche Arten der Bestand wirklich traegt -
+    # damit die Liste gemessen und nicht angenommen ist.
+    m("SEITENARTEN der geprueften Belege:")
+    for name, zahl in sorted(befund.klassenzaehlung().items()):
+        m("   %-22s %d" % (name, zahl))
+    verschachtelt = sum(len(s.verschachtelungen) for s in befund.seiten)
+    widersprueche = sum(1 for s in befund.seiten if s.widerspruch)
+    m()
+    m("Verschachtelte post container mit verschiedenen Nummern: %d"
+      % verschachtelt)
+    m("Seiten mit Widerspruch zwischen Seitenart und Abzug:     %d"
+      % widersprueche)
+    m()
+    m(_urteil(z))
+    m()
+    m(_gegenprobe_browser())
+
+
+def _lage(bezug) -> str:
+    """Der post-Bezug eines Endpunkts in einer Zeile."""
+    if bezug is None:
+        return "nicht gemessen"
+    if bezug.zustand == "in_post":
+        return "in #%d" % bezug.post_id
+    if bezug.zustand == "above":
+        return ("oberhalb (%d container darunter, #%s..#%s)"
+                % (bezug.nachkommen_zahl, bezug.erste_nummer,
+                   bezug.letzte_nummer))
+    return "ausserhalb" + (" [%s]" % bezug.hinweis if bezug.hinweis else "")
+
+
+def _spanne_kurz(spanne) -> str:
+    """Die container zwischen den Endpunkten in einer Zeile."""
+    if spanne is None:
+        return "nicht gemessen"
+    if not spanne.messbar:
+        return "nicht messbar (%s)" % spanne.grund
+    if not spanne.posts_dazwischen:
+        return "keine"
+    if len(spanne.posts_dazwischen) <= 6:
+        return ", ".join("#%d" % n for n in spanne.posts_dazwischen)
+    return ("%d container (#%d..#%d)"
+            % (len(spanne.posts_dazwischen), spanne.posts_dazwischen[0],
+               spanne.posts_dazwischen[-1]))
+
+
+def _gesamtzaehlung(m, befunde) -> None:
+    """
+    Die Summe ueber ALLE Bestaende.
+
+    Sie steht am Ende und nicht am Anfang: wer sie zuerst liest, liest sie
+    ohne die Einzelbefunde, aus denen sie entsteht. Ausgewiesen wird auch,
+    wie viele Bestaende ueberhaupt gelesen werden konnten - eine Summe ueber
+    dreizehn von vierzehn Bestaenden, die wie eine ueber vierzehn aussieht,
+    waere ein stiller Verlust (Grundregel 1).
+    """
+    m("=" * 78)
+    m("GESAMTZAEHLUNG UEBER ALLE BESTAENDE")
+    m("=" * 78)
+    lesbar = [b for b in befunde if not b.fehler]
+    m("Bestaende angesehen:              %d" % len(befunde))
+    m("davon gelesen:                    %d" % len(lesbar))
+    if len(lesbar) != len(befunde):
+        for b in befunde:
+            if b.fehler:
+                m("   Bestand %s: %s" % (b.uid, b.fehler))
+    m("Markierungen mit Anker gelesen:   %d"
+      % sum(len(b.belege) for b in lesbar))
+    abgeschnitten = [b.uid for b in lesbar if b.abgeschnitten]
+    if abgeschnitten:
+        m("ACHTUNG - abgeschnitten in Bestand: %s" % ", ".join(abgeschnitten))
+    m()
+    m("FALLZUORDNUNG ueber alle Bestaende:")
+    gesamt = {}
+    for b in lesbar:
+        for nummer, zahl in b.fallzaehlung().items():
+            gesamt[nummer] = gesamt.get(nummer, 0) + zahl
+    for nummer, zahl in sorted(gesamt.items()):
+        if zahl or nummer == 0:
+            m("   Fall %d  %-4d %s" % (nummer, zahl, FALL_TEXT.get(nummer, "")))
+    m()
+    m("SEITENARTEN ueber alle Bestaende:")
+    klassen = {}
+    for b in lesbar:
+        for name, zahl in b.klassenzaehlung().items():
+            klassen[name] = klassen.get(name, 0) + zahl
+    for name, zahl in sorted(klassen.items()):
+        m("   %-22s %d" % (name, zahl))
+    m()
+
+
+def _json_schreiben(m, ziel: str, befunde) -> bool:
+    """
+    Der maschinenlesbare Befund. True bei Erfolg.
+
+    ensure_ascii=True: die Datei wird zwischen Umgebungen weitergereicht
+    (Linux-Entwicklung, Windows-VM) und darf dabei nicht von der
+    Zeichensatzeinstellung der Konsole abhaengen.
+    """
+    inhalt = {
+        "werkzeug": "anker_diagnose",
+        "build": _buildnummer(),
+        "bestaende": [b.als_dict() for b in befunde],
+    }
+    try:
+        with open(ziel, "w", encoding="utf-8") as fh:
+            json.dump(inhalt, fh, ensure_ascii=True, indent=1, sort_keys=True)
+    except OSError as exc:
+        m("JSON-Datei nicht schreibbar: %s" % exc)
+        return False
+    m("JSON geschrieben: %s" % ziel)
+    return True
+
+
+def _buildnummer() -> str:
+    """Die Buildnummer aus build.json - leer, wenn sie nicht lesbar ist."""
+    try:
+        pfad = Path(__file__).resolve().parent.parent / "build.json"
+        with open(pfad, "r", encoding="utf-8") as fh:
+            return str(json.load(fh).get("build", ""))
+    except Exception:                             # pragma: no cover - defensiv
+        return ""
 
 
 def _urteil(z) -> str:

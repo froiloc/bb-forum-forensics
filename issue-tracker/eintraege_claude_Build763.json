@@ -1,0 +1,137 @@
+{
+  "issues": [
+    {
+      "id": "a3f61c02-7d54-4b19-9c8e-2e5b1f77aa10",
+      "type": "improvement",
+      "title": "anker_diagnose: xpathEnd, post-Bezug, Spanne und JSON ergaenzt",
+      "affected_version": "0.8.763",
+      "reporter": "Claude",
+      "reported_at": "2026-09-06T09:30:00+02:00",
+      "status": "review",
+      "priority": "high",
+      "severity": "major",
+      "description": "Das Uebergabedokument der Sitzung 755-762 hielt fest, kein Werkzeug messe, WO ein XPath expression abbricht. Das trifft nicht zu: management/maintenance/anker_diagnose.py, Methode _anker_pruefen(), geht den Ausdruck seit Build 754 Step fuer Step und haelt jede Stufe fest (Dataclass Ebene: nummer, schritt, aufgeloest, bisher, inhalt, anzahl_gleiche; Ankerbefund: bruch_nummer, bruch_schritt).\n\nDamit waren drei der vier geforderten Angaben bereits vorhanden. Statt eines zweiten Werkzeugs wurde das vorhandene um das Delta erweitert (Festlegung Alex, 06.09.2026):\n\n(a) xpathEnd - _anker_aus() lieferte ausschliesslich xpathStart. Neu: _anker_paar_aus() gibt beide Ausdruecke; beide werden in beiden Zerlegungen gemessen.\n\n(b) post-Bezug des letzten aufloesenden Node - neues Modul management/maintenance/anker_postbezug.py. Erst Aufstieg ueber AbsatzFinder.post_behaelter_von(); bei Treffer Abbruch mit post_id und Quelle 'ancestor'. Sonst Abstieg: liegen container im Teilbaum, gilt der Node als oberhalb der Beitragsebene - OHNE post_id, weil unter einem hohen Node alle Beitraege der Seite liegen und eine einzelne Nummer daraus geraten waere. Sonst ausserhalb.\n\n(c) maschinenlesbare Ausgabe - --json mit englischen Schluesseln, eine Zeile je Markierung.\n\n(d) Spanne - die post container zwischen beiden Endpunkten in Dokumentreihenfolge, noetig fuer die Faelle 4 und 6.\n\nDaraus abgeleitet die Fallzuordnung 1 bis 6 mit Vorschlag 'text range' oder 'whole post'.\n\nWIEDERVERWENDET STATT NACHGEBAUT: _POST_KENNUNG, post_behaelter_von(), beitragsnummer() und _container_der_seite() aus report_render/absatz_finder.py. Zwei Wege zu derselben Frage laufen binnen weniger Builds auseinander - das war die Ursache des Rueckbaus von Block C in Build 762.",
+      "expected_behavior": "Je Markierung: Bruchstelle und laengster aufloesender Prefix fuer beide Ausdruecke, post container beider Endpunkte, container dazwischen, daraus Fall 1 bis 6 mit Typvorschlag. Je Seite: Seitenart, Zahl der post container, verschachtelte container mit verschiedenen Nummern.",
+      "environment": "aiw_webserver 0.8.763, Python 3.12.3 (Entwicklung) / 3.14 (Produktion), lxml, html5lib",
+      "related_to": [],
+      "tags": ["anker", "annotationen", "xpath", "post_id", "messung", "build763"],
+      "updates": [
+        {
+          "timestamp": "2026-09-06T09:30:00+02:00",
+          "author": "Claude",
+          "note": "Umgesetzt in Build 763. Neue Waechter AD26 bis AD35 in tests/test_anker_diagnose.py, jeweils mit Mutationsgegenprobe. Fuenf Mutationen gefahren (xpathEnd ignoriert, bezug meldet immer oberhalb, Seitenart als Schalter statt Spalte, gleiche Nummer als Verschachtelung, Fall auch bei Bruch bestimmen) - jede wird von genau dem vorgesehenen Waechter gefangen. AD22 und AD23 sind in der Reihe frei geblieben und wurden bewusst nicht nachbelegt."
+        }
+      ]
+    },
+    {
+      "id": "b7c94e18-3a20-4f6d-8b11-55d0c9e2ff41",
+      "type": "improvement",
+      "title": "Fallzuordnung bleibt bei gebrochenem Ausdruck unbestimmt (Fall 0)",
+      "affected_version": "0.8.763",
+      "reporter": "Claude",
+      "reported_at": "2026-09-06T09:35:00+02:00",
+      "status": "review",
+      "priority": "high",
+      "severity": "major",
+      "description": "fall_bestimmen() in management/maintenance/anker_postbezug.py setzt voraus, dass BEIDE Ausdruecke vollstaendig aufloesen. Bricht einer, ist das Ergebnis Fall 0 ('unbestimmt') mit Begruendung, welcher der beiden bricht.\n\nBEGRUENDUNG: Der ueberlebende Prefix eines gebrochenen Ausdrucks sagt etwas ueber sich selbst aus, nicht ueber die Lage der Markierung. Der gemeinte Zielknoten kann sehr wohl in einem post gelegen haben. Aus einem gebrochenen Ausdruck einen Fall abzuleiten hiesse, eine Aussage ueber die Markierung auf eine Messung am Prefix zu stuetzen - derselbe Fehlertyp, der in Build 762 zum Rueckbau von anker_inventar Block C gefuehrt hat.\n\nFOLGE FUER DEN ERSTEN LAUF: Die 107 WIDERLEGT-Faelle aus Build 761 werden voraussichtlich zum grossen Teil auf Fall 0 fallen. Das ist kein Fehlschlag der Messung, sondern die Aussage, dass fuer diese Annotationen erst die Naehe-Eskalation (fundstellen_nach_naehe(), Build 762) greifen muss.",
+      "expected_behavior": "Fall 0 mit Begruendung statt einer Fallnummer, die auf einer Messung am Prefix beruht.",
+      "environment": "aiw_webserver 0.8.763",
+      "tags": ["anker", "fallzuordnung", "messung", "build763"],
+      "updates": [
+        {
+          "timestamp": "2026-09-06T09:35:00+02:00",
+          "author": "Claude",
+          "note": "Waechter AD27 haelt die Festlegung fest. Mutationsgegenprobe M5 (Bedingung entfernt) faellt genau dort rot."
+        }
+      ]
+    },
+    {
+      "id": "c1d05a76-9e43-4c8a-a2f7-6b3e814d20cc",
+      "type": "improvement",
+      "title": "Seitenart wird als Spalte gefuehrt, nicht als Schalter fuer die Erkennung",
+      "affected_version": "0.8.763",
+      "reporter": "Claude",
+      "reported_at": "2026-09-06T09:40:00+02:00",
+      "status": "review",
+      "priority": "medium",
+      "severity": "minor",
+      "description": "Nach Auskunft von Alex (06.09.2026) tragen /forum/search.php, /forum/notifications.php, /forum/viewforum.php und /forum/profile.php keine Beitraege. Diese Erwartung wird als Seitenart (page_class) je Seite und je Markierung gefuehrt.\n\nDIE ERKENNUNG WIRD DARAUFHIN NICHT UEBERSPRUNGEN. Ein Ueberspringen anhand der Adresse waere ein stiller Sprung (Grundregel 1) und machte einen Widerspruch zwischen Erwartung und Abzug per Konstruktion unsichtbar. Stattdessen laeuft die Erkennung immer, und ein Widerspruch in beide Richtungen wird benannt: beitragsfreie Seitenart mit post containern, oder beitragstragende Seitenart ohne einen einzigen.\n\nZusaetzlich gibt der Lauf die Verteilung aller vorkommenden Seitenarten aus, damit die Liste der beitragsfreien Arten gemessen und nicht angenommen ist.\n\nHINWEIS: /forum/beginner/viewtopic.php traegt Beitraege und wird als eigene Art 'beginner_viewtopic' gefuehrt - eine Zuordnung nur nach Dateinamen wuerde sie mit 'viewtopic' verwechseln oder uebersehen.",
+      "expected_behavior": "page_class als Spalte, Erkennung laeuft immer, Widersprueche werden benannt.",
+      "environment": "aiw_webserver 0.8.763",
+      "tags": ["seitenart", "grundregel1", "messung", "build763"],
+      "updates": [
+        {
+          "timestamp": "2026-09-06T09:40:00+02:00",
+          "author": "Claude",
+          "note": "Waechter AD31 und AD35. Mutationsgegenprobe M3 (Seitenart als Schalter) faellt rot."
+        }
+      ]
+    },
+    {
+      "id": "d4e18b93-5c67-41f2-bb90-7a2c60fd3e58",
+      "type": "improvement",
+      "title": "Verschachtelte post container mit verschiedenen Nummern werden gemeldet",
+      "affected_version": "0.8.763",
+      "reporter": "Claude",
+      "reported_at": "2026-09-06T09:45:00+02:00",
+      "status": "review",
+      "priority": "medium",
+      "severity": "minor",
+      "description": "Im Seitenabzug liegen regelmaessig zwei Elemente ineinander, auf die das Erkennungsmuster passt: viewtopic0.php Z. 886 oeffnet <article class=\"post\"> mit einfacher Kennung, Z. 975 darin <div class=\"box\"> mit doppelter Kennung, geschlossen wird erst Z. 1212. Beide tragen DIESELBE Nummer und gehoeren zu DEMSELBEN Beitrag. Das ist der Regelfall und wird nicht gemeldet.\n\nEin Beitrag innerhalb eines anderen Beitrags ist damit NICHT belegt. Er kann nach Auskunft von Alex (06.09.2026) entstehen, wenn BB-Code in posts.message zweigliedrige Elemente verschraenkt schliesst; dann werden nachfolgende Beitraege aus der umschliessenden Ebene gehoben. Alex behebt das derzeit im Forum.\n\nDieser Fall ist am Markup unterscheidbar: die verschachtelten container tragen dann VERSCHIEDENE Nummern. verschachtelungen() in anker_postbezug.py sucht genau danach und meldet je container nur das naechste umschliessende Paar, damit eine dreifache Schachtelung als zwei Befunde erscheint und nicht als drei.\n\nDamit ist die laufende Reparatur am Forum messbar.",
+      "expected_behavior": "Verschiedene Nummern werden als Befund gemeldet, gleiche Nummer nicht.",
+      "environment": "aiw_webserver 0.8.763",
+      "tags": ["post_container", "bbcode", "messung", "build763"],
+      "updates": [
+        {
+          "timestamp": "2026-09-06T09:45:00+02:00",
+          "author": "Claude",
+          "note": "Waechter AD28 (gleiche Nummer ist kein Befund) und AD33 (verschiedene Nummern sind einer). Mutationsgegenprobe M4 faellt in beiden rot."
+        }
+      ]
+    },
+    {
+      "id": "e5920f41-8b3d-4e07-91a6-c8d745b21e09",
+      "type": "refactoring",
+      "title": "Bestandsaufzaehlung nach management/maintenance/bestandsliste.py verschoben",
+      "affected_version": "0.8.763",
+      "reporter": "Claude",
+      "reported_at": "2026-09-06T09:50:00+02:00",
+      "status": "review",
+      "priority": "low",
+      "severity": "trivial",
+      "description": "Die Aufzaehlung aller evidence_<uid>.db eines Verzeichnisses stand bis Build 762 privat in tools/annotationen_bestand.py als _bestaende_finden(). Mit der Erweiterung der anker_diagnose auf den Verzeichnisbetrieb braucht ein zweites Werkzeug dieselbe Aufzaehlung.\n\nSie liegt jetzt oeffentlich in management/maintenance/bestandsliste.py als bestaende_finden(); die Logik ist wortgleich uebernommen. tools/annotationen_bestand.py ruft sie von dort ab, sein bisheriger Name _bestaende_finden bleibt als Verweis stehen - ihn umzubenennen waere ein Refactoring ohne Auftrag.\n\nBEGRUENDUNG DER VERSCHIEBUNG STATT EINER KOPIE: zwei Aufzaehlungen derselben Menge laufen auseinander, sobald eine von beiden geaendert wird. Freigabe durch Alex am 06.09.2026.",
+      "expected_behavior": "Eine Aufzaehlung im Projekt, von beiden Werkzeugen benutzt.",
+      "environment": "aiw_webserver 0.8.763",
+      "tags": ["refactoring", "werkzeuge", "build763"],
+      "updates": [
+        {
+          "timestamp": "2026-09-06T09:50:00+02:00",
+          "author": "Claude",
+          "note": "Die 27 Waechter in tests/test_annotation_bestand.py bleiben unveraendert gruen."
+        }
+      ]
+    },
+    {
+      "id": "f8213d65-4a97-4b5e-83c2-19e0b7a4cd32",
+      "type": "improvement",
+      "title": "anker_diagnose: Grenze 0 liest alle Markierungen, ein Abschneiden wird benannt",
+      "affected_version": "0.8.763",
+      "reporter": "Claude",
+      "reported_at": "2026-09-06T09:55:00+02:00",
+      "status": "review",
+      "priority": "medium",
+      "severity": "minor",
+      "description": "--grenze hatte die feste Vorgabe 50. Beim Lauf ueber alle Bestaende haette das still die Haelfte eines Bestandes weggelassen.\n\nNeu: --grenze 0 liest ohne Grenze. Die Vorgabe haengt an der Betriebsart - 50 beim ausdruecklich genannten Einzelbestand (--evidence/--forensic, damit der schnelle Blick unveraendert bleibt), 0 im Verzeichnisbetrieb.\n\nOb die Grenze WIRKLICH abgeschnitten hat, wird gezaehlt und ausgewiesen (Grundregel 1) - und nicht daraus geschlossen, dass die Trefferzahl gleich der Grenze ist, denn das kann Zufall sein. Der Bericht nennt dann die Gesamtzahl, die gelesene Zahl und den Ausweg.",
+      "expected_behavior": "Kein stilles Abschneiden; die Vorgabe passt zur Betriebsart.",
+      "environment": "aiw_webserver 0.8.763",
+      "tags": ["grundregel1", "werkzeuge", "build763"],
+      "updates": [
+        {
+          "timestamp": "2026-09-06T09:55:00+02:00",
+          "author": "Claude",
+          "note": "Ein nicht lesbarer Bestand beendet den Lauf ebenfalls nicht - er wird als Befund gemeldet, die uebrigen werden gefahren, und der Rueckgabewert traegt den Fehlschlag."
+        }
+      ]
+    }
+  ]
+}

@@ -98,6 +98,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+# BUILD 763 - der post-Bezug steht in einem eigenen Modul (Grundregel 10).
+from management.maintenance.anker_postbezug import (
+    FALL_TEXT, KLASSE_SONSTIGE, POSTFREIE_KLASSEN, PostBezugMesser,
+    fall_bestimmen, seitenklasse)
+
 logger = logging.getLogger(__name__)
 
 
@@ -651,6 +656,21 @@ class Ankerbefund:
     bruch_nummer: int = 0
     bruch_schritt: str = ""
     ebenen: List[Ebene] = field(default_factory=list)
+    #: BUILD 763 - der Knoten, bis zu dem der Ausdruck getragen hat.
+    #:
+    #: Bis Build 762 hat die Messung nur festgehalten, DASS und WO ein
+    #: Ausdruck bricht. Fuer die Frage, in welchem post container der
+    #: ueberlebende Prefix landet, braucht es den Knoten selbst. Er wird hier
+    #: mitgefuehrt und NICHT in die JSON-Ausgabe geschrieben - er ist eine
+    #: Baumhuelle, kein Messwert.
+    #:
+    #: Bei null aufgeloesten Schritten steht hier die Wurzel des Baumes. Das
+    #: ist kein Ersatzwert: '.' loest tatsaechlich auf. Damit niemand daraus
+    #: mehr liest, als gemessen wurde, steht die Zahl der aufgeloesten
+    #: Schritte daneben.
+    letzter_knoten: Any = None
+    #: Wie viele Schritte des Ausdrucks aufgeloest haben.
+    aufgeloeste_schritte: int = 0
 
     @property
     def kurz(self) -> str:
@@ -684,6 +704,93 @@ class Zeilenbefund:
     #: SIEBEN einen Bereich mit dem gespeicherten Wortlaut. Die alte Pruefung
     #: haette dort rund 31 als 'traegt' gemeldet.
     pruefung: Optional[Any] = None
+
+    # ---- BUILD 763 -------------------------------------------------------
+    #: Der zweite Ausdruck der Markierung. Leer, wenn 'xpathEnd' fehlt.
+    anker_end: str = ""
+    #: Die Messung des zweiten Ausdrucks, in beiden Zerlegungen.
+    lxml_end: Optional[Ankerbefund] = None
+    zweite_end: Optional[Ankerbefund] = None
+    #: Die Seitenklasse aus der Adresse ('viewtopic', 'search', ...).
+    seitenklasse: str = ""
+    #: Der post-Bezug beider Endpunkte, gemessen in der HTML5-Zerlegung.
+    #:
+    #: WARUM IN DER HTML5-ZERLEGUNG UND NICHT IN DER VON libxml2: Der Baum,
+    #: in dem der Ausdruck ENTSTANDEN ist, ist der des Browsers. Gemessen an
+    #: 17 Konstrukten gegen Chromium (31.08.2026, s. requirements.txt): lxml
+    #: roh 7 Treffer, html5lib 17. Den post-Bezug in der libxml2-Zerlegung zu
+    #: nehmen hiesse, den Beitrag in einem Baum zu suchen, den es im Browser
+    #: nie gegeben hat.
+    bezug_start: Optional[Any] = None
+    bezug_end: Optional[Any] = None
+    spanne: Optional[Any] = None
+    #: Die abgeleitete Fallzuordnung 1-6, 0 = unbestimmt.
+    fall: int = 0
+    fall_typ: str = ""
+    fall_posts: List[int] = field(default_factory=list)
+    fall_grund: str = ""
+
+    @property
+    def anker_end_fehlt(self) -> bool:
+        """Die Markierung hat keinen zweiten Ausdruck."""
+        return not self.anker_end
+
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _anker_dict(b: Optional[Ankerbefund],
+                    bezug: Optional[Any]) -> Dict[str, Any]:
+        """
+        Ein Endpunkt als Zuordnung. Der Knoten selbst geht NICHT hinein -
+        er ist eine Baumhuelle und kein Messwert.
+        """
+        aus: Dict[str, Any] = {
+            "resolves": bool(b is not None and b.position_vorhanden),
+            "steps_resolved": (b.aufgeloeste_schritte if b else 0),
+            "break_step_no": (b.bruch_nummer if b else 0),
+            "break_step": (b.bruch_schritt if b else ""),
+            "resolving_prefix": "",
+            "sibling_count": 0,
+        }
+        if b is not None and b.ebenen:
+            #: Der laengste Prefix, der noch aufgeloest hat, und die Zahl der
+            #: siblings gleicher Marke an der Stelle, an der es bricht.
+            aufgeloeste = [e for e in b.ebenen if e.aufgeloest]
+            if aufgeloeste:
+                letzte = aufgeloeste[-1]
+                aus["resolving_prefix"] = letzte.bisher + "/" + letzte.schritt
+            else:
+                aus["resolving_prefix"] = b.ebenen[0].bisher
+            aus["sibling_count"] = b.ebenen[-1].anzahl_gleiche
+        if bezug is not None:
+            aus.update(bezug.als_dict())
+        return aus
+
+    def als_dict(self) -> Dict[str, Any]:
+        """BUILD 763 - eine Zeile je Markierung, Schluessel englisch."""
+        return {
+            "annotation_id": self.beleg_id,
+            "page_url": self.page_url,
+            "page_class": self.seitenklasse,
+            "xpath_start": self.anker,
+            "xpath_end": self.anker_end,
+            "xpath_end_missing": self.anker_end_fehlt,
+            "note": self.hinweis,
+            "start": self._anker_dict(self.zweite, self.bezug_start),
+            "end": self._anker_dict(self.zweite_end, self.bezug_end),
+            "start_libxml2_resolves": bool(
+                self.lxml is not None and self.lxml.position_vorhanden),
+            "end_libxml2_resolves": bool(
+                self.lxml_end is not None
+                and self.lxml_end.position_vorhanden),
+            "span": (self.spanne.als_dict() if self.spanne is not None
+                     else {"posts_between": [], "measurable": False,
+                           "reason": "nicht gemessen"}),
+            "case": self.fall,
+            "case_text": FALL_TEXT.get(self.fall, ""),
+            "proposed_type": self.fall_typ,
+            "posts_affected": list(self.fall_posts),
+            "case_reason": self.fall_grund,
+        }
 
     @property
     def entscheidend(self) -> bool:
@@ -723,12 +830,32 @@ class Seitenbefund:
     #: Der Tagname des gebrochenen Schritts ('article'), fuer die Ueberschrift.
     verteilung_marke: str = ""
 
+    # ---- BUILD 763 -------------------------------------------------------
+    #: Die Seitenklasse aus der Adresse.
+    seitenklasse: str = ""
+    #: Wie viele post container der Abzug traegt (dedupliziert je Nummer).
+    container_zahl: int = 0
+    #: Verschachtelte container mit VERSCHIEDENEN Nummern - der Fall, den
+    #: verschraenkt geschlossener BB-Code erzeugen kann. Leer ist der
+    #: Regelfall.
+    verschachtelungen: List[Any] = field(default_factory=list)
+    #: Klartext, wenn Seitenklasse und Messung einander widersprechen.
+    #: Erwartet wird nichts erzwungen - der Widerspruch wird nur benannt.
+    widerspruch: str = ""
+
 
 @dataclass
 class Laufbefund:
     seiten: List[Seitenbefund] = field(default_factory=list)
     belege: List[Zeilenbefund] = field(default_factory=list)
     fehler: str = ""
+    #: BUILD 763 - die Kennung des Bestandes, aus dem gelesen wurde. Beim
+    #: Lauf ueber alle Bestaende steht in jedem Befund seine eigene.
+    uid: str = ""
+    #: Wie viele Markierungen mit Anker der Bestand insgesamt haelt, und ob
+    #: die Grenze davon etwas abgeschnitten hat.
+    gesamtzahl: int = 0
+    abgeschnitten: bool = False
 
     def zaehlung(self) -> Dict[str, int]:
         return {
@@ -743,6 +870,65 @@ class Laufbefund:
             "seiten": len(self.seiten),
             "seiten_abweichend": sum(1 for s in self.seiten
                                      if s.abweichung_ab),
+        }
+
+    # ------------------------------------------------------------------
+    def fallzaehlung(self) -> Dict[int, int]:
+        """BUILD 763 - wie viele Belege auf welchen der Faelle 0-6 fallen."""
+        aus: Dict[int, int] = {n: 0 for n in range(7)}
+        for b in self.belege:
+            aus[b.fall] = aus.get(b.fall, 0) + 1
+        return aus
+
+    # ------------------------------------------------------------------
+    def klassenzaehlung(self) -> Dict[str, int]:
+        """
+        BUILD 763 - die Verteilung der Seitenarten ueber die Belege.
+
+        WOZU: Die Liste der beitragsfreien Seitenarten ist bisher eine
+        Erwartung (Alex, 06.09.2026). Erst diese Verteilung sagt, welche
+        Seitenarten im Bestand ueberhaupt vorkommen - damit die Liste
+        gemessen und nicht angenommen ist.
+        """
+        aus: Dict[str, int] = {}
+        for b in self.belege:
+            schluessel = b.seitenklasse or "(ohne Adresse)"
+            aus[schluessel] = aus.get(schluessel, 0) + 1
+        return aus
+
+    # ------------------------------------------------------------------
+    def als_dict(self) -> Dict[str, Any]:
+        """
+        BUILD 763 - der maschinenlesbare Befund.
+
+        SCHLUESSEL ENGLISCH: Die JSON-Ausgabe ist die Schnittstelle nach
+        aussen und wird mit anderen Messreihen zusammengefuehrt (Weisung
+        Alex, 04.09.2026: Schluessel englisch, Endnutzerausgaben deutsch).
+        Der Klartextbericht bleibt deutsch.
+        """
+        return {
+            "subject_id": self.uid,
+            "error": self.fehler,
+            "annotations_total": self.gesamtzahl,
+            "annotations_read": len(self.belege),
+            "truncated": self.abgeschnitten,
+            "counts": self.zaehlung(),
+            "cases": {str(k): v for k, v in sorted(
+                self.fallzaehlung().items())},
+            "page_classes": self.klassenzaehlung(),
+            "pages": [
+                {
+                    "page_url": s.page_url,
+                    "page_class": s.seitenklasse,
+                    "available": s.vorhanden,
+                    "post_containers": s.container_zahl,
+                    "nested_different_numbers": [
+                        v.als_dict() for v in s.verschachtelungen],
+                    "contradiction": s.widerspruch,
+                }
+                for s in self.seiten
+            ],
+            "annotations": [b.als_dict() for b in self.belege],
         }
 
 
@@ -773,7 +959,15 @@ class AnkerDiagnose:
         #: anderen Baum als die Auswertung - und genau das soll das Werkzeug
         #: ja aufdecken.
         self._finder_je_seite: Dict[str, Any] = {}
+        #: BUILD 763 - der PostBezugMesser je Adresse. Eigener
+        #: Zwischenspeicher, weil er an der HTML5-Zerlegung haengt und nicht
+        #: am Baum des AbsatzFinders.
+        self._messer_je_seite: Dict[str, Any] = {}
         self._con_blob: Optional[sqlite3.Connection] = None
+        #: BUILD 763 - wie viele Markierungen mit Anker der Bestand haelt,
+        #: und ob die Grenze davon etwas abgeschnitten hat.
+        self._gesamtzahl: int = 0
+        self._abgeschnitten: bool = False
 
     # ------------------------------------------------------------------
     def lauf(self, *, grenze: int = 50) -> Laufbefund:
@@ -795,6 +989,8 @@ class AnkerDiagnose:
                 befund.belege.append(self._eine_zeile(r))
             for url in sorted({b.page_url for b in befund.belege if b.page_url}):
                 befund.seiten.append(self._eine_seite(url, befund))
+            befund.gesamtzahl = self._gesamtzahl
+            befund.abgeschnitten = self._abgeschnitten
         except sqlite3.Error as exc:
             befund.fehler = "Datenbankfehler: %s" % exc
         finally:
@@ -833,13 +1029,44 @@ class AnkerDiagnose:
         if self._nur_beleg is not None:
             sql += " AND id = ?"
             parameter.append(self._nur_beleg)
-        sql += " ORDER BY id LIMIT ?"
-        parameter.append(max(1, int(grenze)))
+        sql += " ORDER BY id"
+        # BUILD 763: 'grenze <= 0' heisst OHNE GRENZE. Der Lauf ueber alle
+        # Bestaende braucht das - eine voreingestellte Obergrenze von 50
+        # haette dort still die Haelfte eines Bestandes weggelassen.
+        ohne_grenze = int(grenze) <= 0
+        if not ohne_grenze:
+            sql += " LIMIT ?"
+            parameter.append(int(grenze))
         heraus: List[sqlite3.Row] = []
         for r in con.execute(sql, parameter):
             if self._anker_aus(r["selection_json"]):
                 heraus.append(r)
+        # Grundregel 1: ob die Grenze WIRKLICH abgeschnitten hat, wird
+        # gezaehlt und ausgewiesen - nicht daraus geschlossen, dass die Zahl
+        # gleich der Grenze ist (das kann Zufall sein).
+        if not ohne_grenze:
+            self._gesamtzahl = self._zaehle_alle(con)
+            self._abgeschnitten = self._gesamtzahl > len(heraus)
+        else:
+            self._gesamtzahl = len(heraus)
+            self._abgeschnitten = False
         return heraus
+
+    # ------------------------------------------------------------------
+    def _zaehle_alle(self, con: sqlite3.Connection) -> int:
+        """
+        Wie viele Markierungen MIT Anker der Bestand insgesamt haelt - ohne
+        Grenze. Nur zum Vergleich mit der tatsaechlich gelesenen Zahl.
+        """
+        sql = ("SELECT selection_json FROM annotations "
+               "WHERE selection_json IS NOT NULL AND selection_json != '' "
+               "AND deleted_at IS NULL")
+        parameter: List[Any] = []
+        if self._nur_beleg is not None:
+            sql += " AND id = ?"
+            parameter.append(self._nur_beleg)
+        return sum(1 for r in con.execute(sql, parameter)
+                   if self._anker_aus(r["selection_json"]))
 
     # ------------------------------------------------------------------
     @staticmethod
@@ -858,10 +1085,39 @@ class AnkerDiagnose:
         return str(sel.get("xpathStart") or "")
 
     # ------------------------------------------------------------------
+    @staticmethod
+    def _anker_paar_aus(roh: Any) -> Tuple[str, str]:
+        """
+        BUILD 763 - BEIDE Ausdruecke einer Markierung.
+
+        Bis Build 762 hat dieses Werkzeug ausschliesslich 'xpathStart'
+        angesehen. Fuer die Frage, ob eine Markierung einen ganzen Beitrag
+        umfasst, ist das zu wenig: sie wird erst aus dem Verhaeltnis BEIDER
+        Endpunkte beantwortbar (Fallzuordnung 1-6, Festlegung 06.09.2026).
+
+        'xpathEnd' darf fehlen. Dann steht hier der Anfang auch als Ende -
+        eine Markierung ohne zweiten Ausdruck ist punktfoermig, und das ist
+        eine Aussage, kein Fehler. Der Aufrufer sieht es an
+        'Zeilenbefund.anker_end_fehlt'.
+        """
+        anfang = AnkerDiagnose._anker_aus(roh)
+        if not anfang:
+            return "", ""
+        try:
+            sel = json.loads(roh) if isinstance(roh, (str, bytes)) else roh
+        except (ValueError, TypeError):            # pragma: no cover
+            return anfang, ""
+        if not isinstance(sel, dict):              # pragma: no cover
+            return anfang, ""
+        return anfang, str(sel.get("xpathEnd") or "")
+
+    # ------------------------------------------------------------------
     def _eine_zeile(self, r: sqlite3.Row) -> Zeilenbefund:
         url = str(r["page_url"] or "")
-        anker = self._anker_aus(r["selection_json"])
+        anker, anker_end = self._anker_paar_aus(r["selection_json"])
         z = Zeilenbefund(beleg_id=int(r["id"]), page_url=url, anker=anker)
+        z.anker_end = anker_end
+        z.seitenklasse = seitenklasse(url)
         sichten = self._sichten(url)
         if sichten is None:
             z.hinweis = ("Zu dieser Adresse gibt es keinen GET-Abzug - der "
@@ -870,12 +1126,71 @@ class AnkerDiagnose:
         _body, roh_sicht, html5_sicht = sichten
         z.lxml = self._anker_pruefen(roh_sicht, anker)
         z.zweite = self._anker_pruefen(html5_sicht, anker)
+        # BUILD 763: derselbe Weg fuer den zweiten Ausdruck. Fehlt er, wird
+        # der Anfang auch als Ende gemessen - dann ist die Markierung
+        # punktfoermig, und 'anker_end_fehlt' sagt das im Bericht.
+        zweiter = anker_end or anker
+        z.lxml_end = self._anker_pruefen(roh_sicht, zweiter)
+        z.zweite_end = self._anker_pruefen(html5_sicht, zweiter)
         # BUILD 754: die Positionspruefung sagt nur, dass die Indizes
         # existieren. Was dort STEHT, sagt erst die Inhaltspruefung - und die
         # entscheidet, ob der Ausdruck etwas wert ist.
         z.pruefung = self._inhalt_pruefen(url, int(r["id"]),
                                           r["selection_json"])
+        self._postbezug_messen(z, html5_sicht)
         return z
+
+    # ------------------------------------------------------------------
+    def _postbezug_messen(self, z: Zeilenbefund, sicht) -> None:
+        """
+        BUILD 763 - der post-Bezug beider Endpunkte und die Spanne dazwischen.
+
+        Gemessen wird in der HTML5-Zerlegung (Begruendung s. Zeilenbefund).
+        Ein Fehlschlag beendet die Diagnose NICHT - die Positionsmessung ist
+        auch ohne post-Bezug eine Auskunft. Er bleibt aber nicht still
+        (Grundregel 1): der Befund traegt dann den Hinweis im Klartext.
+        """
+        if z.zweite is None or z.zweite_end is None:
+            return
+        try:
+            messer = self._messer(z.page_url, sicht)
+            if messer is None:
+                return
+            z.bezug_start = messer.bezug(z.zweite.letzter_knoten)
+            z.bezug_end = messer.bezug(z.zweite_end.letzter_knoten)
+            z.spanne = messer.spanne(z.zweite.letzter_knoten,
+                                     z.zweite_end.letzter_knoten)
+            z.fall, z.fall_typ, z.fall_posts, z.fall_grund = fall_bestimmen(
+                z.bezug_start, z.bezug_end, z.spanne,
+                z.zweite.position_vorhanden,
+                z.zweite_end.position_vorhanden)
+        except Exception as exc:                  # pragma: no cover - defensiv
+            logger.warning("anker_diagnose: post-Bezug zu Beleg %s "
+                           "fehlgeschlagen: %s", z.beleg_id, exc)
+            z.hinweis = (z.hinweis + " " if z.hinweis else "") + (
+                "post-Bezug nicht messbar: %s" % exc)
+
+    # ------------------------------------------------------------------
+    def _messer(self, url: str, sicht):
+        """
+        Der PostBezugMesser zu einer Adresse - je Adresse EINMAL gebaut.
+
+        Er zaehlt die container der Seite und die Dokumentreihenfolge aller
+        Elemente aus. Das je Markierung zu wiederholen waere auf einer Seite
+        mit 500 Beitraegen und 46 Markierungen 46-facher Aufwand fuer ein
+        Ergebnis, das sich nicht aendert. Ausserdem haelt der Messer die
+        Baumhuellen fest - s. dort zur Knotenidentitaet.
+        """
+        if url in self._messer_je_seite:
+            return self._messer_je_seite[url]
+        messer = None
+        try:
+            messer = PostBezugMesser(sicht.wurzel)
+        except Exception as exc:                  # pragma: no cover - defensiv
+            logger.warning("anker_diagnose: PostBezugMesser zu %s nicht "
+                           "baubar: %s", url, exc)
+        self._messer_je_seite[url] = messer
+        return messer
 
     # ------------------------------------------------------------------
     def _inhalt_pruefen(self, url: str, beleg_id: int, selection_json):
@@ -938,6 +1253,7 @@ class AnkerDiagnose:
             b.bruch_schritt = "(leer)"
             return b
         knoten = sicht.wurzel
+        b.letzter_knoten = knoten
         bisher = "."
         for nr, schritt in enumerate(schritte, 1):
             treffer = SCHRITT_MUSTER.match(schritt)
@@ -958,7 +1274,10 @@ class AnkerDiagnose:
                     b.position_vorhanden = False
                     b.bruch_nummer, b.bruch_schritt = nr, schritt
                     return b
-                # Ein Textknoten ist das Ende des Weges.
+                # Ein Textknoten ist das Ende des Weges. Der Knoten bleibt
+                # das Element, DAS ihn traegt - und genau dieses Element
+                # steht im post container, nach dem gefragt wird.
+                b.aufgeloeste_schritte = nr
                 bisher += "/" + schritt
                 continue
             naechster = sicht.schritt(knoten, marke, wunsch)
@@ -972,6 +1291,8 @@ class AnkerDiagnose:
                 b.bruch_nummer, b.bruch_schritt = nr, schritt
                 return b
             knoten = naechster
+            b.letzter_knoten = knoten
+            b.aufgeloeste_schritte = nr
             bisher += "/" + schritt
         return b
 
@@ -992,6 +1313,30 @@ class AnkerDiagnose:
         body, roh_sicht, html5_sicht = sichten
         s.laenge = len(body)
         s.annaeherung = list(getattr(html5_sicht, "befunde", []))
+
+        # -- BUILD 763: Seitenklasse, container, Verschachtelung -----------
+        #
+        # DIE KLASSE IST EINE SPALTE, KEIN SCHALTER. Die Erkennung laeuft auf
+        # JEDER Seite, auch auf denen, auf denen nach Erwartung keine
+        # Beitraege stehen. Wer sie anhand der Adresse ueberspringt, macht
+        # den Widerspruch zwischen Erwartung und Abzug per Konstruktion
+        # unsichtbar - und das waere ein stiller Sprung (Grundregel 1).
+        s.seitenklasse = seitenklasse(url)
+        messer = self._messer(url, html5_sicht)
+        if messer is not None:
+            s.container_zahl = messer.container_zahl
+            s.verschachtelungen = messer.verschachtelungen()
+            if s.seitenklasse in POSTFREIE_KLASSEN and s.container_zahl:
+                s.widerspruch = (
+                    "Seitenart '%s' wird als beitragsfrei gefuehrt, der Abzug "
+                    "traegt aber %d post container."
+                    % (s.seitenklasse, s.container_zahl))
+            elif (s.seitenklasse not in POSTFREIE_KLASSEN
+                  and s.seitenklasse != KLASSE_SONSTIGE
+                  and not s.container_zahl):
+                s.widerspruch = (
+                    "Seitenart '%s' sollte Beitraege tragen, der Abzug traegt "
+                    "keinen einzigen post container." % s.seitenklasse)
 
         # -- M4: das Fehlerprotokoll von libxml2 --------------------------
         #

@@ -354,6 +354,17 @@ _GEPRUEFT_759 = ("Build 759, 2026-09-04, gegen einen Wegwerf-Bestand unter "
                  "davon einer nur ueber die gefaltete Fassung. "
                  "Python 3.12.3, html5lib.")
 
+_GEPRUEFT_763 = ("Build 763, 2026-09-06, gegen Wegwerf-Bestaende unter "
+                 "/tmp mit nachgebauter Forenstruktur: Seiten mit einem, "
+                 "zwei und drei Beitraegen nach viewtopic0.php Z. 886, "
+                 "975 und 1212 - aeusseres <article> mit einfacher, "
+                 "inneres <div> mit doppelter Kennung -, dazu eine "
+                 "search.php-Seite MIT post container und eine Seite mit "
+                 "zwei ineinander liegenden containern VERSCHIEDENER "
+                 "Nummer. Python 3.12.3, html5lib. Gemessen: die Faelle "
+                 "1 bis 6 je einmal, ein gebrochener Ausdruck als Fall 0, "
+                 "ein Widerspruch zur Seitenart.")
+
 _GEPRUEFT_758 = ("Build 758, 2026-09-04, gegen einen Wegwerf-Bestand unter "
                  "/tmp mit nachgebauter Forenstruktur: PN-Seite nach "
                  "include/pms_new/mdl/topic.php Z. 462 ff. mit Signatur, "
@@ -5573,14 +5584,16 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
     CliEintrag(
         schluessel="anker_diagnose",
         pfad="tools/anker_diagnose.py",
-        aufruf="python tools/anker_diagnose.py --evidence <evidence_N.db> "
-               "--forensic <forensic_N.db> [--beleg N] [--grenze N] "
-               "[--protokoll <Datei>]",
+        aufruf="python tools/anker_diagnose.py [--evidence <evidence_N.db> "
+               "--forensic <forensic_N.db>] [--evidence-dir <Verz>] "
+               "[--forensic-dir <Verz>] [--uid N ...] [--beleg N] "
+               "[--grenze N] [--protokoll <Datei>] [--json <Datei>]",
         titel="Ankerbruch der Textmarkierungen messen",
         gruppe="Migration und Reparatur",
         zweck="Messen, warum die Positionsangaben der Textmarkierungen im "
-              "gesicherten Seitenabzug nicht aufloesen - und pruefen, ob "
-              "eine Annaeherung an die Zerlegung des Browsers sie heilt.",
+              "gesicherten Seitenabzug nicht aufloesen, in welchem post "
+              "container beide Endpunkte liegen und welchen Umfang die "
+              "Markierung damit hat (Faelle 1 bis 6, Build 763).",
         art="lesend",
         datenbanken=(
             "evidence_<uid>.db (lesend, mode=ro - annotations)",
@@ -5594,7 +5607,25 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "Bericht (report_render/html5_zerleger.py) und wirkt "
                 "ohne dieses Werkzeug; hier wird nur gemessen, ob er im "
                 "vorliegenden Bestand greift.",
-        konfiguration=KONFIG_KEINE,
+        konfiguration=(
+            _k("paths.evidence_db_dir",
+               "Verzeichnis, in dem nach evidence_<uid>.db gesucht wird. "
+               "Gilt nur im Verzeichnisbetrieb; mit --evidence wird ein "
+               "einzelner Bestand ausdruecklich genannt.",
+               "./data/evidence/",
+               "tools/anker_diagnose.py, _bestaende_bestimmen() - "
+               "aufgeloest ueber core/werkzeug_konfig.wert()",
+               "--evidence-dir"),
+            _k("paths.forensic_db_dir",
+               "Verzeichnis, in dem die zugehoerige forensic_<uid>.db "
+               "gesucht wird. Fehlt sie, meldet der Lauf das als Befund "
+               "und faehrt mit den uebrigen Bestaenden fort - der "
+               "Bestand wird NICHT stillschweigend uebersprungen.",
+               "./data/forensic/",
+               "tools/anker_diagnose.py, _bestaende_bestimmen() - "
+               "aufgeloest ueber core/werkzeug_konfig.wert()",
+               "--forensic-dir"),
+        ),
         ausgabe="Je Beleg eine Zeile mit 'roh=' und 'angenaehert='. Je "
                "Seite: das FEHLERPROTOKOLL des Zerlegers (M4 - es benennt "
                "die Ursache oft unmittelbar), die VERORTUNG der bekannten "
@@ -5604,8 +5635,23 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "wo die <article> wirklich stehen und wie viele davon in "
                "einem anderen <article> sitzen), der Ebenenbericht und die "
                "Rohtext-Elemente. "
-               "Am Ende die Zaehlung, ein Urteil in ganzen Saetzen und der "
-               "Konsolen-Einzeiler fuer die Gegenprobe im Browser.",
+               "BUILD 763 zusaetzlich je Beleg die Zeilen LAGE und FALL: "
+               "in welchem post container die beiden Endpunkte liegen "
+               "('in #N', 'oberhalb', 'ausserhalb'), welche container "
+               "dazwischen liegen, und daraus abgeleitet der Fall 1 bis "
+               "6 mit dem Vorschlag 'text range' oder 'whole post'. "
+               "Fall 0 heisst: mindestens ein Ausdruck bricht, und aus "
+               "einem gebrochenen Ausdruck wird KEIN Fall abgeleitet. Je "
+               "Seite die Seitenart, die Zahl der post container und - "
+               "falls vorhanden - verschachtelte container mit "
+               "VERSCHIEDENEN Nummern sowie ein Widerspruch zwischen "
+               "Seitenart und Abzug. "
+               "Am Ende die Zaehlung mit Fall- und Seitenartverteilung, "
+               "ein Urteil in ganzen Saetzen und der "
+               "Konsolen-Einzeiler fuer die Gegenprobe im Browser. "
+               "'--json' schreibt dieselben Zahlen maschinenlesbar mit "
+               "englischen Schluesseln; beide Ausgaben entstehen aus "
+               "demselben Befund und nicht auseinander.",
         tiefe=CliTiefe(
             beispiele=(
             _bsp("python tools/anker_diagnose.py "
@@ -5620,11 +5666,26 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                  "--beleg 2",
                  "Dasselbe fuer einen einzelnen Beleg. Rueckgabewert 0.",
                  _GEPRUEFT_737),
+            _bsp("python tools/anker_diagnose.py --grenze 0 "
+                 "--json /tmp/anker763.json --protokoll /tmp/anker763.log",
+                 "BUILD 763 - der Lauf ueber ALLE Bestaende aus "
+                 "'paths.evidence_db_dir'. Ohne --uid wird jeder "
+                 "gefundene Bestand gefahren, '--grenze 0' liest jede "
+                 "Markierung. Am Ende steht eine Gesamtzaehlung ueber "
+                 "alle Bestaende. Rueckgabewert 0.",
+                 _GEPRUEFT_763),
+            _bsp("python tools/anker_diagnose.py --uid 2948078 "
+                 "--grenze 0 --json /tmp/anker_2948078.json",
+                 "Nur einen Bestand aus dem Verzeichnis. Rueckgabewert "
+                 "0; liegt die Kennung nicht im Verzeichnis, sagt der "
+                 "Lauf das und gibt 2 zurueck.",
+                 _GEPRUEFT_763),
         ),
         exit_codes=(
             (0, "gelaufen - auch beim Leerbefund, der ist kein Fehler"),
             (1, "Datei fehlt oder Datenbank nicht lesbar"),
-            (2, "Aufruffehler (fehlende Argumente)"),
+            (2, "Aufruffehler - --evidence ohne --forensic, --uid neben "
+                "--evidence, oder keine evidence_<uid>.db im Verzeichnis"),
         ),
         warnungen=(
             "ES IST EINE DIAGNOSE UND KEINE REPARATUR. Das Werkzeug aendert "
