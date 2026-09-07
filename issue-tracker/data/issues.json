@@ -19469,6 +19469,85 @@
       "description": "Die Vorgangsdateien der Builds 148 bis 151 trugen ZWOELF Titel ueber der Hoechstlaenge von 80 Zeichen (der Import meldete nur die vier aus Build 148, weil er dort abbrach). Der Wert steht seit jeher im Schema: properties.issues.items.properties.title.maxLength = 80. Geprueft worden ist er auf der Erzeugerseite nie - die Dateien wurden geschrieben und ausgeliefert, der Fehler fiel erst beim Empfaenger auf, nach Bundle, Archiv, Uebergabe und Zustellung.",
       "expected_behavior": "tools/vorgaenge_pruefen.py prueft jede Datei 'eintraege_claude_*.json' gegen 'issue-tracker/issue-tracker.schema.json' und liefert bei jeder Verletzung den Rueckgabewert 2. tools/bundle_bauen.sh ruft die Pruefung als Abschnitt '0b' auf und BRICHT AB. Geprueft wird gegen das SCHEMA, nicht gegen die eine Regel, an der es scheiterte - sonst wiederholt sich derselbe Fehler beim naechsten Feld. Fehlt das Schema, wird ebenfalls abgebrochen (Rueckgabewert 3): eine Lieferung ohne Pruefung ist nicht vorgesehen.",
       "actual_behavior": "Zwoelf ungueltige Titel wurden ausgeliefert. BEHOBEN in Build 152; VP-01 bis VP-11 halten es fest, darunter die Gegenprobe VP-02 (81 Zeichen muessen fallen) und ihre Gegenprobe VP-03 (80 Zeichen muessen bestehen)."
+    },
+    {
+      "id": "8b4d0527-629b-44df-b0a8-d579bc283eeb",
+      "type": "bug",
+      "title": "MigrationRunner: ROLLBACK verdeckte die wahre Fehlerursache",
+      "affected_version": "0.8.764",
+      "reporter": "Alex",
+      "reported_at": "2026-09-07T18:30:00+02:00",
+      "status": "resolved",
+      "resolved_in_version": "0.8.764",
+      "priority": "high",
+      "severity": "major",
+      "description": "Im Fehlerzweig von MigrationRunner._apply() stand ein ungeschuetztes con.execute('ROLLBACK'). Scheitert bereits das COMMIT - etwa mit 'database or disk is full' -, hat SQLite die Transaktion selbst zurueckgerollt. Das anschliessende ROLLBACK wirft dann 'cannot rollback - no transaction is active', und weil es ausserhalb eines try stand, ERSETZTE diese neue Ausnahme die urspruengliche. Weder logger.exception noch raise wurden erreicht.\n\nIm roten Regressionslauf vom 07.09.2026 nannten dadurch 13 von 65 Eintraegen einen Grund, der nicht der Grund war. Der Befund war vorhanden, er kam nur nicht an - derselbe Fehlertyp, den Grundregel 1 verbietet.\n\nBehoben: Der Rueckrollversuch bleibt, steht aber in einem eigenen try. Sein Scheitern wird als Warnung vermerkt und verschluckt, damit die urspruengliche Ausnahme unveraendert weitergereicht wird.",
+      "expected_behavior": "Beim Aufrufer kommt die Ausnahme an, die den Fehlschlag ausgeloest hat.",
+      "actual_behavior": "Es kam 'cannot rollback - no transaction is active' an, die tatsaechliche Ursache war verloren.",
+      "environment": "aiw_webserver 0.8.764, Python 3.14.6, SQLite",
+      "tags": [
+        "migration",
+        "fehlerbehandlung",
+        "grundregel1",
+        "build764"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-09-07T18:30:00+02:00",
+          "author": "Claude",
+          "note": "Waechter RU01 in tests/test_regression_umgebung.py, Gegenprobe RU02 (gelingender Rueckrollversuch, keine offene Transaktion). Mutationsgegenproben: ungeschuetzter ROLLBACK -> RU01 rot; Rueckrollversuch ganz weggelassen -> RU01 und RU02 rot."
+        },
+        {
+          "timestamp": "2026-09-07T20:10:00+02:00",
+          "author": "Claude",
+          "note": "Diese Datei traegt NUR die beiden Vorgaenge der zweiten Auslieferung von Build 764. Die sieben Vorgaenge der ersten Auslieferung (1a7c3e50, 2b8d4f61, 3c9e5072, 4d0f6183, 5e1a7294, 6f2b8305, 7a3c9416) stehen bereits im Bestand und sind unveraendert. Sie hier erneut mitzuliefern haette beim Einmischen mit --auto-resolve source ihre Historie geloescht - insbesondere die vom merge-tool angehaengten Eintraege. Waechter IT03 hat genau das gemeldet."
+        },
+        {
+          "timestamp": "2026-09-07T20:29:04.306489+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build764.json"
+        }
+      ]
+    },
+    {
+      "id": "9c5e1638-73ac-4501-a1b9-e68acd394ffc",
+      "type": "improvement",
+      "title": "Vorpruefung des freien Platzes vor dem Regressionslauf",
+      "affected_version": "0.8.764",
+      "reporter": "Alex",
+      "reported_at": "2026-09-07T18:35:00+02:00",
+      "status": "resolved",
+      "resolved_in_version": "0.8.764",
+      "priority": "medium",
+      "severity": "minor",
+      "description": "Der Regressionslauf vom 07.09.2026 auf dem Zielsystem meldete 65 Fehlschlaege und einen Sammelfehler in 15 Testdateien. Keine einzige Zusicherung ist gefallen - das Temporaerverzeichnis war voll. Die Meldungen lauteten je nach Stelle 'No space left on device' (29x), 'database or disk is full' (23x), 'cannot rollback' (13x, Folgefehler) und 'could not create numbered dir after 10 tries' (1x).\n\nEin Lauf, dessen Ergebnis an der Fuellung eines Verzeichnisses haengt, sagt nichts ueber den Code aus und sieht doch wie eine Aussage aus. Wer 65 rote Zeilen sieht, sucht den Fehler im Bauwerk. Und ein ECHTER Fehlschlag waere zwischen den unechten untergegangen.\n\ntests/conftest.py prueft jetzt beim Einsammeln den freien Platz und bricht mit einer benannten Meldung ab, bevor der erste Test startet - Pfad, freier Platz, Schwelle. Vorgabe 200 MB, einstellbar ueber AIW_TESTS_MIN_TMP_MB, abschaltbar mit 0. Laesst sich der Platz nicht ermitteln, wird NICHT abgebrochen: eine Vorpruefung darf keinen Lauf verhindern, den sie nicht beurteilen kann.",
+      "expected_behavior": "Ein Plattenmangel wird einmal und verstaendlich gemeldet, nicht als Dutzende Testfehler.",
+      "environment": "aiw_webserver 0.8.764",
+      "tags": [
+        "tests",
+        "umgebung",
+        "grundregel1",
+        "build764"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-09-07T18:35:00+02:00",
+          "author": "Claude",
+          "note": "Waechter RU03, Gegenprobe RU04 (abschaltbar, unbrauchbarer Wert faellt auf die Vorgabe zurueck). Auf dem Zielsystem bleibt zu tun: 'df -h /tmp' pruefen und alte 'pytest-of-*'-Ordner loeschen."
+        },
+        {
+          "timestamp": "2026-09-07T20:10:00+02:00",
+          "author": "Claude",
+          "note": "Diese Datei traegt NUR die beiden Vorgaenge der zweiten Auslieferung von Build 764. Die sieben Vorgaenge der ersten Auslieferung (1a7c3e50, 2b8d4f61, 3c9e5072, 4d0f6183, 5e1a7294, 6f2b8305, 7a3c9416) stehen bereits im Bestand und sind unveraendert. Sie hier erneut mitzuliefern haette beim Einmischen mit --auto-resolve source ihre Historie geloescht - insbesondere die vom merge-tool angehaengten Eintraege. Waechter IT03 hat genau das gemeldet."
+        },
+        {
+          "timestamp": "2026-09-07T20:29:04.306513+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build764.json"
+        }
+      ]
     }
   ]
 }
