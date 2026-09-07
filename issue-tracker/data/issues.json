@@ -18682,6 +18682,793 @@
           "comment": "Importiert aus eintraege_claude_Build763.json"
         }
       ]
+    },
+    {
+      "id": "1a7c3e50-9b24-4d68-8f31-6e02a5b17cc4",
+      "type": "improvement",
+      "title": "Inhalt gegen Rahmen entscheidet text range oder whole post",
+      "affected_version": "0.8.764",
+      "reporter": "Claude",
+      "reported_at": "2026-09-07T11:00:00+02:00",
+      "status": "review",
+      "priority": "high",
+      "severity": "major",
+      "description": "Der Lauf zu Build 763 hat gezeigt, dass die Fallzuordnung 1 bis 6 die Frage aus AP-2 nicht beantwortet: alle 24 von Alex durchgesehenen whole-post-Markierungen fielen auf Fall 1. Der Grund ist rueckblickend offensichtlich - wer den Text eines ganzen Beitrags mit der Maus fasst, beginnt und endet INNERHALB des post container. Die Lage der Endpunkte zueinander kann eine whole-post-Markierung nicht von einer gewoehnlichen text range unterscheiden.\n\nDas Kriterium ist deshalb ersetzt (Festlegung Alex, 07.09.2026): entschieden wird ueber die LAGE IM BEITRAG. Ein Beitrag hat einen inhaltstragenden Teil und einen Rahmen mit Metadaten und Funktionen. Liegt die Markierung vollstaendig im Inhaltsbereich EINES Beitrags, ist es eine 'text range'; greift sie auch in den Rahmen oder in einen zweiten Beitrag, ist es ein 'whole post'.\n\nxpathStart bestimmt den betroffenen Beitrag, xpathEnd entscheidet, ob es der einzige ist und ob ueberhaupt gekuerzt werden darf. Beide werden gebraucht.",
+      "expected_behavior": "Je Endpunkt eine Lage 'content', 'frame' oder 'outside'; daraus der Vorschlag 'text range' oder 'whole post' mit den betroffenen Beitragsnummern und einer Begruendung im Klartext.",
+      "environment": "aiw_webserver 0.8.764, Python 3.12.3 (Entwicklung) / 3.14 (Produktion), lxml, html5lib",
+      "tags": [
+        "anker",
+        "annotationen",
+        "post_bereiche",
+        "ap2",
+        "build764"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-09-07T11:00:00+02:00",
+          "author": "Claude",
+          "note": "Waechter AD36 bis AD42 in tests/test_anker_diagnose.py. Sechs Mutationsgegenproben gefahren, jede von genau dem vorgesehenen Waechter gefangen."
+        },
+        {
+          "timestamp": "2026-09-07T18:27:45.923645+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build764.json"
+        }
+      ]
+    },
+    {
+      "id": "2b8d4f61-0c35-4e79-9a42-7f13b6c28dd5",
+      "type": "bug",
+      "title": "Die innere Beitragskennung ist die falsche Grenze und wird nicht mehr genutzt",
+      "affected_version": "0.8.763",
+      "reporter": "Claude",
+      "reported_at": "2026-09-07T11:05:00+02:00",
+      "status": "resolved",
+      "resolved_in_version": "0.8.764",
+      "priority": "high",
+      "severity": "major",
+      "description": "In Build 763 hatte ich vorgeschlagen, den Rahmen eines Beitrags als 'im container, aber nicht in der inneren Kennung' zu bestimmen. Diese Regel war falsch. Drei am Forenquelltext belegte Gruende:\n\n1. Die innere Kennung umschliesst den Rahmen mit. viewtopic0.php Z. 977 oeffnet darin div.postbody, Z. 980 div.postleft mit Autor, Avatar und Rang, Z. 1161 div.postfoot mit den Funktionen. 'In der inneren Kennung' ist also gerade nicht 'im Inhalt'.\n\n2. Zwei der 24 durchgesehenen whole-post-Faelle beginnen in div.postleft (Muster dl/dd/strong, viewtopic0.php Z. 981 ff.) und waeren durchgerutscht.\n\n3. Im Anfaengerforum gibt es die innere Kennung ueberhaupt nicht. viewtopic1.php Z. 576 schreibt die einfache Kennung. Die Regel haette dort JEDE Markierung als Rahmen gewertet.\n\nDie innere Kennung wird seit Build 764 nicht mehr ausgewertet. Sie spielt fuer diese Unterscheidung keine Rolle.",
+      "expected_behavior": "Die Unterscheidung laeuft ueber den Inhaltsanker der jeweiligen Seitenart, nicht ueber die Kennung.",
+      "actual_behavior": "Die verworfene Regel haette zwei belegte Faelle verfehlt und das Anfaengerforum vollstaendig falsch entschieden.",
+      "environment": "aiw_webserver 0.8.763",
+      "tags": [
+        "anker",
+        "post_bereiche",
+        "korrektur",
+        "build764"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-09-07T11:05:00+02:00",
+          "author": "Claude",
+          "note": "Waechter AD42 haelt den dritten Grund fest: er faellt, sobald die Regel zurueckkehrt. Die Regel war nie ausgeliefert - sie stand als Vorschlag im Bauplan und ist vor der Umsetzung verworfen worden."
+        },
+        {
+          "timestamp": "2026-09-07T18:27:45.923667+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build764.json"
+        }
+      ]
+    },
+    {
+      "id": "3c9e5072-1d46-4f8a-ab53-8024c7d39ee6",
+      "type": "bug",
+      "title": "XPath-Fassung: Inhaltsanker als Schrittausdruck statt als Pfad",
+      "affected_version": "0.8.764",
+      "reporter": "Claude",
+      "reported_at": "2026-09-07T11:10:00+02:00",
+      "status": "resolved",
+      "resolved_in_version": "0.8.764",
+      "priority": "medium",
+      "severity": "major",
+      "description": "Beide ersten Entwuerfe der XPath-Fassung - der von Alex und meiner - trugen denselben Fehler. Der Ausdruck not(ancestor-or-self::div[postright]//div[postmsg]) fragt, ob irgendein Vorfahre mit Klasse postright irgendwo ein postmsg ENTHAELT. Gebraucht wird aber die Frage, ob der Knoten DARIN LIEGT. Fuer das h3 mit dem Themenbetreff (viewtopic0.php Z. 1005) ist der erste Ausdruck wahr, obwohl es nicht im Inhalt steht; Inhalt und Rahmen waeren nicht komplementaer gewesen.\n\nBehoben, indem der Inhaltsanker als EIN Schrittausdruck mit angehaengtem ancestor::-Praedikat gebildet wird. So ist er ueber ancestor-or-self:: pruefbar.\n\nZweiter Punkt derselben Fassung: 'descendant-or-self::node()' statt '//*'. Der zweite waehlt nur Elemente unterhalb des Ankers. Der Beitragstext steht aber direkt im Anker; sein Textknoten hat den Anker als Elternelement. Unter '//*' haette der haeufigste Fall ueberhaupt ausserhalb des Inhalts gelegen.\n\nDritter Punkt: Klassen werden tokenweise verglichen. contains(@class,'contents') waere auch bei class='table-of-contents' wahr.",
+      "expected_behavior": "content und frame sind per Konstruktion komplementaer; Textknoten sind mit abgedeckt.",
+      "environment": "aiw_webserver 0.8.764",
+      "tags": [
+        "xpath",
+        "post_bereiche",
+        "korrektur",
+        "build764"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-09-07T11:10:00+02:00",
+          "author": "Claude",
+          "note": "Waechter AD36 und AD38. Gegenprobe an nachgebautem Markup: Aufstieg im Code, dokumentweiter XPath und relative XPath-Probe sind an zehn Stellen einig."
+        },
+        {
+          "timestamp": "2026-09-07T18:27:45.923675+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build764.json"
+        }
+      ]
+    },
+    {
+      "id": "4d0f6183-2e57-409b-bc64-9135d8e4aff7",
+      "type": "bug",
+      "title": "Zaehlung verschwieg aktive Markierungen ohne Anker",
+      "affected_version": "0.8.763",
+      "reporter": "Claude",
+      "reported_at": "2026-09-07T11:15:00+02:00",
+      "status": "resolved",
+      "resolved_in_version": "0.8.764",
+      "priority": "high",
+      "severity": "major",
+      "description": "Der Lauf zu Build 763 meldete '455 von 455' und erwaehnte 15 aktive Belege mit keinem Wort. Gelesen wurden nur Zeilen mit XPath-Anker, die Zahl war aber 'annotations_total' beschriftet. Wer sie gegen die Datenbank haelt, verliert 15 Belege lautlos - das verbietet Grundregel 1. Der Mangel stammt aus meiner Aenderung in Build 763.\n\nDie 15 Zeilen sind BEITRAGSMARKIERUNGEN: kein selection_json, dafuer element_id nach dem Muster der aeusseren Beitragskennung. Das ist der Typ, den die Toolbar seit Build 430 fuer ganze Beitraege anlegt (Beleg: forensic_api/annotations.py Z. 62-64, forensic_api/annotate.py Z. 10-25). Der Typ 'whole post' ist also nicht neu zu erfinden - die 24 durchgesehenen Faelle sind Textmarkierungen, die eine Beitragsmarkierung haetten sein sollen.\n\nDie Bestandsaufnahme weist jetzt getrennt aus: aktive Markierungen, davon mit Anker, davon Beitragsmarkierungen, davon weder noch. Die letzte Gruppe wird mit Belegnummern benannt statt weggelassen. Fehlende Spalten fuehren nicht mehr zum Abbruch, sondern zu einem Vermerk.",
+      "expected_behavior": "Keine Zahl geht in einer anderen auf; was nicht diagnostiziert werden kann, wird benannt.",
+      "actual_behavior": "In Build 763 fielen 15 aktive Belege lautlos aus der Zaehlung.",
+      "environment": "aiw_webserver 0.8.764",
+      "tags": [
+        "grundregel1",
+        "zaehlung",
+        "korrektur",
+        "build764"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-09-07T11:15:00+02:00",
+          "author": "Claude",
+          "note": "Waechter AD44. Mutationsgegenprobe: wird nur noch mit Anker gezaehlt, faellt er."
+        },
+        {
+          "timestamp": "2026-09-07T18:27:45.923681+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build764.json"
+        }
+      ]
+    },
+    {
+      "id": "5e1a7294-3f68-41ac-8d75-a246e9f50bb8",
+      "type": "improvement",
+      "title": "Fall 0 aufgeteilt: Textknotenbruch bleibt auswertbar",
+      "affected_version": "0.8.764",
+      "reporter": "Claude",
+      "reported_at": "2026-09-07T11:20:00+02:00",
+      "status": "review",
+      "priority": "medium",
+      "severity": "minor",
+      "description": "In Build 763 galt: bricht einer der beiden Ausdruecke, wird keine Zuordnung abgeleitet. Der Lauf hat gezeigt, was diese Strenge kostet. Von 44 unbestimmten Faellen brachen 38 ausschliesslich am abschliessenden text()-Step - dort ist das TRAGENDE ELEMENT aufgeloest, nur der Index des Textknotens darin trifft nicht. Bei allen 38 nannten beide Endpunkte denselben Beitrag.\n\nSeit Build 764 gilt ein Endpunkt als auswertbar, wenn der Ausdruck vollstaendig aufloest ODER ausschliesslich der abschliessende text()-Step bricht. Nur der strukturelle Bruch bleibt unbestimmt.\n\nDer Grundsatz ist unangetastet: er lautete nie 'nur bei vollstaendiger Aufloesung', sondern 'nicht aus einem unaufgeloesten Element'. Fuer die Frage nach Beitrag und Bereich ist das Element massgeblich, nicht der Textknoten.",
+      "expected_behavior": "38 der 44 bisher unbestimmten Faelle werden verwertbar, mit dem Vermerk text_node_index_wrong.",
+      "environment": "aiw_webserver 0.8.764",
+      "tags": [
+        "anker",
+        "fallzuordnung",
+        "build764"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-09-07T11:20:00+02:00",
+          "author": "Claude",
+          "note": "Waechter AD43 prueft beide Richtungen: Textknotenbruch auswertbar, struktureller Bruch nicht."
+        },
+        {
+          "timestamp": "2026-09-07T18:27:45.923686+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build764.json"
+        }
+      ]
+    },
+    {
+      "id": "6f2b8305-4079-42bd-9e86-b357fa061cc9",
+      "type": "documentation",
+      "title": "Katalog der Post-Bereiche als Dokument und Code, gegeneinander geprueft",
+      "affected_version": "0.8.764",
+      "reporter": "Claude",
+      "reported_at": "2026-09-07T11:25:00+02:00",
+      "status": "review",
+      "priority": "medium",
+      "severity": "minor",
+      "description": "Die Bereichsdefinition je Seitenart steht zweimal: als Tabelle in management/maintenance/post_bereiche.py und als Dokument in documents/Post_Bereiche_Katalog.md. Das Dokument ist forenuebergreifend gedacht - es traegt eine Anleitung, was beim Uebertragen auf ein anderes Forum zu tun ist, und weist ausdruecklich aus, dass die Liste NICHT abschliessend ist.\n\nWaechter AD45 haelt beide gegeneinander: jede Seitenart aus dem Code muss im Dokument vorkommen, jede Ankerklasse und jeder Ausschluss ebenfalls, und die erzeugten XPath-Ausdruecke muessen zeichengleich im Dokument stehen. Ohne diesen Waechter laufen Dokument und Code binnen weniger Builds auseinander, und dann gilt keins von beidem.\n\nAufgenommen sind auch die Seitenarten OHNE Beitraege. Die Aussage 'hier stehen keine Beitraege' ist selbst eine Katalogaussage. Fuer 'search' und 'viewforum' ist sie im Lauf zu Build 763 bestaetigt worden; fuer 'profile' und 'notifications' ist sie als UNGEPRUEFT vermerkt, weil im Bestand keine Markierungen vorlagen.",
+      "expected_behavior": "Dokument und Code sind deckungsgleich, und eine Abweichung faellt beim Testlauf auf.",
+      "environment": "aiw_webserver 0.8.764",
+      "tags": [
+        "dokumentation",
+        "post_bereiche",
+        "katalog",
+        "build764"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-09-07T11:25:00+02:00",
+          "author": "Claude",
+          "note": "Das Dokument wird aus dem Code erzeugt, damit die Ausdruecke nicht abweichend abgeschrieben werden koennen."
+        },
+        {
+          "timestamp": "2026-09-07T18:27:45.923690+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build764.json"
+        }
+      ]
+    },
+    {
+      "id": "7a3c9416-518a-43ce-af97-c468ab172dda",
+      "type": "improvement",
+      "title": "Unbekannte Seitenart geht auf whole post",
+      "affected_version": "0.8.764",
+      "reporter": "Claude",
+      "reported_at": "2026-09-07T11:30:00+02:00",
+      "status": "review",
+      "priority": "medium",
+      "severity": "minor",
+      "description": "Eine Seitenart, die nicht im Katalog steht, hat keinen Inhaltsanker; die Lage ist dann nicht bestimmbar. Sie geht auf 'frame' und damit auf 'whole post'.\n\nBEGRUENDUNG: 'whole post' verliert keinen Beleg, es fasst nur mehr als noetig. 'text range' koennte einen Beleg VERKUERZEN, und ein verkuerzter Beleg ist ein verlorener (Grundregel 1). Bei Unbestimmtheit ist die weitere Fassung die richtige.\n\nDIESER PUNKT IST ENTSTANDEN, WEIL EINE MUTATIONSGEGENPROBE GRUEN BLIEB. Der Zweig 'Seitenart ohne Inhaltsanker' in lage_von() war von keinem Waechter beruehrt: der Systembeitrag laeuft ueber einen anderen Zweig, und eine unbekannte Seitenart kam in keiner Probe vor. Die Mutation 'ohne Inhaltsanker gilt als Inhalt' blieb unbemerkt.",
+      "expected_behavior": "Unbekannte Seitenart -> frame -> whole post, und ein Waechter haelt das fest.",
+      "environment": "aiw_webserver 0.8.764",
+      "tags": [
+        "grundregel1",
+        "post_bereiche",
+        "waechter",
+        "build764"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-09-07T11:30:00+02:00",
+          "author": "Claude",
+          "note": "Waechter AD46 ergaenzt. Mit ihm faellt die Mutation. Zweiter Befund derselben Runde: eine meiner Mutationen war schlecht konstruiert - sie entfernte nur die Vorfahrenforderung, nicht den Inhaltsanker, und tat damit nicht, was ihr Etikett behauptete. Richtig konstruiert fallen AD36, AD39, AD40, AD43 und AD45."
+        },
+        {
+          "timestamp": "2026-09-07T18:27:45.923695+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build764.json"
+        }
+      ]
+    },
+    {
+      "id": "49cfecf4-2eb1-4433-aaac-d9d8347b7a04",
+      "type": "bug",
+      "title": "Karteireiter 'Notifications' zeigt auf '?id=<Benutzer-Nummer>'",
+      "affected_version": "0.1.148",
+      "reporter": "Claude",
+      "reported_at": "2026-09-06T14:40:00+00:00",
+      "assigned_to": "Claude",
+      "status": "open",
+      "priority": "high",
+      "severity": "major",
+      "resolved_in_version": null,
+      "target_version": null,
+      "related_to": [],
+      "tags": [
+        "notifications",
+        "alias",
+        "block21",
+        "header_ucp",
+        "nicht-im-umfang",
+        "aiw_sqlite_prepper"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-09-07T18:53:20.503970+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Prepper_Build148.json"
+        }
+      ],
+      "prerequisites": "Alex meldet am 06.09.2026, dass '/forum/notifications.php' im Buendel als nicht vorhanden gemeldet wird, obwohl die Seite im Originalforum fuer denselben Nutzer erreichbar ist.",
+      "description": "VOLLSTAENDIGE UEBERSCHRIFT: Der Karteireiter 'Notifications' zeigt auf '?id=<Benutzer-Nummer>' - eine Adresse, die der Prepper nie erzeugt\n\nforum/html/include/header_ucp.php Z. 70 baut den Karteireiter als '<a href=\"/forum/notifications.php?id=<$id>\">'. $id ist dort die BENUTZER-Nummer - dieselbe wie in den 'profile.php?id='-Reitern zwei Zeilen darueber. header_ucp.php wird von profile.php an 17 Stellen eingebunden (u.a. Z. 227) und von include/pms_new/mdl/list.php Z. 9; beide Seitenarten liegen im Buendel (Block 19, Block 20). Der Prepper erzeugt '?id=' aber ausschliesslich mit der BENACHRICHTIGUNGS-Nummer (stage1/query_blocks.py Z. 1019). Der Webserver vergleicht exakt (aiw_webserver/db/forensic_db.py Z. 431-437).\n\nGEGENPROBE: tools/messung_notifications.py Stufe 4",
+      "expected_behavior": "Ein page_alias fuehrt '/forum/notifications.php?id=<uid>' auf den BLOB der Uebersichtsseite. Ein zweiter HTTP-Abruf ist NICHT vorzunehmen: das Forum liefert dort denselben Inhalt, weil '?id=' fuer Nicht-Moderatoren verworfen wird (notifications.php Z. 14-17); ein Abruf erzeugte nur eine zweite Kopie derselben Seite.",
+      "actual_behavior": "Der Klick auf den Reiter erzeugt die Meldung 'Diese Seite liegt nicht im Umfang der Ermittlungen' (aiw_webserver/toolbar/toolbar.js Z. 2064-2072), obwohl die Seite im Bestand liegt."
+    },
+    {
+      "id": "7cc37945-b27c-4f54-aeaa-6274363163a2",
+      "reporter": "Claude",
+      "reported_at": "2026-09-06T14:10:00+00:00",
+      "assigned_to": "Claude",
+      "status": "open",
+      "resolved_in_version": null,
+      "target_version": null,
+      "related_to": [],
+      "tags": [
+        "notifications",
+        "alias",
+        "grundregel1",
+        "block21",
+        "aiw_sqlite_prepper"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-09-07T18:53:20.504003+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Prepper_Build148.json"
+        }
+      ],
+      "type": "bug",
+      "title": "Block 21b liest notifications.tid nicht - Aliase gehen verloren",
+      "affected_version": "0.1.148",
+      "priority": "high",
+      "severity": "major",
+      "prerequisites": "Die MariaDB-Tabelle 'notifications' fuehrt neben 'id' und 'pid' auch 'tid' - den Themenbezug der Benachrichtigung. Beleg: Schema von Alex am 06.09.2026 uebergeben.",
+      "description": "VOLLSTAENDIGE UEBERSCHRIFT: Block 21b liest notifications.tid nicht - Benachrichtigungen ohne post_aliases-Eintrag gehen still verloren\n\nBlock 21b holt nur id und pid (stage1/query_blocks.py Z. 1057-1062) und filtert dabei 'pid > 0'. Den Themenbezug leitet stage2/forensic_db_writer.py Z. 736-739 danach ueber post_aliases ab. Findet sich der Beitrag dort nicht - weil das Thema aus keinem anderen Block als Ziel entstanden ist -, wird die Zeile in Z. 740 ('if row_pa:') UEBERSPRUNGEN. Es gibt keinen else-Zweig, keinen Zaehler und keine Protokollzeile. Die uebersprungenen Benachrichtigungen sind im fertigen Buendel nicht mehr nachweisbar. Ebenso werden Benachrichtigungen mit pid=0 (Typen 5 Donation, 7 demoted, 10 followed - Beleg forum/html/include/common.php Z. 604-617) schon in der Abfrage weggefiltert und nirgends gezaehlt: das Protokoll meldet nur len(notify_rows) NACH dem Filter.",
+      "expected_behavior": "Die Abfrage liest id, pid UND tid ohne pid-Filter. notify_aliases bekommt eine Spalte topic_id (rein additiv, ALTER-Muster wie topic_subject in Build 057 und partner_user_id in Build 147). Der Alias-Aufbau nimmt topic_id direkt aus notify_aliases und faellt nur bei fehlendem Wert auf post_aliases zurueck. Jede Klasse (pid>0 und tid>0 / pid=0 und tid>0 / beide 0 / kein Alias baubar) wird gezaehlt und protokolliert; eine Klasse mit Eintraegen und null Aliassen erzeugt eine WARNUNG.",
+      "actual_behavior": "Zeilen ohne post_aliases-Treffer verschwinden ohne jede Spur. tools/messung_notifications.py Stufe 5(a) weist sie ab Build 148 aus - behoben ist damit nichts, nur sichtbar gemacht."
+    },
+    {
+      "id": "0ffa3896-0a68-40e7-af69-b818a7b9cd27",
+      "reporter": "Claude",
+      "reported_at": "2026-09-06T14:10:00+00:00",
+      "assigned_to": "Claude",
+      "status": "open",
+      "resolved_in_version": null,
+      "target_version": null,
+      "related_to": [],
+      "tags": [
+        "notifications",
+        "alias",
+        "paginierung",
+        "seite-1-bug",
+        "aiw_sqlite_prepper"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-09-07T18:53:20.504026+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Prepper_Build148.json"
+        }
+      ],
+      "type": "bug",
+      "title": "notify-Alias traegt den Seite-1-Bug, der fuer Form 2 behoben ist",
+      "affected_version": "0.1.148",
+      "priority": "medium",
+      "severity": "major",
+      "prerequisites": "Build 098 hat den Seite-1-Bug (B7) fuer die pid-Direktform behoben: sie zielt seither auf den vom PostPageMeasurer GEMESSENEN Seitenteil.",
+      "description": "VOLLSTAENDIGE UEBERSCHRIFT: Der notify-Alias traegt den Seite-1-Bug, der fuer die pid-Direktform seit Build 098 behoben ist\n\nstage2/forensic_db_writer.py Z. 671-674 setzt fuer Form 2 page_id_form2 aus measured_page. Der notify-Alias sechzig Zeilen weiter unten (Z. 742-747) nimmt weiterhin den Chunk-0-Treffer aus der LIKE-Abfrage mit \"NOT LIKE '%&p=%'\". Damit fuehren zwei Adressen desselben Beitrags auf zwei verschiedene BLOBs, sobald der Beitrag nicht auf Seite 1 liegt.",
+      "expected_behavior": "Der notify-Alias nutzt dieselbe Aufloesung wie Form 2 - den gemessenen Seitenteil, mit Chunk-0 als Rueckfall.",
+      "actual_behavior": "Liegt der Beitrag auf Seite 3, fuehrt der notify-Weg auf Seite 1 und der pid-Weg auf Seite 3. tools/messung_notifications.py Stufe 5(b) zaehlt die Abweichungen."
+    },
+    {
+      "id": "bb2adb7f-ea1a-4d5c-a60b-04bc6deb0d02",
+      "reporter": "Claude",
+      "reported_at": "2026-09-06T14:10:00+00:00",
+      "assigned_to": "Claude",
+      "status": "open",
+      "resolved_in_version": null,
+      "target_version": null,
+      "related_to": [],
+      "tags": [
+        "notifications",
+        "block21",
+        "dubletten",
+        "aiw_sqlite_prepper"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-09-07T18:53:20.504034+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Prepper_Build148.json"
+        }
+      ],
+      "type": "bug",
+      "title": "'/forum/notifications.php?id=<n>' ist wirkungslos",
+      "affected_version": "0.1.148",
+      "priority": "medium",
+      "severity": "minor",
+      "prerequisites": "Block 21 erzeugt je Zeile in 'notifications WHERE user_id=<uid>' eine Adresse '/forum/notifications.php?id=<notification_id>' (stage1/query_blocks.py Z. 1012-1029).",
+      "description": "VOLLSTAENDIGE UEBERSCHRIFT: '/forum/notifications.php?id=<n>' ist wirkungslos - der Parameter ist eine Benutzer-Nummer und wird nur fuer Moderatoren ausgewertet\n\nforum/html/notifications.php Z. 14-17 wertet $_GET['id'] nur aus, wenn $self['is_admmod'] wahr ist, und setzt den Wert dann in WHERE n.user_id=$id (Z. 74) ein - es ist eine BENUTZER-Nummer, keine Benachrichtigungsnummer. Fuer ein normales Subjekt liefern alle diese Adressen denselben Inhalt wie die Uebersichtsseite; das Buendel traegt N Dubletten. Ist das Subjekt Moderator, zeigen sie die Benachrichtigungen eines FREMDEN Kontos, abgelegt unter dem Beschuldigten - eine falsche Zuschreibung in der Akte.",
+      "expected_behavior": "Die Adressen entfallen. Der Zugang zur einzelnen Benachrichtigung laeuft ueber den notify-Alias auf die Themenseite, wie in Block 21b vorgesehen. '?filter=0..13' bleibt unveraendert richtig (Beleg: include/common.php Z. 604-617 definiert genau 14 Werte).",
+      "actual_behavior": "N wirkungslose Adressen je Subjekt. In forensic_1488.db waren es 107 Benachrichtigungsseiten insgesamt (Messung vom 05.08.2026, Vorgang 169 des Webserver-Trackers)."
+    },
+    {
+      "id": "4416a764-7b2c-4aaf-8854-44086f36b806",
+      "reporter": "Claude",
+      "reported_at": "2026-09-06T14:10:00+00:00",
+      "assigned_to": "Claude",
+      "status": "open",
+      "resolved_in_version": null,
+      "target_version": null,
+      "related_to": [],
+      "tags": [
+        "schreibschutz",
+        "beweisintegritaet",
+        "mcp",
+        "sperrliste",
+        "aiw_sqlite_prepper"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-09-07T18:53:20.504039+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Prepper_Build148.json"
+        }
+      ],
+      "type": "bug",
+      "title": "KRITISCH: mcp/broken_susp.php schreibt beim blossen Aufruf",
+      "affected_version": "0.1.148",
+      "priority": "critical",
+      "severity": "blocker",
+      "prerequisites": "Alex hat am 06.09.2026 eine Liste beobachteter Adressen uebergeben, in der '/forum/mcp/broken_susp.php' enthalten ist. Die Datei liegt im ausgelieferten Baum (forum/html/mcp/broken_susp.php) und verlangt nur $self['is_admmod'] - das Ermittlerkonto erfuellt das.",
+      "description": "VOLLSTAENDIGE UEBERSCHRIFT: KRITISCH: '/forum/mcp/broken_susp.php' loescht beim blossen Aufruf Zeilen aus 'downloads' und aendert group_id und reputation fremder Konten\n\nEin GET-Aufruf ohne jeden Parameter und ohne CSRF-Pruefung fuehrt aus: (1) Z. 67-68 'DELETE FROM downloads WHERE time<'.$old - loescht Eintraege aelter als o_log_downloads_days; die Tabelle 'downloads' ist die Quelle von Block 24 des Preppers. (2) Z. 250 'UPDATE users SET group_id=4 WHERE id=<n>' fuer jedes ueber ein Jahr inaktive Gold-Konto. (3) Z. 280 'UPDATE users SET group_id=4, reputation=1 WHERE id=<v>' fuer jedes als verdaechtig eingestufte Konto. Die Seite sagt es in Z. 270 selbst: '<b>N</b> inactive (red frame) users was automatically moved to Academy after accessing this page'. Keine dieser Aenderungen wird in logs_group_id vermerkt - sie sind nachtraeglich nur durch Vergleich mit einem Schnappschuss nachweisbar. group_id und reputation sind genau die Felder, an denen der Prepper den Beginner-Workspace und die Reputationsschranken misst.",
+      "expected_behavior": "Die Adresse steht auf der Sperrliste des Abzugsperimeters (Konzept_Scrape_Firewall_v0_1.md), zusammen mit dem gesamten Praefix '/forum/mcp/' und '/forum/admin*'. Zusaetzlich ist zu klaeren, ob die Seite auf der Arbeitskopie bereits aufgerufen worden ist.",
+      "actual_behavior": "Die Adresse ist weder gesperrt noch als gefaehrlich vermerkt. Ob sie aufgerufen wurde, ist offen."
+    },
+    {
+      "id": "f19139e6-0886-4215-9365-d3939ca73504",
+      "reporter": "Claude",
+      "reported_at": "2026-09-07T11:50:00+00:00",
+      "assigned_to": "Claude",
+      "status": "open",
+      "affected_version": "0.8.762",
+      "resolved_in_version": null,
+      "target_version": null,
+      "related_to": [],
+      "tags": [
+        "base-href",
+        "aufloesung",
+        "grundregel1",
+        "blaettern",
+        "aiw_webserver"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-09-07T18:53:20.657881+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Prepper_Build149.json"
+        }
+      ],
+      "type": "bug",
+      "title": "WEBSERVER: <base href> verwirft den Dateinamen - 178 Verweise brechen",
+      "priority": "high",
+      "severity": "major",
+      "prerequisites": "Alex meldet am 07.09.2026, dass die Filterverweise auf /forum/notifications.php zu '/forum/?filter=N' statt zu '/forum/notifications.php?filter=N' fuehren.",
+      "description": "VOLLSTAENDIGE UEBERSCHRIFT: WEBSERVER: <base href> verwirft den Dateinamen — 178 relative Verweise loesen falsch auf, darunter Blaetterverweise\n\nserver/blob_handler.py Z. 279-285 bildet den Wert des <base>-Elements aus pages.url_canonical, indem es am LETZTEN Schraegstrich abschneidet: 'canon_path[:last_slash + 1]'. Der Dateiname geht dabei verloren; aus '/forum/notifications.php' wird '/forum/'. Nach RFC 3986 ersetzt eine Referenz der Form '?filter=0' nur die Query-Komponente der Basis-URL - Ergebnis '/forum/?filter=0'. Im Forenquelltext stehen 178 solcher Verweise (href=\"?...\"), darunter die Blaetterverweise von search.php Z. 520/523 und der Bildergalerie in profile.php Z. 1962/1964 sowie zwei in include/viewtopic0.php, der zentralen Beweisseite. Ueber die Oberflaeche ist damit keine zweite Trefferseite und keine zweite Galerieseite erreichbar. Das Originalforum liefert KEIN <base href> aus (gepruefte Leermenge; die vier vorhandenen <base>-Elemente tragen nur 'target'), dort loesen die Verweise gegen die tatsaechliche Dokument-URL auf und stimmen.",
+      "expected_behavior": "Das <base>-Element traegt den VOLLEN Dokumentpfad statt des Verzeichnisses. Damit loesen sowohl 'href=\"?filter=0\"' als auch 'href=\"viewtopic.php?id=42\"' richtig auf. Testfall T18b (tests/test_blob_handler.py Z. 398-407) schreibt das heutige Verhalten fest und ist mitzuaendern. Zu pruefen waere zusaetzlich, ob ein <base>-Element ueberhaupt noetig ist - ohne eines verhielte sich der Browser wie am Originalforum, was forensisch die treueste Variante waere; einziger Grund dafuer ist die Alias-Aufloesung (toolbar.js Z. 2273).",
+      "actual_behavior": "Der Verweis fuehrt auf eine Adresse, die es im Buendel nicht gibt. Prepper Build 149 faengt das fuer die 14 Filterverweise der Benachrichtigungsseite mit statischen Aliassen auf - die uebrigen 164 Faelle bleiben offen."
+    },
+    {
+      "id": "0bfc9db4-f756-4b60-bd8b-282f2b5999a5",
+      "reporter": "Claude",
+      "reported_at": "2026-09-07T11:50:00+00:00",
+      "assigned_to": "Claude",
+      "status": "open",
+      "affected_version": "0.1.149",
+      "resolved_in_version": null,
+      "target_version": null,
+      "related_to": [],
+      "tags": [
+        "erwaehnung",
+        "signature",
+        "grundregel1",
+        "aiw_sqlite_prepper"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-09-07T18:53:20.657902+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Prepper_Build149.json"
+        }
+      ],
+      "type": "bug",
+      "title": "users.signature wird nirgends nach Erwaehnungen durchsucht",
+      "priority": "medium",
+      "severity": "major",
+      "prerequisites": "Alex nennt am 07.09.2026 'message', 'subject' und 'signature' als die von Benutzern gefuellten Felder, in denen nach Erwaehnungen zu suchen waere.",
+      "description": "Die Bloecke 11 bis 15 durchsuchen posts.message, pms_new_posts.message, entschluesselte PN-Texte, warnings.message und pms_new_topics.topic. Ein grep nach 'signature' ueber stage1/query_blocks.py liefert KEINEN Treffer. Der Prepper liest Signaturen nur fuer das Profil des Beschuldigten (phase_b_exporter, uid_profile.signature_html), nicht als Fundort fuer Erwaehnungen.",
+      "expected_behavior": "users.signature wird wie die uebrigen nutzergefuellten Felder nach dem Benutzernamen-Ausdruck durchsucht; Treffer erzeugen ein Erfassungsziel mit eigener Herkunftsangabe.",
+      "actual_behavior": "Ein Nutzer, der den Beschuldigten in seiner Signatur nennt, taucht in keinem Buendel auf."
+    },
+    {
+      "id": "c2dbd78e-1e34-4085-87cd-fc6498d51398",
+      "reporter": "Claude",
+      "reported_at": "2026-09-07T11:50:00+00:00",
+      "assigned_to": "Claude",
+      "status": "open",
+      "affected_version": "0.1.149",
+      "resolved_in_version": null,
+      "target_version": null,
+      "related_to": [],
+      "tags": [
+        "erwaehnung",
+        "aliase",
+        "subject_alias",
+        "coordinator",
+        "aiw_sqlite_prepper"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-09-07T18:53:20.657910+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Prepper_Build149.json"
+        }
+      ],
+      "type": "feature_request",
+      "title": "Erwaehnungssuche ueber Ermittler-Aliase (Spitznamen) - Arbeitsauftrag",
+      "priority": "high",
+      "severity": "enhancement",
+      "prerequisites": "Auftrag Alex vom 07.09.2026. Beispiel: Benutzername 'KinGoftheKonG', Aliasse 'King', 'Kong', 'KotK', 'KingKong'.",
+      "description": "GEPRUEFT UND NICHT VORHANDEN: all_usernames entsteht in stage1/user_resolver.py Z. 174-198 aus users.username und mat_user_aliases.historical_username - das sind Umbenennungen desselben Kontos, keine von Ermittlern eingetragenen Spitznamen. Der Ausdruck aus regex_builder.py Z. 59 setzt bereits Wortgrenzen ([[:<:]]/[[:>:]]), was fuer die geforderte Ganzwortsuche richtig ist. Die QUELLE steht bereit: coordinator.db, Tabelle subject_alias (management/migrations/coordinator/m022_subject_alias.py Z. 70-95) mit subject_id, alias, alias_norm (casefold), kind_code, basis, is_active und Cockpit-Sicht. Der Prepper oeffnet coordinator.db ohnehin (coordinator/db.py), kennt dort aber nur scrape_jobs, scrape_group_swap und scrape_ban_swap. Es fehlt also nur der Leser. Das von Alex gewuenschte Kennzeichen ('soll dieser Alias beim Scraping mitgesucht werden?') fehlt in subject_alias; die Migration dafuer muss das MANAGEMENT fahren - coordinator/db.py Z. 176-187 legt fest, dass die gemeinsame coordinator.db ausschliesslich vom Management migriert wird.",
+      "expected_behavior": "Fuenf Stufen, ausgearbeitet in 'Arbeitsauftrag_Erwaehnungssuche_Aliase_v0_1.md': (1) tools/aliasprobe.py als Trockenlauf, der je Alias nur ZAEHLT und Kontext zeigt - ein Alias wird nie blind scharfgeschaltet; (2) scrape_flag + scrape_basis in subject_alias, Vorgabe 0, durch das Management; (3) neuer Block 25 fuer die eingeschalteten Aliase; (4) users.signature als Fundort; (5) eigener Berichtsabschnitt. ENTSCHEIDEND: ein Treffer ueber einen Alias muss im Buendel von einem Treffer auf den Benutzernamen unterscheidbar bleiben - sonst steht in der Akte 'der Beschuldigte wurde erwaehnt', wo in Wahrheit das englische Wort 'King' steht.",
+      "actual_behavior": "Spitznamen werden nicht gesucht. Erwaehnungen unter einem Alias fehlen im Bestand."
+    },
+    {
+      "id": "12f2b054-cb2b-4d60-9fac-d3371b66252d",
+      "reporter": "Claude",
+      "reported_at": "2026-09-07T11:50:00+00:00",
+      "assigned_to": "Claude",
+      "status": "open",
+      "affected_version": "0.1.149",
+      "resolved_in_version": null,
+      "target_version": null,
+      "related_to": [],
+      "tags": [
+        "known_aliases",
+        "tote-tabelle",
+        "default-db",
+        "aiw_sqlite_prepper"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-09-07T18:53:20.657915+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Prepper_Build149.json"
+        }
+      ],
+      "type": "improvement",
+      "title": "default.db.known_aliases ist eine tote Tabelle",
+      "priority": "low",
+      "severity": "minor",
+      "prerequisites": "Bei der Pruefung der Aliasquellen am 07.09.2026 aufgefallen.",
+      "description": "VOLLSTAENDIGE UEBERSCHRIFT: default.db.known_aliases ist eine tote Tabelle - angelegt, gelesen, nie geschrieben\n\nstage1/phase_b_exporter.py Z. 1855-1860 legt known_aliases in default.db LEER an, mit dem Vermerk 'Keine Quelldaten in MariaDB - Tabelle wird nur angelegt (leer). Befuellung ausschliesslich durch die Ermittlungsanwendung.' Der Webserver LIEST sie in der Benutzersuche (db/default_db.py Z. 337-370, liefert matched_alias) und in forensic_api/knownusers.py. Ein Schreibpfad ist im Webserver nicht auffindbar.",
+      "expected_behavior": "Entweder wird die Befuellung gebaut, oder die Tabelle und ihre Leser entfallen. Zu klaeren BEVOR mit subject_alias eine dritte Aliasquelle hinzukommt.",
+      "actual_behavior": "Eine Tabelle, auf die sich eine Suchfunktion stuetzt, bleibt dauerhaft leer - die Suche liefert dort nie einen Treffer, ohne dass das jemand bemerkt."
+    },
+    {
+      "id": "d673c243-775c-4701-b2ca-58e3be0e7314",
+      "reporter": "Claude",
+      "reported_at": "2026-09-07T15:10:00+00:00",
+      "assigned_to": "Claude",
+      "status": "open",
+      "affected_version": "0.1.150",
+      "resolved_in_version": null,
+      "target_version": null,
+      "related_to": [],
+      "tags": [
+        "my-content",
+        "alias",
+        "entscheidung-alex",
+        "aiw_sqlite_prepper"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-09-07T18:53:20.847731+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Prepper_Build150.json"
+        }
+      ],
+      "type": "improvement",
+      "title": "profile.php verlinkt '/my/content.php' ohne Praefix - Alias anlegen?",
+      "priority": "medium",
+      "severity": "minor",
+      "prerequisites": "Bei der Aufnahme von /forum/my/content.php in Build 150 aufgefallen.",
+      "description": "VOLLSTAENDIGE UEBERSCHRIFT: profile.php verlinkt '/my/content.php' ohne das Praefix '/forum/' - Alias anlegen oder nicht?\n\nforum/html/profile.php Z. 1442 baut den Verweis 'Show content' als '<a href=\"/my/content.php?id='.$id.'\">' - ohne '/forum/'. forum/html/include/functions.php Z. 499 verlinkt dieselbe Seite dagegen als '/forum/my/content.php'. Das Forum ist mit sich uneins. Ob nginx den praefixlosen Pfad umgeschrieben hat, ist ohne die nginx-Konfiguration nicht feststellbar; moeglicherweise war der Verweis schon im Original tot.",
+      "expected_behavior": "Entscheidung Alex: entweder ein page_alias von '/my/content.php?id=<uid>' auf den BLOB von '/forum/my/content.php?id=<uid>' - dann funktioniert der Verweis im Ermittlerbrowser -, oder bewusst nicht, weil er im Original ebenfalls nicht funktionierte und die Oberflaeche so gezeigt werden soll, wie der Nutzer sie sah.",
+      "actual_behavior": "Der Verweis fuehrt im Ermittlerbrowser zu 'nicht im Umfang der Ermittlungen'."
+    },
+    {
+      "id": "c5226f04-a7b4-4646-b32e-e203424156cd",
+      "reporter": "Claude",
+      "reported_at": "2026-09-07T15:10:00+00:00",
+      "assigned_to": "Claude",
+      "status": "open",
+      "affected_version": "0.1.150",
+      "resolved_in_version": null,
+      "target_version": null,
+      "related_to": [],
+      "tags": [
+        "my-content",
+        "abzugsumfang",
+        "aiw_sqlite_prepper"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-09-07T18:53:20.847754+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Prepper_Build150.json"
+        }
+      ],
+      "type": "improvement",
+      "title": "'my/content.php?filter=&tid=' nicht aufgenommen - je Thema eine Adresse",
+      "priority": "low",
+      "severity": "minor",
+      "prerequisites": "Build 150 nimmt my/content.php mit mode=all und mode=broken auf.",
+      "description": "VOLLSTAENDIGE UEBERSCHRIFT: '/forum/my/content.php?filter=..&tid=..' ist nicht aufgenommen - eine Adresse je Thema\n\nmy/content.php Z. 17-19 wertet '?filter' nur zusammen mit '?tid' aus und bricht sonst mit die('request error') ab. Eine vollstaendige Erfassung ergaebe eine Adresse je Thema, in dem der Nutzer Dateien geteilt hat.",
+      "expected_behavior": "Zu entscheiden, ob die gefilterte Ansicht je Thema gebraucht wird. Die Inhalte selbst stehen bereits in der ungefilterten Liste; die gefilterte Ansicht zeigt dieselben Zeilen, nur enger.",
+      "actual_behavior": "Nicht aufgenommen. Der Verweis in der Seite laeuft ins Leere."
+    },
+    {
+      "id": "20a2053a-1283-4c82-8f97-1a7452894cc4",
+      "reporter": "Claude",
+      "reported_at": "2026-09-07T15:10:00+00:00",
+      "assigned_to": "Claude",
+      "status": "open",
+      "affected_version": "0.1.150",
+      "resolved_in_version": null,
+      "target_version": null,
+      "related_to": [],
+      "tags": [
+        "page-aliases",
+        "fragment",
+        "aufraeumen",
+        "aiw_sqlite_prepper + aiw_webserver"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-09-07T18:53:20.847762+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Prepper_Build150.json"
+        }
+      ],
+      "type": "improvement",
+      "title": "97 Prozent der Nachschlageschluessel tragen ein Fragment",
+      "priority": "low",
+      "severity": "minor",
+      "prerequisites": "Messung vom 07.09.2026 gegen forensic_749569.db, Stufe 4.",
+      "description": "VOLLSTAENDIGE UEBERSCHRIFT: 97 Prozent der Nachschlageschluessel tragen ein Fragment und sind ueber den exakten Vergleich unerreichbar\n\n9768 von 10067 Nachschlageschluesseln enthalten ein '#'. Der Browser sendet nie ein Fragment (aiw_webserver/server/router.py Z. 99-102 trennt es ab, Z. 183-196 fuegt es nicht wieder an), diese Zeilen koennen ueber 'WHERE url = ?' also nie getroffen werden. Wirkungslos sind sie nicht: der blob_handler loest '?pid=' und '?notify=' ueber eigene Wege auf (Z. 366-422), und Form 1 ('?id=<t>#p<p>') trifft ohnehin die pages-Zeile ueber den Teil vor dem '#'. Es ist totes Gewicht, kein Verlust.",
+      "expected_behavior": "Zu entscheiden, ob die Fragmentformen weiter geschrieben werden. Sie kosten Platz und machen jede Messung an page_aliases unuebersichtlich. NICHT ohne Entscheidung entfernen - 9768 Zeilen aus einem Beweismittel zu loeschen, um Platz zu sparen, waere die falsche Reihenfolge von Sorgfalt und Aufraeumen.",
+      "actual_behavior": "Sie werden angelegt und nie ueber den exakten Vergleich getroffen."
+    },
+    {
+      "id": "495e576b-a7a8-4ca5-b6ea-987f84ee208b",
+      "reporter": "Claude",
+      "reported_at": "2026-09-07T15:10:00+00:00",
+      "assigned_to": "Claude",
+      "status": "open",
+      "affected_version": "0.1.150",
+      "resolved_in_version": null,
+      "target_version": null,
+      "related_to": [],
+      "tags": [
+        "scraper_log",
+        "grundregel1",
+        "protokoll",
+        "aiw_sqlite_prepper"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-09-07T18:53:20.847766+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Prepper_Build150.json"
+        }
+      ],
+      "type": "feature_request",
+      "title": "Kein Abzugsprotokoll je URL - Einzelabruf nicht nachweisbar",
+      "priority": "medium",
+      "severity": "minor",
+      "prerequisites": "Messung vom 07.09.2026, Stufe 6: scraper_log fuehrt keine Zeile mit Bezug zu notifications.php.",
+      "description": "VOLLSTAENDIGE UEBERSCHRIFT: Kein Abzugsprotokoll je URL - ein fehlgeschlagener Einzelabruf ist nachtraeglich nicht nachweisbar\n\nevidence_<uid>.db fuehrt scraper_log mit Vorgaengen (event/detail/ts), nicht mit einzelnen Abrufen. Ein BLOB mit html=NULL zeigt zwar, DASS ein Abruf fehlschlug, aber nur solange die Zeile existiert; eine Adresse, die gar nicht erst erzeugt wurde, hinterlaesst nichts. Im gemessenen Bestand stehen 149 Tausend URLs - ein Protokoll je Abruf waere nicht umsonst zu haben.",
+      "expected_behavior": "Zu erwaegen: eine Zeile je Abruf mit URL, Methode, Status, Bytezahl und Dauer, wahlweise zuschaltbar. Das waere die einzige Stelle, an der sich der Verlauf eines Laufs nachtraeglich vollstaendig nachvollziehen liesse.",
+      "actual_behavior": "Der Verlauf eines Abzugs ist nach dem Lauf nur noch aus seinem Ergebnis zu erschliessen."
+    },
+    {
+      "id": "0fae12bd-27ad-49e6-89ee-bae2476a64ef",
+      "type": "bug",
+      "title": "Testlauf fuellt die Platte selbst: neun Testfaelle kopieren alles",
+      "affected_version": "0.1.151",
+      "reporter": "Claude",
+      "reported_at": "2026-09-07T19:30:00+00:00",
+      "assigned_to": "Claude",
+      "status": "resolved",
+      "priority": "high",
+      "severity": "major",
+      "resolved_in_version": "0.1.151",
+      "target_version": null,
+      "related_to": [],
+      "tags": [
+        "testlauf",
+        "platte",
+        "kopie",
+        "xdist",
+        "aiw_sqlite_prepper"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-09-07T18:53:20.996507+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Prepper_Build151.json"
+        }
+      ],
+      "prerequisites": "Regressionslauf Alex vom 07.09.2026 gegen Build 149: 61 von 1201 Testfaellen gefallen.",
+      "description": "VOLLSTAENDIGE UEBERSCHRIFT: Testlauf fuellt die Platte selbst: neun Testfaelle kopierten den ganzen Bestand, seit 06.09. samt 19 MB Forenquelltext\n\nAlle 61 Fehler tragen '[Errno 28] No space left on device' bzw. 'database or disk is full'. tests/test_bestandsliste.py legte in neun Testfaellen eine Vollkopie des Projektbestandes unter /tmp an (shutil.copytree mit einer Sperrliste KOPIE_AUSNAHMEN); unter pytest-xdist laufen sie nebenlaeufig. Die Sperrliste erfasste 'forum/' nicht - der Forenquelltext wurde am 06.09.2026 eingecheckt (Commit 64a86a7) und misst 19 MB - ebensowenig die Arbeitsstuecke im Wurzelverzeichnis (mockup_<uid>.db, mockup_dump_<uid>.sql, mariaDB_*.sql, forum.aiw.sql).\n\nGEMESSEN: 24,0 MB je Kopie vorher, 2,3 MB nachher",
+      "expected_behavior": "Die Kopie nimmt nur, was der Unterlauf braucht. Umgesetzt als REGEL statt als Liste: jede Wurzeldatei '*.py', jedes Verzeichnis mit __init__.py, dazu build.json, tests/, tools/, coordinator/. Neue Datenablagen fallen von selbst heraus.",
+      "actual_behavior": "Jede der neun Kopien schleppte den gesamten Bestand mit. BEHOBEN in Build 151; B16/B16b/B16c halten es fest."
+    },
+    {
+      "id": "d896e6d3-ec60-4510-9765-0fd0d28d7fe0",
+      "type": "improvement",
+      "title": "Gehoert der beschlagnahmte Forenquelltext dauerhaft ins Programm-Repository?",
+      "affected_version": "0.1.151",
+      "reporter": "Claude",
+      "reported_at": "2026-09-07T19:30:00+00:00",
+      "assigned_to": "Alex",
+      "status": "open",
+      "priority": "low",
+      "severity": "minor",
+      "resolved_in_version": null,
+      "target_version": null,
+      "related_to": [],
+      "tags": [
+        "repository",
+        "forum",
+        "ablage",
+        "aiw_sqlite_prepper"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-09-07T18:53:20.996530+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Prepper_Build151.json"
+        }
+      ],
+      "prerequisites": "Bei der Ursachensuche zum Plattenausfall am 07.09.2026 aufgefallen.",
+      "description": "'forum/' (19 MB PHP-Quelltext des beschlagnahmten Forums) liegt seit Commit 64a86a7 im selben Repository wie der Programmbestand. Fuer die Beleglage ist er sehr nuetzlich gewesen - saemtliche Befunde der letzten Tage stuetzen sich auf Datei-und-Zeile-Angaben daraus. Fuer den Programmbestand ist er ein Fremdkoerper: er verlaengert jeden Klon, jede Kopie und jede Suche, und er hat den Testlauf zum Erliegen gebracht.",
+      "expected_behavior": "Zu entscheiden: bleiben (dann ist der Umfang bewusst in Kauf genommen und Build 151 haelt ihn aus dem Testlauf heraus) oder in ein eigenes Repository bzw. eine eigene Ablage neben dem Programmbestand.",
+      "actual_behavior": "Er liegt im Programm-Repository. Build 151 haelt ihn aus den Testkopien heraus; das loest die Folge, nicht die Frage."
+    },
+    {
+      "id": "2702f9d3-2ea9-492d-8dc4-aa512f2001bc",
+      "type": "bug",
+      "title": "Vorgangsdateien wurden nie gegen ihr Schema geprueft",
+      "affected_version": "0.1.152",
+      "reporter": "Claude",
+      "reported_at": "2026-09-07T21:00:00+00:00",
+      "assigned_to": "Claude",
+      "status": "resolved",
+      "priority": "high",
+      "severity": "major",
+      "resolved_in_version": "0.1.152",
+      "target_version": null,
+      "related_to": [],
+      "tags": [
+        "prepper",
+        "lieferprozess",
+        "schema",
+        "issue-tracker"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-09-07T18:53:21.143343+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Prepper_Build152.json"
+        }
+      ],
+      "prerequisites": "Import der Vorgangsdatei zu Build 148 auf der Arbeitsumgebung am 07.09.2026: ABBRUCH, vier Titel ueber der Hoechstlaenge.",
+      "description": "Die Vorgangsdateien der Builds 148 bis 151 trugen ZWOELF Titel ueber der Hoechstlaenge von 80 Zeichen (der Import meldete nur die vier aus Build 148, weil er dort abbrach). Der Wert steht seit jeher im Schema: properties.issues.items.properties.title.maxLength = 80. Geprueft worden ist er auf der Erzeugerseite nie - die Dateien wurden geschrieben und ausgeliefert, der Fehler fiel erst beim Empfaenger auf, nach Bundle, Archiv, Uebergabe und Zustellung.",
+      "expected_behavior": "tools/vorgaenge_pruefen.py prueft jede Datei 'eintraege_claude_*.json' gegen 'issue-tracker/issue-tracker.schema.json' und liefert bei jeder Verletzung den Rueckgabewert 2. tools/bundle_bauen.sh ruft die Pruefung als Abschnitt '0b' auf und BRICHT AB. Geprueft wird gegen das SCHEMA, nicht gegen die eine Regel, an der es scheiterte - sonst wiederholt sich derselbe Fehler beim naechsten Feld. Fehlt das Schema, wird ebenfalls abgebrochen (Rueckgabewert 3): eine Lieferung ohne Pruefung ist nicht vorgesehen.",
+      "actual_behavior": "Zwoelf ungueltige Titel wurden ausgeliefert. BEHOBEN in Build 152; VP-01 bis VP-11 halten es fest, darunter die Gegenprobe VP-02 (81 Zeichen muessen fallen) und ihre Gegenprobe VP-03 (80 Zeichen muessen bestehen)."
     }
   ]
 }
