@@ -386,6 +386,16 @@ def _bericht(m, befund) -> None:
         m("             LAGE     Start=%s  Ende=%s  dazwischen=%s"
           % (_lage(b.bezug_start), _lage(b.bezug_end),
              _spanne_kurz(b.spanne)))
+        # BUILD 764: der VORSCHLAG steht ueber der Fallnummer, weil er die
+        # Frage beantwortet, um die es geht. Die Fallnummer bleibt als
+        # Beschreibung der Lage darunter stehen.
+        m("             BEREICH  Start=%s  Ende=%s"
+          % (_bereich(b.bezug_start), _bereich(b.bezug_end)))
+        m("             VORSCHLAG %-11s %s"
+          % (b.typ or "unbestimmt", b.typ_grund))
+        if b.textknoten_vermerk:
+            m("             %s - das tragende Element ist aufgeloest, nur "
+              "der Textknotenindex trifft nicht." % b.textknoten_vermerk)
         m("             FALL %d   %s"
           % (b.fall, FALL_TEXT.get(b.fall, "")))
         if b.fall:
@@ -466,11 +476,48 @@ def _bericht(m, befund) -> None:
     m("=" * 78)
     m("ZAEHLUNG")
     m("=" * 78)
+    # -- BUILD 764: was der Bestand ausser den geprueften Zeilen haelt ----
+    #
+    # Build 763 hat '455 von 455' gemeldet und 15 aktive Belege mit keinem
+    # Wort erwaehnt, weil sie keinen Anker tragen. Diese drei Zeilen sind die
+    # Behebung: sie nennen die Zahlen getrennt, damit keine davon in einer
+    # anderen aufgeht.
+    a = befund.aufnahme
+    m("Aktive Markierungen im Bestand:   %d" % a.get("active", 0))
+    m("   davon mit XPath-Anker:         %d" % a.get("with_anchor", 0))
+    m("   davon Beitragsmarkierungen:    %d   (kein selection_json, dafuer "
+      "element_id oder post_id - der Typ, den die Toolbar seit Build 430 "
+      "fuer GANZE Beitraege anlegt)" % a.get("post_level", 0))
+    if a.get("unklar"):
+        m("   davon WEDER NOCH:              %d   Belege: %s"
+          % (a["unklar"], ", ".join(str(i) for i in a["unklar_ids"][:20])))
+    if a.get("fehlende_spalten"):
+        m("   ACHTUNG: Die Spalten %s fehlen in diesem Bestand. Die "
+          "Beitragsmarkierungen sind dadurch nicht sicher zu erkennen."
+          % ", ".join(a["fehlende_spalten"]))
+    m()
     m("Belege mit Anker geprueft:        %d" % z["belege"])
     m("davon roh aufgeloest:             %d" % z["lxml_traegt"])
     m("davon nach Annaeherung:           %d" % z["genaehert_traegt"])
     m("davon NUR nach Annaeherung:       %d" % z["entscheidend"])
     m("Seiten:                           %d" % z["seiten"])
+    m()
+    # -- BUILD 764: der Vorschlag ----------------------------------------
+    m("VORSCHLAG (aus der Lage im Beitrag):")
+    for name, zahl in sorted(befund.typzaehlung().items()):
+        m("   %-12s %d" % (name, zahl))
+    vorschlag = [b.beleg_id for b in befund.belege if b.typ == "whole post"]
+    if vorschlag:
+        m("   als whole post vorgeschlagen: %s"
+          % ", ".join(str(i) for i in vorschlag[:40]))
+        if len(vorschlag) > 40:
+            m("   ... (%d weitere)" % (len(vorschlag) - 40))
+    # GEGENUEBERSTELLUNG: was schon Beitragsmarkierung IST gegen das, was es
+    # werden sollte. Das ist die Liste fuer die spaetere Ueberfuehrung.
+    schon = befund.aufnahme.get("post_level_ids", [])
+    if schon:
+        m("   bereits als Beitragsmarkierung angelegt: %s"
+          % ", ".join(str(i) for i in schon[:40]))
     m()
     # -- BUILD 763: die Fallverteilung -----------------------------------
     m("FALLZUORDNUNG (abgeleitet aus Lage und Spanne):")
@@ -497,6 +544,13 @@ def _bericht(m, befund) -> None:
     m(_urteil(z))
     m()
     m(_gegenprobe_browser())
+
+
+def _bereich(bezug) -> str:
+    """Die Lage eines Endpunkts im Beitrag."""
+    if bezug is None:
+        return "nicht gemessen"
+    return getattr(bezug, "lage", "?")
 
 
 def _lage(bezug) -> str:

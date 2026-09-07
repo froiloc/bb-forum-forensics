@@ -100,8 +100,9 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 # BUILD 763 - der post-Bezug steht in einem eigenen Modul (Grundregel 10).
 from management.maintenance.anker_postbezug import (
-    FALL_TEXT, KLASSE_SONSTIGE, POSTFREIE_KLASSEN, PostBezugMesser,
-    fall_bestimmen, seitenklasse)
+    FALL_TEXT, GRUND_TEXTKNOTEN, KLASSE_SONSTIGE, POSTFREIE_KLASSEN,
+    PostBezugMesser, endpunkt_verwertbar, fall_bestimmen, seitenklasse,
+    typ_bestimmen)
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +112,12 @@ logger = logging.getLogger(__name__)
 #: hier, weil ein gemeinsamer Import den Berichtsgenerator an ein
 #: Wartungswerkzeug binden wuerde.
 SCHRITT_MUSTER = re.compile(r"^([a-zA-Z_][\w.-]*|text\(\))\[(\d+)\]$")
+
+#: BUILD 764 - die AEUSSERE Beitragskennung, wie 'annotations.element_id' sie
+#: nach der Konvention aus Build 430 traegt. Beleg:
+#: forensic_api/annotations.py Z. 62-64 - "Annotationen der Toolbar verankern
+#: ganze Posts als element_id='p'+post_id".
+_BEITRAGSKENNUNG = re.compile(r"^p(\d+)$")
 
 #: Attribute, deren Wert offen bleiben darf. Alles andere wird verdeckt.
 #: 'id' und 'class' sind der Messgegenstand; 'style' entscheidet in der
@@ -730,6 +737,19 @@ class Zeilenbefund:
     fall_posts: List[int] = field(default_factory=list)
     fall_grund: str = ""
 
+    # ---- BUILD 764 -------------------------------------------------------
+    #: Der VORSCHLAG - 'text range' oder 'whole post' - aus der Lage im
+    #: Beitrag. Er und nicht die Fallnummer beantwortet die Frage aus AP-2.
+    typ: str = ""
+    typ_posts: List[int] = field(default_factory=list)
+    typ_grund: str = ""
+    #: Ob der jeweilige Endpunkt auswertbar ist. Ein Bruch am abschliessenden
+    #: text()-Step zaehlt als auswertbar, ein struktureller nicht.
+    start_verwertbar: bool = False
+    end_verwertbar: bool = False
+    #: Gesetzt, wenn ein Endpunkt nur wegen des Textknotenindex gebrochen ist.
+    textknoten_vermerk: str = ""
+
     @property
     def anker_end_fehlt(self) -> bool:
         """Die Markierung hat keinen zweiten Ausdruck."""
@@ -787,9 +807,14 @@ class Zeilenbefund:
                            "reason": "nicht gemessen"}),
             "case": self.fall,
             "case_text": FALL_TEXT.get(self.fall, ""),
-            "proposed_type": self.fall_typ,
-            "posts_affected": list(self.fall_posts),
+            "case_type": self.fall_typ,
             "case_reason": self.fall_grund,
+            "proposed_type": self.typ,
+            "posts_affected": list(self.typ_posts),
+            "type_reason": self.typ_grund,
+            "start_usable": self.start_verwertbar,
+            "end_usable": self.end_verwertbar,
+            "text_node_note": self.textknoten_vermerk,
         }
 
     @property
@@ -856,6 +881,8 @@ class Laufbefund:
     #: die Grenze davon etwas abgeschnitten hat.
     gesamtzahl: int = 0
     abgeschnitten: bool = False
+    #: BUILD 764 - die vollstaendige Bestandsaufnahme, s. _bestandsaufnahme().
+    aufnahme: Dict[str, Any] = field(default_factory=dict)
 
     def zaehlung(self) -> Dict[str, int]:
         return {
@@ -878,6 +905,15 @@ class Laufbefund:
         aus: Dict[int, int] = {n: 0 for n in range(7)}
         for b in self.belege:
             aus[b.fall] = aus.get(b.fall, 0) + 1
+        return aus
+
+    # ------------------------------------------------------------------
+    def typzaehlung(self) -> Dict[str, int]:
+        """BUILD 764 - wie viele Belege auf welchen Vorschlag fallen."""
+        aus: Dict[str, int] = {"text range": 0, "whole post": 0,
+                               "unbestimmt": 0}
+        for b in self.belege:
+            aus[b.typ or "unbestimmt"] = aus.get(b.typ or "unbestimmt", 0) + 1
         return aus
 
     # ------------------------------------------------------------------
@@ -909,9 +945,17 @@ class Laufbefund:
         return {
             "subject_id": self.uid,
             "error": self.fehler,
-            "annotations_total": self.gesamtzahl,
+            "annotations_active": self.aufnahme.get("active", 0),
+            "annotations_with_anchor": self.aufnahme.get("with_anchor", 0),
+            "annotations_post_level": self.aufnahme.get("post_level", 0),
+            "annotations_unclear": self.aufnahme.get("unklar", 0),
+            "missing_columns": list(self.aufnahme.get("fehlende_spalten", [])),
+            "post_level_ids": list(self.aufnahme.get("post_level_ids", [])),
+            "unclear_ids": list(self.aufnahme.get("unklar_ids", [])),
             "annotations_read": len(self.belege),
             "truncated": self.abgeschnitten,
+            "proposed_whole_post_ids": [
+                b.beleg_id for b in self.belege if b.typ == "whole post"],
             "counts": self.zaehlung(),
             "cases": {str(k): v for k, v in sorted(
                 self.fallzaehlung().items())},
@@ -968,6 +1012,7 @@ class AnkerDiagnose:
         #: und ob die Grenze davon etwas abgeschnitten hat.
         self._gesamtzahl: int = 0
         self._abgeschnitten: bool = False
+        self._aufnahme: Dict[str, Any] = {}
 
     # ------------------------------------------------------------------
     def lauf(self, *, grenze: int = 50) -> Laufbefund:
@@ -991,6 +1036,7 @@ class AnkerDiagnose:
                 befund.seiten.append(self._eine_seite(url, befund))
             befund.gesamtzahl = self._gesamtzahl
             befund.abgeschnitten = self._abgeschnitten
+            befund.aufnahme = self._aufnahme
         except sqlite3.Error as exc:
             befund.fehler = "Datenbankfehler: %s" % exc
         finally:
@@ -1044,29 +1090,105 @@ class AnkerDiagnose:
         # Grundregel 1: ob die Grenze WIRKLICH abgeschnitten hat, wird
         # gezaehlt und ausgewiesen - nicht daraus geschlossen, dass die Zahl
         # gleich der Grenze ist (das kann Zufall sein).
-        if not ohne_grenze:
-            self._gesamtzahl = self._zaehle_alle(con)
-            self._abgeschnitten = self._gesamtzahl > len(heraus)
-        else:
-            self._gesamtzahl = len(heraus)
-            self._abgeschnitten = False
+        # BUILD 764: Die Bestandsaufnahme wird IMMER erhoben, auch ohne
+        # Grenze - sie ist nicht nur der Vergleichswert fuer das Abschneiden,
+        # sondern die Auskunft darueber, was der Bestand ausser den
+        # diagnostizierbaren Zeilen noch haelt.
+        self._aufnahme = self._bestandsaufnahme(con)
+        self._gesamtzahl = self._aufnahme["with_anchor"]
+        self._abgeschnitten = (not ohne_grenze
+                               and self._gesamtzahl > len(heraus))
         return heraus
 
     # ------------------------------------------------------------------
     def _zaehle_alle(self, con: sqlite3.Connection) -> int:
+        """Wie viele Markierungen MIT Anker der Bestand haelt - ohne Grenze."""
+        return self._bestandsaufnahme(con)["with_anchor"]
+
+    # ------------------------------------------------------------------
+    def _bestandsaufnahme(self, con: sqlite3.Connection) -> Dict[str, Any]:
         """
-        Wie viele Markierungen MIT Anker der Bestand insgesamt haelt - ohne
-        Grenze. Nur zum Vergleich mit der tatsaechlich gelesenen Zahl.
+        BUILD 764 - ALLE aktiven Markierungen, nach Art getrennt.
+
+        WARUM DAS NOETIG WURDE: Build 763 hat gemeldet '455 von 455' und dabei
+        15 aktive Belege mit keinem Wort erwaehnt. Gelesen wurden nur Zeilen
+        mit XPath-Anker, die Zahl war aber 'annotations_total' beschriftet.
+        Wer sie gegen die Datenbank haelt, verliert 15 Belege lautlos - genau
+        das verbietet Grundregel 1.
+
+        Drei Arten:
+          with_anchor  - Textmarkierung mit XPath-Anker (wird diagnostiziert)
+          post_level   - Beitragsmarkierung: kein selection_json, dafuer
+                         element_id nach dem Muster 'p<nummer>' oder eine
+                         gesetzte post_id. Das ist der Typ, den die Toolbar
+                         seit Build 430 fuer GANZE Beitraege anlegt (Beleg:
+                         forensic_api/annotations.py Z. 62-64,
+                         forensic_api/annotate.py Z. 10-25). Er ist nicht
+                         diagnostizierbar und braucht es auch nicht - er ist
+                         bereits das, was die Diagnose fuer andere erst
+                         vorschlaegt.
+          unklar       - weder das eine noch das andere. Wird BENANNT, nicht
+                         weggelassen.
         """
-        sql = ("SELECT selection_json FROM annotations "
-               "WHERE selection_json IS NOT NULL AND selection_json != '' "
-               "AND deleted_at IS NULL")
+        # BUILD 764: 'element_id' und 'post_id' gehoeren zum Schema der
+        # Beweismitteldatenbank, sind hier aber NICHT vorausgesetzt. Ein
+        # Bestand aelteren Zuschnitts darf die Diagnose nicht zum Abbruch
+        # bringen - er soll gelesen werden, und was fehlt, wird BENANNT.
+        # Ohne 'element_id' laesst sich eine Beitragsmarkierung nur noch an
+        # 'post_id' erkennen; fehlen beide, ist die Unterscheidung nicht
+        # moeglich, und die betroffenen Zeilen landen in 'unklar'.
+        vorhanden = {str(z[1]) for z in con.execute(
+            "PRAGMA table_info(annotations)")}
+        spalten = ["id", "selection_json"]
+        for name in ("element_id", "post_id"):
+            if name in vorhanden:
+                spalten.append(name)
+        fehlend = [n for n in ("element_id", "post_id") if n not in vorhanden]
+
+        sql = ("SELECT %s FROM annotations WHERE deleted_at IS NULL"
+               % ", ".join(spalten))
         parameter: List[Any] = []
         if self._nur_beleg is not None:
             sql += " AND id = ?"
             parameter.append(self._nur_beleg)
-        return sum(1 for r in con.execute(sql, parameter)
-                   if self._anker_aus(r["selection_json"]))
+        aufnahme: Dict[str, Any] = {"active": 0, "with_anchor": 0,
+                                    "post_level": 0, "unklar": 0,
+                                    "post_level_ids": [], "unklar_ids": [],
+                                    "fehlende_spalten": fehlend}
+        for r in con.execute(sql, parameter):
+            aufnahme["active"] += 1
+            if self._anker_aus(r["selection_json"]):
+                aufnahme["with_anchor"] += 1
+                continue
+            if self._ist_beitragsmarkierung(r, vorhanden):
+                aufnahme["post_level"] += 1
+                aufnahme["post_level_ids"].append(int(r["id"]))
+                continue
+            aufnahme["unklar"] += 1
+            aufnahme["unklar_ids"].append(int(r["id"]))
+        return aufnahme
+
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _ist_beitragsmarkierung(r: sqlite3.Row, vorhanden) -> bool:
+        """
+        Eine Markierung ohne Anker, die einen ganzen Beitrag meint.
+
+        Das Muster fuer die AEUSSERE Kennung und nicht die weitere Fassung mit
+        mehreren fuehrenden Buchstaben: 'element_id' traegt nach der
+        Konvention aus Build 430 die aeussere Kennung. Hier die innere
+        zuzulassen waere eine Erweiterung ohne Beleg.
+        """
+        eid = (str(r["element_id"] or "").strip()
+               if "element_id" in vorhanden else "")
+        if eid and _BEITRAGSKENNUNG.match(eid):
+            return True
+        if "post_id" not in vorhanden:
+            return False
+        try:
+            return r["post_id"] is not None and int(r["post_id"]) > 0
+        except (TypeError, ValueError):           # pragma: no cover - defensiv
+            return False
 
     # ------------------------------------------------------------------
     @staticmethod
@@ -1153,7 +1275,7 @@ class AnkerDiagnose:
         if z.zweite is None or z.zweite_end is None:
             return
         try:
-            messer = self._messer(z.page_url, sicht)
+            messer = self._messer(z.page_url, sicht, z.seitenklasse)
             if messer is None:
                 return
             z.bezug_start = messer.bezug(z.zweite.letzter_knoten)
@@ -1164,6 +1286,25 @@ class AnkerDiagnose:
                 z.bezug_start, z.bezug_end, z.spanne,
                 z.zweite.position_vorhanden,
                 z.zweite_end.position_vorhanden)
+            # BUILD 764: die Entscheidung 'text range' gegen 'whole post'
+            # kommt aus der LAGE im Beitrag, nicht aus der Fallnummer. Der
+            # Lauf zu Build 763 hat gezeigt, dass die Fallnummer sie nicht
+            # traegt: alle 24 durchgesehenen whole-post-Markierungen fielen
+            # auf Fall 1.
+            z.start_verwertbar = endpunkt_verwertbar(
+                z.zweite.position_vorhanden, z.zweite.bruch_schritt)
+            z.end_verwertbar = endpunkt_verwertbar(
+                z.zweite_end.position_vorhanden, z.zweite_end.bruch_schritt)
+            z.typ, z.typ_posts, z.typ_grund = typ_bestimmen(
+                z.bezug_start, z.bezug_end, z.spanne,
+                z.start_verwertbar, z.end_verwertbar)
+            nur_text = [name for name, b in (("xpathStart", z.zweite),
+                                             ("xpathEnd", z.zweite_end))
+                        if not b.position_vorhanden
+                        and str(b.bruch_schritt or "").startswith("text()")]
+            if nur_text:
+                z.textknoten_vermerk = "%s: %s" % (
+                    GRUND_TEXTKNOTEN, " und ".join(nur_text))
         except Exception as exc:                  # pragma: no cover - defensiv
             logger.warning("anker_diagnose: post-Bezug zu Beleg %s "
                            "fehlgeschlagen: %s", z.beleg_id, exc)
@@ -1171,7 +1312,7 @@ class AnkerDiagnose:
                 "post-Bezug nicht messbar: %s" % exc)
 
     # ------------------------------------------------------------------
-    def _messer(self, url: str, sicht):
+    def _messer(self, url: str, sicht, seitenart: str = ""):
         """
         Der PostBezugMesser zu einer Adresse - je Adresse EINMAL gebaut.
 
@@ -1185,7 +1326,7 @@ class AnkerDiagnose:
             return self._messer_je_seite[url]
         messer = None
         try:
-            messer = PostBezugMesser(sicht.wurzel)
+            messer = PostBezugMesser(sicht.wurzel, seitenart)
         except Exception as exc:                  # pragma: no cover - defensiv
             logger.warning("anker_diagnose: PostBezugMesser zu %s nicht "
                            "baubar: %s", url, exc)
@@ -1322,7 +1463,7 @@ class AnkerDiagnose:
         # den Widerspruch zwischen Erwartung und Abzug per Konstruktion
         # unsichtbar - und das waere ein stiller Sprung (Grundregel 1).
         s.seitenklasse = seitenklasse(url)
-        messer = self._messer(url, html5_sicht)
+        messer = self._messer(url, html5_sicht, s.seitenklasse)
         if messer is not None:
             s.container_zahl = messer.container_zahl
             s.verschachtelungen = messer.verschachtelungen()

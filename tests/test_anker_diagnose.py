@@ -870,3 +870,347 @@ def test_AD35_seitenklasse_unterscheidet_beginner_von_viewtopic():
     assert seitenklasse("/forum/viewtopic.php?id=3") == "viewtopic"
     assert seitenklasse("/forum/search.php") == "search"
     assert seitenklasse("/forum/irgendwas.php") == "sonstige"
+
+
+# =============================================================================
+# BUILD 764 - LAGE IM BEITRAG, VORSCHLAG UND BESTANDSAUFNAHME
+# =============================================================================
+# AD36  Fliesstext direkt im Inhaltsanker ist 'content' - der Fall, den eine
+#       Fassung mit '//*' verfehlt haette
+# AD37  die Signatur ist 'frame', obwohl sie die Klasse des Inhaltsankers
+#       traegt (GEGENPROBE zu AD36)
+# AD38  der Betreff im <h3> ist 'frame' - er liegt in 'postright', aber nicht
+#       im Inhalt; das war der Fehler beider erster XPath-Fassungen
+# AD39  eine Markierung, die den Rahmen mitfasst, wird 'whole post'
+# AD40  GEGENPROBE zu AD39: bleibt sie im Inhalt EINES Beitrags, ist es eine
+#       'text range'
+# AD41  der Systembeitrag hat keinen Inhaltsbereich - alles darin ist
+#       'whole post'
+# AD42  im Anfaengerforum ohne 'ppNNN' wird nichts faelschlich zum Rahmen
+# AD43  ein Bruch am abschliessenden text()-Step ist auswertbar, ein
+#       struktureller nicht
+# AD44  Markierungen OHNE Anker verschwinden nicht aus der Zaehlung
+# AD45  Katalog im Code und Dokument nennen dieselben Seitenarten und Anker
+# =============================================================================
+
+from management.maintenance.post_bereiche import (                # noqa: E402
+    KATALOG, LAGE_CONTENT, LAGE_FRAME, xpath_bereich, xpath_relativ)
+
+#: Ein Abzug nach viewtopic0.php Z. 886-1212, mit allen Teilen, die fuer die
+#: Unterscheidung Inhalt/Rahmen einschlaegig sind.
+def _seite_viewtopic(nummern=(700,), systempost=False) -> bytes:
+    stuecke = []
+    for n in nummern:
+        if systempost:
+            # Bauform aus include/type4.php, eingebunden ueber
+            # viewtopic.php Z. 618.
+            stuecke.append(
+                '<article class="systempost" id="p%d">'
+                '<div style="background: orange;">'
+                '<span>Dead links reported</span>'
+                '<span><input type="checkbox" id="show%d"/>'
+                '<label>Details</label>'
+                '<div id="contentType4"><p>SYSTEMTEXT%d</p></div>'
+                '</span></div></article>' % (n, n, n))
+            continue
+        stuecke.append(
+            '<article class="post" id="p%d">'
+            '<h2><strong><a href="#p%d">KOPF%d</a></strong></h2>'
+            '<div class="box" id="pp%d">'
+            '<div class="postbody">'
+            '<div class="postleft"><dl><dd class="usertitle">'
+            '<strong>AUTOR%d</strong></dd></dl></div>'
+            '<div class="postright">'
+            '<h3>BETREFF%d</h3>'
+            '<div class="postmsg">INHALT%d<p>ABSATZ%d</p></div>'
+            '<div class="postwarn">WARNUNG%d</div>'
+            '<div class="postsignature postmsg">SIGNATUR%d</div>'
+            '</div></div>'
+            '<div class="postfoot"><ul><li>FUNKTION%d</li></ul></div>'
+            '</div></article>' % ((n,) * 11))
+    return ("<html><head><title>t</title></head><body>"
+            "<div id=\"wrap\"><div id=\"page-header\"><h1>Forum</h1></div>"
+            "<div id=\"page-body\">" + "".join(stuecke) + "</div>"
+            "<div id=\"page-footer\">FUSS</div></div></body></html>"
+            ).encode("utf-8")
+
+
+def _seite_beginner(nummer=800) -> bytes:
+    """Nach viewtopic1.php Z. 576 ff. - EINFACHE Kennung, kein 'ppNNN'."""
+    return ("<html><head><title>t</title></head><body>"
+            "<div id=\"wrap\"><div id=\"page-header\"><h1>Forum</h1></div>"
+            "<div id=\"page-body\">"
+            "<div class=\"box type0\" id=\"p%d\"><article>"
+            "<div class=\"topic-body clearfix\">"
+            "<div class=\"topic-meta-data\"><span class=\"first username\">"
+            "<a href=\"#\">AUTOR%d</a></span></div>"
+            "<div class=\"regular contents\">INHALT%d</div>"
+            "</div>"
+            "<div class=\"postsignature postmsg\">SIGNATUR%d</div>"
+            "</article></div>"
+            "</div><div id=\"page-footer\">FUSS</div></div></body></html>"
+            % ((nummer,) * 4)).encode("utf-8")
+
+
+#: Wege in den Abzug von _seite_viewtopic(). article[1] ist der erste Beitrag.
+_VT = "./div[1]/div[2]/article[%d]"
+VT_INHALT = _VT + "/div[1]/div[1]/div[2]/div[1]/text()[1]"
+VT_ABSATZ = _VT + "/div[1]/div[1]/div[2]/div[1]/p[1]/text()[1]"
+VT_SIGNATUR = _VT + "/div[1]/div[1]/div[2]/div[3]/text()[1]"
+VT_BETREFF = _VT + "/div[1]/div[1]/div[2]/h3[1]/text()[1]"
+VT_AUTOR = _VT + "/div[1]/div[1]/div[1]/dl[1]/dd[1]/strong[1]/text()[1]"
+VT_KOPF = _VT + "/h2[1]/strong[1]/a[1]/text()[1]"
+
+
+def _erster(befund):
+    assert not befund.fehler, befund.fehler
+    assert befund.belege, "kein Beleg gelesen"
+    return befund.belege[0]
+
+
+_LAUFZAEHLER = [0]
+
+
+def _lage_von_beleg(tmp_path, anfang, ende, seite=None, url=None):
+    url = url or "/forum/viewtopic.php?id=1"
+    seite = seite if seite is not None else _seite_viewtopic()
+    # Eigenes Verzeichnis je Lauf: mehrere Laeufe in derselben Probe wuerden
+    # sonst auf dieselbe Datei anlegen und mit 'table already exists'
+    # abbrechen - ein Fehler der Vorrichtung, der wie ein Befund aussaehe.
+    _LAUFZAEHLER[0] += 1
+    eigen = Path(tmp_path) / ("lauf%d" % _LAUFZAEHLER[0])
+    befund = _lauf(eigen, {url: seite}, [(1, url, anfang, ende)])
+    return _erster(befund)
+
+
+# ---------------------------------------------------------------------------
+def test_AD36_fliesstext_im_inhaltsanker_ist_content(tmp_path):
+    """
+    Der Beitragstext steht DIREKT im Inhaltsanker; sein Textknoten hat den
+    Anker als Elternelement. Eine Fassung, die den Inhalt als 'anker//*'
+    beschreibt, haette genau diesen - den haeufigsten - Fall ausserhalb des
+    Inhalts liegen lassen.
+    """
+    b = _lage_von_beleg(tmp_path, VT_INHALT % 1, VT_ABSATZ % 1)
+    assert b.bezug_start.lage == LAGE_CONTENT, b.bezug_start
+    assert b.bezug_end.lage == LAGE_CONTENT, b.bezug_end
+    assert b.typ == "text range", (b.typ, b.typ_grund)
+
+
+def test_AD37_die_signatur_ist_rahmen(tmp_path):
+    """
+    GEGENPROBE ZU AD36. Die Signatur traegt die Klasse des Inhaltsankers als
+    eigenes Token ('<div class="postsignature postmsg">', viewtopic0.php
+    Z. 1179). Ein tokenweiser Test auf 'postmsg' allein trifft sie ebenfalls -
+    sie MUSS ausdruecklich ausgeschlossen sein, sonst ist die Festlegung
+    'Signatur ist Rahmen' nur auf dem Papier getroffen.
+    """
+    b = _lage_von_beleg(tmp_path, VT_SIGNATUR % 1, VT_SIGNATUR % 1)
+    assert b.bezug_start.lage == LAGE_FRAME, b.bezug_start
+    assert b.typ == "whole post", (b.typ, b.typ_grund)
+
+
+def test_AD38_der_betreff_im_h3_ist_rahmen(tmp_path):
+    """
+    Das <h3> mit dem Themenbetreff (viewtopic0.php Z. 1005) liegt IN
+    'postright', aber NICHT im Inhalt. Beide ersten XPath-Fassungen haben es
+    als Inhalt gewertet, weil sie fragten, ob ein Vorfahre mit Klasse
+    'postright' irgendwo ein 'postmsg' enthaelt - statt zu fragen, ob der
+    Knoten darin liegt.
+    """
+    b = _lage_von_beleg(tmp_path, VT_BETREFF % 1, VT_BETREFF % 1)
+    assert b.bezug_start.lage == LAGE_FRAME, b.bezug_start
+    assert b.typ == "whole post", (b.typ, b.typ_grund)
+
+
+def test_AD39_rahmen_mitgefasst_ergibt_whole_post(tmp_path):
+    """
+    Der Fall, um den es geht: die Markierung beginnt in der Metadatenspalte
+    (Autor) und endet im Inhalt. Zwei der 24 von Alex durchgesehenen
+    whole-post-Faelle sehen genau so aus - sie waeren einer Regel entgangen,
+    die nur den Beitragskopf betrachtet.
+    """
+    b = _lage_von_beleg(tmp_path, VT_AUTOR % 1, VT_ABSATZ % 1)
+    assert b.bezug_start.lage == LAGE_FRAME, b.bezug_start
+    assert b.bezug_end.lage == LAGE_CONTENT, b.bezug_end
+    assert b.typ == "whole post", (b.typ, b.typ_grund)
+    assert b.typ_posts == [700], b.typ_posts
+    # Und aus dem Beitragskopf heraus ebenso.
+    b2 = _lage_von_beleg(tmp_path, VT_KOPF % 1, VT_ABSATZ % 1)
+    assert b2.typ == "whole post", (b2.typ, b2.typ_grund)
+
+
+def test_AD40_gegenprobe_im_inhalt_geblieben_ist_text_range(tmp_path):
+    """
+    OHNE DIESE PROBE waere AD39 auch mit einer Fassung gruen, die IMMER
+    'whole post' vorschlaegt.
+    """
+    b = _lage_von_beleg(tmp_path, VT_INHALT % 1, VT_ABSATZ % 1)
+    assert b.typ == "text range", (b.typ, b.typ_grund)
+    assert b.typ_posts == [700], b.typ_posts
+
+
+def test_AD41_systembeitrag_hat_keinen_inhaltsbereich(tmp_path):
+    """
+    Der Systembeitrag (posts.type = 4, viewtopic0.php Z. 330) traegt kein
+    'postmsg'. Festlegung Alex 07.09.2026: ganzer Post. Es gibt ZWEI
+    Bauformen; weil beide denselben Ausgang nehmen, muss nicht entschieden
+    werden, welche im Abzug steht.
+    """
+    url = "/forum/viewtopic.php?id=9"
+    weg = "./div[1]/div[2]/article[1]/div[1]/span[2]/div[1]/p[1]/text()[1]"
+    b = _lage_von_beleg(tmp_path, weg, weg,
+                        seite=_seite_viewtopic([900], systempost=True),
+                        url=url)
+    assert b.bezug_start.post_id == 900, b.bezug_start
+    assert b.bezug_start.lage == LAGE_FRAME, b.bezug_start
+    assert b.typ == "whole post", (b.typ, b.typ_grund)
+
+
+def test_AD42_anfaengerforum_ohne_ppNNN(tmp_path):
+    """
+    viewtopic1.php Z. 576 schreibt die EINFACHE Kennung; 'ppNNN' gibt es dort
+    ueberhaupt nicht. Die in Build 763 erwogene Regel 'im container, aber
+    nicht in ppNNN' haette hier JEDE Markierung zum Rahmen gemacht. Rot,
+    sobald diese Regel zurueckkehrt.
+    """
+    url = "/forum/beginner/viewtopic.php?id=3"
+    inhalt = "./div[1]/div[2]/div[1]/article[1]/div[1]/div[2]/text()[1]"
+    sig = "./div[1]/div[2]/div[1]/article[1]/div[2]/text()[1]"
+    b = _lage_von_beleg(tmp_path, inhalt, inhalt,
+                        seite=_seite_beginner(800), url=url)
+    assert b.seitenklasse == "beginner_viewtopic", b.seitenklasse
+    assert b.bezug_start.lage == LAGE_CONTENT, b.bezug_start
+    assert b.typ == "text range", (b.typ, b.typ_grund)
+    # Die Signatur liegt hier schon durch die Struktur ausserhalb des Ankers.
+    b2 = _lage_von_beleg(tmp_path, sig, sig,
+                         seite=_seite_beginner(800), url=url)
+    assert b2.bezug_start.lage == LAGE_FRAME, b2.bezug_start
+
+
+def test_AD43_textknotenbruch_ist_auswertbar_struktureller_nicht(tmp_path):
+    """
+    Bricht NUR der abschliessende text()-Step, ist das tragende Element
+    aufgeloest - die Lage im Beitrag steht fest, nur der Textknotenindex
+    trifft nicht. Gemessen im Lauf zu Build 763: 38 der 44 unbestimmten
+    Faelle waren von dieser Art, und alle 38 nannten an beiden Enden
+    denselben Beitrag.
+
+    Bei einem STRUKTURELLEN Bruch bleibt es unbestimmt.
+    """
+    url = "/forum/viewtopic.php?id=1"
+    seite = _seite_viewtopic()
+    # text()[9] gibt es nicht - das Element schon.
+    text_bruch = (VT_INHALT % 1).replace("text()[1]", "text()[9]")
+    b = _lage_von_beleg(tmp_path, text_bruch, VT_ABSATZ % 1, seite, url)
+    assert b.zweite.position_vorhanden is False, "der Ausdruck bricht"
+    assert b.start_verwertbar is True, "aber er ist auswertbar"
+    assert b.typ == "text range", (b.typ, b.typ_grund)
+    assert "text_node_index_wrong" in b.textknoten_vermerk, b.textknoten_vermerk
+
+    struktur = "./div[1]/div[2]/article[99]/div[1]/p[1]/text()[1]"
+    b2 = _lage_von_beleg(tmp_path, struktur, VT_ABSATZ % 1, seite, url)
+    assert b2.start_verwertbar is False, "struktureller Bruch"
+    assert b2.typ == "", (b2.typ, b2.typ_grund)
+
+
+def test_AD44_markierungen_ohne_anker_verschwinden_nicht(tmp_path):
+    """
+    DIE BEHEBUNG DES MANGELS AUS BUILD 763. Dort meldete der Lauf '455 von
+    455' und erwaehnte 15 aktive Belege ohne Anker mit keinem Wort. Sie
+    tragen kein 'selection_json', dafuer 'element_id' nach dem Muster der
+    aeusseren Beitragskennung - der Typ, den die Toolbar seit Build 430 fuer
+    ganze Beitraege anlegt.
+    """
+    url = "/forum/viewtopic.php?id=1"
+    ev_dir, fo_dir = _bau(tmp_path, {url: _seite_viewtopic()},
+                          [(1, url, VT_INHALT % 1, VT_ABSATZ % 1)], uid="21")
+    # Zwei Zeilen OHNE Anker nachtragen: eine Beitragsmarkierung und eine,
+    # die weder das eine noch das andere ist.
+    con = sqlite3.connect(ev_dir / "evidence_21.db")
+    con.execute("ALTER TABLE annotations ADD COLUMN element_id TEXT")
+    con.execute("INSERT INTO annotations (id,page_url,selection_json,"
+                "element_id) VALUES (2,?,NULL,'p700')", (url,))
+    con.execute("INSERT INTO annotations (id,page_url,selection_json,"
+                "element_id) VALUES (3,?,NULL,NULL)", (url,))
+    con.commit()
+    con.close()
+
+    d = AnkerDiagnose(evidence=ev_dir / "evidence_21.db",
+                      forensic=fo_dir / "forensic_21.db")
+    befund = d.lauf(grenze=0)
+    a = befund.aufnahme
+    assert a["active"] == 3, a
+    assert a["with_anchor"] == 1, a
+    assert a["post_level"] == 1, a
+    assert a["post_level_ids"] == [2], a
+    assert a["unklar"] == 1, a
+    assert a["unklar_ids"] == [3], a
+    # Und die Zahlen stehen auch maschinenlesbar da.
+    roh = befund.als_dict()
+    assert roh["annotations_active"] == 3, roh
+    assert roh["annotations_post_level"] == 1, roh
+    assert roh["annotations_unclear"] == 1, roh
+
+
+def test_AD45_katalog_im_code_und_dokument_stimmen_ueberein():
+    """
+    Die Bereichsdefinition steht zweimal: als Tabelle im Code und als Dokument
+    in documents/, weil sie fuer die Anpassung an andere Foren gebraucht wird.
+    Ohne diesen Waechter laufen beide binnen weniger Builds auseinander, und
+    dann gilt keins von beidem.
+    """
+    pfad = (Path(__file__).resolve().parent.parent
+            / "documents" / "Post_Bereiche_Katalog.md")
+    assert pfad.exists(), "Das Katalogdokument fehlt: %s" % pfad
+    text = pfad.read_text(encoding="utf-8")
+    for b in KATALOG:
+        assert b.schluessel in text, \
+            "Seitenart '%s' fehlt im Dokument" % b.schluessel
+        if b.inhaltsanker is not None:
+            for klasse in b.inhaltsanker.hat:
+                assert klasse in text, \
+                    "Inhaltsanker '%s' der Seitenart '%s' fehlt im Dokument" \
+                    % (klasse, b.schluessel)
+            for klasse in b.inhaltsanker.hat_nicht:
+                assert klasse in text, \
+                    "Ausschluss '%s' der Seitenart '%s' fehlt im Dokument" \
+                    % (klasse, b.schluessel)
+    # Die Ausdruecke selbst gehoeren ebenfalls hinein - sie sind der Teil,
+    # der ausserhalb des Codes gebraucht wird.
+    assert xpath_bereich("viewtopic", "content") in text, \
+        "Der Inhaltsausdruck fuer 'viewtopic' fehlt im Dokument"
+    assert xpath_relativ("viewtopic")[1] in text, \
+        "Die relative Inhaltsprobe fuer 'viewtopic' fehlt im Dokument"
+
+
+def test_AD46_unbekannte_seitenart_wird_vorsichtig_behandelt(tmp_path):
+    """
+    DIE LUECKE, DIE EINE MUTATIONSGEGENPROBE ZU BUILD 764 AUFGEDECKT HAT.
+
+    Eine Seitenart, die nicht im Katalog steht, hat keinen Inhaltsanker. Die
+    Lage ist dann nicht bestimmbar - und die Frage ist, wie das ausgeht.
+
+    ES GEHT ALS 'frame' AUS, also auf 'whole post'. Begruendung: 'whole post'
+    verliert keinen Beleg, es fasst nur mehr, als noetig waere. 'text range'
+    koennte einen Beleg VERKUERZEN, und ein verkuerzter Beleg ist ein
+    verlorener Beleg (Grundregel 1). Bei Unbestimmtheit ist die weitere
+    Fassung die richtige.
+
+    Rot, sobald eine unbekannte Seitenart als Inhalt durchgeht.
+    """
+    from management.maintenance.post_bereiche import (
+        beschreibung_zu, lage_von)
+
+    url = "/forum/irgendwas_neues.php?id=1"
+    b = _lage_von_beleg(tmp_path, VT_INHALT % 1, VT_ABSATZ % 1,
+                        seite=_seite_viewtopic(), url=url)
+    assert b.seitenklasse == "sonstige", b.seitenklasse
+    assert beschreibung_zu("sonstige") is None, \
+        "'sonstige' darf nicht im Katalog stehen"
+    assert b.bezug_start.lage == LAGE_FRAME, b.bezug_start
+    assert b.typ == "whole post", (b.typ, b.typ_grund)
+
+    # Und unmittelbar an der Funktion, damit die Regel auch ohne den Umweg
+    # ueber einen ganzen Lauf festgehalten ist.
+    assert lage_von(object(), object(), "gibt_es_nicht") == LAGE_FRAME
