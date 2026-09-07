@@ -59,6 +59,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
+# BUILD 764 - die Bereichsdefinition je Seitenart steht in einer eigenen
+# Datei, weil sie zugleich als Dokument gepflegt wird (Katalog fuer andere
+# Foren) und weil toolbar.js spaeter aus derselben Quelle gespeist wird.
+from management.maintenance.post_bereiche import (
+    LAGE_CONTENT, LAGE_FRAME, LAGE_OUTSIDE, lage_von)
+
 # -----------------------------------------------------------------------------
 # Zustaende eines Endpunkts
 # -----------------------------------------------------------------------------
@@ -132,6 +138,16 @@ class PostBezug:
     nachkommen_zahl: int = 0
     erste_nummer: Optional[int] = None
     letzte_nummer: Optional[int] = None
+    #: BUILD 764 - die Lage im Beitrag: 'content', 'frame' oder 'outside'.
+    #:
+    #: SIE UND NICHT DIE FALLNUMMER entscheidet ueber 'text range' gegen
+    #: 'whole post'. Der Lauf zu Build 763 hat gezeigt, warum: alle 24 von
+    #: Alex durchgesehenen whole-post-Markierungen fielen auf Fall 1, weil
+    #: beide Endpunkte im selben Beitrag liegen. Wer den Text eines ganzen
+    #: Beitrags mit der Maus fasst, beginnt und endet INNERHALB des
+    #: containers - die Lage der Endpunkte zueinander kann das nicht
+    #: unterscheiden. Die Lage im Beitrag kann es.
+    lage: str = LAGE_OUTSIDE
     #: Klartext, wenn gar nicht gemessen werden konnte (kein Knoten).
     hinweis: str = ""
 
@@ -140,6 +156,7 @@ class PostBezug:
             "state": self.zustand,
             "post_id": self.post_id,
             "post_id_source": self.post_id_quelle,
+            "area": self.lage,
             "descendant_count": self.nachkommen_zahl,
             "first_post_below": self.erste_nummer,
             "last_post_below": self.letzte_nummer,
@@ -271,10 +288,13 @@ class PostBezugMesser:
     Spanne als nicht messbar gemeldet (Grundregel 1).
     """
 
-    def __init__(self, wurzel) -> None:
+    def __init__(self, wurzel, seitenart: str = "") -> None:
         from report_render.absatz_finder import AbsatzFinder
         self._finder_klasse = AbsatzFinder
         self._wurzel = wurzel
+        #: BUILD 764 - ohne die Seitenart ist die Lage nicht bestimmbar; jede
+        #: Seitenart hat ihren eigenen Inhaltsanker.
+        self._seitenart = str(seitenart or "")
         #: Alle Elemente in Dokumentreihenfolge - haelt die Huellen am Leben.
         self._reihenfolge: List[Any] = [
             el for el in wurzel.iter() if hasattr(el, "get")]
@@ -326,6 +346,9 @@ class PostBezugMesser:
                 b.zustand = ZUSTAND_IM_POST
                 b.post_id = nummer
                 b.post_id_quelle = "ancestor"
+                # Der Aufstieg zum container ist getan; die Lage darin ist
+                # eine zweite Frage an denselben Weg.
+                b.lage = lage_von(knoten, behaelter, self._seitenart)
                 return b
 
         unten = self._container_unterhalb(knoten)
@@ -431,3 +454,92 @@ class PostBezugMesser:
             gesehen.add(paar)
             aus.append(Verschachtelung(aussen=aussen, innen=innen))
         return aus
+
+
+# -----------------------------------------------------------------------------
+# BUILD 764 - DIE ENTSCHEIDUNG 'text range' GEGEN 'whole post'
+# -----------------------------------------------------------------------------
+#: Der Endpunkt ist auswertbar, obwohl der Ausdruck bricht - weil NUR der
+#: abschliessende text()-Step gebrochen ist und das tragende Element aufgeloest
+#: hat.
+GRUND_TEXTKNOTEN = "text_node_index_wrong"
+
+
+def endpunkt_verwertbar(loest_auf: bool, bruch_schritt: str) -> bool:
+    """
+    Darf aus diesem Endpunkt eine Aussage ueber die Lage der Markierung
+    abgeleitet werden?
+
+    JA, wenn der Ausdruck vollstaendig aufloest.
+
+    JA AUCH DANN, wenn ausschliesslich der abschliessende 'text()'-Step
+    gebrochen ist. Dann ist das TRAGENDE ELEMENT aufgeloest, und nur der Index
+    des Textknotens darin trifft nicht. Fuer die Frage 'in welchem Beitrag und
+    in welchem Bereich' ist das Element massgeblich, nicht der Textknoten.
+
+    NEIN bei einem strukturellen Bruch - dann ist schon das Element nicht
+    aufgeloest, und der ueberlebende Prefix sagt etwas ueber sich selbst aus,
+    nicht ueber die Lage der Markierung.
+
+    WARUM DIESE UNTERSCHEIDUNG UEBERHAUPT: In Build 763 galt die strengere
+    Regel 'nur bei vollstaendiger Aufloesung'. Der Lauf hat gezeigt, was sie
+    kostet: von 44 unbestimmten Faellen brachen 38 ausschliesslich am
+    text()-Step, und bei allen 38 nannten BEIDE Endpunkte denselben Beitrag.
+    Die Regel hat also 38 sichere Zuordnungen verworfen, um 6 unsichere zu
+    vermeiden. Der Grundsatz bleibt unangetastet - er lautete nie 'nur bei
+    vollstaendiger Aufloesung', sondern 'nicht aus einem unaufgeloesten
+    Element'.
+    """
+    if loest_auf:
+        return True
+    return str(bruch_schritt or "").startswith("text()")
+
+
+def typ_bestimmen(start: PostBezug, ende: PostBezug, spanne: Spanne,
+                  start_verwertbar: bool,
+                  ende_verwertbar: bool) -> Tuple[str, List[int], str]:
+    """
+    Die Entscheidung nach der Festlegung von Alex (07.09.2026).
+
+    Rueckgabe: (vorgeschlagener_typ, betroffene_nummern, begruendung)
+
+    Die Regel in einem Satz: Liegt die Markierung VOLLSTAENDIG im
+    Inhaltsbereich EINES Beitrags, ist es eine 'text range'; greift sie auch
+    ausserhalb, ist es ein 'whole post'.
+
+    'xpathStart' bestimmt den betroffenen Beitrag. 'xpathEnd' entscheidet, ob
+    es der einzige ist - und ob ueberhaupt gekuerzt werden darf. Beide werden
+    gebraucht; abkuerzen laesst sich das nicht.
+    """
+    if not (start_verwertbar and ende_verwertbar):
+        offen = []
+        if not start_verwertbar:
+            offen.append("xpathStart")
+        if not ende_verwertbar:
+            offen.append("xpathEnd")
+        return (TYP_KEINER, [],
+                "%s bricht strukturell - der ueberlebende Prefix sagt nichts "
+                "ueber die Lage der Markierung" % " und ".join(offen))
+
+    betroffen: List[int] = []
+    for nummer in ([start.post_id] + list(spanne.posts_dazwischen)
+                   + [ende.post_id]):
+        if nummer is not None and nummer not in betroffen:
+            betroffen.append(nummer)
+
+    if not betroffen:
+        return (TYP_TEXT_RANGE, [],
+                "kein Beitrag an den Endpunkten und keiner dazwischen")
+    if len(betroffen) >= 2:
+        return (TYP_WHOLE_POST, betroffen,
+                "%d Beitraege betroffen" % len(betroffen))
+    if start.lage == LAGE_CONTENT and ende.lage == LAGE_CONTENT:
+        return (TYP_TEXT_RANGE, betroffen,
+                "beide Endpunkte im Inhaltsbereich des Beitrags %d"
+                % betroffen[0])
+    aussen = [name for name, lage in (("Anfang", start.lage),
+                                      ("Ende", ende.lage))
+              if lage != LAGE_CONTENT]
+    return (TYP_WHOLE_POST, betroffen,
+            "%s ausserhalb des Inhaltsbereichs von Beitrag %d"
+            % (" und ".join(aussen), betroffen[0]))

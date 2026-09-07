@@ -177,7 +177,35 @@ class MigrationRunner:
             con.execute("COMMIT")
             logger.info("Migration M%03d '%s' angewandt.", mod.VERSION, mod.NAME)
         except Exception:
-            con.execute("ROLLBACK")
+            # BUILD 764 — DER ROLLBACK DARF DIE URSACHE NICHT VERDECKEN.
+            #
+            # BEFUND (Regressionslauf Alex, 07.09.2026): Bei vollem Datentraeger
+            # schlug 'COMMIT' mit 'database or disk is full' fehl. SQLite hat die
+            # Transaktion dabei BEREITS selbst zurueckgerollt. Das anschliessende
+            # 'ROLLBACK' warf deshalb 'cannot rollback - no transaction is
+            # active' — und weil das ausserhalb eines try stand, ERSETZTE diese
+            # neue Ausnahme die urspruengliche. Weder 'logger.exception' noch
+            # 'raise' wurden erreicht.
+            #
+            # Folge: 13 von 65 Fehlschlaegen jenes Laufs nannten als Ursache
+            # 'cannot rollback' statt 'disk is full'. Der Befund war da, er kam
+            # nur nicht an. Das ist derselbe Fehlertyp, den Grundregel 1
+            # verbietet: eine Meldung, die von der tatsaechlichen Ursache
+            # wegfuehrt.
+            #
+            # Der Rueckrollversuch bleibt — er ist im Regelfall noetig. Aber sein
+            # eigenes Scheitern wird vermerkt und verschluckt, damit die
+            # urspruengliche Ausnahme unveraendert weitergereicht wird.
+            try:
+                con.execute("ROLLBACK")
+            except sqlite3.Error as rollback_exc:
+                logger.warning(
+                    "Migration M%03d: ROLLBACK nicht moeglich (%s). Die "
+                    "Transaktion war bereits beendet — SQLite rollt bei einem "
+                    "gescheiterten COMMIT selbst zurueck. Massgeblich ist die "
+                    "Ausnahme darunter.",
+                    mod.VERSION, rollback_exc,
+                )
             logger.exception(
                 "Migration M%03d fehlgeschlagen — ROLLBACK, kein Teilzustand.",
                 mod.VERSION,

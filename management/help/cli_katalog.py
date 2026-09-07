@@ -354,6 +354,17 @@ _GEPRUEFT_759 = ("Build 759, 2026-09-04, gegen einen Wegwerf-Bestand unter "
                  "davon einer nur ueber die gefaltete Fassung. "
                  "Python 3.12.3, html5lib.")
 
+_GEPRUEFT_764 = ("Build 764, 2026-09-07, gegen Wegwerf-Bestaende unter "
+                 "/tmp mit nachgebauter Forenstruktur: viewtopic-Seite "
+                 "nach viewtopic0.php Z. 886-1212 mit Beitragskopf, "
+                 "Metadatenspalte, Betreff, Inhalt, Warnhinweis, "
+                 "Signatur und Funktionsleiste; Anfaengerforum nach "
+                 "viewtopic1.php Z. 576 ff. ohne doppelte Kennung; "
+                 "Systembeitrag nach include/type4.php. Python 3.12.3, "
+                 "html5lib. Gemessen: Inhalt und Rahmen an zehn Stellen, "
+                 "drei Fassungen (Aufstieg, dokumentweiter XPath, "
+                 "relativer XPath) einig.")
+
 _GEPRUEFT_763 = ("Build 763, 2026-09-06, gegen Wegwerf-Bestaende unter "
                  "/tmp mit nachgebauter Forenstruktur: Seiten mit einem, "
                  "zwei und drei Beitraegen nach viewtopic0.php Z. 886, "
@@ -5592,8 +5603,10 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         gruppe="Migration und Reparatur",
         zweck="Messen, warum die Positionsangaben der Textmarkierungen im "
               "gesicherten Seitenabzug nicht aufloesen, in welchem post "
-              "container beide Endpunkte liegen und welchen Umfang die "
-              "Markierung damit hat (Faelle 1 bis 6, Build 763).",
+              "container und in welchem BEREICH des Beitrags - Inhalt oder "
+              "Rahmen - beide Endpunkte liegen, und ob die Markierung damit "
+              "als 'text range' oder als 'whole post' zu fuehren ist "
+              "(Build 764).",
         art="lesend",
         datenbanken=(
             "evidence_<uid>.db (lesend, mode=ro - annotations)",
@@ -5649,6 +5662,15 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Am Ende die Zaehlung mit Fall- und Seitenartverteilung, "
                "ein Urteil in ganzen Saetzen und der "
                "Konsolen-Einzeiler fuer die Gegenprobe im Browser. "
+               "BUILD 764 zusaetzlich je Beleg die Zeilen BEREICH und "
+               "VORSCHLAG: ob die Endpunkte im Inhaltsbereich des Beitrags "
+               "('content'), im Rahmen ('frame') oder ausserhalb jedes "
+               "Beitrags ('outside') liegen, und daraus abgeleitet der "
+               "Vorschlag 'text range' oder 'whole post'. Dazu die "
+               "Bestandsaufnahme: aktive Markierungen, davon mit XPath-Anker, "
+               "davon Beitragsmarkierungen ohne Anker, davon weder noch - "
+               "getrennt ausgewiesen, damit keine Zahl in einer anderen "
+               "aufgeht. "
                "'--json' schreibt dieselben Zahlen maschinenlesbar mit "
                "englischen Schluesseln; beide Ausgaben entstehen aus "
                "demselben Befund und nicht auseinander.",
@@ -5674,6 +5696,12 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                  "Markierung. Am Ende steht eine Gesamtzaehlung ueber "
                  "alle Bestaende. Rueckgabewert 0.",
                  _GEPRUEFT_763),
+            _bsp("python tools/anker_diagnose.py --grenze 0 "
+                 "--json /tmp/anker764.json --protokoll /tmp/anker764.log",
+                 "BUILD 764 - derselbe Gesamtlauf, jetzt mit der Zeile "
+                 "VORSCHLAG je Beleg und mit der vollstaendigen "
+                 "Bestandsaufnahme. Rueckgabewert 0.",
+                 _GEPRUEFT_764),
             _bsp("python tools/anker_diagnose.py --uid 2948078 "
                  "--grenze 0 --json /tmp/anker_2948078.json",
                  "Nur einen Bestand aus dem Verzeichnis. Rueckgabewert "

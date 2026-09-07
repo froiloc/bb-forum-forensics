@@ -1,0 +1,15 @@
+28dddf0bc39cd98d2a0386204e95c65e  build.json
+8bff4d897903c93e2ab1bdb4fdd3b7da  documents/Post_Bereiche_Katalog.md
+1ed8f4beeb255dccc7a8a2e380e5de82  issue-tracker/eintraege_claude_Build763.json
+ceb01aca6f3ce924bc729324e8665b0d  issue-tracker/eintraege_claude_Build764.json
+5e2ee58d2be7028c91362fe3fe5c9c41  management/help/cli_katalog.py
+9f810fe141591d938ba4b141c8f95eed  management/maintenance/anker_diagnose.py
+fec93fc402715101155c972626fa5b40  management/maintenance/anker_postbezug.py
+ecd02e4be930dc18a98f40c1229bd864  management/maintenance/bestandsliste.py
+19c34d614cb69cfdb9feb30cfb1d9268  management/maintenance/post_bereiche.py
+386ebae86cefe1cb150668fec43ac498  management/migrations/runner.py
+83ca8c7e477ea0995cdc8a2ba8735626  tests/conftest.py
+1c89d27c8579af702e4c188236dda946  tests/test_anker_diagnose.py
+d47f49125634a2cb4a5d5b4fe8dc6d50  tests/test_regression_umgebung.py
+d03da36f1faa3120747dcd92e336a43a  tools/anker_diagnose.py
+7489d58ec47bb8860fe006e6c1fba1d4  tools/annotationen_bestand.py
