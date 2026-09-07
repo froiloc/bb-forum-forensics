@@ -1,200 +1,6 @@
 {
   "issues": [
     {
-      "id": "1a7c3e50-9b24-4d68-8f31-6e02a5b17cc4",
-      "type": "improvement",
-      "title": "Inhalt gegen Rahmen entscheidet text range oder whole post",
-      "affected_version": "0.8.764",
-      "reporter": "Claude",
-      "reported_at": "2026-09-07T11:00:00+02:00",
-      "status": "review",
-      "priority": "high",
-      "severity": "major",
-      "description": "Der Lauf zu Build 763 hat gezeigt, dass die Fallzuordnung 1 bis 6 die Frage aus AP-2 nicht beantwortet: alle 24 von Alex durchgesehenen whole-post-Markierungen fielen auf Fall 1. Der Grund ist rueckblickend offensichtlich - wer den Text eines ganzen Beitrags mit der Maus fasst, beginnt und endet INNERHALB des post container. Die Lage der Endpunkte zueinander kann eine whole-post-Markierung nicht von einer gewoehnlichen text range unterscheiden.\n\nDas Kriterium ist deshalb ersetzt (Festlegung Alex, 07.09.2026): entschieden wird ueber die LAGE IM BEITRAG. Ein Beitrag hat einen inhaltstragenden Teil und einen Rahmen mit Metadaten und Funktionen. Liegt die Markierung vollstaendig im Inhaltsbereich EINES Beitrags, ist es eine 'text range'; greift sie auch in den Rahmen oder in einen zweiten Beitrag, ist es ein 'whole post'.\n\nxpathStart bestimmt den betroffenen Beitrag, xpathEnd entscheidet, ob es der einzige ist und ob ueberhaupt gekuerzt werden darf. Beide werden gebraucht.",
-      "expected_behavior": "Je Endpunkt eine Lage 'content', 'frame' oder 'outside'; daraus der Vorschlag 'text range' oder 'whole post' mit den betroffenen Beitragsnummern und einer Begruendung im Klartext.",
-      "environment": "aiw_webserver 0.8.764, Python 3.12.3 (Entwicklung) / 3.14 (Produktion), lxml, html5lib",
-      "tags": [
-        "anker",
-        "annotationen",
-        "post_bereiche",
-        "ap2",
-        "build764"
-      ],
-      "updates": [
-        {
-          "timestamp": "2026-09-07T11:00:00+02:00",
-          "author": "Claude",
-          "note": "Waechter AD36 bis AD42 in tests/test_anker_diagnose.py. Sechs Mutationsgegenproben gefahren, jede von genau dem vorgesehenen Waechter gefangen."
-        }
-      ]
-    },
-    {
-      "id": "2b8d4f61-0c35-4e79-9a42-7f13b6c28dd5",
-      "type": "bug",
-      "title": "Die innere Beitragskennung ist die falsche Grenze und wird nicht mehr genutzt",
-      "affected_version": "0.8.763",
-      "reporter": "Claude",
-      "reported_at": "2026-09-07T11:05:00+02:00",
-      "status": "resolved",
-      "resolved_in_version": "0.8.764",
-      "priority": "high",
-      "severity": "major",
-      "description": "In Build 763 hatte ich vorgeschlagen, den Rahmen eines Beitrags als 'im container, aber nicht in der inneren Kennung' zu bestimmen. Diese Regel war falsch. Drei am Forenquelltext belegte Gruende:\n\n1. Die innere Kennung umschliesst den Rahmen mit. viewtopic0.php Z. 977 oeffnet darin div.postbody, Z. 980 div.postleft mit Autor, Avatar und Rang, Z. 1161 div.postfoot mit den Funktionen. 'In der inneren Kennung' ist also gerade nicht 'im Inhalt'.\n\n2. Zwei der 24 durchgesehenen whole-post-Faelle beginnen in div.postleft (Muster dl/dd/strong, viewtopic0.php Z. 981 ff.) und waeren durchgerutscht.\n\n3. Im Anfaengerforum gibt es die innere Kennung ueberhaupt nicht. viewtopic1.php Z. 576 schreibt die einfache Kennung. Die Regel haette dort JEDE Markierung als Rahmen gewertet.\n\nDie innere Kennung wird seit Build 764 nicht mehr ausgewertet. Sie spielt fuer diese Unterscheidung keine Rolle.",
-      "expected_behavior": "Die Unterscheidung laeuft ueber den Inhaltsanker der jeweiligen Seitenart, nicht ueber die Kennung.",
-      "actual_behavior": "Die verworfene Regel haette zwei belegte Faelle verfehlt und das Anfaengerforum vollstaendig falsch entschieden.",
-      "environment": "aiw_webserver 0.8.763",
-      "tags": [
-        "anker",
-        "post_bereiche",
-        "korrektur",
-        "build764"
-      ],
-      "updates": [
-        {
-          "timestamp": "2026-09-07T11:05:00+02:00",
-          "author": "Claude",
-          "note": "Waechter AD42 haelt den dritten Grund fest: er faellt, sobald die Regel zurueckkehrt. Die Regel war nie ausgeliefert - sie stand als Vorschlag im Bauplan und ist vor der Umsetzung verworfen worden."
-        }
-      ]
-    },
-    {
-      "id": "3c9e5072-1d46-4f8a-ab53-8024c7d39ee6",
-      "type": "bug",
-      "title": "XPath-Fassung: Inhaltsanker als Schrittausdruck statt als Pfad",
-      "affected_version": "0.8.764",
-      "reporter": "Claude",
-      "reported_at": "2026-09-07T11:10:00+02:00",
-      "status": "resolved",
-      "resolved_in_version": "0.8.764",
-      "priority": "medium",
-      "severity": "major",
-      "description": "Beide ersten Entwuerfe der XPath-Fassung - der von Alex und meiner - trugen denselben Fehler. Der Ausdruck not(ancestor-or-self::div[postright]//div[postmsg]) fragt, ob irgendein Vorfahre mit Klasse postright irgendwo ein postmsg ENTHAELT. Gebraucht wird aber die Frage, ob der Knoten DARIN LIEGT. Fuer das h3 mit dem Themenbetreff (viewtopic0.php Z. 1005) ist der erste Ausdruck wahr, obwohl es nicht im Inhalt steht; Inhalt und Rahmen waeren nicht komplementaer gewesen.\n\nBehoben, indem der Inhaltsanker als EIN Schrittausdruck mit angehaengtem ancestor::-Praedikat gebildet wird. So ist er ueber ancestor-or-self:: pruefbar.\n\nZweiter Punkt derselben Fassung: 'descendant-or-self::node()' statt '//*'. Der zweite waehlt nur Elemente unterhalb des Ankers. Der Beitragstext steht aber direkt im Anker; sein Textknoten hat den Anker als Elternelement. Unter '//*' haette der haeufigste Fall ueberhaupt ausserhalb des Inhalts gelegen.\n\nDritter Punkt: Klassen werden tokenweise verglichen. contains(@class,'contents') waere auch bei class='table-of-contents' wahr.",
-      "expected_behavior": "content und frame sind per Konstruktion komplementaer; Textknoten sind mit abgedeckt.",
-      "environment": "aiw_webserver 0.8.764",
-      "tags": [
-        "xpath",
-        "post_bereiche",
-        "korrektur",
-        "build764"
-      ],
-      "updates": [
-        {
-          "timestamp": "2026-09-07T11:10:00+02:00",
-          "author": "Claude",
-          "note": "Waechter AD36 und AD38. Gegenprobe an nachgebautem Markup: Aufstieg im Code, dokumentweiter XPath und relative XPath-Probe sind an zehn Stellen einig."
-        }
-      ]
-    },
-    {
-      "id": "4d0f6183-2e57-409b-bc64-9135d8e4aff7",
-      "type": "bug",
-      "title": "Zaehlung verschwieg aktive Markierungen ohne Anker",
-      "affected_version": "0.8.763",
-      "reporter": "Claude",
-      "reported_at": "2026-09-07T11:15:00+02:00",
-      "status": "resolved",
-      "resolved_in_version": "0.8.764",
-      "priority": "high",
-      "severity": "major",
-      "description": "Der Lauf zu Build 763 meldete '455 von 455' und erwaehnte 15 aktive Belege mit keinem Wort. Gelesen wurden nur Zeilen mit XPath-Anker, die Zahl war aber 'annotations_total' beschriftet. Wer sie gegen die Datenbank haelt, verliert 15 Belege lautlos - das verbietet Grundregel 1. Der Mangel stammt aus meiner Aenderung in Build 763.\n\nDie 15 Zeilen sind BEITRAGSMARKIERUNGEN: kein selection_json, dafuer element_id nach dem Muster der aeusseren Beitragskennung. Das ist der Typ, den die Toolbar seit Build 430 fuer ganze Beitraege anlegt (Beleg: forensic_api/annotations.py Z. 62-64, forensic_api/annotate.py Z. 10-25). Der Typ 'whole post' ist also nicht neu zu erfinden - die 24 durchgesehenen Faelle sind Textmarkierungen, die eine Beitragsmarkierung haetten sein sollen.\n\nDie Bestandsaufnahme weist jetzt getrennt aus: aktive Markierungen, davon mit Anker, davon Beitragsmarkierungen, davon weder noch. Die letzte Gruppe wird mit Belegnummern benannt statt weggelassen. Fehlende Spalten fuehren nicht mehr zum Abbruch, sondern zu einem Vermerk.",
-      "expected_behavior": "Keine Zahl geht in einer anderen auf; was nicht diagnostiziert werden kann, wird benannt.",
-      "actual_behavior": "In Build 763 fielen 15 aktive Belege lautlos aus der Zaehlung.",
-      "environment": "aiw_webserver 0.8.764",
-      "tags": [
-        "grundregel1",
-        "zaehlung",
-        "korrektur",
-        "build764"
-      ],
-      "updates": [
-        {
-          "timestamp": "2026-09-07T11:15:00+02:00",
-          "author": "Claude",
-          "note": "Waechter AD44. Mutationsgegenprobe: wird nur noch mit Anker gezaehlt, faellt er."
-        }
-      ]
-    },
-    {
-      "id": "5e1a7294-3f68-41ac-8d75-a246e9f50bb8",
-      "type": "improvement",
-      "title": "Fall 0 aufgeteilt: Textknotenbruch bleibt auswertbar",
-      "affected_version": "0.8.764",
-      "reporter": "Claude",
-      "reported_at": "2026-09-07T11:20:00+02:00",
-      "status": "review",
-      "priority": "medium",
-      "severity": "minor",
-      "description": "In Build 763 galt: bricht einer der beiden Ausdruecke, wird keine Zuordnung abgeleitet. Der Lauf hat gezeigt, was diese Strenge kostet. Von 44 unbestimmten Faellen brachen 38 ausschliesslich am abschliessenden text()-Step - dort ist das TRAGENDE ELEMENT aufgeloest, nur der Index des Textknotens darin trifft nicht. Bei allen 38 nannten beide Endpunkte denselben Beitrag.\n\nSeit Build 764 gilt ein Endpunkt als auswertbar, wenn der Ausdruck vollstaendig aufloest ODER ausschliesslich der abschliessende text()-Step bricht. Nur der strukturelle Bruch bleibt unbestimmt.\n\nDer Grundsatz ist unangetastet: er lautete nie 'nur bei vollstaendiger Aufloesung', sondern 'nicht aus einem unaufgeloesten Element'. Fuer die Frage nach Beitrag und Bereich ist das Element massgeblich, nicht der Textknoten.",
-      "expected_behavior": "38 der 44 bisher unbestimmten Faelle werden verwertbar, mit dem Vermerk text_node_index_wrong.",
-      "environment": "aiw_webserver 0.8.764",
-      "tags": [
-        "anker",
-        "fallzuordnung",
-        "build764"
-      ],
-      "updates": [
-        {
-          "timestamp": "2026-09-07T11:20:00+02:00",
-          "author": "Claude",
-          "note": "Waechter AD43 prueft beide Richtungen: Textknotenbruch auswertbar, struktureller Bruch nicht."
-        }
-      ]
-    },
-    {
-      "id": "6f2b8305-4079-42bd-9e86-b357fa061cc9",
-      "type": "documentation",
-      "title": "Katalog der Post-Bereiche als Dokument und Code, gegeneinander geprueft",
-      "affected_version": "0.8.764",
-      "reporter": "Claude",
-      "reported_at": "2026-09-07T11:25:00+02:00",
-      "status": "review",
-      "priority": "medium",
-      "severity": "minor",
-      "description": "Die Bereichsdefinition je Seitenart steht zweimal: als Tabelle in management/maintenance/post_bereiche.py und als Dokument in documents/Post_Bereiche_Katalog.md. Das Dokument ist forenuebergreifend gedacht - es traegt eine Anleitung, was beim Uebertragen auf ein anderes Forum zu tun ist, und weist ausdruecklich aus, dass die Liste NICHT abschliessend ist.\n\nWaechter AD45 haelt beide gegeneinander: jede Seitenart aus dem Code muss im Dokument vorkommen, jede Ankerklasse und jeder Ausschluss ebenfalls, und die erzeugten XPath-Ausdruecke muessen zeichengleich im Dokument stehen. Ohne diesen Waechter laufen Dokument und Code binnen weniger Builds auseinander, und dann gilt keins von beidem.\n\nAufgenommen sind auch die Seitenarten OHNE Beitraege. Die Aussage 'hier stehen keine Beitraege' ist selbst eine Katalogaussage. Fuer 'search' und 'viewforum' ist sie im Lauf zu Build 763 bestaetigt worden; fuer 'profile' und 'notifications' ist sie als UNGEPRUEFT vermerkt, weil im Bestand keine Markierungen vorlagen.",
-      "expected_behavior": "Dokument und Code sind deckungsgleich, und eine Abweichung faellt beim Testlauf auf.",
-      "environment": "aiw_webserver 0.8.764",
-      "tags": [
-        "dokumentation",
-        "post_bereiche",
-        "katalog",
-        "build764"
-      ],
-      "updates": [
-        {
-          "timestamp": "2026-09-07T11:25:00+02:00",
-          "author": "Claude",
-          "note": "Das Dokument wird aus dem Code erzeugt, damit die Ausdruecke nicht abweichend abgeschrieben werden koennen."
-        }
-      ]
-    },
-    {
-      "id": "7a3c9416-518a-43ce-af97-c468ab172dda",
-      "type": "improvement",
-      "title": "Unbekannte Seitenart geht auf whole post",
-      "affected_version": "0.8.764",
-      "reporter": "Claude",
-      "reported_at": "2026-09-07T11:30:00+02:00",
-      "status": "review",
-      "priority": "medium",
-      "severity": "minor",
-      "description": "Eine Seitenart, die nicht im Katalog steht, hat keinen Inhaltsanker; die Lage ist dann nicht bestimmbar. Sie geht auf 'frame' und damit auf 'whole post'.\n\nBEGRUENDUNG: 'whole post' verliert keinen Beleg, es fasst nur mehr als noetig. 'text range' koennte einen Beleg VERKUERZEN, und ein verkuerzter Beleg ist ein verlorener (Grundregel 1). Bei Unbestimmtheit ist die weitere Fassung die richtige.\n\nDIESER PUNKT IST ENTSTANDEN, WEIL EINE MUTATIONSGEGENPROBE GRUEN BLIEB. Der Zweig 'Seitenart ohne Inhaltsanker' in lage_von() war von keinem Waechter beruehrt: der Systembeitrag laeuft ueber einen anderen Zweig, und eine unbekannte Seitenart kam in keiner Probe vor. Die Mutation 'ohne Inhaltsanker gilt als Inhalt' blieb unbemerkt.",
-      "expected_behavior": "Unbekannte Seitenart -> frame -> whole post, und ein Waechter haelt das fest.",
-      "environment": "aiw_webserver 0.8.764",
-      "tags": [
-        "grundregel1",
-        "post_bereiche",
-        "waechter",
-        "build764"
-      ],
-      "updates": [
-        {
-          "timestamp": "2026-09-07T11:30:00+02:00",
-          "author": "Claude",
-          "note": "Waechter AD46 ergaenzt. Mit ihm faellt die Mutation. Zweiter Befund derselben Runde: eine meiner Mutationen war schlecht konstruiert - sie entfernte nur die Vorfahrenforderung, nicht den Inhaltsanker, und tat damit nicht, was ihr Etikett behauptete. Richtig konstruiert fallen AD36, AD39, AD40, AD43 und AD45."
-        }
-      ]
-    },
-    {
       "id": "8b4d0527-629b-44df-b0a8-d579bc283eeb",
       "type": "bug",
       "title": "MigrationRunner: ROLLBACK verdeckte die wahre Fehlerursache",
@@ -220,6 +26,11 @@
           "timestamp": "2026-09-07T18:30:00+02:00",
           "author": "Claude",
           "note": "Waechter RU01 in tests/test_regression_umgebung.py, Gegenprobe RU02 (gelingender Rueckrollversuch, keine offene Transaktion). Mutationsgegenproben: ungeschuetzter ROLLBACK -> RU01 rot; Rueckrollversuch ganz weggelassen -> RU01 und RU02 rot."
+        },
+        {
+          "timestamp": "2026-09-07T20:10:00+02:00",
+          "author": "Claude",
+          "note": "Diese Datei traegt NUR die beiden Vorgaenge der zweiten Auslieferung von Build 764. Die sieben Vorgaenge der ersten Auslieferung (1a7c3e50, 2b8d4f61, 3c9e5072, 4d0f6183, 5e1a7294, 6f2b8305, 7a3c9416) stehen bereits im Bestand und sind unveraendert. Sie hier erneut mitzuliefern haette beim Einmischen mit --auto-resolve source ihre Historie geloescht - insbesondere die vom merge-tool angehaengten Eintraege. Waechter IT03 hat genau das gemeldet."
         }
       ]
     },
@@ -248,6 +59,11 @@
           "timestamp": "2026-09-07T18:35:00+02:00",
           "author": "Claude",
           "note": "Waechter RU03, Gegenprobe RU04 (abschaltbar, unbrauchbarer Wert faellt auf die Vorgabe zurueck). Auf dem Zielsystem bleibt zu tun: 'df -h /tmp' pruefen und alte 'pytest-of-*'-Ordner loeschen."
+        },
+        {
+          "timestamp": "2026-09-07T20:10:00+02:00",
+          "author": "Claude",
+          "note": "Diese Datei traegt NUR die beiden Vorgaenge der zweiten Auslieferung von Build 764. Die sieben Vorgaenge der ersten Auslieferung (1a7c3e50, 2b8d4f61, 3c9e5072, 4d0f6183, 5e1a7294, 6f2b8305, 7a3c9416) stehen bereits im Bestand und sind unveraendert. Sie hier erneut mitzuliefern haette beim Einmischen mit --auto-resolve source ihre Historie geloescht - insbesondere die vom merge-tool angehaengten Eintraege. Waechter IT03 hat genau das gemeldet."
         }
       ]
     }
