@@ -354,6 +354,16 @@ _GEPRUEFT_759 = ("Build 759, 2026-09-04, gegen einen Wegwerf-Bestand unter "
                  "davon einer nur ueber die gefaltete Fassung. "
                  "Python 3.12.3, html5lib.")
 
+_GEPRUEFT_766 = ("Build 766, 2026-09-08, gegen einen Wegwerf-Bestand "
+                 "unter /tmp mit zwei Beitraegen nach viewtopic0.php, "
+                 "jeder mit einem <div id=\"progressbar\"> - die id ist "
+                 "damit MEHRFACH vergeben, wie im echten Forum. Python "
+                 "3.12.3, html5lib. Gemessen: 4 Endpunkte, 4 Ausdruecke "
+                 "erzeugt, 4 tragfaehig, alle mit staerkstem Rang by_id, "
+                 "1 haengt danach noch an einer Zaehlung; die mehrfach "
+                 "vergebene id wurde NICHT als Anker verwendet und im "
+                 "Bericht ausgewiesen.")
+
 _GEPRUEFT_764 = ("Build 764, 2026-09-07, gegen Wegwerf-Bestaende unter "
                  "/tmp mit nachgebauter Forenstruktur: viewtopic-Seite "
                  "nach viewtopic0.php Z. 886-1212 mit Beitragskopf, "
@@ -5605,8 +5615,11 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
               "gesicherten Seitenabzug nicht aufloesen, in welchem post "
               "container und in welchem BEREICH des Beitrags - Inhalt oder "
               "Rahmen - beide Endpunkte liegen, und ob die Markierung damit "
-              "als 'text range' oder als 'whole post' zu fuehren ist "
-              "(Build 764).",
+              "als 'text range' oder als 'whole post' zu fuehren ist. "
+              "BUILD 766 zusaetzlich: einen SMARTEN Ausdruck je Endpunkt "
+              "erzeugen (by_id vor by_class vor by_position) und messen, "
+              "wie viele Anker dadurch nicht mehr an einer sibling-Zaehlung "
+              "haengen - ohne etwas zu speichern.",
         art="lesend",
         datenbanken=(
             "evidence_<uid>.db (lesend, mode=ro - annotations)",
@@ -5696,6 +5709,16 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                  "Markierung. Am Ende steht eine Gesamtzaehlung ueber "
                  "alle Bestaende. Rueckgabewert 0.",
                  _GEPRUEFT_763),
+            _bsp("python tools/anker_diagnose.py --grenze 0 "
+                 "--json /tmp/anker766.json --protokoll /tmp/anker766.log",
+                 "BUILD 766 - derselbe Gesamtlauf, jetzt mit dem Abschnitt "
+                 "ANKER-GENERATOR: wie viele Endpunkte einen tragfaehigen "
+                 "smarten Ausdruck bekommen, mit welchem staerksten Rang, und "
+                 "wie viele danach noch an einer Zaehlung haengen. Dazu je "
+                 "Seite die MEHRFACH vergebenen id-Werte - ein Befund am "
+                 "Forum, das an dieser Stelle nicht normkonform ist. Es wird "
+                 "NICHTS gespeichert. Rueckgabewert 0.",
+                 _GEPRUEFT_766),
             _bsp("python tools/anker_diagnose.py --grenze 0 "
                  "--json /tmp/anker764.json --protokoll /tmp/anker764.log",
                  "BUILD 764 - derselbe Gesamtlauf, jetzt mit der Zeile "

@@ -104,6 +104,10 @@ _GETRAGEN_VON = (
     # erkennen - zwei Laeufe mit verschiedenen Regeln saehen gleich aus.
     # Genau davor soll diese Liste schuetzen (Grundregel 8).
     "management/maintenance/post_bereiche.py",
+    # BUILD 766: der Anker-Generator erzeugt die Ausdruecke, die spaeter
+    # gespeichert werden sollen. Eine Aenderung an ihm aendert das
+    # Ergebnis des Laufs.
+    "management/maintenance/xpath_generator.py",
     "report_render/html5_zerleger.py",
     "report_render/absatz_finder.py",
 )
@@ -398,6 +402,12 @@ def _bericht(m, befund) -> None:
           % (_bereich(b.bezug_start), _bereich(b.bezug_end)))
         m("             VORSCHLAG %-11s %s"
           % (b.typ or "unbestimmt", b.typ_grund))
+        if b.erzeugt_start is not None:
+            m("             NEU      %s" % b.erzeugt_start.ausdruck)
+            m("                      Rang %s%s"
+              % (b.erzeugt_start.bester_rang or "-",
+                 ", haengt noch an einer Zaehlung"
+                 if b.erzeugt_start.haengt_an_zaehlung else ""))
         if b.textknoten_vermerk:
             m("             %s - das tragende Element ist aufgeloest, nur "
               "der Textknotenindex trifft nicht." % b.textknoten_vermerk)
@@ -432,6 +442,17 @@ def _bericht(m, befund) -> None:
           % (s.seitenklasse, s.container_zahl))
         if s.widerspruch:
             m("   WIDERSPRUCH: %s" % s.widerspruch)
+        if s.mehrfache_ids:
+            # MEHRFACH VERGEBENE ids sind ein Verstoss gegen die
+            # HTML-Spezifikation. Sie werden benannt, weil der Anker-Generator
+            # sie nicht verwenden darf - und weil sonst niemand erfaehrt,
+            # welche es sind.
+            m("   MEHRFACH VERGEBENE id-Werte (%d):" % len(s.mehrfache_ids))
+            for kennung, zahl in sorted(s.mehrfache_ids.items(),
+                                        key=lambda p: (-p[1], p[0]))[:10]:
+                m("      %-28s %dx" % (kennung, zahl))
+            if len(s.mehrfache_ids) > 10:
+                m("      ... (%d weitere)" % (len(s.mehrfache_ids) - 10))
         if s.verschachtelungen:
             # DER FALL, DEN VERSCHRAENKTER BB-CODE ERZEUGEN KANN. Gleiche
             # Nummer aussen und innen ('pN' / 'ppN') ist der Regelfall und
@@ -455,7 +476,13 @@ def _bericht(m, befund) -> None:
         if s.quelltext:
             m("   M6 Die Quelltextzeilen, die der Zerleger genannt hat:")
             for zeile in s.quelltext:
-                m("      %s" % zeile)
+                # BUILD 766: gekuerzt. 'DTD_ID_REDEFINED' feuert im Forum auf
+                # JEDER Seite, weil 'id="progressbar"' je Beitrag einmal
+                # geschrieben wird (viewtopic0.php Z. 989). Die genannte
+                # Quelltextzeile ist dann der gesamte anonymisierte
+                # Seitenrumpf - bei 500 Beitraegen hunderttausend Zeichen in
+                # EINER Protokollzeile.
+                m("      %s" % _gekuerzt(zeile))
         if s.verteilung_marke:
             # M7 steht VOR M3: wenn ein Anker bricht, ist die Frage
             # 'wo stehen die verlangten Elemente' die naechste, die
@@ -471,9 +498,16 @@ def _bericht(m, befund) -> None:
         if s.rohtext:
             m("   M3 %s" % s.rohtext)
         for zeile in s.annaeherung:
-            m("   Annaeherung: %s" % zeile)
+            m("   Annaeherung: %s" % _gekuerzt(zeile))
         for zeile in s.zeilen:
-            m("   %s" % zeile)
+            # BUILD 766: Auch hier kuerzen. Der Block 'M6' gibt die
+            # Quelltextzeile wieder, die der Zerleger genannt hat - bei
+            # 'DTD_ID_REDEFINED' ist das der gesamte anonymisierte
+            # Seitenrumpf, und diese Meldung feuert im Forum auf JEDER Seite,
+            # weil 'id="progressbar"' je Beitrag einmal geschrieben wird
+            # (viewtopic0.php Z. 989). Ungekuerzt entstuende bei 500
+            # Beitraegen eine Protokollzeile von hunderttausend Zeichen.
+            m("   %s" % _gekuerzt(zeile))
         m()
 
     # -- Die Zaehlung -------------------------------------------------
@@ -506,6 +540,28 @@ def _bericht(m, befund) -> None:
     m("davon nach Annaeherung:           %d" % z["genaehert_traegt"])
     m("davon NUR nach Annaeherung:       %d" % z["entscheidend"])
     m("Seiten:                           %d" % z["seiten"])
+    m()
+    # -- BUILD 766: was die smarten Ausdruecke braechten ------------------
+    g = befund.erzeugungszaehlung()
+    m("ANKER-GENERATOR (erzeugt, NICHT gespeichert):")
+    m("   Endpunkte:                     %d" % g["endpunkte"])
+    m("   davon Ausdruck erzeugt:        %d" % g["erzeugt"])
+    m("   davon tragfaehig:              %d" % g["traegt"])
+    m("   staerkster Rang by_id:         %d" % g["by_id"])
+    m("   staerkster Rang by_class:      %d" % g["by_class"])
+    m("   nur by_position:               %d" % g["by_position"])
+    # DIE ZAHL, AUF DIE ES ANKOMMT. Alles vor einem by_id ist bedeutungslos,
+    # weil der Praefix ersetzt wird. Nur was danach noch zaehlt, bleibt so
+    # zerbrechlich wie die bisherigen Ausdruecke.
+    m("   haengt NACH by_id noch an einer Zaehlung: %d"
+      % g["haengt_an_zaehlung"])
+    alle_ids = {}
+    for s in befund.seiten:
+        for kennung, zahl in s.mehrfache_ids.items():
+            alle_ids[kennung] = max(alle_ids.get(kennung, 0), zahl)
+    m("   mehrfach vergebene id-Werte im Bestand:  %d%s"
+      % (len(alle_ids),
+         ("  (%s)" % ", ".join(sorted(alle_ids))) if alle_ids else ""))
     m()
     # -- BUILD 764: der Vorschlag ----------------------------------------
     m("VORSCHLAG (aus der Lage im Beitrag):")
@@ -549,6 +605,36 @@ def _bericht(m, befund) -> None:
     m(_urteil(z))
     m()
     m(_gegenprobe_browser())
+
+
+#: BUILD 766 - Hoechstlaenge einer Befundzeile im Protokoll.
+#:
+#: lxml haengt an eine Meldung die betroffene QUELLZEILE an. Bei
+#: 'DTD_ID_REDEFINED' - das im Forum auf jeder Seite feuert, weil
+#: 'id="progressbar"' je Beitrag einmal geschrieben wird (viewtopic0.php
+#: Z. 989) - ist das der gesamte anonymisierte Seitenrumpf. Auf einer Seite
+#: mit 500 Beitraegen entstuende eine Protokollzeile von hunderttausend
+#: Zeichen, und ein Protokoll, das niemand lesen kann, ist keines.
+#:
+#: Gekuerzt wird die WIEDERGABE, nicht der Befund: Art und Ort der Meldung
+#: stehen am Anfang der Zeile und bleiben erhalten. Die urspruengliche Laenge
+#: wird genannt, damit die Kuerzung sichtbar ist und nicht wie ein
+#: vollstaendiger Text aussieht (Grundregel 1).
+_BEFUND_HOECHSTLAENGE = 200
+
+
+def _gekuerzt(zeile: str) -> str:
+    """Eine Befundzeile auf lesbare Laenge bringen, sichtbar gekuerzt."""
+    # Zeilenumbrueche zuerst einziehen: lxml liefert die Meldung samt
+    # Quellzeile als EINEN mehrzeiligen Text. Ohne das Einziehen wuerde nur
+    # der erste Abschnitt gekuerzt, und der Rumpf stuende in den folgenden
+    # Zeilen weiter im Protokoll - ohne Kennzeichnung, weil das Praefix nur
+    # einmal geschrieben wird.
+    zeile = " ".join(str(zeile).split())
+    if len(zeile) <= _BEFUND_HOECHSTLAENGE:
+        return zeile
+    return ("%s ... [gekuerzt, urspruenglich %d Zeichen]"
+            % (zeile[:_BEFUND_HOECHSTLAENGE], len(zeile)))
 
 
 def _bereich(bezug) -> str:
