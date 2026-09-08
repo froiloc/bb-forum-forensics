@@ -894,7 +894,8 @@ def test_AD35_seitenklasse_unterscheidet_beginner_von_viewtopic():
 # =============================================================================
 
 from management.maintenance.post_bereiche import (                # noqa: E402
-    KATALOG, LAGE_CONTENT, LAGE_FRAME, xpath_bereich, xpath_relativ)
+    KATALOG, LAGE_CONTENT, LAGE_FRAME, ZUSTANDSKLASSEN, xpath_bereiche,
+    xpath_relativ)
 
 #: Ein Abzug nach viewtopic0.php Z. 886-1212, mit allen Teilen, die fuer die
 #: Unterscheidung Inhalt/Rahmen einschlaegig sind.
@@ -1050,12 +1051,19 @@ def test_AD40_gegenprobe_im_inhalt_geblieben_ist_text_range(tmp_path):
     assert b.typ_posts == [700], b.typ_posts
 
 
-def test_AD41_systembeitrag_hat_keinen_inhaltsbereich(tmp_path):
+def test_AD41_systembeitrag_hat_einen_inhaltsbereich(tmp_path):
     """
-    Der Systembeitrag (posts.type = 4, viewtopic0.php Z. 330) traegt kein
-    'postmsg'. Festlegung Alex 07.09.2026: ganzer Post. Es gibt ZWEI
-    Bauformen; weil beide denselben Ausgang nehmen, muss nicht entschieden
-    werden, welche im Abzug steht.
+    BUILD 765 - VERHALTENSWECHSEL, KEINE REGRESSION.
+
+    Bis Build 764 galt der Systembeitrag (posts.type = 4, viewtopic0.php
+    Z. 330) als Beitrag OHNE Inhaltsbereich, und jede Markierung darin wurde
+    'whole post'. Diese Ausnahme ist fallengelassen (Alex, 08.09.2026,
+    Regelkatalog G10): der Systembeitrag HAT einen Inhaltsbereich, er ist nur
+    anders benannt - der Text steht in '<div id="contentType4">'
+    (include/type4.php, eingebunden ueber viewtopic.php Z. 618).
+
+    Damit gilt fuer jede Beitragsart dieselbe Regel, und 'text range' ist auch
+    im Systembeitrag zulaessig. Der Waechter haelt genau diesen Wechsel fest.
     """
     url = "/forum/viewtopic.php?id=9"
     weg = "./div[1]/div[2]/article[1]/div[1]/span[2]/div[1]/p[1]/text()[1]"
@@ -1063,8 +1071,43 @@ def test_AD41_systembeitrag_hat_keinen_inhaltsbereich(tmp_path):
                         seite=_seite_viewtopic([900], systempost=True),
                         url=url)
     assert b.bezug_start.post_id == 900, b.bezug_start
+    assert b.bezug_start.lage == LAGE_CONTENT, b.bezug_start
+    assert b.typ == "text range", (b.typ, b.typ_grund)
+
+
+def test_AD41b_systembeitrag_rahmen_ergibt_whole_post(tmp_path):
+    """
+    GEGENPROBE ZU AD41. Ohne sie waere der Waechter auch mit einer Fassung
+    gruen, die im Systembeitrag ALLES als Inhalt wertet. Der Kopfbalken mit
+    der Meldung liegt ausserhalb von 'contentType4' und bleibt Rahmen.
+    """
+    url = "/forum/viewtopic.php?id=9"
+    kopf = "./div[1]/div[2]/article[1]/div[1]/span[1]/text()[1]"
+    inhalt = "./div[1]/div[2]/article[1]/div[1]/span[2]/div[1]/p[1]/text()[1]"
+    b = _lage_von_beleg(tmp_path, kopf, inhalt,
+                        seite=_seite_viewtopic([900], systempost=True),
+                        url=url)
     assert b.bezug_start.lage == LAGE_FRAME, b.bezug_start
+    assert b.bezug_end.lage == LAGE_CONTENT, b.bezug_end
     assert b.typ == "whole post", (b.typ, b.typ_grund)
+
+
+def test_AD41c_beide_attributformen_des_systembeitrags(tmp_path):
+    """
+    Die vorhandenen 144 page BLOBs tragen 'id="contentType4"', kuenftige
+    Abzuege 'name="contentType4"' (Umstellung im Forum-Quelltext am
+    08.09.2026). BEIDE muessen treffen, sonst waere nach dem naechsten Abzug
+    eine Nachbesserung noetig - und bis dahin waere jede Markierung im
+    Systembeitrag stillschweigend 'whole post'.
+    """
+    from management.maintenance.post_bereiche import _SYSTEMPOST_INHALT
+    from lxml import html as LH
+    alt = LH.fromstring('<div id="contentType4">x</div>')
+    neu = LH.fromstring('<div name="contentType4">x</div>')
+    fremd = LH.fromstring('<div id="etwasAnderes">x</div>')
+    assert _SYSTEMPOST_INHALT.trifft(alt)
+    assert _SYSTEMPOST_INHALT.trifft(neu)
+    assert not _SYSTEMPOST_INHALT.trifft(fremd)
 
 
 def test_AD42_anfaengerforum_ohne_ppNNN(tmp_path):
@@ -1167,21 +1210,33 @@ def test_AD45_katalog_im_code_und_dokument_stimmen_ueberein():
     for b in KATALOG:
         assert b.schluessel in text, \
             "Seitenart '%s' fehlt im Dokument" % b.schluessel
-        if b.inhaltsanker is not None:
-            for klasse in b.inhaltsanker.hat:
+        for bereich in b.inhaltsbereiche:
+            for klasse in bereich.anker.hat:
                 assert klasse in text, \
                     "Inhaltsanker '%s' der Seitenart '%s' fehlt im Dokument" \
                     % (klasse, b.schluessel)
-            for klasse in b.inhaltsanker.hat_nicht:
+            for klasse in bereich.anker.hat_nicht:
                 assert klasse in text, \
                     "Ausschluss '%s' der Seitenart '%s' fehlt im Dokument" \
                     % (klasse, b.schluessel)
-    # Die Ausdruecke selbst gehoeren ebenfalls hinein - sie sind der Teil,
-    # der ausserhalb des Codes gebraucht wird.
-    assert xpath_bereich("viewtopic", "content") in text, \
-        "Der Inhaltsausdruck fuer 'viewtopic' fehlt im Dokument"
-    assert xpath_relativ("viewtopic")[1] in text, \
-        "Die relative Inhaltsprobe fuer 'viewtopic' fehlt im Dokument"
+            for name, wert in bereich.anker.has_attribute:
+                assert wert in text, \
+                    "Attributwert '%s' der Seitenart '%s' fehlt im Dokument" \
+                    % (wert, b.schluessel)
+    # BUILD 765: ALLE Ausdruecke, nicht nur der erste - seit der Systembeitrag
+    # ein eigener Inhaltsbereich ist, traegt 'viewtopic' zwei davon.
+    for art in ("content", "frame"):
+        for name, ausdruck in xpath_bereiche("viewtopic", art):
+            assert ausdruck in text, \
+                "Der %s-Ausdruck fuer '%s' fehlt im Dokument" % (art, name)
+    for name, pruefung in xpath_relativ("viewtopic")[1]:
+        assert pruefung in text, \
+            "Die relative Inhaltspruefung fuer '%s' fehlt im Dokument" % name
+    # Die Zustandsklassen gehoeren ebenfalls ins Dokument - sie sind eine
+    # Festlegung, keine Umsetzungsfrage.
+    for klasse in ZUSTANDSKLASSEN:
+        assert klasse in text, \
+            "Zustandsklasse '%s' fehlt im Dokument" % klasse
 
 
 def test_AD46_unbekannte_seitenart_wird_vorsichtig_behandelt(tmp_path):
@@ -1214,3 +1269,87 @@ def test_AD46_unbekannte_seitenart_wird_vorsichtig_behandelt(tmp_path):
     # Und unmittelbar an der Funktion, damit die Regel auch ohne den Umweg
     # ueber einen ganzen Lauf festgehalten ist.
     assert lage_von(object(), object(), "gibt_es_nicht") == LAGE_FRAME
+
+
+def test_AD47_die_zustandsklassen_sind_festgelegt():
+    """
+    DIE LUECKE, DIE EINE MUTATIONSGEGENPROBE ZU BUILD 765 AUFGEDECKT HAT.
+
+    AD45 prueft, dass JEDER Eintrag der Zustandsklassen im Dokument steht.
+    Bei LEERER Liste laeuft diese Schleife ins Nichts - die Mutation
+    'ZUSTANDSKLASSEN = ()' blieb deshalb gruen, obwohl damit jede
+    Zustandsklasse fuer den XPath-Generator zulaessig wuerde.
+
+    Die Liste ist eine FESTLEGUNG (Alex, 08.09.2026) und keine
+    Umsetzungsfrage. Sie wird deshalb hier festgehalten, nicht nur gegen das
+    Dokument gehalten. Sie darf waschsen - dann ist dieser Waechter
+    mitzuziehen, und genau das ist der Zweck.
+    """
+    from management.maintenance.post_bereiche import ZUSTANDSKLASSEN
+
+    assert ZUSTANDSKLASSEN, \
+        "Die Liste der Zustandsklassen darf nicht leer sein"
+    for erwartet in ("hidden", "censored", "uncensored", "shadow"):
+        assert erwartet in ZUSTANDSKLASSEN, \
+            "Zustandsklasse '%s' fehlt - Festlegung vom 08.09.2026" % erwartet
+
+
+def test_AD48_jede_seitenart_mit_beitraegen_hat_einen_inhaltsbereich():
+    """
+    Eine Seitenart, die Beitraege traegt, aber keinen Inhaltsbereich nennt,
+    wuerde JEDE Markierung darauf als Rahmen und damit als 'whole post'
+    werten - stillschweigend und ohne dass es auffiele.
+
+    Seit Build 765 gibt es kein Feld mehr, das 'kein Inhaltsbereich'
+    ausdrueckt: 'ohne_inhalt' ist ersatzlos entfallen, weil der Systembeitrag
+    sein einziger Verwender war und er sehr wohl einen Inhaltsbereich hat.
+    Eine leere Liste bei 'traegt_beitraege' ist deshalb ein Fehler.
+    """
+    for b in KATALOG:
+        if b.traegt_beitraege:
+            assert b.inhaltsbereiche, \
+                ("Seitenart '%s' traegt Beitraege, nennt aber keinen "
+                 "Inhaltsbereich" % b.schluessel)
+            assert b.container_marke, \
+                ("Seitenart '%s' traegt Beitraege, nennt aber kein "
+                 "Container-Element" % b.schluessel)
+        else:
+            assert not b.inhaltsbereiche, \
+                ("Seitenart '%s' traegt keine Beitraege, nennt aber einen "
+                 "Inhaltsbereich" % b.schluessel)
+
+
+def test_AD49_die_herkunftsliste_nennt_die_entscheidende_datei():
+    """
+    Der Kopf des Laufprotokolls gibt die MD5-Summen der Dateien aus, die das
+    ERGEBNIS tragen. Genau daran ist am 08.09.2026 aufgefallen, dass ein Lauf
+    noch mit Build 763 gefahren war.
+
+    In Build 764 ist die Entscheidungsregel nach post_bereiche.py gewandert -
+    und die Datei fehlte in der Liste. Eine Aenderung der Bereichsdefinition
+    waere am Protokollkopf nicht erkennbar gewesen (Grundregel 8).
+    """
+    import tools.anker_diagnose as cli
+
+    for pflicht in ("management/maintenance/post_bereiche.py",
+                    "management/maintenance/anker_postbezug.py",
+                    "management/maintenance/anker_diagnose.py"):
+        assert pflicht in cli._GETRAGEN_VON, \
+            "%s fehlt in der Herkunftsliste" % pflicht
+
+
+def test_AD50_der_regelkatalog_liegt_im_repository():
+    """
+    Der Regelkatalog selection_json 2.0 ist die Grundlage der Migration. Er
+    gehoert versioniert ins Repository und nicht in einen Anhang, sonst gilt
+    bei der naechsten Sitzung eine andere Fassung als die freigegebene.
+    """
+    pfad = (Path(__file__).resolve().parent.parent
+            / "documents" / "Regelkatalog_selection_json_2_0.md")
+    assert pfad.exists(), "Der Regelkatalog fehlt: %s" % pfad
+    text = pfad.read_text(encoding="utf-8")
+    assert "Version 1.0" in text, "Der Katalog nennt seine Version nicht"
+    # Die Festlegungen, an denen der Bauplan haengt.
+    for kern in ("whole_post", "text_range", "offsetEnd", "schema_version",
+                 "annotation_kind", "prev_id", "created_by"):
+        assert kern in text, "Festlegung zu '%s' fehlt im Katalog" % kern

@@ -1,6 +1,6 @@
 # Katalog der Post-Bereiche
 
-Stand: Build 764, 07.09.2026. Verfahren: AIW, Forum auf FluxBB/PunBB-Basis.
+Stand: Build 765, 08.09.2026. Verfahren: AIW, Forum auf FluxBB/PunBB-Basis.
 
 Dieses Dokument beschreibt, wie ein Beitrag im Seitenabzug aufgebaut ist und
 wo die Grenze zwischen **Inhalt** und **Rahmen** verlaeuft. Es ist als
@@ -64,34 +64,73 @@ liefert bei der doppelten Kennung einen Rest, der mit `p` beginnt;
 innere Kennung ohne eigene Regel heraus, ebenso `id="progressbar"`
 (`viewtopic0.php` Z. 989).
 
+## 4. Zustandsklassen
+
+Klassen, die einen **Zustand** ausdruecken statt einer Struktur, sind fuer den
+Rang `by_class` des XPath-Generators nicht zu verwenden:
+
+```
+hidden, censored, uncensored, shadow
+```
+
+Das Forum verwendet kein JavaScript, ein Wechsel von Klassennamen findet also
+nicht statt. Der Ausschluss erfolgt trotzdem - eine Zustandsklasse sagt nichts
+darueber aus, **wo** ein Element steht, und darum geht es beim Erzeugen eines
+Weges. Die Liste ist nicht abschliessend.
+
 ---
 
-## 4. Die Seitenarten
+## 5. Die Seitenarten
+
+**Eine Seitenart kann mehrere Inhaltsbereiche fuehren** (Build 765). Der erste
+passende gewinnt; deshalb stehen die spezielleren - mit eigener Bauform des
+containers - vor den allgemeinen.
 
 
 ### `viewtopic` — Themenansicht des Hauptforums
 
+Container-Element: `article` mit Kennung.
+
+```
+viewtopic0.php Z. 886  <article class="post" id="p<id>">
+viewtopic0.php Z. 1212 </article>
+```
+
+#### Inhaltsbereich: Systembeitrag
+
 | | |
 |---|---|
-| Container-Element | `article` mit Kennung |
-| Inhaltsanker | `div` mit Klasse `postmsg` |
-| ausgeschlossen | `postsignature` |
-| geforderter Vorfahre | `div` mit Klasse `postright` |
-| ohne Inhaltsbereich | `article.systempost` — alles darin ist Rahmen |
+| gilt fuer Bauform | `article` mit Klasse `systempost` |
+| Anker | `div` mit `id="contentType4"` oder `name="contentType4"` |
 
 **Belege im Forenquelltext**
 
 ```
-viewtopic0.php Z. 886  <article class="post" id="p<id>">
+viewtopic0.php Z. 330 Verzweigung bei posts.type == 4
+viewtopic.php Z. 618 include('include/type4.php')
+type4.php <div id="contentType4"> - INHALT
+kuenftige Abzuege: name="contentType4" statt id
+```
+
+#### Inhaltsbereich: regulaerer Beitrag
+
+| | |
+|---|---|
+| Anker | `div` mit Klasse `postmsg` |
+| ausgeschlossen | `postsignature` |
+| geforderter Vorfahre | `div` mit Klasse `postright` |
+
+**Belege im Forenquelltext**
+
+```
 viewtopic0.php Z. 1004 <div class="postright">
-viewtopic0.php Z. 1005 <h3> mit dem Themenbetreff - RAHMEN
+viewtopic0.php Z. 1005 <h3> Themenbetreff - RAHMEN
 viewtopic0.php Z. 1006 <div class="postmsg"> - INHALT
 viewtopic0.php Z. 1142 <div class="postwarn"> - RAHMEN
 viewtopic0.php Z. 1179 <div class="postsignature postmsg"> - RAHMEN
-viewtopic0.php Z. 1212 </article>
 ```
 
-Der Systembeitrag (posts.type = 4) hat keinen Inhaltsbereich; jede Markierung darin wird 'whole post'. Randnotiz: bei einem Teil dieser Beitraege traegt posts.message ein serialisiertes PHP-Array, das das Forum selbst nicht sinnvoll anzeigt. Fuer die Bereichsfrage ohne Belang.
+Der Systembeitrag ist seit Build 765 KEIN Sonderfall mehr: er hat einen Inhaltsbereich, er ist nur anders benannt. 'text range' ist dort zulaessig. Sein Anker ist ueber die Beitragsnummer verankert, weil 'contentType4' selbst NICHT eindeutig ist - sie wiederholt sich bei jedem Systembeitrag der Seite. Randnotiz: bei einem Teil dieser Beitraege traegt posts.message ein serialisiertes PHP-Array, das das Forum selbst nicht sinnvoll anzeigt; fuer die Bereichsfrage ohne Belang.
 
 **Ausdruecke**
 
@@ -101,13 +140,25 @@ Der Systembeitrag (posts.type = 4) hat keinen Inhaltsbereich; jede Markierung da
 //article[starts-with(@id,'p') and number(substring-after(@id,'p')) = number(substring-after(@id,'p'))]/descendant-or-self::node()
 ```
 
-`content`
+`content` — Systembeitrag
+
+```
+//article[starts-with(@id,'p') and number(substring-after(@id,'p')) = number(substring-after(@id,'p'))][contains(concat(' ',normalize-space(@class),' '),' systempost ')]//div[(@id='contentType4' or @name='contentType4')]/descendant-or-self::node()
+```
+
+`content` — regulaerer Beitrag
 
 ```
 //article[starts-with(@id,'p') and number(substring-after(@id,'p')) = number(substring-after(@id,'p'))]//div[contains(concat(' ',normalize-space(@class),' '),' postmsg ') and not(contains(concat(' ',normalize-space(@class),' '),' postsignature '))][ancestor::div[contains(concat(' ',normalize-space(@class),' '),' postright ')]]/descendant-or-self::node()
 ```
 
-`frame`
+`frame` — Systembeitrag
+
+```
+//article[starts-with(@id,'p') and number(substring-after(@id,'p')) = number(substring-after(@id,'p'))][contains(concat(' ',normalize-space(@class),' '),' systempost ')]/descendant-or-self::node()[not(ancestor-or-self::div[(@id='contentType4' or @name='contentType4')])]
+```
+
+`frame` — regulaerer Beitrag
 
 ```
 //article[starts-with(@id,'p') and number(substring-after(@id,'p')) = number(substring-after(@id,'p'))]/descendant-or-self::node()[not(ancestor-or-self::div[contains(concat(' ',normalize-space(@class),' '),' postmsg ') and not(contains(concat(' ',normalize-space(@class),' '),' postsignature '))][ancestor::div[contains(concat(' ',normalize-space(@class),' '),' postright ')]])]
@@ -117,21 +168,30 @@ Relative Fassung fuer `toolbar.js` — Kontextknoten ist der Endpunkt der Select
 
 ```
 ancestor-or-self::*[starts-with(@id,'p') and number(substring-after(@id,'p')) = number(substring-after(@id,'p'))][1]
+# Systembeitrag
+boolean(ancestor-or-self::div[(@id='contentType4' or @name='contentType4')])
+# regulaerer Beitrag
 boolean(ancestor-or-self::div[contains(concat(' ',normalize-space(@class),' '),' postmsg ') and not(contains(concat(' ',normalize-space(@class),' '),' postsignature '))][ancestor::div[contains(concat(' ',normalize-space(@class),' '),' postright ')]])
 ```
 
 ### `beginner_viewtopic` — Themenansicht des Anfaengerforums
 
+Container-Element: `div` mit Kennung.
+
+```
+viewtopic1.php Z. 576 <div class="box typeN" id="p<id>"> - EINFACHE Kennung, keine innere Kennung
+```
+
+#### Inhaltsbereich: regulaerer Beitrag
+
 | | |
 |---|---|
-| Container-Element | `div` mit Kennung |
-| Inhaltsanker | `div` mit Klasse `regular`, `contents` |
+| Anker | `div` mit Klasse `regular`, `contents` |
 | geforderter Vorfahre | `div` mit Klasse `topic-body` |
 
 **Belege im Forenquelltext**
 
 ```
-viewtopic1.php Z. 576 <div class="box typeN" id="p<id>"> - EINFACHE Kennung, kein ppNNN
 viewtopic1.php Z. 584 <div class="topic-body clearfix">
 viewtopic1.php Z. 585 <div class="topic-meta-data"> - RAHMEN
 viewtopic1.php Z. 604 <div class="regular contents"> - INHALT
@@ -146,13 +206,13 @@ viewtopic1.php Z. 629 <div class="postsignature postmsg"> - RAHMEN, liegt hier a
 //div[starts-with(@id,'p') and number(substring-after(@id,'p')) = number(substring-after(@id,'p'))]/descendant-or-self::node()
 ```
 
-`content`
+`content` — regulaerer Beitrag
 
 ```
 //div[starts-with(@id,'p') and number(substring-after(@id,'p')) = number(substring-after(@id,'p'))]//div[contains(concat(' ',normalize-space(@class),' '),' regular ') and contains(concat(' ',normalize-space(@class),' '),' contents ')][ancestor::div[contains(concat(' ',normalize-space(@class),' '),' topic-body ')]]/descendant-or-self::node()
 ```
 
-`frame`
+`frame` — regulaerer Beitrag
 
 ```
 //div[starts-with(@id,'p') and number(substring-after(@id,'p')) = number(substring-after(@id,'p'))]/descendant-or-self::node()[not(ancestor-or-self::div[contains(concat(' ',normalize-space(@class),' '),' regular ') and contains(concat(' ',normalize-space(@class),' '),' contents ')][ancestor::div[contains(concat(' ',normalize-space(@class),' '),' topic-body ')]])]
@@ -162,22 +222,29 @@ Relative Fassung fuer `toolbar.js` — Kontextknoten ist der Endpunkt der Select
 
 ```
 ancestor-or-self::*[starts-with(@id,'p') and number(substring-after(@id,'p')) = number(substring-after(@id,'p'))][1]
+# regulaerer Beitrag
 boolean(ancestor-or-self::div[contains(concat(' ',normalize-space(@class),' '),' regular ') and contains(concat(' ',normalize-space(@class),' '),' contents ')][ancestor::div[contains(concat(' ',normalize-space(@class),' '),' topic-body ')]])
 ```
 
 ### `pmsnew` — Private Nachrichten
 
+Container-Element: `div` mit Kennung.
+
+```
+pms_new/mdl/topic.php Z. 462 <div id="p<id>" class="blockpost">
+```
+
+#### Inhaltsbereich: regulaerer Beitrag
+
 | | |
 |---|---|
-| Container-Element | `div` mit Kennung |
-| Inhaltsanker | `div` mit Klasse `postmsg` |
+| Anker | `div` mit Klasse `postmsg` |
 | ausgeschlossen | `postsignature` |
 | geforderter Vorfahre | `div` mit Klasse `postright` |
 
 **Belege im Forenquelltext**
 
 ```
-pms_new/mdl/topic.php Z. 462 <div id="p<id>" class="blockpost">
 pms_new/mdl/topic.php Z. 466 <div class="postbody">
 pms_new/mdl/topic.php Z. 476 <div class="postright">
 pms_new/mdl/topic.php Z. 477 <div class="postmsg"> - INHALT
@@ -194,13 +261,13 @@ Gleicher Inhaltsanker wie 'viewtopic'. In Build 763 war fuer diese Seitenart gan
 //div[starts-with(@id,'p') and number(substring-after(@id,'p')) = number(substring-after(@id,'p'))]/descendant-or-self::node()
 ```
 
-`content`
+`content` — regulaerer Beitrag
 
 ```
 //div[starts-with(@id,'p') and number(substring-after(@id,'p')) = number(substring-after(@id,'p'))]//div[contains(concat(' ',normalize-space(@class),' '),' postmsg ') and not(contains(concat(' ',normalize-space(@class),' '),' postsignature '))][ancestor::div[contains(concat(' ',normalize-space(@class),' '),' postright ')]]/descendant-or-self::node()
 ```
 
-`frame`
+`frame` — regulaerer Beitrag
 
 ```
 //div[starts-with(@id,'p') and number(substring-after(@id,'p')) = number(substring-after(@id,'p'))]/descendant-or-self::node()[not(ancestor-or-self::div[contains(concat(' ',normalize-space(@class),' '),' postmsg ') and not(contains(concat(' ',normalize-space(@class),' '),' postsignature '))][ancestor::div[contains(concat(' ',normalize-space(@class),' '),' postright ')]])]
@@ -210,36 +277,37 @@ Relative Fassung fuer `toolbar.js` — Kontextknoten ist der Endpunkt der Select
 
 ```
 ancestor-or-self::*[starts-with(@id,'p') and number(substring-after(@id,'p')) = number(substring-after(@id,'p'))][1]
+# regulaerer Beitrag
 boolean(ancestor-or-self::div[contains(concat(' ',normalize-space(@class),' '),' postmsg ') and not(contains(concat(' ',normalize-space(@class),' '),' postsignature '))][ancestor::div[contains(concat(' ',normalize-space(@class),' '),' postright ')]])
 ```
 
 ### `search` — Suchergebnisse
 
-Traegt **keine Beitraege**. Im Lauf zu Build 763 bestaetigt: 2 Markierungen, 0 container.
+Traegt **keine Beitraege**. Im Lauf zu Build 764 bestaetigt: 2 Markierungen, 0 container.
 
 Das ist eine **Erwartung, kein Schalter**: die Erkennung laeuft auf diesen Seiten trotzdem, und ein Widerspruch zwischen Erwartung und Abzug wird gemeldet. Ein Ueberspringen anhand der Adresse waere ein stiller Sprung.
 
 ### `viewforum` — Themenliste eines Unterforums
 
-Traegt **keine Beitraege**. Im Lauf zu Build 763 bestaetigt: 1 Markierung, 0 container.
+Traegt **keine Beitraege**. Im Lauf zu Build 764 bestaetigt: 1 Markierung, 0 container.
 
 Das ist eine **Erwartung, kein Schalter**: die Erkennung laeuft auf diesen Seiten trotzdem, und ein Widerspruch zwischen Erwartung und Abzug wird gemeldet. Ein Ueberspringen anhand der Adresse waere ein stiller Sprung.
 
 ### `profile` — Benutzerprofil
 
-Traegt **keine Beitraege**. UNGEPRUEFT - im Bestand lagen keine Markierungen vor.
+Traegt **keine Beitraege**. Festgestellt durch Alex, 08.09.2026.
 
 Das ist eine **Erwartung, kein Schalter**: die Erkennung laeuft auf diesen Seiten trotzdem, und ein Widerspruch zwischen Erwartung und Abzug wird gemeldet. Ein Ueberspringen anhand der Adresse waere ein stiller Sprung.
 
 ### `notifications` — Benachrichtigungen
 
-Traegt **keine Beitraege**. UNGEPRUEFT - im Bestand lagen keine Markierungen vor.
+Traegt **keine Beitraege**. Festgestellt durch Alex, 08.09.2026.
 
 Das ist eine **Erwartung, kein Schalter**: die Erkennung laeuft auf diesen Seiten trotzdem, und ein Widerspruch zwischen Erwartung und Abzug wird gemeldet. Ein Ueberspringen anhand der Adresse waere ein stiller Sprung.
 
 ---
 
-## 5. Hinweise zur Fassung der Ausdruecke
+## 6. Hinweise zur Fassung der Ausdruecke
 
 **`descendant-or-self::node()` und nicht `//*`.** Der zweite waehlt nur
 Elemente *unterhalb* des Ankers. Der Beitragstext steht aber direkt im Anker;
@@ -252,48 +320,59 @@ Pfad beschreibt, *wo* der Anker steht. Gebraucht wird aber eine Aussage
 `not(ancestor-or-self::div[postright]//div[postmsg])` fragt, ob irgendein
 Vorfahre mit Klasse `postright` irgendwo ein `postmsg` enthaelt - und das ist
 fuer das `<h3>` mit dem Themenbetreff wahr, obwohl es nicht im Inhalt steht.
-Mit angehaengtem `ancestor::`-Praedikat ist der Anker ueber
-`ancestor-or-self::` pruefbar, und `content` und `frame` bleiben komplementaer.
 
 **Klassen werden tokenweise verglichen.** `contains(@class,'contents')` waere
-auch bei `class="table-of-contents"` wahr. Deshalb
-`contains(concat(' ',normalize-space(@class),' '),' contents ')`.
+auch bei `class="table-of-contents"` wahr.
 
 **Die Signatur traegt die Klasse des Inhaltsankers.** In `viewtopic` und
 `pmsnew` steht sie als Geschwister des Inhalts unter `postright` und muss
 ausdruecklich ausgeschlossen werden. In `beginner_viewtopic` liegt sie schon
-durch die Struktur ausserhalb des Ankers. Dasselbe Ergebnis auf zwei Wegen -
-das ist so belassen und nicht kuenstlich vereinheitlicht.
+durch die Struktur ausserhalb des Ankers.
 
-**Determinismus gilt je Baum, nicht zwischen den Baeumen.** Die Toolbar wertet
-gegen den lebenden DOM aus, die Diagnose gegen den gespeicherten Abzug.
-Gemessen im Lauf zu Build 763: 412 von 455 Ausdruecken loesen unter libxml2
-anders auf als unter html5lib. html5lib naehert den Browser an, deckungsgleich
-ist es nicht.
+**Attribute werden mit ODER verknuepft.** Der Systembeitrag traegt seinen
+Inhaltsbereich in den vorhandenen 144 page BLOBs als `id="contentType4"`, in
+kuenftigen Abzuegen als `name="contentType4"`. Beide Formen treffen, eine
+Nachbesserung nach dem naechsten Abzug entfaellt.
 
-## 6. Randnotiz zum Systembeitrag
+**Determinismus gilt je Baum, nicht zwischen den Baeumen.** Gemessen im Lauf
+zu Build 764: 412 von 455 Ausdruecken loesen unter libxml2 anders auf als
+unter html5lib. Seit Build 765 gilt html5lib als alleinige Grundlage
+(Regelkatalog G9).
 
-Der Systembeitrag haengt an `posts.type = 4`. `viewtopic0.php` Z. 330 leitet
-den Zweig ein und verlaesst die Beitragsausgabe danach mit `return`. Es gibt
-zwei Bauformen: die Tabelle in `viewtopic0.php` Z. 351 ff. und die
-aufklappbare Fassung aus `include/type4.php`, eingebunden ueber
-`viewtopic.php` Z. 618. Beide tragen `class="systempost"`, beide haben keinen
-Inhaltsbereich - die Entscheidung faellt fuer beide gleich aus.
+## 7. Zum Systembeitrag
 
-Bei einem Teil dieser Beitraege traegt `posts.message` ein serialisiertes
-PHP-Array, das das Forum selbst nicht sinnvoll anzeigt. Fuer die Bereichsfrage
-ohne Belang.
+Er haengt an `posts.type = 4`. `viewtopic0.php` Z. 330 leitet den Zweig ein
+und verlaesst die Beitragsausgabe danach mit `return`. Es gibt zwei Bauformen:
+die Tabelle in `viewtopic0.php` Z. 351 ff. und die aufklappbare aus
+`include/type4.php`, eingebunden ueber `viewtopic.php` Z. 618. Die zweite ist
+die im Bestand angetroffene.
 
-## 7. Was beim Uebertragen auf ein anderes Forum zu tun ist
+**Bis Build 764 galt er als Beitrag ohne Inhaltsbereich, jede Markierung darin
+wurde `whole post`. Seit Build 765 gilt das nicht mehr:** er hat einen
+Inhaltsbereich, er ist nur anders benannt. Damit gilt fuer jede Beitragsart
+dieselbe Regel, und `text range` ist auch dort zulaessig.
+
+Sein Anker ist ueber die Beitragsnummer verankert, weil `contentType4` selbst
+**nicht eindeutig** ist - sie wiederholt sich bei jedem Systembeitrag der
+Seite. Dasselbe gilt fuer `id="progressbar"` (`viewtopic0.php` Z. 989), das je
+Beitrag einmal geschrieben wird.
+
+Randnotiz: bei einem Teil dieser Beitraege traegt `posts.message` ein
+serialisiertes PHP-Array, das das Forum selbst nicht sinnvoll anzeigt. Fuer
+die Bereichsfrage ohne Belang.
+
+## 8. Was beim Uebertragen auf ein anderes Forum zu tun ist
 
 1. Kennungsmuster der post container bestimmen und den Kennungstest anpassen.
-2. Je Seitenart Container-Element und Inhaltsanker am Quelltext belegen -
+2. Je Seitenart Container-Element und Inhaltsbereiche am Quelltext belegen -
    nicht aus dem gerenderten HTML raten.
 3. Pruefen, ob ein Element die Klasse des Inhaltsankers ausserhalb des
    Inhalts traegt (hier: die Signatur). Solche Faelle ausdruecklich
    ausschliessen.
-4. Seitenarten ohne Beitraege ebenfalls aufnehmen - die Aussage 'hier stehen
+4. Pruefen, ob eine Seitenart mehrere Bauformen des containers kennt (hier:
+   der Systembeitrag). Jede Bauform bekommt einen eigenen Inhaltsbereich.
+5. Seitenarten ohne Beitraege ebenfalls aufnehmen - die Aussage 'hier stehen
    keine Beitraege' ist selbst eine Katalogaussage und wird gegen den Abzug
    geprueft.
-5. Sonderfaelle ohne Inhaltsbereich benennen (hier: der Systembeitrag).
+6. Zustandsklassen sammeln und in Abschnitt 4 eintragen.
 
