@@ -1,0 +1,118 @@
+{
+  "issues": [
+    {
+      "id": "f1a83b40-6c29-4d17-9e53-08b4c7d16295",
+      "type": "feature_request",
+      "title": "Anker-Generator: by_id vor by_class vor by_position",
+      "affected_version": "0.8.766",
+      "reporter": "Alex",
+      "reported_at": "2026-09-08T22:10:00+02:00",
+      "status": "review",
+      "priority": "high",
+      "severity": "major",
+      "description": "Die bestehenden XPath expressions verwenden ausschliesslich by_position - 'div[4]/article[31]/div[1]/p[1]/text()[1]'. Sie haengen damit an der sibling-Zaehlung und brechen, sobald der Tree anders rekonstruiert wird. Gemessen im Lauf zu Build 764: 44 von 455 loesen im gespeicherten Abzug nicht mehr auf.\n\nDer Generator baut jeden Schritt nach der Rangfolge by_id (nur bei dokumentweit eindeutiger id), by_class (tokenweise, index ueber die GEFILTERTE Menge neu gezaehlt), by_position. Nach jedem Schritt wird zurueckgeprueft; trifft er nicht genau den erwarteten Knoten, faellt er auf den naechstschwaecheren Rang.\n\nEr ist in die Diagnose eingehaengt und MISST nur - gespeichert wird kein einziger erzeugter Ausdruck. Damit steht vor der Migration fest, wie viele Anker sich auf einen stabilen Rang heben lassen.\n\nDie Zahl, auf die es ankommt, ist 'haengt NACH by_id noch an einer Zaehlung': alles vor einem by_id ist bedeutungslos, weil der Praefix ersetzt wird.",
+      "expected_behavior": "Je Endpunkt ein tragfaehiger Ausdruck mit Angabe des staerksten Rangs und ob danach noch gezaehlt wird.",
+      "environment": "aiw_webserver 0.8.766, Python 3.12.3 / 3.14, lxml, html5lib",
+      "tags": ["xpath", "generator", "anker", "build766"],
+      "updates": [
+        {
+          "timestamp": "2026-09-08T22:10:00+02:00",
+          "author": "Claude",
+          "note": "Waechter XG01 bis XG17. Sechs Mutationsgegenproben gefahren; drei blieben zunaechst gruen und haben zu XG13, XG15 und XG16 gefuehrt."
+        }
+      ]
+    },
+    {
+      "id": "02b94c51-7d3a-4e28-af64-19c5d8e27306",
+      "type": "bug",
+      "title": "tail-Textknoten wurden im falschen Element gesucht",
+      "affected_version": "0.8.766",
+      "reporter": "Claude",
+      "reported_at": "2026-09-08T22:15:00+02:00",
+      "status": "resolved",
+      "resolved_in_version": "0.8.766",
+      "priority": "high",
+      "severity": "major",
+      "description": "lxml unterscheidet zwei Arten von Textknoten. In '<p>ERSTER<br/>ZWEITER</p>' ist 'ERSTER' das 'p.text' und 'ZWEITER' das 'br.tail'. Fuer XPath sind beide Kinder von <p> - 'p/text()' liefert sie beide. getparent() liefert fuer den tail aber <br>, nicht <p>.\n\nDer Generator suchte deshalb im falschen Element und lieferte 'Textknoten im Elternelement nicht auffindbar'. Kein Randfall: jeder Text nach einem <br> oder <img> im Beitrag ist ein tail, und davon stehen im Forum viele.\n\nBehoben durch _traegerelement(): bei einem tail wird eine Ebene weiter aufgestiegen.",
+      "expected_behavior": "Ein tail-Textknoten wird im tragenden Element gefunden.",
+      "actual_behavior": "Der Generator lieferte keinen Ausdruck.",
+      "environment": "aiw_webserver 0.8.766",
+      "tags": ["lxml", "textknoten", "korrektur", "build766"],
+      "updates": [
+        {
+          "timestamp": "2026-09-08T22:15:00+02:00",
+          "author": "Claude",
+          "note": "Von Waechter XG10 gefunden, bevor der Code je gelaufen war. Mutationsgegenprobe 'tail-Aufstieg entfaellt' faellt dort rot."
+        }
+      ]
+    },
+    {
+      "id": "13ca5d62-8e4b-4f39-b075-2ad6e9f38417",
+      "type": "bug",
+      "title": "Nummer des Textknotens wurde durch Vergleich statt strukturell bestimmt",
+      "affected_version": "0.8.766",
+      "reporter": "Claude",
+      "reported_at": "2026-09-08T22:20:00+02:00",
+      "status": "resolved",
+      "resolved_in_version": "0.8.766",
+      "priority": "high",
+      "severity": "major",
+      "description": "Zwei naheliegende Wege sind beide untauglich:\n\n- ueber die Identitaet der lxml-Huellen: lxml legt fuer Textknoten bei JEDEM Zugriff neue Huellen an. 'kandidat is textknoten' ist praktisch immer falsch.\n- ueber den Inhalt: zwei Textknoten desselben Elements koennen denselben Wortlaut tragen. '<p>GLEICH<br/>GLEICH</p>' liefert dann fuer beide die Nummer 1, und der zweite bekaeme den Ausdruck des ersten.\n\nDie Reihenfolge ist dagegen festgelegt: zuerst '.text' des Elements, danach je Kind dessen '.tail'. Daraus wird die Nummer abgezaehlt, ohne irgendetwas zu vergleichen.",
+      "expected_behavior": "Zwei gleichlautende Textknoten desselben Elements bekommen verschiedene Ausdruecke.",
+      "actual_behavior": "Beide bekamen 'text()[1]'.",
+      "environment": "aiw_webserver 0.8.766",
+      "tags": ["lxml", "textknoten", "korrektur", "build766"],
+      "updates": [
+        {
+          "timestamp": "2026-09-08T22:20:00+02:00",
+          "author": "Claude",
+          "note": "Von XG10 gefunden, geprueft von XG15 ueber drei Formen: nur .text, nur .tail, und drei gleichlautende Knoten."
+        }
+      ]
+    },
+    {
+      "id": "24db6e73-9f5c-403a-c186-3be7fa049528",
+      "type": "improvement",
+      "title": "Mehrfach vergebene id-Werte werden ausgewiesen",
+      "affected_version": "0.8.766",
+      "reporter": "Claude",
+      "reported_at": "2026-09-08T22:25:00+02:00",
+      "status": "review",
+      "priority": "medium",
+      "severity": "minor",
+      "description": "Das Forum ist an dieser Stelle nicht normkonform: eine id muss dokumentweit eindeutig sein. viewtopic0.php Z. 989 schreibt '<div id=\"progressbar\">' innerhalb der postleft, also je Beitrag einmal - auf einer Seite mit 500 Beitraegen 500-mal. include/type4.php schreibt '<div id=\"contentType4\">' ohne Beitragsnummer.\n\nOhne Eindeutigkeitspruefung entstuende '//*[@id=\"progressbar\"]/...' - ein Ausdruck, der AUFLOEST und den ersten von 500 Kandidaten liefert. Das ist schlimmer als ein Bruch, weil es unbemerkt bleibt.\n\nDer Generator prueft die Eindeutigkeit und WEIST die betroffenen id-Werte aus, statt sie nur zu vermeiden. Damit klaert der naechste Lauf die offene Frage, ob include/poll.php und include/header0.php weitere enthalten - gemessen statt geschaetzt.",
+      "expected_behavior": "Je Seite und in der Zaehlung stehen die mehrfach vergebenen id-Werte.",
+      "environment": "aiw_webserver 0.8.766",
+      "tags": ["xpath", "html", "befund", "build766"],
+      "updates": [
+        {
+          "timestamp": "2026-09-08T22:25:00+02:00",
+          "author": "Claude",
+          "note": "XG02 und XG03. Die Umstellung im Forum-Quelltext von 'id' auf 'name' (08.09.2026) wirkt nicht rueckwirkend - die vorhandenen 144 page BLOBs wurden vorher gesichert."
+        }
+      ]
+    },
+    {
+      "id": "35ec7f84-a06d-414b-d297-4cf80ab15639",
+      "type": "improvement",
+      "title": "Ueberlange Befundzeilen im Protokoll werden sichtbar gekuerzt",
+      "affected_version": "0.8.766",
+      "reporter": "Claude",
+      "reported_at": "2026-09-08T22:30:00+02:00",
+      "status": "review",
+      "priority": "medium",
+      "severity": "minor",
+      "description": "'DTD_ID_REDEFINED' feuert im Forum auf JEDER Seite, weil 'id=\"progressbar\"' je Beitrag einmal geschrieben wird. lxml haengt an die Meldung die betroffene Quelltextzeile an - und das ist der gesamte anonymisierte Seitenrumpf. Auf einer Seite mit 500 Beitraegen entstuende eine Protokollzeile von hunderttausend Zeichen.\n\nEin Protokoll, das niemand lesen kann, ist keines. Der Block M6 und die Annaeherungsbefunde werden deshalb auf 200 Zeichen gekuerzt.\n\nGekuerzt wird die WIEDERGABE, nicht der Befund: Art und Ort der Meldung stehen am Anfang der Zeile und bleiben. Dass gekuerzt wurde, ist sichtbar, und die urspruengliche Laenge wird genannt - sonst saehe ein abgeschnittener Text wie ein vollstaendiger aus (Grundregel 1). Zeilenumbrueche werden vorher eingezogen, weil lxml die Meldung samt Quellzeile als EINEN mehrzeiligen Text liefert.",
+      "expected_behavior": "Keine Protokollzeile ueber wenigen hundert Zeichen; jede Kuerzung ist gekennzeichnet.",
+      "environment": "aiw_webserver 0.8.766",
+      "tags": ["protokoll", "grundregel1", "build766"],
+      "updates": [
+        {
+          "timestamp": "2026-09-08T22:30:00+02:00",
+          "author": "Claude",
+          "note": "XG17. Beim Einbau zuerst die falsche Ausgabestelle gekuerzt - die Zeilen stammen aus 's.quelltext', nicht aus 's.zeilen'. Am Protokoll der Rauchprobe nachgewiesen: keine Zeile ueber 300 Zeichen mehr."
+        }
+      ]
+    }
+  ]
+}

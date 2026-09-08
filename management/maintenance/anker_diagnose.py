@@ -99,6 +99,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 # BUILD 763 - der post-Bezug steht in einem eigenen Modul (Grundregel 10).
+from management.maintenance.xpath_generator import XPathGenerator
 from management.maintenance.anker_postbezug import (
     FALL_TEXT, GRUND_TEXTKNOTEN, KLASSE_SONSTIGE, POSTFREIE_KLASSEN,
     PostBezugMesser, endpunkt_verwertbar, fall_bestimmen, seitenklasse,
@@ -750,6 +751,13 @@ class Zeilenbefund:
     #: Gesetzt, wenn ein Endpunkt nur wegen des Textknotenindex gebrochen ist.
     textknoten_vermerk: str = ""
 
+    # ---- BUILD 766 -------------------------------------------------------
+    #: Der neu erzeugte, smarte Ausdruck je Endpunkt - und was er kostet.
+    #: Er wird NICHT gespeichert; dieser Lauf misst nur, was die Umstellung
+    #: braechte, BEVOR irgendetwas geschrieben wird.
+    erzeugt_start: Optional[Any] = None
+    erzeugt_end: Optional[Any] = None
+
     @property
     def anker_end_fehlt(self) -> bool:
         """Die Markierung hat keinen zweiten Ausdruck."""
@@ -815,6 +823,10 @@ class Zeilenbefund:
             "start_usable": self.start_verwertbar,
             "end_usable": self.end_verwertbar,
             "text_node_note": self.textknoten_vermerk,
+            "generated_start": (self.erzeugt_start.als_dict()
+                                if self.erzeugt_start is not None else None),
+            "generated_end": (self.erzeugt_end.als_dict()
+                              if self.erzeugt_end is not None else None),
         }
 
     @property
@@ -867,6 +879,10 @@ class Seitenbefund:
     #: Klartext, wenn Seitenklasse und Messung einander widersprechen.
     #: Erwartet wird nichts erzwungen - der Widerspruch wird nur benannt.
     widerspruch: str = ""
+    #: BUILD 766 - id-Werte, die auf dieser Seite MEHRFACH vergeben sind.
+    #: Ein Verstoss gegen die HTML-Spezifikation und ein Befund am Forum.
+    #: Sie werden ausgewiesen und nicht nur vermieden.
+    mehrfache_ids: Dict[str, int] = field(default_factory=dict)
 
 
 @dataclass
@@ -917,6 +933,33 @@ class Laufbefund:
         return aus
 
     # ------------------------------------------------------------------
+    def erzeugungszaehlung(self) -> Dict[str, Any]:
+        """
+        BUILD 766 - was die Umstellung auf smarte Ausdruecke braechte.
+
+        DIE ZAHL, AUF DIE ES ANKOMMT, ist 'depends_on_counting': wie viele
+        Ausdruecke nach dem letzten by_id noch an einer sibling-Zaehlung
+        haengen. Nur die sind weiterhin so zerbrechlich wie die bisherigen.
+        """
+        aus: Dict[str, Any] = {
+            "endpunkte": 0, "erzeugt": 0, "traegt": 0,
+            "by_id": 0, "by_class": 0, "by_position": 0,
+            "haengt_an_zaehlung": 0}
+        for b in self.belege:
+            for e in (b.erzeugt_start, b.erzeugt_end):
+                aus["endpunkte"] += 1
+                if e is None:
+                    continue
+                aus["erzeugt"] += 1
+                if e.traegt:
+                    aus["traegt"] += 1
+                if e.bester_rang:
+                    aus[e.bester_rang] += 1
+                if e.haengt_an_zaehlung:
+                    aus["haengt_an_zaehlung"] += 1
+        return aus
+
+    # ------------------------------------------------------------------
     def klassenzaehlung(self) -> Dict[str, int]:
         """
         BUILD 763 - die Verteilung der Seitenarten ueber die Belege.
@@ -960,6 +1003,7 @@ class Laufbefund:
             "cases": {str(k): v for k, v in sorted(
                 self.fallzaehlung().items())},
             "page_classes": self.klassenzaehlung(),
+            "generator": self.erzeugungszaehlung(),
             "pages": [
                 {
                     "page_url": s.page_url,
@@ -969,6 +1013,7 @@ class Laufbefund:
                     "nested_different_numbers": [
                         v.als_dict() for v in s.verschachtelungen],
                     "contradiction": s.widerspruch,
+                    "duplicate_ids": dict(s.mehrfache_ids),
                 }
                 for s in self.seiten
             ],
@@ -1007,6 +1052,8 @@ class AnkerDiagnose:
         #: Zwischenspeicher, weil er an der HTML5-Zerlegung haengt und nicht
         #: am Baum des AbsatzFinders.
         self._messer_je_seite: Dict[str, Any] = {}
+        #: BUILD 766 - der XPathGenerator je Adresse.
+        self._erzeuger_je_seite: Dict[str, Any] = {}
         self._con_blob: Optional[sqlite3.Connection] = None
         #: BUILD 763 - wie viele Markierungen mit Anker der Bestand haelt,
         #: und ob die Grenze davon etwas abgeschnitten hat.
@@ -1298,6 +1345,16 @@ class AnkerDiagnose:
             z.typ, z.typ_posts, z.typ_grund = typ_bestimmen(
                 z.bezug_start, z.bezug_end, z.spanne,
                 z.start_verwertbar, z.end_verwertbar)
+            # BUILD 766: den smarten Ausdruck fuer beide Endpunkte erzeugen
+            # und pruefen. Nur dort, wo der Endpunkt ueberhaupt einen
+            # aufloesenden Knoten hat - ohne Knoten gibt es nichts zu
+            # verankern.
+            erzeuger = self._erzeuger(z.page_url, sicht)
+            if erzeuger is not None:
+                if z.zweite.letzter_knoten is not None:
+                    z.erzeugt_start = erzeuger.fuer(z.zweite.letzter_knoten)
+                if z.zweite_end.letzter_knoten is not None:
+                    z.erzeugt_end = erzeuger.fuer(z.zweite_end.letzter_knoten)
             nur_text = [name for name, b in (("xpathStart", z.zweite),
                                              ("xpathEnd", z.zweite_end))
                         if not b.position_vorhanden
@@ -1310,6 +1367,26 @@ class AnkerDiagnose:
                            "fehlgeschlagen: %s", z.beleg_id, exc)
             z.hinweis = (z.hinweis + " " if z.hinweis else "") + (
                 "post-Bezug nicht messbar: %s" % exc)
+
+    # ------------------------------------------------------------------
+    def _erzeuger(self, url: str, sicht):
+        """
+        Der XPathGenerator zu einer Adresse - je Adresse EINMAL gebaut.
+
+        Er zaehlt die id-Haeufigkeiten des ganzen Baumes aus. Das je
+        Markierung zu wiederholen waere auf einer Seite mit 500 Beitraegen
+        vielfacher Aufwand fuer ein Ergebnis, das sich nicht aendert.
+        """
+        if url in self._erzeuger_je_seite:
+            return self._erzeuger_je_seite[url]
+        erzeuger = None
+        try:
+            erzeuger = XPathGenerator(sicht.wurzel)
+        except Exception as exc:              # pragma: no cover - defensiv
+            logger.warning("anker_diagnose: XPathGenerator zu %s nicht "
+                           "baubar: %s", url, exc)
+        self._erzeuger_je_seite[url] = erzeuger
+        return erzeuger
 
     # ------------------------------------------------------------------
     def _messer(self, url: str, sicht, seitenart: str = ""):
@@ -1463,6 +1540,13 @@ class AnkerDiagnose:
         # den Widerspruch zwischen Erwartung und Abzug per Konstruktion
         # unsichtbar - und das waere ein stiller Sprung (Grundregel 1).
         s.seitenklasse = seitenklasse(url)
+        # BUILD 766: Welche ids mehrfach vergeben sind, ist eine MESSUNG und
+        # keine Annahme. Offen war, ob ausser 'progressbar' und
+        # 'contentType4' weitere vorkommen - etwa aus include/poll.php oder
+        # include/header0.php.
+        erzeuger = self._erzeuger(url, html5_sicht)
+        if erzeuger is not None:
+            s.mehrfache_ids = dict(erzeuger.mehrfache_ids)
         messer = self._messer(url, html5_sicht, s.seitenklasse)
         if messer is not None:
             s.container_zahl = messer.container_zahl
