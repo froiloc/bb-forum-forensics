@@ -99,6 +99,11 @@ _GETRAGEN_VON = (
     "tools/anker_diagnose.py",
     "management/maintenance/anker_diagnose.py",
     "management/maintenance/anker_postbezug.py",
+    # BUILD 765: Die Bereichsdefinition traegt die ENTSCHEIDUNG. Fehlte sie
+    # hier, waere eine Aenderung daran am Kopf des Laufprotokolls nicht zu
+    # erkennen - zwei Laeufe mit verschiedenen Regeln saehen gleich aus.
+    # Genau davor soll diese Liste schuetzen (Grundregel 8).
+    "management/maintenance/post_bereiche.py",
     "report_render/html5_zerleger.py",
     "report_render/absatz_finder.py",
 )
