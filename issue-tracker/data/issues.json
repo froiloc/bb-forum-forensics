@@ -19548,6 +19548,170 @@
           "comment": "Importiert aus eintraege_claude_Build764.json"
         }
       ]
+    },
+    {
+      "id": "a2f70c14-8d35-4e92-b7a1-3c6e05d81f47",
+      "type": "improvement",
+      "title": "Systembeitrag ist kein Sonderfall mehr",
+      "affected_version": "0.8.765",
+      "reporter": "Alex",
+      "reported_at": "2026-09-08T20:10:00+02:00",
+      "status": "review",
+      "priority": "high",
+      "severity": "major",
+      "description": "Bis Build 764 galt der Systembeitrag (posts.type = 4) als Beitrag OHNE Inhaltsbereich; jede Markierung darin wurde 'whole post'. Diese Ausnahme ist fallengelassen (Regelkatalog selection_json 2.0, G10).\n\nBegruendung: Der Systembeitrag HAT einen Inhaltsbereich, er ist nur anders benannt. Der Text steht in '<div id=\"contentType4\">' (include/type4.php, eingebunden ueber viewtopic.php Z. 618). Die Ausnahme eroeffnete Komplexitaet ohne Gewinn.\n\nDamit gilt fuer jede Beitragsart dieselbe Regel: Inhaltsbereich gegen Rahmen entscheidet den Typ, und 'text range' ist auch im Systembeitrag zulaessig.\n\nSein Anker ist ueber die Beitragsnummer verankert, weil 'contentType4' selbst NICHT eindeutig ist - sie wiederholt sich bei jedem Systembeitrag der Seite, ebenso wie 'id=\"progressbar\"' (viewtopic0.php Z. 989) je Beitrag einmal geschrieben wird. Das Forum ist an diesen Stellen nicht normkonform.",
+      "expected_behavior": "Markierung im Inhalt eines Systembeitrags -> text range. Markierung im Kopfbalken -> whole post.",
+      "environment": "aiw_webserver 0.8.765, Python 3.12.3 / 3.14, lxml, html5lib",
+      "tags": [
+        "post_bereiche",
+        "systempost",
+        "katalog",
+        "build765"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-09-08T20:10:00+02:00",
+          "author": "Claude",
+          "note": "AD41 kehrt sich dadurch um: er hielt bisher fest, dass ein Knoten im Systembeitrag 'frame' ist und 'whole post' ergibt. Das ist der beabsichtigte Verhaltenswechsel, keine Regression. Neu dazu AD41b (Kopfbalken bleibt Rahmen) und AD41c (beide Attributformen). Im Bestand ist kein Systembeitrag annotiert, es aendert sich also KEIN Messwert - der Lauf zu Build 764 bleibt gueltig."
+        },
+        {
+          "timestamp": "2026-09-08T21:27:42.479257+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build765.json"
+        }
+      ]
+    },
+    {
+      "id": "b3081d25-9e46-4fa3-c8b2-4d7f16e92058",
+      "type": "refactoring",
+      "title": "Elementprobe mit has_attribute statt Klassenprobe",
+      "affected_version": "0.8.765",
+      "reporter": "Alex",
+      "reported_at": "2026-09-08T20:15:00+02:00",
+      "status": "review",
+      "priority": "medium",
+      "severity": "minor",
+      "description": "'Klassenprobe' konnte nur Tagname und Klassen pruefen. Der Inhaltsbereich des Systembeitrags haengt aber an einem Attribut, nicht an einer Klasse.\n\n'Elementprobe' ersetzt sie und traegt zusaetzlich 'has_attribute': Paare aus Name und Wert, mit ODER verknuepft. Die ODER-Semantik ist Absicht: die vorhandenen 144 page BLOBs tragen 'id=\"contentType4\"', kuenftige Abzuege 'name=\"contentType4\"' (Umstellung im Forum-Quelltext am 08.09.2026). Beide Formen treffen, eine Nachbesserung nach dem naechsten Abzug entfaellt.\n\nAusserdem traegt eine Seitenart jetzt MEHRERE Inhaltsbereiche. Bis 764 galt 'eine Seitenart, ein Anker'; der Systembeitrag steht aber auf derselben Seite wie der regulaere Beitrag. Die Auswahl erfolgt ueber die Bauform des containers, der erste passende gewinnt.\n\nDas Feld 'ohne_inhalt' ist ERSATZLOS entfernt - der Systembeitrag war sein einziger Verwender. Ein Feld, das nichts mehr traegt, laedt zu Fehlannahmen ein.",
+      "expected_behavior": "Eine Probe, die Tagname, Klassen und Attribute pruefen kann; mehrere Inhaltsbereiche je Seitenart.",
+      "environment": "aiw_webserver 0.8.765",
+      "tags": [
+        "post_bereiche",
+        "refactoring",
+        "build765"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-09-08T20:15:00+02:00",
+          "author": "Claude",
+          "note": "Gegenprobe an nachgebautem Markup: Aufstieg im Code, dokumentweiter XPath und relative XPath-Pruefung sind an ZWOELF Stellen einig, darunter beide Attributformen. Neuer Waechter AD48: eine Seitenart mit Beitraegen muss einen Inhaltsbereich nennen, eine ohne darf keinen nennen."
+        },
+        {
+          "timestamp": "2026-09-08T21:27:42.479284+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build765.json"
+        }
+      ]
+    },
+    {
+      "id": "c419e236-0f57-40b4-d9c3-5e8027fa3169",
+      "type": "bug",
+      "title": "Leere Zustandsklassen-Liste blieb unbemerkt",
+      "affected_version": "0.8.765",
+      "reporter": "Claude",
+      "reported_at": "2026-09-08T20:20:00+02:00",
+      "status": "resolved",
+      "resolved_in_version": "0.8.765",
+      "priority": "medium",
+      "severity": "minor",
+      "description": "Die Liste der Zustandsklassen (hidden, censored, uncensored, shadow) ist eine Festlegung (Alex, 08.09.2026): Klassen, die einen Zustand ausdruecken statt einer Struktur, sind fuer den Rang 'by_class' des XPath-Generators nicht zu verwenden.\n\nAD45 prueft, dass JEDER Eintrag der Liste im Katalogdokument steht. Bei LEERER Liste laeuft diese Schleife ins Nichts. Die Mutationsgegenprobe 'ZUSTANDSKLASSEN = ()' blieb deshalb gruen, obwohl damit jede Zustandsklasse zulaessig wuerde.\n\nDas ist dieselbe Art Luecke, die in Build 764 zu AD46 gefuehrt hat: ein Waechter, der ueber eine Menge iteriert, prueft die leere Menge nicht.",
+      "expected_behavior": "Die Liste ist nicht leer und enthaelt die festgelegten Eintraege.",
+      "environment": "aiw_webserver 0.8.765",
+      "tags": [
+        "waechter",
+        "mutationsgegenprobe",
+        "build765"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-09-08T20:20:00+02:00",
+          "author": "Claude",
+          "note": "AD47 ergaenzt. Mit ihm faellt die Mutation. Waechst die Liste, ist AD47 mitzuziehen - genau das ist der Zweck."
+        },
+        {
+          "timestamp": "2026-09-08T21:27:42.479293+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build765.json"
+        }
+      ]
+    },
+    {
+      "id": "d520f347-1068-41c5-ead4-6f9138ab427a",
+      "type": "bug",
+      "title": "Herkunftsliste nannte die entscheidende Datei nicht",
+      "affected_version": "0.8.764",
+      "reporter": "Claude",
+      "reported_at": "2026-09-08T20:25:00+02:00",
+      "status": "resolved",
+      "resolved_in_version": "0.8.765",
+      "priority": "medium",
+      "severity": "minor",
+      "description": "'_GETRAGEN_VON' in tools/anker_diagnose.py fuehrt die Dateien, deren MD5-Summen im Kopf des Laufprotokolls ausgegeben werden. Genau daran ist am 08.09.2026 aufgefallen, dass ein Lauf noch mit Build 763 gefahren war.\n\nIn Build 764 ist die Entscheidungsregel nach management/maintenance/post_bereiche.py gewandert - und ich habe versaeumt, die Datei in die Liste aufzunehmen. Folge: Eine Aenderung der Bereichsdefinition waere am Protokollkopf nicht erkennbar gewesen; zwei Laeufe mit verschiedenen Regeln haetten im Kopf gleich ausgesehen. Genau davor soll die Liste schuetzen (Grundregel 8).\n\nBehoben. Der Name '_GETRAGEN_VON' ist eine deutsche Wortschoepfung und soll bei Gelegenheit in '_SOURCE_FILES' umbenannt werden - als beauftragtes Refactoring, nicht nebenbei.",
+      "expected_behavior": "Jede Datei, die das Ergebnis eines Laufs traegt, steht in der Liste.",
+      "environment": "aiw_webserver 0.8.765",
+      "tags": [
+        "grundregel8",
+        "protokoll",
+        "build765"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-09-08T20:25:00+02:00",
+          "author": "Claude",
+          "note": "AD49 haelt die drei Pflichteintraege fest."
+        },
+        {
+          "timestamp": "2026-09-08T21:27:42.479299+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build765.json"
+        }
+      ]
+    },
+    {
+      "id": "e631048f-2179-42d6-fbe5-70a249bc538b",
+      "type": "documentation",
+      "title": "Regelkatalog selection_json 2.0 im Repository abgelegt",
+      "affected_version": "0.8.765",
+      "reporter": "Alex",
+      "reported_at": "2026-09-08T20:30:00+02:00",
+      "status": "review",
+      "priority": "high",
+      "severity": "major",
+      "description": "Der Regelkatalog selection_json 2.0 ist am 08.09.2026 in Version 1.0 freigegeben worden. Er haelt die Festlegungen fuer die Datenmigration fest: neuer Datensatz statt Aenderung, Vorgaenger ueber deleted_at, kein eingebettetes altes selection_json, ein Datensatz je Beitrag, atomare Auslieferung von Migration und Auswertung, html5lib als alleinige Grundlage, Schema-Version 2.0, englische keys, keine Sonderregeln je Beitragsart.\n\nEr liegt jetzt versioniert unter documents/Regelkatalog_selection_json_2_0.md. Ohne das gaelte bei der naechsten Sitzung moeglicherweise eine andere Fassung als die freigegebene.\n\nDas Katalogdokument der Post-Bereiche wurde aus dem Code neu erzeugt und traegt jetzt die mehreren Inhaltsbereiche je Seitenart, die Zustandsklassen und beide Attributformen des Systembeitrags.",
+      "expected_behavior": "Die freigegebene Fassung ist versioniert und wird gegen den Code gehalten.",
+      "environment": "aiw_webserver 0.8.765",
+      "tags": [
+        "dokumentation",
+        "regelkatalog",
+        "migration",
+        "build765"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-09-08T20:30:00+02:00",
+          "author": "Claude",
+          "note": "AD50 prueft Vorhandensein, Version und die Festlegungen, an denen der Bauplan haengt. AD45 haelt das Bereichs-Katalogdokument gegen den Code, jetzt auch fuer die Attributwerte und die Zustandsklassen."
+        },
+        {
+          "timestamp": "2026-09-08T21:27:42.479304+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build765.json"
+        }
+      ]
     }
   ]
 }
