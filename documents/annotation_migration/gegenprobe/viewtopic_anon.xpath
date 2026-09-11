@@ -1,0 +1,7 @@
+//donate//h2[@class='topic-title']//a
+//span[@class='username']
+//donate//div[@id='page-body']//div[contains(@class, 'blockpost')]//a[starts-with(@href, 'user.php')]
+//donate//div[@id='page-body']//article//h2/span[2]/a
+//donate//div[@id='page-body']//div[@class='postright']/h3
+//donate//div[@id='page-body']//div[@class='postmsg']
+//donate//div[@id='page-body']//div[@class='postsignature postmsg']

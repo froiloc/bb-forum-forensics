@@ -493,3 +493,150 @@ def test_WA23_beitraege_werden_gezaehlt_nicht_abschnitte():
     assert d["split_post_count"] == 1, d
     assert d["split_sections"] >= 2, d
     assert "ueber 1 Beitrag verteilt" in b.hinweis, b.hinweis
+
+
+def test_WA24_die_ankerknoten_werden_am_befund_richtig_abgelesen():
+    """
+    DER FEHLER AUS DER ERSTEN FASSUNG VON BUILD 769.
+
+    '_ankerknoten()' las den Befund von '_anker_pruefen()' ueber ein Feld
+    'bricht_bei' aus. Das Feld heisst 'position_vorhanden'; 'bricht_bei' gibt
+    es nicht. Der AttributeError lief in ein 'except Exception' und lieferte
+    stillschweigend None.
+
+    FOLGE: Die Kandidatenliste war in JEDEM Fall leer, die Aufspaltung fand
+    nie statt, und die drei Faelle aus Build 768 fielen ersatzlos weg - ohne
+    dass eine Meldung darauf hinwies. Der Lauf sah gesund aus.
+
+    Ein 'except Exception', das einen Programmierfehler verschluckt, ist
+    schlimmer als kein Fehlerabfang. Dieser Waechter haelt die Felder fest,
+    auf die zugegriffen wird.
+    """
+    from management.maintenance.anker_diagnose import Ankerbefund
+    import tools.wortlaut_abgleich as cli
+    import inspect
+
+    felder = set(Ankerbefund.__dataclass_fields__)
+    assert "position_vorhanden" in felder, felder
+    assert "letzter_knoten" in felder, felder
+    assert "bricht_bei" not in felder, \
+        "Das Feld gibt es nicht - wer es abfragt, bekommt einen AttributeError"
+
+    quelle = inspect.getsource(cli._ankerknoten)
+    for name in ("position_vorhanden", "letzter_knoten"):
+        assert name in quelle, "_ankerknoten liest '%s' nicht" % name
+    # Auf die ANWEISUNG pruefen, nicht auf die Zeichenkette: der
+    # Kopfkommentar dieser Funktion erwaehnt 'except Exception' und wuerde
+    # eine reine Textsuche auslosen.
+    anweisungen = [z.strip() for z in quelle.split("\n")
+                   if z.strip().startswith("except ")]
+    assert anweisungen, "_ankerknoten faengt gar nichts ab"
+    assert not any(z.startswith("except Exception") for z in anweisungen), \
+        ("_ankerknoten darf keinen pauschalen Fehlerabfang haben - er hat "
+         "genau diesen Fehler verdeckt: %s" % anweisungen)
+
+
+# =============================================================================
+# BUILD 770 — Zusammenhang und Endpunkte
+# =============================================================================
+
+def test_WA25_die_zusammenhangsregel_verwirft_zufallstreffer():
+    """
+    EINE MARKIERUNG IST EIN ZUSAMMENHAENGENDER BEREICH IM DOKUMENT.
+
+    Daraus folgt zwingend: Liegen zwei Bloecke in demselben Beitrag, liegt
+    auch alles dazwischen darin. Ein Beitrag kann in der Zuordnung also nur
+    EINEN zusammenhaengenden Lauf haben. Steht er in mehreren, ist mindestens
+    einer falsch.
+
+    Gemessen an 583231/6: Der Block '1' - die Seitenzahl aus dem Kopfbereich -
+    steht auch im Beitrag und wurde dort gefunden. Die Bloecke davor und
+    danach nicht. Waere er wirklich im Beitrag, muessten sie es auch sein.
+
+    DAS IST KEINE HEURISTIK ueber Blocklaengen (die hat Alex am 08.09.2026
+    ausdruecklich verworfen), sondern eine Folge der Zusammenhangseigenschaft.
+    """
+    doc = _mehrere_beitraege(3)
+    a = WortlautAbgleich(doc, "viewtopic")
+    # 'Autor1' steht im Beitrag 901 - und weiter hinten steht derselbe
+    # Beitrag noch einmal, laenger. Dazwischen Text, der NICHT im Beitrag
+    # steht. Waere der erste Treffer echt, muesste der Text dazwischen es
+    # auch sein.
+    wortlaut = ("fremd eins\nAutor1\nfremd zwei\n"
+                "Betreff 1\nText von Beitrag 1.")
+    start, ende = _anker(doc, "Themenbetreff", "Text von Beitrag 1.")
+    b = a.pruefe(wortlaut, None, start, ende)
+    laeufe = [(s.post_id, s.block_von, s.block_bis) for s in b.teilstuecke]
+    # 901 darf nur EINEN Lauf haben, und zwar den laengeren.
+    eigene = [l for l in laeufe if l[0] == 901]
+    assert len(eigene) == 1, laeufe
+    assert eigene[0][1] == 3, ("der kuerzere Lauf haette fallen muessen", laeufe)
+    assert b.als_dict()["split_post_count"] == 1, b.als_dict()
+
+
+def test_WA26_der_laengste_lauf_bleibt():
+    """
+    GEGENPROBE zu WA25: Verworfen wird der KUERZERE Lauf, nicht der laengere.
+    Ohne diese Probe waere WA25 auch mit einer Fassung gruen, die einfach
+    jeden zweiten Lauf verwirft.
+    """
+    doc = _mehrere_beitraege(3)
+    a = WortlautAbgleich(doc, "viewtopic")
+    # Der lange Lauf steht HINTEN.
+    wortlaut = ("Autor1\nfremder text hier\n"
+                "Betreff 1\nText von Beitrag 1.")
+    start, ende = _anker(doc, "Themenbetreff", "Text von Beitrag 1.")
+    b = a.pruefe(wortlaut, None, start, ende)
+    treffer = [s for s in b.teilstuecke if s.post_id == 901]
+    assert len(treffer) == 1, [s.als_dict() for s in b.teilstuecke]
+    assert treffer[0].zeichen > 20, treffer[0].als_dict()
+
+
+def test_WA27_die_endpunkte_kommen_aus_den_ankern():
+    """
+    Die Endpunkte sind BEKANNT - sie werden deshalb nicht gesucht. Der erste
+    Block gehoert dorthin, wo der Startanker hinzeigt, der letzte dorthin, wo
+    der Endanker hinzeigt.
+
+    '_beitrag_von' unterscheidet dabei None von _UNBEKANNT: None ist die
+    AUSSAGE 'ausserhalb jedes Beitrags', _UNBEKANNT heisst 'nicht gemessen'.
+    Wer beides verwechselt, macht aus einer fehlenden Angabe eine Behauptung.
+    """
+    from management.maintenance.wortlaut_abgleich import _UNBEKANNT
+
+    doc = _mehrere_beitraege(3)
+    a = WortlautAbgleich(doc, "viewtopic")
+    ausserhalb, im_beitrag = _anker(doc, "Themenbetreff", "Text von Beitrag 1.")
+    assert a._beitrag_von(ausserhalb) is None, "der Themenbetreff ist ausserhalb"
+    assert a._beitrag_von(im_beitrag) == 901, a._beitrag_von(im_beitrag)
+    assert a._beitrag_von(None) is _UNBEKANNT, "fehlend ist nicht 'ausserhalb'"
+
+
+def test_WA28_die_endpunktverankerung_schlaegt_den_textfund():
+    """
+    DIE LUECKE, DIE EINE MUTATIONSGEGENPROBE ZU BUILD 770 AUFGEDECKT HAT.
+
+    WA27 prueft '_beitrag_von' als Funktion. Ob ihr Ergebnis die Zuordnung
+    auch WIRKLICH ueberschreibt, blieb ungeprueft - die Mutation 'Endpunkte
+    werden nicht verankert' lief gruen durch.
+
+    Hier der Fall, in dem es den Unterschied macht: Der erste Block traegt
+    Text, der in einem Beitrag steht ('Autor1'), aber der STARTANKER liegt
+    ausserhalb jedes Beitrags. Die Textsuche ordnet ihn dem Beitrag zu, die
+    Position sagt 'ausserhalb'.
+
+    POSITION SCHLAEGT TEXT, WO DIE POSITION BEKANNT IST.
+    """
+    doc = _mehrere_beitraege(3)
+    a = WortlautAbgleich(doc, "viewtopic")
+    wortlaut = "Autor1\nText von Beitrag 2."
+    start, ende = _anker(doc, "Themenbetreff", "Text von Beitrag 2.")
+    assert a._beitrag_von(start) is None, "der Startanker liegt ausserhalb"
+
+    b = a.pruefe(wortlaut, None, start, ende)
+    erster = b.teilstuecke[0]
+    assert erster.block_von == 0, [s.als_dict() for s in b.teilstuecke]
+    assert erster.post_id is None, \
+        ("Der erste Block gehoert dorthin, wo der Startanker hinzeigt: %s"
+         % [s.als_dict() for s in b.teilstuecke])
+    assert b.als_dict()["split_post_count"] == 1, b.als_dict()

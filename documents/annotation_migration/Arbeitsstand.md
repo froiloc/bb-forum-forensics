@@ -40,7 +40,7 @@ naechsten Abschnitt. Umsortieren kann eine Maschine, Kontext erfinden nicht.
 
 ## Aktueller Stand
 
-**Build 768.** Die Migration der Annotationen von `selection_json` 1.0.0 auf
+**Build 770.** Die Migration der Annotationen von `selection_json` 1.0.0 auf
 2.0.0 ist **vorbereitet, aber nicht begonnen** — es ist noch kein Datensatz
 migriert.
 
@@ -198,3 +198,28 @@ Forensoftware, die `header0.php` Z. 435 ff. zur Laufzeit ersetzt.
 1, 78 auf Stufe 2, 32 auf Stufe 3, 6 nicht gefunden; 24 blockweise, 3
 aufgespalten. Die 78 Stufe-2-Faelle liegen ausschliesslich auf `pmsnew` und
 dort auf neun Seiten; auf sechs davon stehen gleichzeitig Stufe-1-Faelle.
+
+### Build 770 — Zusammenhang und Endpunkte
+
+**Entscheidungen (Alex, 08.09.2026).** Das Gegenprobe-Verfahren: anonymisierte
+Seite im Browser ueber DevTools einsetzen, Markierung neu erzeugen,
+`selection_json` entnehmen. Nur so passen Seite und Wortlaut zueinander.
+
+**Revidiert.** Die Ankuendigung, die Verankerung des ersten Blocks wuerde die
+Fehlzuordnung der Seitenzahl beheben, war falsch — der betroffene Block war
+nicht der erste. Die Loesung ist die Zusammenhangsregel.
+
+**Erkenntnisse ueber vorhandenen Code.** `Ankerbefund` traegt das Feld
+`position_vorhanden`; ein Zugriff auf `bricht_bei` erzeugt einen
+AttributeError, der in Build 769 von einem pauschalen `except Exception`
+verschluckt wurde. Der Lauf sah gesund aus, obwohl die Aufspaltung nie
+stattfand.
+
+**Was neu moeglich ist.** Eine Markierung ist ein zusammenhaengender Bereich;
+daraus folgt, dass ein Beitrag in der Zuordnung nur einen Lauf haben kann.
+Zusammen mit der Verankerung der Endpunkte loest `583231/6` sauber auf: 71
+Zeichen Praefix, Beitrag 1550483 vollstaendig, Beitrag 1550508 teilweise.
+
+**Messwerte.** Build 769: 449 benannte Beitraege aus dem Anker, 340/78/32 auf
+den drei Stufen, 6 nicht gefunden, 24 blockweise — aber 0 aufgespalten, was
+den Feldnamen-Fehler sichtbar gemacht hat.

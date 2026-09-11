@@ -3,7 +3,7 @@
     "zweck": "Was zu jedem Datenbankfeld und jedem JSON-Key GEMESSEN wurde - nicht was vermutet wird. Fehlannahmen ueber Spalteninhalte haben in dieser Arbeit wiederholt Tage gekostet: eine Spalte, die gefuellt schien und NULL war; ein Exportwerkzeug, das NULL als leere Zeichenkette zeigt; ein meta-Zweig, der laengst existierte und neu entworfen wurde. Dieser Katalog verhindert die Wiederholung.",
     "adressat": "Ein unabhaengiger kuenftiger KI-Chat OHNE Kenntnis der bisherigen Sitzungen. Er muss aus dieser Datei allein entscheiden koennen, welchen Wert ein Feld traegt, wie oft, und welche Annahme darueber bereits widerlegt ist - ohne Rueckfrage beim Auftraggeber.",
     "pflege": "Mit JEDEM ausgelieferten Build fortzuschreiben. Jeder Befund traegt Build, Zeitstempel, Quelle und - wo moeglich - ein woertliches Zitat. Ein Befund ohne Zitat ist eine Behauptung. Beispielwerte tragen ihre Haeufigkeit und die Grundgesamtheit, sonst ist 'kommt vor' nicht von 'ist der Regelfall' zu unterscheiden. Waechter MK01 haelt die Datei an build.json.",
-    "stand_build": 768
+    "stand_build": 770
   },
   "eintraege": [
     {
@@ -349,6 +349,64 @@
           "gemessen_in_build": 766,
           "anmerkung": "auf 139 von 144 Seiten doppelt"
         }
+      ]
+    },
+    {
+      "ort": "selection_json",
+      "feld": "xpathStart / xpathEnd",
+      "art": "json_key",
+      "bedeutung": "Die Ankerpunkte der Markierung, als XPath-Ausdruck.",
+      "erkenntnisse": [
+        {
+          "befund": "DIE BEZUGSEBENE IST 'div#forensic-viewport', NICHT die Dokumentwurzel. Der AIW-Webserver umschliesst den Originalrumpf damit, und toolbar.js bildet die Ausdruecke relativ dazu. Gegen die Wurzel ausgewertet brechen sie beim ERSTEN Schritt.",
+          "build": 770,
+          "ts": "2026-09-09",
+          "quelle": "toolbar.js, _selectionVon(); Gegenprobe an der vom AIW-Webserver ausgelieferten Seite zu 583231/6",
+          "zitat": "if (!viewport.contains(range.startContainer) || !viewport.contains(range.endContainer)) return null;"
+        },
+        {
+          "befund": "Dass anker_diagnose trotzdem richtig misst, liegt daran, dass es gegen den page BLOB auswertet - dessen Wurzel entspricht der Viewport. Die Uebereinstimmung ist kein Zufall, war aber bis Build 770 ungeprueft.",
+          "build": 770,
+          "ts": "2026-09-09",
+          "quelle": "management/maintenance/anker_diagnose.py, _sichten()",
+          "zitat": "body = BlobHandler._extract_body(roh)"
+        },
+        {
+          "befund": "Die Ausdruecke sind IMMER gegen die Viewport gebildet; andere Verankerungen gibt es nicht.",
+          "build": 770,
+          "ts": "2026-09-09",
+          "quelle": "Alex, 08.09.2026",
+          "zitat": "Immer gegen den Viewport. Andere Verankerungen gibt es nicht."
+        }
+      ],
+      "fallstricke": [
+        "Aus einem Bruch beim ersten Schritt wurde zweimal falsch geschlossen: erst 'der Anker bricht', dann 'der Abzug ist unvollstaendig'. Beides war falsch - es war die falsche Wurzel.",
+        "'<donate>', '<my_leftbar>' und '<my_warning>' sind Platzhalter der Forensoftware (header0.php Z. 435 ff.). Stehen sie in einem Abzug unaufgeloest, fehlen Elemente, die im Browser da waren."
+      ]
+    },
+    {
+      "ort": "page BLOB",
+      "feld": "Zusammenhang einer Markierung",
+      "art": "json_key",
+      "bedeutung": "Eine Markierung ist ein zusammenhaengender Bereich im Dokument.",
+      "erkenntnisse": [
+        {
+          "befund": "Daraus folgt zwingend: Liegen zwei Bloecke des Wortlauts in demselben Beitrag, liegt auch alles dazwischen darin. Ein Beitrag kann in der Zuordnung nur EINEN zusammenhaengenden Lauf haben. Steht er in mehreren, ist mindestens einer falsch.",
+          "build": 770,
+          "ts": "2026-09-09",
+          "quelle": "Gegenprobe an 583231/6 gegen die anonymisierte Seite",
+          "zitat": "Bloecke 0-4 ausserhalb 71 Zeichen; 5-105 post 1550483; 106-113 post 1550508"
+        },
+        {
+          "befund": "Die Endpunkte sind BEKANNT und werden nicht gesucht: der erste Block gehoert dorthin, wo der Startanker hinzeigt, der letzte dorthin, wo der Endanker hinzeigt. Position schlaegt Text, wo die Position bekannt ist.",
+          "build": 770,
+          "ts": "2026-09-09",
+          "quelle": "management/maintenance/wortlaut_abgleich.py, aufspalten()",
+          "zitat": "Der erste Block ist die Seitenzahl '1' aus dem Kopfbereich. Sie steht auch im Beitrag und wird dort gefunden."
+        }
+      ],
+      "fallstricke": [
+        "Eine Mindestlaenge je Block waere der falsche Weg: sie daempft die Drift, beseitigt sie nicht, und sie waere eine statistische Grenze fuer ein strukturell bestimmtes Problem (Alex, 08.09.2026)."
       ]
     }
   ]

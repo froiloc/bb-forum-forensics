@@ -33,6 +33,7 @@
 # =============================================================================
 import argparse
 import json
+import logging
 import sqlite3
 import sys
 from pathlib import Path
@@ -57,6 +58,8 @@ from management.maintenance.wortlaut_abgleich import (            # noqa: E402
 from management.maintenance.wortlaut_norm import (                # noqa: E402
     VERSTECKTE_KLASSEN)
 
+
+logger = logging.getLogger(__name__)
 
 #: Die Dateien, die das ERGEBNIS dieses Laufs tragen.
 _GETRAGEN_VON = (
@@ -198,12 +201,26 @@ def _ankerknoten(d, sichten, sel):
         if not ausdruck:
             aus.append(None)
             continue
+        # DAS FELD HEISST 'position_vorhanden', NICHT 'bricht_bei'. In der
+        # ersten Fassung dieses Builds stand hier ein Name, den der Befund
+        # nicht traegt; der AttributeError lief in das 'except' und lieferte
+        # stillschweigend None. Folge: die Kandidatenliste war in JEDEM Fall
+        # leer, und die Aufspaltung fand nie statt - 3 Faelle aus Build 768
+        # fielen ersatzlos weg, ohne dass eine Meldung darauf hinwies.
+        #
+        # Ein 'except Exception', das einen Programmierfehler verschluckt,
+        # ist schlimmer als kein Fehlerabfang. Es faengt deshalb nur noch
+        # das, was beim Auswerten eines Ausdrucks wirklich schiefgehen kann,
+        # und nennt es im Protokoll.
         try:
             befund = d._anker_pruefen(sichten[2], ausdruck)
-            aus.append(befund.letzter_knoten
-                       if befund.bricht_bei == "" else None)
-        except Exception:                          # pragma: no cover
+        except (ValueError, TypeError) as exc:
+            logger.warning("wortlaut_abgleich: Ausdruck nicht auswertbar "
+                           "(%s): %s", feld, exc)
             aus.append(None)
+            continue
+        aus.append(befund.letzter_knoten if befund.position_vorhanden
+                   else None)
     return aus[0], aus[1]
 
 
