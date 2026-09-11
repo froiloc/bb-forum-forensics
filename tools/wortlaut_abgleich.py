@@ -50,7 +50,8 @@ from management.maintenance.bestandsliste import (                # noqa: E402
 from management.maintenance.laufkopf import Laufkopf              # noqa: E402
 from management.maintenance.anker_diagnose import (               # noqa: E402
     AnkerDiagnose)
-from management.maintenance.anker_postbezug import seitenklasse   # noqa: E402
+from management.maintenance.anker_postbezug import (              # noqa: E402
+    PostBezugMesser, seitenklasse)
 from management.maintenance.wortlaut_abgleich import (            # noqa: E402
     STUFEN, WortlautAbgleich)
 from management.maintenance.wortlaut_norm import (                # noqa: E402
@@ -179,6 +180,33 @@ def _selection(roh):
     return sel if isinstance(sel, dict) else None
 
 
+def _beitrag_aus_anker(d, sichten, sel):
+    """
+    Die Beitragsnummer, die der ANKER benennt.
+
+    Der Ausdruck wird in der HTML5-Zerlegung Schritt fuer Schritt aufgeloest;
+    vom letzten aufloesenden Node geht der Aufstieg zum post container. Beides
+    steht seit Build 763 in anker_diagnose und wird hier NICHT nachgebaut.
+
+    None, wenn kein Ausdruck vorliegt (Beitragsmarkierung) oder der Aufstieg
+    keinen container trifft (die Seite traegt keine Beitraege).
+    """
+    if not sichten or not isinstance(sel, dict):
+        return None
+    ausdruck = str(sel.get("xpathStart") or "")
+    if not ausdruck or sel.get("target") == "translation":
+        return None
+    try:
+        befund = d._anker_pruefen(sichten[2], ausdruck)
+        if befund.letzter_knoten is None:
+            return None
+        messer = PostBezugMesser(sichten[2].wurzel)
+        bezug = messer.bezug(befund.letzter_knoten)
+        return bezug.post_id
+    except Exception:                              # pragma: no cover
+        return None
+
+
 def _ein_bestand(m, uid: str, ev_pfad: str, fo_pfad: str, grenze: int):
     """Ein Bestand. Rueckgabe: (rueckgabewert, Zaehlung, Belegliste)."""
     m("=" * 78)
@@ -198,13 +226,17 @@ def _ein_bestand(m, uid: str, ev_pfad: str, fo_pfad: str, grenze: int):
     con = d._oeffnen()
     d._con_blob = con
 
-    zaehlung = {"aktiv": 0, "geloescht": 0, "deleted_at_leer": 0,
+    zaehlung = {"beitrag_aus_anker": 0, "beitrag_aus_spalte": 0,
+                "blockweise": 0, "aufgespalten": 0, "teilstuecke_gesamt": 0,
+                "aufspaltung_vollstaendig": 0, "aufspaltung_mit_rest": 0,
+                "aktiv": 0, "geloescht": 0, "deleted_at_leer": 0,
                 "ohne_wortlaut": 0, "mit_meta": 0, "geprueft": 0,
                 "gefunden": 0, "eindeutig": 0, "zu_kurz": 0,
                 "versteckt_wirksam": 0, "ohne_abzug": 0,
                 "stufen": {s: 0 for s in STUFEN},
                 "lagen": {}, "versteckte_klassen": {}}
     belege = []
+    aufspaltungen = []
     abgleich_je_seite = {}
 
     try:
@@ -230,11 +262,11 @@ def _ein_bestand(m, uid: str, ev_pfad: str, fo_pfad: str, grenze: int):
 
             url = str(r["page_url"] or "")
             if url not in abgleich_je_seite:
-                sichten = d._sichten(url)
+                s = d._sichten(url)
                 abgleich_je_seite[url] = (
-                    WortlautAbgleich(sichten[2].wurzel, seitenklasse(url))
-                    if sichten else None)
-            a = abgleich_je_seite[url]
+                    (s, WortlautAbgleich(s[2].wurzel, seitenklasse(url)))
+                    if s else (None, None))
+            sichten, a = abgleich_je_seite[url]
             if a is None:
                 zaehlung["ohne_abzug"] += 1
                 continue
@@ -243,11 +275,32 @@ def _ein_bestand(m, uid: str, ev_pfad: str, fo_pfad: str, grenze: int):
                 zaehlung["versteckte_klassen"][name] = max(
                     zaehlung["versteckte_klassen"].get(name, 0), zahl)
 
-            post_id = r["post_id"]
-            try:
-                post_id = int(post_id) if post_id is not None else None
-            except (TypeError, ValueError):
-                post_id = None
+            # BUILD 768 - DER BENANNTE BEITRAG KOMMT AUS DEM ANKER.
+            #
+            # Build 767 hat dafuer die Spalte 'annotations.post_id' gelesen.
+            # Die ist bei Textmarkierungen leer: von 456 aktiven Annotationen
+            # tragen 455 NULL. Folge im Lauf zu 767: nur EIN Treffer auf
+            # Stufe 1, 425 auf Stufe 3 - nicht weil die Anker woandershin
+            # zeigten, sondern weil es nichts zu vergleichen gab. Die
+            # Stufenmessung jenes Laufs war damit wertlos.
+            #
+            # Der Beitrag ergibt sich aus dem Aufstieg vom letzten
+            # aufloesenden Node des Ankers zum post container - genau das,
+            # was anker_diagnose seit Build 763 tut und fuer 449 von 455
+            # Annotationen liefert. Die Spalte dient nur noch als Rueckfall
+            # fuer Beitragsmarkierungen, die keinen Anker haben.
+            post_id = _beitrag_aus_anker(d, sichten, sel)
+            if post_id is None:
+                roh_spalte = r["post_id"]
+                try:
+                    post_id = (int(roh_spalte)
+                               if roh_spalte is not None else None)
+                except (TypeError, ValueError):
+                    post_id = None
+                if post_id is not None:
+                    zaehlung["beitrag_aus_spalte"] += 1
+            else:
+                zaehlung["beitrag_aus_anker"] += 1
 
             b = a.pruefe(wortlaut, post_id)
             zaehlung["geprueft"] += 1
@@ -262,6 +315,18 @@ def _ein_bestand(m, uid: str, ev_pfad: str, fo_pfad: str, grenze: int):
                 zaehlung["zu_kurz"] += 1
             if b.versteckt_wirksam:
                 zaehlung["versteckt_wirksam"] += 1
+            if b.blockweise:
+                zaehlung["blockweise"] += 1
+            if b.teilstuecke:
+                mit = [s for s in b.teilstuecke if s.post_id is not None]
+                if len(mit) > 1:
+                    zaehlung["aufgespalten"] += 1
+                    zaehlung["teilstuecke_gesamt"] += len(mit)
+                    if all(s.post_id is not None for s in b.teilstuecke):
+                        zaehlung["aufspaltung_vollstaendig"] += 1
+                    else:
+                        zaehlung["aufspaltung_mit_rest"] += 1
+                    aufspaltungen.append((int(r["id"]), url, b))
 
             eintrag = b.als_dict()
             eintrag["annotation_id"] = int(r["id"])
@@ -274,11 +339,11 @@ def _ein_bestand(m, uid: str, ev_pfad: str, fo_pfad: str, grenze: int):
         con.close()
         d._con_blob = None
 
-    _bericht(m, uid, zaehlung, belege)
+    _bericht(m, uid, zaehlung, belege, aufspaltungen)
     return 0, zaehlung, belege
 
 
-def _bericht(m, uid, z, belege) -> None:
+def _bericht(m, uid, z, belege, aufspaltungen=()) -> None:
     m()
     m("BESTANDSAUFNAHME")
     m("   aktive Annotationen:            %d" % z["aktiv"])
@@ -290,6 +355,10 @@ def _bericht(m, uid, z, belege) -> None:
     m("   mit 'meta'-Zweig (Version 1.9): %d" % z["mit_meta"])
     m("   ohne Seitenabzug:               %d" % z["ohne_abzug"])
     m()
+    m("HERKUNFT DES BENANNTEN BEITRAGS")
+    m("   aus dem Anker bestimmt:         %d" % z["beitrag_aus_anker"])
+    m("   aus der Spalte post_id:         %d" % z["beitrag_aus_spalte"])
+    m()
     m("ABGLEICH")
     m("   geprueft:                       %d" % z["geprueft"])
     m("   Wortlaut gefunden:              %d" % z["gefunden"])
@@ -297,6 +366,13 @@ def _bericht(m, uid, z, belege) -> None:
     m("   zu kurz fuer eine Aussage:      %d" % z["zu_kurz"])
     m("   Ausschluss versteckter Teile war wirksam: %d"
       % z["versteckt_wirksam"])
+    m("   nur BLOCKWEISE gefunden:        %d   (Wortlaut vollstaendig, aber "
+      "mit Unterbrechungen - der Regelfall bei 'ganzer Post als text-range')"
+      % z["blockweise"])
+    m("   ueber mehrere Beitraege verteilt: %d, daraus %d Teilstuecke"
+      % (z["aufgespalten"], z["teilstuecke_gesamt"]))
+    m("      davon vollstaendig aufgeloest: %d" % z["aufspaltung_vollstaendig"])
+    m("      davon mit Rest ausserhalb:     %d" % z["aufspaltung_mit_rest"])
     m()
     m("   STUFE DES TREFFERS - sie sagt, wie weit der Anker danebenliegt:")
     m("      benannter Beitrag:           %d" % z["stufen"]["named_post"])
@@ -308,6 +384,23 @@ def _bericht(m, uid, z, belege) -> None:
     m("   LAGE DES TREFFERS:")
     for name, zahl in sorted(z["lagen"].items()):
         m("      %-28s %d" % (name, zahl))
+    if aufspaltungen:
+        # DER EIGENTLICHE AUFTRAG. Nicht 'hier besteht ein Problem', sondern:
+        # welche Beitraege sind eingeschlossen, und was wuerde aus jedem.
+        m()
+        m("AUFSPALTUNG - Markierungen, die MEHRERE Beitraege umfassen (%d):"
+          % len(aufspaltungen))
+        for kennung, url, b in aufspaltungen:
+            mit = [s for s in b.teilstuecke if s.post_id is not None]
+            m("   Beleg %-6d %-44s %d Bloecke -> %d Beitraege%s"
+              % (kennung, url[:44], b.bloecke, len(mit),
+                 "" if len(mit) == len(b.teilstuecke)
+                 else ", REST ausserhalb"))
+            for s in b.teilstuecke:
+                m("      Bloecke %3d-%-3d  post %-9s %-8s %6d Zeichen  ->  %s"
+                  % (s.block_von, s.block_bis,
+                     s.post_id if s.post_id is not None else "-",
+                     s.lage, s.zeichen, s.als_dict()["would_become"]))
     if z["versteckte_klassen"]:
         m()
         m("   VERSTECKTE ELEMENTE im Bestand (Hoechstzahl je Seite):")
@@ -327,8 +420,11 @@ def _gesamt(m, zaehlungen, belege) -> None:
                 summe[k] = summe.get(k, 0) + v
     stufen = {s: sum(z["stufen"][s] for z in zaehlungen) for s in STUFEN}
     for k in ("aktiv", "geloescht", "ohne_wortlaut", "mit_meta", "geprueft",
-              "gefunden", "eindeutig", "zu_kurz", "versteckt_wirksam",
-              "ohne_abzug"):
+              "beitrag_aus_anker", "beitrag_aus_spalte",
+              "gefunden", "eindeutig", "blockweise", "aufgespalten",
+              "teilstuecke_gesamt", "aufspaltung_vollstaendig",
+              "aufspaltung_mit_rest", "zu_kurz",
+              "versteckt_wirksam", "ohne_abzug"):
         m("   %-32s %d" % (k, summe.get(k, 0)))
     m()
     m("   benannter Beitrag:               %d" % stufen["named_post"])

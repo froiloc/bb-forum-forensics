@@ -177,3 +177,227 @@ def test_WA10_editierdistanz():
     assert editierdistanz("", "abc") == 3
     # Obergrenze: darueber wird nicht gerechnet, und das wird gesagt.
     assert editierdistanz("a" * 10, "a" * 10, grenze=5) is None
+
+
+# =============================================================================
+# BUILD 768 — der blockweise Vergleich
+# =============================================================================
+# DER BEFUND AUS DEM LAUF ZU BUILD 767: Von 30 nicht gefundenen Wortlauten
+# waren 24 vom Typ 'ganzer Post als text-range markiert'. Die Aehnlichkeiten
+# lagen zwischen 0,79 und 0,99 - das sah nach einer Schwelle aus, war aber
+# keine Textabweichung, sondern eine FALSCHE SUCHMENGE: bei einem 'whole post'
+# umfasst der Wortlaut Rahmen UND Inhalt, in der Reihenfolge, in der der
+# Browser sie sichtbar aneinanderreiht, mit Umbruechen, die im Abzug nicht
+# stehen.
+#
+# WA11  Bloecke werden VOR der Normalisierung getrennt
+# WA12  ein 'whole post'-Wortlaut wird blockweise gefunden
+# WA13  GEGENPROBE: die Reihenfolge der Bloecke muss stimmen
+# WA14  der Treffer als EINE Zeichenkette hat Vorrang
+# WA15  ein einzelner Block loest keine blockweise Suche aus
+# =============================================================================
+
+def _whole_post_seite():
+    """
+    Ein Beitrag, dessen Rahmen und Inhalt zwischen anderem Text liegen -
+    so, wie ein 'ganzer Post' im Abzug steht.
+    """
+    return LH.fromstring(
+        '<div><div id="page-body">'
+        '<article class="post" id="p900"><div class="box" id="pp900">'
+        '<div class="postbody">'
+        '<div class="postleft">Hello77<span>Leumund: 19.353</span></div>'
+        '<div class="postright"><h3>Re: Verification</h3>'
+        '<div class="postmsg">Der eigentliche Beitragstext.</div></div>'
+        '</div></div></article>'
+        '</div></div>')
+
+
+def test_WA11_bloecke_werden_vor_der_normalisierung_getrennt():
+    """
+    'normalisiere()' faltet Umbrueche zu Leerzeichen. Wer zuerst normalisiert
+    und dann trennt, hat keine Blockgrenzen mehr.
+    """
+    a = WortlautAbgleich(_whole_post_seite(), "viewtopic")
+    bloecke = a._bloecke("Hello77\nRe: Verification\nDer eigentliche Beitragstext.")
+    assert len(bloecke) == 3, bloecke
+    assert bloecke[0] == "hello77", bloecke
+    # Leere Zeilen fallen weg, sie tragen keinen Beleg.
+    assert a._bloecke("a\n\n\nb") == ["a", "b"]
+
+
+def test_WA12_whole_post_wird_blockweise_gefunden():
+    """
+    DER FALL, DER DIESEN NACHTRAG AUSGELOEST HAT. Als EINE Zeichenkette ist
+    der Wortlaut nicht zu finden - die Teile stehen im Abzug mit anderem Text
+    dazwischen. Blockweise und in Reihenfolge steht er vollstaendig da.
+    """
+    a = WortlautAbgleich(_whole_post_seite(), "viewtopic")
+    wortlaut = "Hello77\nRe: Verification\nDer eigentliche Beitragstext."
+
+    # Als eine Kette: kein Treffer.
+    from management.maintenance.wortlaut_norm import normalisiere
+    assert normalisiere(wortlaut) not in a._text_je_nummer[900]
+
+    b = a.pruefe(wortlaut, 900)
+    assert b.gefunden, b.als_dict()
+    assert b.blockweise is True, b.als_dict()
+    assert b.bloecke == 3, b.als_dict()
+    assert b.stufe == STUFE_BEITRAG, b.als_dict()
+    # Ein Block liegt im Rahmen -> nach der Regel aus Build 764 'whole post'.
+    assert b.fundorte[0].lage == LAGE_FRAME, b.als_dict()
+
+
+def test_WA13_gegenprobe_die_reihenfolge_muss_stimmen():
+    """
+    OHNE DIESE PROBE waere WA12 auch mit einer Fassung gruen, die nur fragt,
+    ob jeder Block irgendwo vorkommt. Dann waere jede Ansammlung derselben
+    Woerter ein Treffer - und der Rahmen eines Beitrags wiederholt sich auf
+    einer Seite hundertfach.
+    """
+    a = WortlautAbgleich(_whole_post_seite(), "viewtopic")
+    verdreht = "Der eigentliche Beitragstext.\nHello77"
+    b = a.pruefe(verdreht, 900)
+    assert not b.gefunden, b.als_dict()
+    assert b.blockweise is False, b.als_dict()
+
+
+def test_WA14_der_treffer_als_eine_kette_hat_vorrang():
+    """
+    Blockweise ist die SCHWAECHERE Aussage: der Wortlaut steht vollstaendig
+    im Beitrag, aber mit Unterbrechungen. Wo er am Stueck steht, muss das
+    auch so gemeldet werden.
+    """
+    a = WortlautAbgleich(_whole_post_seite(), "viewtopic")
+    b = a.pruefe("Der eigentliche Beitragstext.", 900)
+    assert b.gefunden and b.blockweise is False, b.als_dict()
+    assert b.fundorte[0].lage == LAGE_CONTENT, b.als_dict()
+
+
+def test_WA15_ein_einzelner_block_loest_keine_blockweise_suche_aus():
+    """
+    Bei einem Wortlaut ohne Umbruch waere die blockweise Suche mit der
+    gewoehnlichen identisch - sie wuerde nur ein zweites Mal dasselbe tun und
+    das Ergebnis faelschlich als 'blockweise' kennzeichnen.
+    """
+    a = WortlautAbgleich(_whole_post_seite(), "viewtopic")
+    b = a.pruefe("steht hier nirgends", 900)
+    assert not b.gefunden
+    assert b.blockweise is False, b.als_dict()
+    assert b.bloecke == 1, b.als_dict()
+
+
+# =============================================================================
+# BUILD 768 — die Aufspaltung ueber mehrere Beitraege
+# =============================================================================
+# DER EIGENTLICHE AUFTRAG. Festzustellen, dass eine Markierung ueber mehrere
+# Beitraege laeuft, ist keine Leistung - das war bekannt. Gebraucht wird die
+# Auskunft, WELCHE Beitraege es sind und WAS aus jedem wuerde. Erst wenn das
+# je Beitrag belegt ist, darf die Migration aufspalten.
+#
+# WA16  eine Markierung ueber drei Beitraege zerfaellt in drei Teilstuecke
+# WA17  je Teilstueck steht, was daraus wuerde
+# WA18  Bloecke ausserhalb jedes Beitrags werden AUSGEWIESEN, nicht getilgt
+# WA19  ein fuehrender Block ausserhalb blockiert die Verteilung nicht
+# WA20  die ganze Seite: alle Beitraege einzeln, Fusszeile als entfallend
+# =============================================================================
+
+def _mehrere_beitraege(anzahl=5):
+    def eins(i):
+        return ('<article class="post" id="p%d"><div class="box" id="pp%d">'
+                '<div class="postbody"><div class="postleft">Autor%d</div>'
+                '<div class="postright"><h3>Betreff %d</h3>'
+                '<div class="postmsg">Text von Beitrag %d.</div>'
+                '</div></div></div></article>'
+                % (900 + i, 900 + i, i, i, i))
+    return LH.fromstring(
+        '<div><div id="page-body">%s<div id="page-footer">Fusszeile</div>'
+        '</div></div>' % "".join(eins(i) for i in range(anzahl)))
+
+
+def _rumpf(i):
+    return "Autor%d\nBetreff %d\nText von Beitrag %d." % (i, i, i)
+
+
+def test_WA16_markierung_ueber_drei_beitraege_zerfaellt():
+    a = WortlautAbgleich(_mehrere_beitraege(), "viewtopic")
+    b = a.pruefe("\n".join(_rumpf(i) for i in (1, 2, 3)), 901)
+    assert not b.gefunden, "kein EINZELNER Beitrag traegt ihn"
+    assert [s.post_id for s in b.teilstuecke] == [901, 902, 903], \
+        [s.als_dict() for s in b.teilstuecke]
+    assert "zerfaellt in 3 Beitraege" in b.hinweis, b.hinweis
+    assert b.als_dict()["split_complete"] is True
+
+
+def test_WA17_je_teilstueck_steht_was_daraus_wuerde():
+    """
+    Die Angabe 'would_become' ist die Bruecke zur Migration: sie sagt je
+    Beitrag, ob daraus eine 'text range' oder ein 'whole post' wird - nach
+    derselben Regel wie in Build 764, naemlich ob alle Bloecke im
+    Inhaltsbereich liegen.
+    """
+    a = WortlautAbgleich(_mehrere_beitraege(), "viewtopic")
+    # Mit Rahmen (Autor, Betreff) -> whole post.
+    mit_rahmen = a.pruefe("\n".join(_rumpf(i) for i in (1, 2)), 901)
+    assert all(s.als_dict()["would_become"] == "whole post"
+               for s in mit_rahmen.teilstuecke), \
+        [s.als_dict() for s in mit_rahmen.teilstuecke]
+    # Nur Inhalt -> text range.
+    nur_inhalt = a.pruefe("Text von Beitrag 1.\nText von Beitrag 2.", 901)
+    stuecke = [s for s in nur_inhalt.teilstuecke if s.post_id is not None]
+    assert stuecke, nur_inhalt.als_dict()
+    assert all(s.als_dict()["would_become"] == "text range" for s in stuecke), \
+        [s.als_dict() for s in stuecke]
+
+
+def test_WA18_bloecke_ausserhalb_werden_ausgewiesen():
+    """
+    Was zwischen den Beitraegen markiert war, entfaellt bei der Aufspaltung
+    ersatzlos (Festlegung Alex, 08.09.2026). DASS es entfaellt, muss zu SEHEN
+    sein - sonst waere es ein stiller Verlust (Grundregel 1).
+    """
+    a = WortlautAbgleich(_mehrere_beitraege(), "viewtopic")
+    b = a.pruefe("Text von Beitrag 1.\nirgendwas fremdes\n"
+                 "Text von Beitrag 3.", 901)
+    arten = [s.als_dict()["would_become"] for s in b.teilstuecke]
+    assert "entfaellt" in arten, [s.als_dict() for s in b.teilstuecke]
+    assert b.als_dict()["split_complete"] is False, \
+        "mit einem Rest ausserhalb ist die Aufspaltung NICHT vollstaendig"
+
+
+def test_WA19_ein_fuehrender_block_ausserhalb_blockiert_nicht():
+    """
+    GEFUNDEN AN EINER PROBE MIT VORANGESTELLTER FUSSZEILE.
+
+    Eine beitragsweise Schleife - 'nimm vom aktuellen Beitrag so viele
+    Bloecke wie moeglich' - kaeme hier gar nicht erst in Gang: der erste
+    Block steht in keinem Beitrag, also nimmt kein Beitrag etwas, und die
+    ganze Markierung gaelte als 'ausserhalb'. Verteilt wird deshalb JE
+    BLOCK der naechste Beitrag, der ihn traegt.
+    """
+    a = WortlautAbgleich(_mehrere_beitraege(), "viewtopic")
+    b = a.pruefe("Fusszeile\nText von Beitrag 2.\nText von Beitrag 3.", 901)
+    assert [s.post_id for s in b.teilstuecke] == [None, 902, 903], \
+        [s.als_dict() for s in b.teilstuecke]
+    assert b.teilstuecke[0].block_von == 0
+
+
+def test_WA20_die_ganze_seite_zerfaellt_in_ihre_beitraege():
+    """
+    DER FALL 1704143/1: 62988 Zeichen, 'hier wurde einfach mal die gesamte
+    Seite markiert'. Bis Build 767 war das nur ein 'nicht gefunden'. Jetzt
+    muss der Lauf sagen, welche Beitraege eingeschlossen sind und was aus
+    jedem wuerde - sonst waere es kein Fortschritt, sondern die Wiederholung
+    einer bekannten Feststellung.
+    """
+    a = WortlautAbgleich(_mehrere_beitraege(5), "viewtopic")
+    ganze = "\n".join(_rumpf(i) for i in range(5)) + "\nFusszeile"
+    b = a.pruefe(ganze, 900)
+    d = b.als_dict()
+    assert d["split_posts"] == [900, 901, 902, 903, 904], d["split_posts"]
+    assert d["split_complete"] is False, "die Fusszeile entfaellt"
+    assert b.teilstuecke[-1].post_id is None
+    assert b.teilstuecke[-1].als_dict()["would_become"] == "entfaellt"
+    # Je Beitrag ein eigener Datensatz - das ist die Aussage, die die
+    # Migration braucht.
+    assert len([s for s in b.teilstuecke if s.post_id is not None]) == 5

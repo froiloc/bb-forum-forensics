@@ -354,6 +354,14 @@ _GEPRUEFT_759 = ("Build 759, 2026-09-04, gegen einen Wegwerf-Bestand unter "
                  "davon einer nur ueber die gefaltete Fassung. "
                  "Python 3.12.3, html5lib.")
 
+_GEPRUEFT_768 = ("Build 768, 2026-09-08, gegen einen Wegwerf-Bestand unter "
+                 "/tmp und gegen nachgebautes Markup mit fuenf Beitraegen "
+                 "und Fusszeile. Python 3.12.3, html5lib. Gemessen: der "
+                 "benannte Beitrag wird aus dem ANKER bestimmt (2 von 2, "
+                 "Stufe 1 statt Stufe 3 wie in Build 767); eine Markierung "
+                 "ueber die ganze Seite zerfaellt in 5 Beitraege plus einen "
+                 "Rest ausserhalb, der als entfallend ausgewiesen wird.")
+
 _GEPRUEFT_767 = ("Build 767, 2026-09-08, gegen einen Wegwerf-Bestand unter "
                  "/tmp mit zwei Beitraegen und einem nachgebauten "
                  "Zensurbaustein nach dem Abzug von Alex zu Annotation "
@@ -5620,7 +5628,9 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         titel="Steht der markierte Wortlaut ueberhaupt im Abzug?",
         gruppe="Migration und Reparatur",
         zweck="Den gespeicherten 'selection_json.textContent' im page BLOB "
-              "wiederfinden und den Fund BELEGEN. In drei Stufen: der "
+              "wiederfinden und den Fund BELEGEN. BUILD 768: dazu die "
+              "AUFSPALTUNG - eine Markierung ueber mehrere Beitraege wird "
+              "verteilt, und je Beitrag steht, was daraus wuerde. In drei Stufen: der "
               "benannte Beitrag, die zehn naechsten (fuenf in jede Richtung), "
               "die ganze Seite. Die Stufe des Treffers sagt, wie weit der "
               "Anker danebenliegt.",
@@ -5664,6 +5674,13 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "Zahlen maschinenlesbar.",
         tiefe=CliTiefe(
             beispiele=(
+            _bsp("python tools/wortlaut_abgleich.py --grenze 0 "
+                 "--json /tmp/wortlaut768.json "
+                 "--protokoll /tmp/wortlaut768.log",
+                 "Der Lauf ueber alle Bestaende, mit dem Abschnitt "
+                 "AUFSPALTUNG: welche Beitraege eine mehrteilige Markierung "
+                 "umfasst und was aus jedem wuerde. Rueckgabewert 0.",
+                 _GEPRUEFT_768),
             _bsp("python tools/wortlaut_abgleich.py --grenze 0 "
                  "--json /tmp/wortlaut767.json "
                  "--protokoll /tmp/wortlaut767.log",

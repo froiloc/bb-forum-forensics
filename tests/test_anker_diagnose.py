@@ -1204,7 +1204,7 @@ def test_AD45_katalog_im_code_und_dokument_stimmen_ueberein():
     dann gilt keins von beidem.
     """
     pfad = (Path(__file__).resolve().parent.parent
-            / "documents" / "Post_Bereiche_Katalog.md")
+            / "documents" / "annotation_migration" / "Post_Bereiche_Katalog.md")
     assert pfad.exists(), "Das Katalogdokument fehlt: %s" % pfad
     text = pfad.read_text(encoding="utf-8")
     for b in KATALOG:
@@ -1345,7 +1345,7 @@ def test_AD50_der_regelkatalog_liegt_im_repository():
     bei der naechsten Sitzung eine andere Fassung als die freigegebene.
     """
     pfad = (Path(__file__).resolve().parent.parent
-            / "documents" / "Regelkatalog_selection_json_2_0.md")
+            / "documents" / "annotation_migration" / "Regelkatalog_selection_json_2_0.md")
     assert pfad.exists(), "Der Regelkatalog fehlt: %s" % pfad
     text = pfad.read_text(encoding="utf-8")
     assert "Version 1.0" in text, "Der Katalog nennt seine Version nicht"

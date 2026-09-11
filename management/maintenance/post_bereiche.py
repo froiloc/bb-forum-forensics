@@ -55,7 +55,7 @@
 #   (d) 'ZUSTANDSKLASSEN' aufgenommen, fuer den XPath-Generator aus Build 766.
 #
 # WARUM DIESE DATEI DIE EINZIGE QUELLE IST
-#   Dieselbe Tabelle steht als Dokument in documents/Post_Bereiche_Katalog.md,
+#   Dieselbe Tabelle steht als Dokument in documents/annotation_migration/Post_Bereiche_Katalog.md,
 #   weil sie fuer die Anpassung an ANDERE Foren gebraucht wird. Ein Waechter
 #   (AD45) haelt beide gegeneinander. Ohne ihn laufen Dokument und Code binnen
 #   weniger Builds auseinander, und dann gilt keins von beidem.

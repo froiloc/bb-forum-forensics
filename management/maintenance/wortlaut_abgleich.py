@@ -96,6 +96,31 @@ class Fundort:
 
 
 @dataclass
+class Teilstueck:
+    """
+    Ein Stueck einer aufgespaltenen Markierung - was aus EINEM Beitrag wuerde.
+
+    'post_id' None heisst: diese Bloecke stehen in keinem Beitrag. Sie
+    entfallen bei der Aufspaltung ersatzlos, und genau deshalb werden sie
+    ausgewiesen.
+    """
+    post_id: Optional[int] = None
+    block_von: int = 0
+    block_bis: int = 0
+    lage: str = ""
+    zeichen: int = 0
+
+    def als_dict(self) -> Dict[str, Any]:
+        return {"post_id": self.post_id, "block_from": self.block_von,
+                "block_to": self.block_bis, "area": self.lage,
+                "chars": self.zeichen,
+                "would_become": ("text range" if self.lage == LAGE_CONTENT
+                                 and self.post_id is not None
+                                 else ("whole post" if self.post_id is not None
+                                       else "entfaellt"))}
+
+
+@dataclass
 class Abgleichbefund:
     """Das Ergebnis fuer EINE Annotation."""
     #: Der Wortlaut, normalisiert - so, wie gesucht wurde.
@@ -116,6 +141,12 @@ class Abgleichbefund:
     zu_kurz: bool = False
     #: Was der Ausschluss der versteckten Elemente bewirkt hat.
     versteckt_wirksam: bool = False
+    #: BUILD 768 - der Treffer kam erst blockweise zustande.
+    blockweise: bool = False
+    #: In wie viele Bloecke der Wortlaut zerfaellt.
+    bloecke: int = 0
+    #: BUILD 768 - die Aufspaltung ueber mehrere Beitraege.
+    teilstuecke: List[Teilstueck] = field(default_factory=list)
     hinweis: str = ""
 
     @property
@@ -140,6 +171,13 @@ class Abgleichbefund:
             "edit_distance": self.editierdistanz,
             "too_short": self.zu_kurz,
             "hidden_mattered": self.versteckt_wirksam,
+            "blockwise": self.blockweise,
+            "blocks": self.bloecke,
+            "split": [s.als_dict() for s in self.teilstuecke],
+            "split_posts": [s.post_id for s in self.teilstuecke
+                            if s.post_id is not None],
+            "split_complete": bool(self.teilstuecke) and not any(
+                s.post_id is None for s in self.teilstuecke),
             "note": self.hinweis,
         }
 
@@ -344,9 +382,186 @@ class WortlautAbgleich:
                     break
             return b
 
-        # ---- kein Treffer: Aehnlichkeit bestimmen -----------------------
+        # ---- BLOCKWEISE, bevor die Aehnlichkeit bemueht wird ------------
+        #
+        # Erst hier, nicht vorher: der Treffer als EINE Zeichenkette ist die
+        # staerkere Aussage. Wer blockweise trifft, hat den Wortlaut zwar
+        # vollstaendig im Beitrag, aber mit Unterbrechungen - das ist der
+        # Regelfall bei 'ganzer Post als text-range markiert'.
+        bloecke = self._bloecke(text_content)
+        if len(bloecke) > 1:
+            for nummern, stufe in (
+                    ([benannter_beitrag] if benannter_beitrag in self._platz
+                     else [], STUFE_BEITRAG),
+                    (self._nachbarn(benannter_beitrag), STUFE_NACHBARN),
+                    (self._nummern, STUFE_SEITE)):
+                if not nummern:
+                    continue
+                gefunden = self._blockweise_in(nummern, bloecke, stufe)
+                if gefunden:
+                    b.fundorte = gefunden
+                    b.stufe = gefunden[0].stufe
+                    b.blockweise = True
+                    b.bloecke = len(bloecke)
+                    b.eindeutig = len(gefunden) == 1
+                    return b
+
+        # ---- AUFSPALTUNG ueber mehrere Beitraege ------------------------
+        #
+        # Erst wenn kein EINZELNER Beitrag den Wortlaut traegt. Dann ist die
+        # Frage nicht mehr 'wo steht er', sondern 'in welche Beitraege
+        # zerfaellt er' - und genau das muss belegt sein, bevor die Migration
+        # aufspalten darf.
+        b.bloecke = len(bloecke)
+        if bloecke:
+            b.teilstuecke = self.aufspalten(bloecke)
+            mit_beitrag = [s for s in b.teilstuecke if s.post_id is not None]
+            if len(mit_beitrag) > 1:
+                b.hinweis = (
+                    "kein einzelner Beitrag traegt den Wortlaut; er zerfaellt "
+                    "in %d Beitraege%s"
+                    % (len(mit_beitrag),
+                       "" if len(mit_beitrag) == len(b.teilstuecke)
+                       else " und einen Rest ausserhalb"))
+                return b
+
         self._aehnlichkeit(b)
         return b
+
+    # ------------------------------------------------------------------
+    def _bloecke(self, text_content: str) -> List[str]:
+        """
+        Den gespeicherten Wortlaut in Bloecke zerlegen - an den Umbruechen,
+        die der Browser gesetzt hat.
+
+        WARUM DAS NOETIG IST (Befund aus dem Lauf zu Build 767): Von 30 nicht
+        gefundenen Wortlauten waren 24 vom Typ 'ganzer Post als text-range
+        markiert'. Dort umfasst der Wortlaut RAHMEN UND INHALT - Verfasser,
+        Zeitstempel, Betreff, Beitragstext, Funktionsleiste - und zwar in der
+        Reihenfolge, in der der Browser sie sichtbar aneinanderreiht. Diese
+        Reihenfolge muss NICHT der Dokumentreihenfolge des Abzugs
+        entsprechen, und die Umbrueche dazwischen sind vom Browser eingefuegt
+        und stehen im Abzug nicht.
+
+        Eine Suche nach dem Wortlaut ALS EINER Zeichenkette kann das nur
+        verfehlen. Die Aehnlichkeiten von 0,79 bis 0,99 waren deshalb kein
+        Hinweis auf eine Textabweichung, sondern auf eine falsche Suchmenge.
+
+        Zerlegt wird VOR der Normalisierung: diese faltet Umbrueche zu
+        Leerzeichen und wuerde die Blockgrenzen gerade tilgen.
+        """
+        roh = str(text_content or "")
+        bloecke = [normalisiere(z) for z in roh.split("\n")]
+        return [z for z in bloecke if z]
+
+    # ------------------------------------------------------------------
+    def _blockweise_in(self, nummern: List[str], bloecke: List[str],
+                       stufe: str) -> List[Fundort]:
+        """
+        Stehen ALLE Bloecke in einem Beitrag, und zwar in Reihenfolge?
+
+        'in Reihenfolge' heisst: jeder Block kommt im Beitragstext hinter dem
+        vorigen vor. Ohne diese Bedingung waere jede Ansammlung derselben
+        Woerter ein Treffer - und der Rahmen eines Beitrags wiederholt sich
+        auf einer Seite hundertfach.
+        """
+        aus: List[Fundort] = []
+        for nummer in nummern:
+            text = self._text_je_nummer.get(nummer, "")
+            if not text:
+                continue
+            stelle = 0
+            vollstaendig = True
+            for block in bloecke:
+                treffer = text.find(block, stelle)
+                if treffer < 0:
+                    vollstaendig = False
+                    break
+                stelle = treffer + len(block)
+            if not vollstaendig:
+                continue
+            inhalt = self._inhalt_je_nummer.get(nummer, "")
+            # Bei einem blockweisen Treffer sagt die Lage, ob ALLE Bloecke im
+            # Inhaltsbereich liegen. Liegt auch nur einer im Rahmen, ist es
+            # nach der Regel aus Build 764 ein 'whole post'.
+            lage = LAGE_CONTENT if (inhalt and all(bl in inhalt
+                                                   for bl in bloecke)) \
+                else (LAGE_FRAME if inhalt else "")
+            aus.append(Fundort(post_id=nummer, stufe=stufe, lage=lage,
+                               vorkommen=1))
+        return aus
+
+    # ------------------------------------------------------------------
+    def aufspalten(self, bloecke: List[str]) -> List[Teilstueck]:
+        """
+        DIE AUFSPALTUNG. Eine Markierung, die MEHRERE Beitraege umfasst, auf
+        die einzelnen Beitraege verteilen - so, wie die Migration sie spaeter
+        in je einen eigenen Datensatz zerlegt (Regelkatalog G4 und 1.4).
+
+        DAS IST DER KERN. Festzustellen, dass eine Markierung ueber mehrere
+        Beitraege laeuft, ist keine Leistung - das wussten wir. Gebraucht
+        wird die Auskunft, WELCHE Beitraege es sind und WAS aus jedem von
+        ihnen wuerde. Erst wenn das je Beitrag belegt ist, darf die Migration
+        aufspalten.
+
+        Verfahren: Die Bloecke werden in Dokumentreihenfolge ueber die
+        Beitraege verteilt. Jeder Beitrag nimmt so viele aufeinanderfolgende
+        Bloecke auf, wie er in Reihenfolge traegt; danach geht es beim
+        naechsten Beitrag weiter, der den naechsten offenen Block traegt.
+
+        Bloecke, die in KEINEM Beitrag stehen, werden als 'ausserhalb'
+        gefuehrt und nicht unterschlagen. Sie sind der Teil der Markierung,
+        der zwischen den Beitraegen lag - und der bei der Aufspaltung
+        ersatzlos entfaellt (Festlegung Alex, 08.09.2026). Dass er entfaellt,
+        ist zu SEHEN und nicht zu erschliessen.
+        """
+        # JE BLOCK der naechste Beitrag, der ihn traegt - nicht je Beitrag
+        # die naechsten Bloecke. Der Unterschied ist wesentlich: liegt der
+        # ERSTE Block ausserhalb jedes Beitrags (etwa in der Fusszeile oder
+        # zwischen zwei Beitraegen), kaeme eine beitragsweise Schleife gar
+        # nicht erst in Gang und wuerde die ganze Markierung als 'ausserhalb'
+        # abtun. Gemessen an einer Probe mit vorangestellter Fusszeile.
+        zuordnung: List[Optional[int]] = []
+        pos_beitrag = 0          # ab welchem Beitrag weitergesucht wird
+        stelle_im_text = 0       # Fundstelle im aktuellen Beitrag
+        for block in bloecke:
+            gefunden = None
+            for k in range(pos_beitrag, len(self._nummern)):
+                nummer = self._nummern[k]
+                text = self._text_je_nummer.get(nummer, "")
+                if not text:
+                    continue
+                ab = stelle_im_text if k == pos_beitrag else 0
+                treffer = text.find(block, ab)
+                if treffer < 0:
+                    continue
+                gefunden = nummer
+                pos_beitrag = k
+                stelle_im_text = treffer + len(block)
+                break
+            zuordnung.append(gefunden)
+
+        # Aufeinanderfolgende Bloecke mit derselben Zuordnung zusammenfassen.
+        aus: List[Teilstueck] = []
+        lauf_von = 0
+        for i in range(1, len(zuordnung) + 1):
+            if i < len(zuordnung) and zuordnung[i] == zuordnung[lauf_von]:
+                continue
+            nummer = zuordnung[lauf_von]
+            indizes = list(range(lauf_von, i))
+            if nummer is None:
+                lage = "outside"
+            else:
+                inhalt = self._inhalt_je_nummer.get(nummer, "")
+                lage = LAGE_CONTENT if (inhalt and all(
+                    bloecke[x] in inhalt for x in indizes)) \
+                    else (LAGE_FRAME if inhalt else "")
+            aus.append(Teilstueck(
+                post_id=nummer, block_von=indizes[0], block_bis=indizes[-1],
+                lage=lage,
+                zeichen=sum(len(bloecke[x]) for x in indizes)))
+            lauf_von = i
+        return aus
 
     # ------------------------------------------------------------------
     def _aehnlichkeit(self, b: Abgleichbefund) -> None:
