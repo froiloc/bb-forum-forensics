@@ -66,6 +66,12 @@ STUFE_SEITE = "page"
 STUFE_KEINE = ""
 STUFEN = (STUFE_BEITRAG, STUFE_NACHBARN, STUFE_SEITE)
 
+#: BUILD 770 - Platzhalter fuer 'diese Angabe fehlt'. NICHT None: None ist
+#: bei der Beitragszuordnung eine AUSSAGE, naemlich 'ausserhalb jedes
+#: Beitrags'. Wer beides verwechselt, macht aus einer fehlenden Angabe eine
+#: Behauptung.
+_UNBEKANNT = object()
+
 #: Wie viele Beitraege in JEDE Richtung Stufe 2 absucht.
 NACHBARN_JE_RICHTUNG = 5
 
@@ -455,7 +461,10 @@ class WortlautAbgleich:
                        else " - ein Ankerpunkt loest nicht auf"))
                 self._aehnlichkeit(b)
                 return b
-            b.teilstuecke = self.aufspalten(bloecke, kandidaten)
+            b.teilstuecke = self.aufspalten(
+                bloecke, kandidaten,
+                start_beitrag=self._beitrag_von(start_knoten),
+                end_beitrag=self._beitrag_von(end_knoten))
             # GEZAEHLT WERDEN BEITRAEGE, NICHT ABSCHNITTE. Ein Beitrag kann
             # mehrfach vorkommen, wenn zwischen seinen Bloecken etwas liegt,
             # das in keinem Kandidaten steht. 'ueber 19 Beitraege verteilt'
@@ -589,6 +598,30 @@ class WortlautAbgleich:
         return aus
 
     # ------------------------------------------------------------------
+    def _beitrag_von(self, knoten):
+        """
+        Der Beitrag, in dem ein Ankerpunkt steht - oder None fuer 'ausserhalb
+        jedes Beitrags'. '_UNBEKANNT', wenn kein Knoten vorliegt.
+
+        None und _UNBEKANNT sind NICHT dasselbe: None ist die Aussage
+        'ausserhalb', _UNBEKANNT heisst 'nicht gemessen'.
+        """
+        if knoten is None:
+            return _UNBEKANNT
+        el = knoten
+        if not isinstance(getattr(knoten, "tag", None), str):
+            el = knoten.getparent() if hasattr(knoten, "getparent") else None
+            if el is not None and getattr(knoten, "is_tail", False):
+                el = el.getparent()
+        if el is None:
+            return _UNBEKANNT
+        beh = self._AF.post_behaelter_von(el) \
+            if hasattr(self._AF, "post_behaelter_von") else None
+        if beh is None:
+            return None
+        return self._AF.beitragsnummer(beh)
+
+    # ------------------------------------------------------------------
     def _index_von(self, knoten) -> Optional[int]:
         """Die Dokumentreihenfolge eines Knotens - auch eines Textknotens."""
         el = knoten
@@ -600,7 +633,9 @@ class WortlautAbgleich:
 
     # ------------------------------------------------------------------
     def aufspalten(self, bloecke: List[str],
-                   kandidaten: Optional[List[int]] = None) -> List[Teilstueck]:
+                   kandidaten: Optional[List[int]] = None,
+                   start_beitrag=_UNBEKANNT,
+                   end_beitrag=_UNBEKANNT) -> List[Teilstueck]:
         """
         DIE AUFSPALTUNG. Eine Markierung, die MEHRERE Beitraege umfasst, auf
         die einzelnen Beitraege verteilen - so, wie die Migration sie spaeter
@@ -623,6 +658,21 @@ class WortlautAbgleich:
         ersatzlos entfaellt (Festlegung Alex, 08.09.2026). Dass er entfaellt,
         ist zu SEHEN und nicht zu erschliessen.
         """
+        # BUILD 770 - DIE ENDPUNKTE SIND BEKANNT, ALSO WERDEN SIE NICHT
+        # GESUCHT. Der erste Block gehoert dorthin, wo der STARTANKER
+        # hinzeigt, der letzte dorthin, wo der ENDANKER hinzeigt - nicht
+        # dorthin, wo ihr Text zuerst gefunden wird.
+        #
+        # Gemessen an 583231/6: Der erste Block ist die Seitenzahl '1' aus
+        # dem Kopfbereich. Sie steht auch im Beitrag, und eine rein
+        # textliche Verteilung ordnet sie deshalb dem Beitrag zu - obwohl
+        # der Startanker ausserhalb jedes Beitrags liegt. Dasselbe gilt fuer
+        # den Themenbetreff, der im ersten Beitrag als Betreffzeile
+        # wiederholt wird: zeichengleich, aber an anderer Stelle.
+        #
+        # POSITION SCHLAEGT TEXT, WO DIE POSITION BEKANNT IST. Sie ist es an
+        # genau zwei Stellen: am Anfang und am Ende.
+        #
         # JE BLOCK der naechste Beitrag, der ihn traegt - nicht je Beitrag
         # die naechsten Bloecke. Der Unterschied ist wesentlich: liegt der
         # ERSTE Block ausserhalb jedes Beitrags (etwa in der Fusszeile oder
@@ -652,6 +702,51 @@ class WortlautAbgleich:
                 stelle_im_text = treffer + len(block)
                 break
             zuordnung.append(gefunden)
+
+        # BUILD 770: Die Endpunkte ueberschreiben, was die Textsuche ergab.
+        if zuordnung:
+            if start_beitrag is not _UNBEKANNT:
+                zuordnung[0] = start_beitrag
+            if end_beitrag is not _UNBEKANNT:
+                zuordnung[-1] = end_beitrag
+
+        # BUILD 770 - DIE ZUSAMMENHANGSREGEL.
+        #
+        # Eine Markierung ist ein ZUSAMMENHAENGENDER Bereich im Dokument.
+        # Daraus folgt zwingend: Liegen zwei Bloecke in demselben Beitrag, so
+        # liegt auch ALLES DAZWISCHEN in diesem Beitrag. Ein Beitrag kann in
+        # der Zuordnung also nur EINEN zusammenhaengenden Lauf haben.
+        #
+        # Steht er in mehreren Laeufen, ist mindestens einer falsch - und
+        # zwar der, dessen Bloecke die dazwischenliegenden NICHT enthalten.
+        # Gemessen an 583231/6: Block 2 ist die Seitenzahl '1' aus dem
+        # Kopfbereich. Sie steht auch im Beitrag und wird dort gefunden; die
+        # Bloecke 3 und 4 dagegen nicht. Waere Block 2 wirklich im Beitrag,
+        # muessten sie es auch sein.
+        #
+        # DAS IST KEINE HEURISTIK ueber Blocklaengen, sondern eine Folge der
+        # Zusammenhangseigenschaft. Behalten wird je Beitrag der laengste
+        # Lauf; die uebrigen werden zu 'ausserhalb' - die vorsichtige
+        # Richtung, denn 'ausserhalb' entfaellt und behauptet nichts.
+        laeufe: Dict[Any, List[Tuple[int, int, int]]] = {}
+        lauf_start = 0
+        for i in range(1, len(zuordnung) + 1):
+            if i < len(zuordnung) and zuordnung[i] == zuordnung[lauf_start]:
+                continue
+            nummer = zuordnung[lauf_start]
+            if nummer is not None:
+                laenge = sum(len(bloecke[x]) for x in range(lauf_start, i))
+                laeufe.setdefault(nummer, []).append((lauf_start, i, laenge))
+            lauf_start = i
+        for nummer, gefunden in laeufe.items():
+            if len(gefunden) < 2:
+                continue
+            behalten = max(gefunden, key=lambda g: g[2])
+            for von, bis, _laenge in gefunden:
+                if (von, bis) == (behalten[0], behalten[1]):
+                    continue
+                for x in range(von, bis):
+                    zuordnung[x] = None
 
         # Aufeinanderfolgende Bloecke mit derselben Zuordnung zusammenfassen.
         aus: List[Teilstueck] = []
