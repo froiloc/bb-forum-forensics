@@ -354,6 +354,14 @@ _GEPRUEFT_759 = ("Build 759, 2026-09-04, gegen einen Wegwerf-Bestand unter "
                  "davon einer nur ueber die gefaltete Fassung. "
                  "Python 3.12.3, html5lib.")
 
+_GEPRUEFT_767 = ("Build 767, 2026-09-08, gegen einen Wegwerf-Bestand unter "
+                 "/tmp mit zwei Beitraegen und einem nachgebauten "
+                 "Zensurbaustein nach dem Abzug von Alex zu Annotation "
+                 "1488/273. Python 3.12.3, html5lib. Gemessen: beide "
+                 "Wortlaute gefunden, Lage content, Stufe 3 (der Probe"
+                 "bestand traegt keine post_id); der Zensurfall loest erst "
+                 "mit dem Ausschluss der versteckten Fassung auf.")
+
 _GEPRUEFT_766 = ("Build 766, 2026-09-08, gegen einen Wegwerf-Bestand "
                  "unter /tmp mit zwei Beitraegen nach viewtopic0.php, "
                  "jeder mit einem <div id=\"progressbar\"> - die id ist "
@@ -5599,6 +5607,97 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             "die Dateien liegen neben der Zieldatei nicht vor. Auf den "
             "Seitenaufbau hat das keinen Einfluss; die Meldungen sind ohne "
             "Belang.",
+            ),
+        ),
+    ),
+    CliEintrag(
+        schluessel="wortlaut_abgleich",
+        pfad="tools/wortlaut_abgleich.py",
+        aufruf="python tools/wortlaut_abgleich.py [--evidence <evidence_N.db> "
+               "--forensic <forensic_N.db>] [--evidence-dir <Verz>] "
+               "[--forensic-dir <Verz>] [--uid N ...] [--grenze N] "
+               "[--protokoll <Datei>] [--json <Datei>]",
+        titel="Steht der markierte Wortlaut ueberhaupt im Abzug?",
+        gruppe="Migration und Reparatur",
+        zweck="Den gespeicherten 'selection_json.textContent' im page BLOB "
+              "wiederfinden und den Fund BELEGEN. In drei Stufen: der "
+              "benannte Beitrag, die zehn naechsten (fuenf in jede Richtung), "
+              "die ganze Seite. Die Stufe des Treffers sagt, wie weit der "
+              "Anker danebenliegt.",
+        art="lesend",
+        datenbanken=(
+            "evidence_<uid>.db (nur lesend)",
+            "forensic_<uid>.db (nur lesend)",
+        ),
+        betrieb="Der Betrieb darf weiterlaufen. Beide Verbindungen sind "
+                "'mode=ro'; es wird nichts geschrieben und nichts "
+                "entschieden.",
+        hinweis="ES WIRD KEINE SCHWELLE ANGEWANDT. Der Lauf misst "
+                "Aehnlichkeit und Editierdistanz und zeigt ihre Verteilung; "
+                "ob eine Aehnlichkeit ausreicht, ist eine Festlegung und "
+                "gehoert nicht in den Code.",
+        konfiguration=(
+            _k("paths.evidence_db_dir",
+               "Verzeichnis, in dem nach evidence_<uid>.db gesucht wird.",
+               "./data/evidence/",
+               "tools/wortlaut_abgleich.py, _bestaende_bestimmen() - "
+               "aufgeloest ueber core/werkzeug_konfig.wert()",
+               "--evidence-dir"),
+            _k("paths.forensic_db_dir",
+               "Verzeichnis, in dem die zugehoerige forensic_<uid>.db "
+               "gesucht wird.",
+               "./data/forensic/",
+               "tools/wortlaut_abgleich.py, _bestaende_bestimmen() - "
+               "aufgeloest ueber core/werkzeug_konfig.wert()",
+               "--forensic-dir"),
+        ),
+        ausgabe="Je Bestand eine Bestandsaufnahme (aktive Annotationen, als "
+                "geloescht gefuehrte, ohne Wortlaut, mit 'meta'-Zweig, ohne "
+                "Seitenabzug) und der Abgleich: geprueft, gefunden, davon "
+                "eindeutig, zu kurz fuer eine Aussage, und wie oft der "
+                "Ausschluss versteckter Elemente den Treffer erst ermoeglicht "
+                "hat. Dazu die STUFE des Treffers und seine LAGE "
+                "(Inhaltsbereich oder Rahmen). Am Ende die Verteilung der "
+                "Aehnlichkeiten der nicht gefundenen - die Grundlage fuer die "
+                "Schwelle, die der Auftraggeber festlegt - und ein eigener "
+                "Abschnitt zum Lernfall 1488/273. '--json' schreibt dieselben "
+                "Zahlen maschinenlesbar.",
+        tiefe=CliTiefe(
+            beispiele=(
+            _bsp("python tools/wortlaut_abgleich.py --grenze 0 "
+                 "--json /tmp/wortlaut767.json "
+                 "--protokoll /tmp/wortlaut767.log",
+                 "Der Lauf ueber alle Bestaende. Rueckgabewert 0.",
+                 _GEPRUEFT_767),
+            _bsp("python tools/wortlaut_abgleich.py --uid 1488 --grenze 0",
+                 "Nur einen Bestand. Rueckgabewert 0; liegt die Kennung nicht "
+                 "im Verzeichnis, sagt der Lauf das und gibt 2 zurueck.",
+                 _GEPRUEFT_767),
+            ),
+            exit_codes=(
+            (0, "gelaufen"),
+            (1, "Datei fehlt oder Datenbank nicht lesbar"),
+            (2, "Aufruffehler - --evidence ohne --forensic, oder keine "
+                "evidence_<uid>.db im Verzeichnis"),
+            ),
+            warnungen=(
+            "ES IST EINE MESSUNG UND KEINE REPARATUR. Das Werkzeug aendert "
+            "nichts - weder an den Markierungen noch am Seitenabzug.",
+            "EIN ZEICHENGENAUER VERGLEICH IST NICHT MOEGLICH. 'textContent' "
+            "entsteht aus 'Selection.toString()', und das liefert den "
+            "SICHTBAR ausgewaehlten Text mit browserabhaengigen "
+            "Leerraumregeln - nicht die Verkettung der Textknoten. "
+            "Normalisierung und Aehnlichkeit sind deshalb kein Notbehelf, "
+            "sondern der einzige Weg.",
+            "VERSTECKTE ELEMENTE WERDEN UEBERSPRUNGEN. Der Browser zeigt sie "
+            "nicht, eine Textentnahme aus dem Baum liest sie mit. Gemessener "
+            "Fall: die unzensierte Fassung eines zensierten Wortes steht im "
+            "Abzug, ist aber 'display: none'. Die Liste der Klassen ist aus "
+            "dem Forenstil erhoben und NICHT abschliessend - der Lauf weist "
+            "aus, was tatsaechlich vorkommt.",
+            "DIE STUFE IST SELBST EIN BEFUND. Stufe 1 heisst 'der Anker "
+            "redet ueber den richtigen Beitrag', Stufe 2 'er ist verrutscht', "
+            "Stufe 3 'er zeigt woandershin'.",
             ),
         ),
     ),

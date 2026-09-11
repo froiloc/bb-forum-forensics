@@ -1,0 +1,116 @@
+{
+  "issues": [
+    {
+      "id": "7c2b95d0-4e18-4a63-9f27-51d3086ba4e7",
+      "type": "bug",
+      "title": "Berichtsgenerator prueft den Wortlaut nicht",
+      "affected_version": "0.8.766",
+      "reporter": "Alex",
+      "reported_at": "2026-09-08T22:50:00+02:00",
+      "status": "open",
+      "priority": "critical",
+      "severity": "critical",
+      "description": "AbsatzFinder._ueber_xpath() (Z. 1075-1122) loest den XPath-Ausdruck auf, bestimmt Block und Zeichenversaetze und gibt eine Fundstelle zurueck, OHNE den dort stehenden Text je gegen den gespeicherten 'textContent' zu halten. Die Wortlautsuche _ueber_text() laeuft nur als RUECKFALL, wenn der Ausdruck scheitert (finde(), Z. 726 f.).\n\nLoest ein Ausdruck also zufaellig auf, wird der dort stehende Text uebernommen - ungeprueft.\n\nIm Lauf zu Build 766 standen 107 der 455 Annotationen als WIDERLEGT: der Ausdruck loest auf, aber der markierte Wortlaut steht dort nicht. Nur 6 davon brechen strukturell. Bei den uebrigen 101 liefert der Berichtsgenerator heute stillschweigend den falschen Text.\n\nDas ist kein Ankerproblem, sondern ein BELEGPROBLEM: der Bericht zitiert eine Stelle, die der Ermittler nicht markiert hat.\n\nDie Behebung gehoert in denselben Build wie die Migration - sonst schreiben wir geprueffte Anker in die Datenbank, waehrend der Bericht weiter ungeprueft ausliest. Grundsatz fuer den Regelkatalog: ein Anker gilt erst als aufgeloest, wenn der an der bezeichneten Stelle stehende Wortlaut dem gespeicherten textContent entspricht.",
+      "expected_behavior": "Der Bericht zitiert nur, was der Ermittler markiert hat.",
+      "actual_behavior": "Bei 101 Annotationen wird stillschweigend fremder Text zitiert.",
+      "environment": "aiw_webserver 0.8.767",
+      "tags": ["bericht", "beleg", "grundregel1", "build767"],
+      "updates": [
+        {
+          "timestamp": "2026-09-08T22:50:00+02:00",
+          "author": "Claude",
+          "note": "Build 767 liefert das Messwerkzeug, das sagt, WO der Wortlaut stattdessen steht. Die Behebung selbst ist offen und gehoert zur Migration."
+        }
+      ]
+    },
+    {
+      "id": "8d3ca6e1-5f29-4b74-a038-62e4197cb5f8",
+      "type": "feature_request",
+      "title": "Dreistufiger Wortlautabgleich gegen den page BLOB",
+      "affected_version": "0.8.767",
+      "reporter": "Alex",
+      "reported_at": "2026-09-08T22:55:00+02:00",
+      "status": "review",
+      "priority": "high",
+      "severity": "major",
+      "description": "Neues Werkzeug tools/wortlaut_abgleich.py. Es sucht den gespeicherten textContent in drei Stufen: im benannten Beitrag, in den zehn naechsten (fuenf in jede Richtung), auf der ganzen Seite.\n\nDie Stufe ist SELBST EIN BEFUND: Stufe 1 heisst 'der Anker redet ueber den richtigen Beitrag', Stufe 2 'er ist verrutscht', Stufe 3 'er zeigt woandershin'. Die Begruendung fuer fuenf Nachbarn: die von Alex geprueften Versaetze waren -4, -2, -2 und zweimal -42.\n\nJe Fundort werden Beitrag, Stufe, Lage (Inhaltsbereich oder Rahmen) und die Zahl der Vorkommen ausgewiesen. Ohne Treffer werden Aehnlichkeit und Editierdistanz bestimmt - als ZAHL, nicht als Entscheidung.\n\nES IST KEINE SCHWELLE IM CODE. Der Lauf zeigt die Verteilung der Aehnlichkeiten; ob eine ausreicht, legt Alex nach der Messung fest. Eine Grenze, die ich mir ausdenke, waere eine Festlegung ohne Messung.\n\nDer BLOB-Zugriff wird von AnkerDiagnose uebernommen und nicht nachgebaut: dort stehen die vier Abfragen und der Filter auf method='GET'. Ein Werkzeug, das einen ANDEREN Abzug liest als das, dessen Verhalten es erklaeren soll, erklaert nichts (Build 731).",
+      "expected_behavior": "Je Annotation: gefunden ja/nein, auf welcher Stufe, wie eindeutig, in welchem Bereich.",
+      "environment": "aiw_webserver 0.8.767, Python 3.12.3 / 3.14, lxml, html5lib",
+      "tags": ["wortlaut", "abgleich", "migration", "build767"],
+      "updates": [
+        {
+          "timestamp": "2026-09-08T22:55:00+02:00",
+          "author": "Claude",
+          "note": "Waechter WA01 bis WA10 mit sieben Mutationsgegenproben, alle gefangen. Eigene Levenshtein-Umsetzung mit Obergrenze, weil weder rapidfuzz noch Levenshtein im Zielsystem liegen und eine neue Abhaengigkeit fuer eine einmal laufende Migration nicht angemessen waere."
+        }
+      ]
+    },
+    {
+      "id": "9e4db7f2-6a3b-4c85-b149-73f52a8dc609",
+      "type": "improvement",
+      "title": "Nicht gerenderte Elemente werden bei der Textentnahme uebersprungen",
+      "affected_version": "0.8.767",
+      "reporter": "Alex",
+      "reported_at": "2026-09-08T23:00:00+02:00",
+      "status": "review",
+      "priority": "high",
+      "severity": "major",
+      "description": "Der Browser ueberspringt nicht gerenderte Elemente, eine Textentnahme aus dem Baum liest sie mit.\n\nGemessener Fall (Alex, 08.09.2026, Annotation 1488/273): Der Ermittler sieht '@Alice   @*censored*'. Im Abzug steht zusaetzlich die unzensierte Fassung 'Fenixxx' in '<span class=\"uncensored hidden\">', die erst beim Ueberfahren sichtbar wird - beim Markieren also nie.\n\n  browser_wortlaut (Build 729): '@alice @*censored*fenixxx'\n  sichtbarer_text  (Build 767): '@alice @*censored*'\n\nWICHTIG UND LANGE VERDECKT: Die TEILKETTENSUCHE traf auch vorher - der versteckte Text steht ja HINTER dem gesuchten. Nur die GLEICHHEIT scheiterte. Genau deshalb hat wortlaut_im_beitrag() den richtigen Beitrag gefunden, waehrend die Rueckprobe am Fundort fehlschlug.\n\nDie Liste der Klassen ist aus dem Forenstil erhoben (Air.css Z. 1200 f., index.css Z. 405 f.: '.hidden { display: none; }') und ausdruecklich NICHT abschliessend. Air.css nennt 22 weitere Regeln mit display:none. Der Lauf weist aus, was tatsaechlich vorkommt.\n\nNebenbefund fuer die Ermittlung: der Ermittler hat einen Benutzernamen markiert, gespeichert ist die Zensurmarke. Fuer die Zuordnung eines Kontos zu einer Person ist 'Fenixxx' der Beleg, '*censored*' ist keiner. Der Abgleich muss gegen die zensierte Fassung laufen, der Bericht die unzensierte ausgeben, und 'extracted' sollte den unzensierten Namen aufnehmen.",
+      "expected_behavior": "Der sichtbare Text ist zeichengleich mit dem, was der Ermittler markiert hat.",
+      "environment": "aiw_webserver 0.8.767",
+      "tags": ["zensur", "textentnahme", "wortlaut", "build767"],
+      "updates": [
+        {
+          "timestamp": "2026-09-08T23:00:00+02:00",
+          "author": "Claude",
+          "note": "Waechter WN05 bis WN08 und WA06, der Zensurfall wortgleich aus dem Abzug. WN08 haelt ausdruecklich fest, dass die Teilkettensuche auch ohne Ausschluss traf - damit der Unterschied nicht wieder verloren geht."
+        }
+      ]
+    },
+    {
+      "id": "af5ec803-7b4c-4d96-c25a-84063bed7710",
+      "type": "bug",
+      "title": "toolbar.js vergleicht zwei verschiedene Stringifizierungen",
+      "affected_version": "0.8.767",
+      "reporter": "Claude",
+      "reported_at": "2026-09-08T23:05:00+02:00",
+      "status": "open",
+      "priority": "medium",
+      "severity": "major",
+      "description": "rangeFromSelection() in toolbar.js Z. 1195-1197 vergleicht 'range.toString()' gegen 'sel.textContent' und setzt daraus 'stale'.\n\nDas sind ZWEI VERSCHIEDENE Stringifizierungen. 'textContent' entsteht in Z. 1101 aus 'sel.toString()', also Selection.toString() - dem SICHTBAR ausgewaehlten Text. 'Range.toString()' ist dagegen die schlichte Verkettung der Textknoten. Im WHATWG-Archiv (Februar 2011) ist festgehalten, dass Gecko, WebKit und IE8 bei der Selection-Stringifizierung mit vielen verwickelten Leerraumregeln arbeiten, waehrend Range.toString() dem DOM-Standard folgt.\n\nFolge: Bei jeder Markierung ueber mehr als einen Block meldet die Toolbar 'stale', auch wenn nichts veraltet ist. Die Pruefung ist also vorhanden, aber wertlos - sie vergleicht Ungleiches.\n\nZweiter Punkt: Auch wo 'stale' richtig gesetzt wird, hat es keine Konsequenz ausser einer Sprachausgabe (Z. 1492-1496) und einem gestrichelten Rand im Minimap-Balken (Z. 6883). Die Markierung wird trotzdem gezeichnet - an der falschen Stelle, ohne dass jemand sie sucht.\n\nEigener Vorgang, nicht Teil von Build 767. Gehoert in den Umbau von toolbar.js auf selection_json 2.0.0.",
+      "expected_behavior": "Die Verifikation vergleicht Gleiches und hat eine Konsequenz.",
+      "actual_behavior": "Falschmeldungen bei mehrblockigen Markierungen; richtige Meldungen ohne Wirkung.",
+      "environment": "aiw_webserver 0.8.767, toolbar.js",
+      "tags": ["toolbar", "verifikation", "offen", "build767"],
+      "updates": [
+        {
+          "timestamp": "2026-09-08T23:05:00+02:00",
+          "author": "Claude",
+          "note": "Beim Nachsehen gefunden, nachdem Alex beanstandet hatte, die Toolbar habe die Faehigkeit der Pruefung nicht. Er hatte ueberwiegend recht: sie hat sie, aber sie vergleicht Ungleiches."
+        }
+      ]
+    },
+    {
+      "id": "b06fd914-8c5d-4ea7-d36b-9517cafe8821",
+      "type": "documentation",
+      "title": "documents/Arbeitsstand.md als Einstieg fuer neue Sitzungen",
+      "affected_version": "0.8.767",
+      "reporter": "Alex",
+      "reported_at": "2026-09-08T23:10:00+02:00",
+      "status": "review",
+      "priority": "medium",
+      "severity": "minor",
+      "description": "Uebergabedokumente, die am Ende einer Sitzung geschrieben werden, verlieren die Haelfte des Wissens - Alex nennt es 'stille Post' und zaehlt es zu den Kernproblemen der Arbeit mit KI: Ruestzeiten und Uebergabeverluste.\n\nWas traegt, steht bereits im Repository: die Regelkataloge, die Kommentare im Code, die 'note' in build.json, der Issue-Tracker. Was fehlte, war der Hinweis, WELCHE davon in welcher Reihenfolge zu lesen sind.\n\ndocuments/Arbeitsstand.md ist dieser Hinweis: aktueller Stand, was gerade gearbeitet wird, die Lesereihenfolge der Dokumente, die Builds dieser Arbeit in Kuerze, die fuenf Befunde, die alles Weitere bestimmen, und die Arbeitsregeln, die aus Fehlern entstanden sind.\n\nWaechter AS01 haelt sie an build.json: nennt sie eine andere Buildnummer als die ausgelieferte, faellt der Test. Damit kann sie nicht veralten, ohne dass es auffaellt.",
+      "expected_behavior": "Eine neue Sitzung rekonstruiert aus dem Repository, nicht aus einer Zusammenfassung.",
+      "environment": "aiw_webserver 0.8.767",
+      "tags": ["dokumentation", "uebergabe", "build767"],
+      "updates": [
+        {
+          "timestamp": "2026-09-08T23:10:00+02:00",
+          "author": "Claude",
+          "note": "Der Waechter hat beim Einbau sofort gewirkt: build.json stand noch auf 766, und AS01 fiel. Genau dafuer ist er da."
+        }
+      ]
+    }
+  ]
+}
