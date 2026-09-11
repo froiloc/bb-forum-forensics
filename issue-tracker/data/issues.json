@@ -20046,6 +20046,138 @@
           "comment": "Importiert aus eintraege_claude_Build767.json"
         }
       ]
+    },
+    {
+      "id": "c17ae025-9d6e-4fb8-e47c-a6284dcb9932",
+      "type": "bug",
+      "title": "Benannter Beitrag wurde aus leerer Spalte gelesen",
+      "affected_version": "0.8.767",
+      "reporter": "Claude",
+      "reported_at": "2026-09-08T23:40:00+02:00",
+      "status": "resolved",
+      "resolved_in_version": "0.8.768",
+      "priority": "critical",
+      "severity": "major",
+      "description": "tools/wortlaut_abgleich.py hat in Build 767 die Spalte 'annotations.post_id' als 'benannten Beitrag' gelesen. Die ist bei Textmarkierungen leer: von 456 aktiven Annotationen tragen 455 NULL.\n\nFolge: Im Lauf zu Build 767 lag genau EIN Treffer auf Stufe 1 und 425 auf Stufe 3. Das hiess nicht 'die Anker zeigen woandershin', sondern 'es gab nichts zu vergleichen'. Die Stufenmessung jenes Laufs war damit wertlos - und sie war der Hauptzweck des Werkzeugs.\n\nDer Beitrag ergibt sich aus dem Aufstieg vom letzten aufloesenden Node des Ankers zum post container. Genau das tut anker_diagnose seit Build 763 und liefert es fuer 449 von 455 Annotationen. Es wird jetzt von dort uebernommen und nicht nachgebaut; die Spalte dient nur noch als Rueckfall fuer Beitragsmarkierungen ohne Anker.\n\nDer Bericht weist beide Herkuenfte getrennt aus, damit die Verwechslung nicht wiederkehrt.",
+      "expected_behavior": "Der benannte Beitrag stammt aus dem Anker.",
+      "actual_behavior": "Er stammte aus einer Spalte, die bei 455 von 456 leer ist.",
+      "environment": "aiw_webserver 0.8.768",
+      "tags": [
+        "wortlaut",
+        "korrektur",
+        "messung",
+        "build768"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-09-08T23:40:00+02:00",
+          "author": "Claude",
+          "note": "Der Befund ist im Metadaten-Katalog unter annotations/post_id samt Fallstrick festgehalten - genau dafuer wurde er angelegt."
+        },
+        {
+          "timestamp": "2026-09-11T17:54:55.108647+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build768.json"
+        }
+      ]
+    },
+    {
+      "id": "d28bf136-ae7f-40c9-f58d-b7395edca043",
+      "type": "feature_request",
+      "title": "Aufspaltung: welche Beitraege, und was wuerde aus jedem",
+      "affected_version": "0.8.768",
+      "reporter": "Alex",
+      "reported_at": "2026-09-08T23:45:00+02:00",
+      "status": "review",
+      "priority": "critical",
+      "severity": "major",
+      "description": "Festzustellen, dass eine Markierung mehrere Beitraege umfasst, ist keine Leistung - das war bekannt. Gebraucht wird die Auskunft, WELCHE Beitraege es sind und WAS aus jedem wuerde. Erst wenn das je Beitrag belegt ist, darf die Migration aufspalten (Regelkatalog G4 und 1.4).\n\nDie Bloecke des Wortlauts werden ueber die Beitraege der Seite verteilt. Je Teilstueck stehen: Beitragsnummer, Blockbereich, Lage (content/frame/outside), Zeichenzahl und 'would_become' - 'text range', 'whole post' oder 'entfaellt'. 'split_complete' sagt, ob alles untergekommen ist.\n\nNachgestellt an einer Markierung ueber die ganze Seite - dem Fall 1704143/1 mit 62988 Zeichen: fuenf Beitraege einzeln aufgeloest, die Fusszeile als 'entfaellt' AUSGEWIESEN. Dass sie entfaellt, ist zu sehen und nicht zu erschliessen (Grundregel 1).",
+      "expected_behavior": "Je mehrteiliger Markierung eine Liste der betroffenen Beitraege mit der Angabe, was aus jedem wuerde.",
+      "environment": "aiw_webserver 0.8.768",
+      "tags": [
+        "aufspaltung",
+        "migration",
+        "build768"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-09-08T23:45:00+02:00",
+          "author": "Claude",
+          "note": "Waechter WA16 bis WA20, sechs Mutationsgegenproben, alle gefangen. Beim Bauen gefunden: eine beitragsweise Verteilung kommt nicht in Gang, wenn der ERSTE Block ausserhalb jedes Beitrags liegt. Verteilt wird deshalb je Block der naechste Beitrag, der ihn traegt."
+        },
+        {
+          "timestamp": "2026-09-11T17:54:55.108685+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build768.json"
+        }
+      ]
+    },
+    {
+      "id": "e39c0247-bf80-41da-a69e-c840a6fedb54",
+      "type": "improvement",
+      "title": "Blockweiser Vergleich statt Aehnlichkeitsschwelle",
+      "affected_version": "0.8.768",
+      "reporter": "Claude",
+      "reported_at": "2026-09-08T23:50:00+02:00",
+      "status": "review",
+      "priority": "high",
+      "severity": "major",
+      "description": "Im Lauf zu Build 767 blieben 30 Wortlaute ungefunden, mit Aehnlichkeiten zwischen 0,79 und 0,99. Das sah nach einer Schwelle aus.\n\nEs war keine. 24 der 30 sind vom Typ 'ganzer Post als text-range markiert'. Dort umfasst der Wortlaut RAHMEN UND INHALT - Verfasser, Zeitstempel, Betreff, Beitragstext, Funktionsleiste - in der Reihenfolge, in der der Browser sie sichtbar aneinanderreiht, mit Umbruechen, die im Abzug nicht stehen. Eine Suche nach dem Wortlaut ALS EINER Zeichenkette kann das nur verfehlen.\n\nEine Schwelle haette einen Messfehler in eine Regel gegossen.\n\nStattdessen wird der Wortlaut VOR der Normalisierung an Umbruechen zerlegt - danach waeren die Grenzen gefaltet. Gefunden ist er, wenn alle Bloecke im Beitrag stehen UND in Reihenfolge. Die Reihenfolgebedingung ist wesentlich: ohne sie waere jede Ansammlung derselben Woerter ein Treffer, und der Rahmen eines Beitrags wiederholt sich auf einer Seite hundertfach.\n\nDer Treffer am Stueck bleibt die staerkere Aussage und behaelt Vorrang.",
+      "expected_behavior": "Ein 'whole post'-Wortlaut wird gefunden, ohne dass eine Aehnlichkeitsschwelle noetig waere.",
+      "environment": "aiw_webserver 0.8.768",
+      "tags": [
+        "wortlaut",
+        "blockweise",
+        "build768"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-09-08T23:50:00+02:00",
+          "author": "Claude",
+          "note": "Waechter WA11 bis WA15. Ob die Erklaerung traegt, zeigt der Lauf: bleiben die 24 ungefunden, ist sie falsch."
+        },
+        {
+          "timestamp": "2026-09-11T17:54:55.108707+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build768.json"
+        }
+      ]
+    },
+    {
+      "id": "f4ad1358-c091-42eb-b7af-d951a0fedc65",
+      "type": "documentation",
+      "title": "Auftragsakte und Metadaten-Katalog",
+      "affected_version": "0.8.768",
+      "reporter": "Alex",
+      "reported_at": "2026-09-08T23:55:00+02:00",
+      "status": "review",
+      "priority": "high",
+      "severity": "major",
+      "description": "Zwei Festlegungen gegen die Uebergabeverluste zwischen Sitzungen.\n\nERSTENS die Auftragsakte: Je Thema ein eigenes Verzeichnis unter documents/, Kurzname 8-30 Zeichen aus Kleinbuchstaben, Unterstrichen und Zahlen. Grund: Themen werden parallel bearbeitet und wieder geparkt; eine einzige Datei kollidiert, und documents/ muellt zu. Hier: documents/annotation_migration/ mit Regelkatalog, Post-Bereiche-Katalog, Arbeitsstand und Metadaten-Katalog.\n\nZWEITENS der Metadaten-Katalog. Erwartungen an Datenbankspalten und JSON-Keys haben in dieser Arbeit wiederholt Tage gekostet: eine Spalte, die gefuellt schien und NULL war; ein Exportwerkzeug, das NULL als leere Zeichenkette zeigt; ein meta-Zweig, der laengst existierte und neu entworfen wurde.\n\nDer Katalog haelt zu jedem Feld fest, was GEMESSEN wurde - mit woertlichem Zitat, Build, Zeitstempel, Beispielwerten und Haeufigkeiten, dazu je Feld die Fehlannahmen, die hier bereits gemacht wurden. Elf Felder, neunzehn Befunde, jeder mit Zitat.\n\nJSON und nicht YAML: YAML wandelt 'NULL', 'no', 'on' und '~' still in Typen um - und genau diese Unterscheidung festzuhalten ist der halbe Zweck des Dokuments. Einrueckung 2, damit die Datei ohne jq lesbar bleibt.\n\nDer Arbeitsstand traegt jetzt im Kopf den Auftrag und den Adressaten - einen unabhaengigen kuenftigen KI-Chat - und je Build vier Rubriken: Entscheidungen, Revidiertes, Erkenntnisse ueber vorhandenen Code, Messwerte. Chronologisch, aelteste zuerst: eine Revision ohne das Revidierte ist nicht lesbar.",
+      "expected_behavior": "Eine neue Sitzung wird aus dem Repository arbeitsfaehig, ohne Rueckfrage.",
+      "environment": "aiw_webserver 0.8.768",
+      "tags": [
+        "dokumentation",
+        "uebergabe",
+        "metadaten",
+        "build768"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-09-08T23:55:00+02:00",
+          "author": "Claude",
+          "note": "AS01 erweitert: prueft jetzt auch, dass Adressat und Pflegeauftrag im Kopf stehen und dass JEDER ausgelieferte Build einen Abschnitt hat. AS02 neu: prueft das Schema des Metadaten-Katalogs, dass jeder Befund Build, Zeitstempel und Quelle traegt, und dass die vier bereits verwechselten Felder gefuehrt sind."
+        },
+        {
+          "timestamp": "2026-09-11T17:54:55.108728+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build768.json"
+        }
+      ]
     }
   ]
 }
