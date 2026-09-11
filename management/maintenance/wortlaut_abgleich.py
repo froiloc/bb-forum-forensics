@@ -147,6 +147,8 @@ class Abgleichbefund:
     bloecke: int = 0
     #: BUILD 768 - die Aufspaltung ueber mehrere Beitraege.
     teilstuecke: List[Teilstueck] = field(default_factory=list)
+    #: BUILD 769 - die Beitraege, die zwischen den Ankerpunkten liegen.
+    kandidaten: List[int] = field(default_factory=list)
     hinweis: str = ""
 
     @property
@@ -176,6 +178,12 @@ class Abgleichbefund:
             "split": [s.als_dict() for s in self.teilstuecke],
             "split_posts": [s.post_id for s in self.teilstuecke
                             if s.post_id is not None],
+            "candidates": list(self.kandidaten),
+            "split_post_count": len({s.post_id for s in self.teilstuecke
+                                     if s.post_id is not None}),
+            "split_sections": len(self.teilstuecke),
+            "chars_outside": sum(s.zeichen for s in self.teilstuecke
+                                 if s.post_id is None),
             "split_complete": bool(self.teilstuecke) and not any(
                 s.post_id is None for s in self.teilstuecke),
             "note": self.hinweis,
@@ -258,6 +266,25 @@ class WortlautAbgleich:
         self._platz: Dict[int, int] = {
             n: i for i, n in enumerate(self._nummern)}
 
+        # BUILD 769 - die Dokumentreihenfolge JEDES Knotens. Sie wird
+        # gebraucht, um aus zwei Ankerpunkten die Menge der dazwischen
+        # liegenden Beitraege zu bestimmen.
+        self._ordnung: Dict[Any, int] = {}
+        for i, el in enumerate(wurzel.iter()):
+            if isinstance(getattr(el, "tag", None), str):
+                self._ordnung[el] = i
+        #: Je Beitrag der Bereich (erster Index, letzter Index) im Baum.
+        self._bereich_je_nummer: Dict[int, Tuple[int, int]] = {}
+        for el in self._container:
+            nummer = AbsatzFinder.beitragsnummer(el)
+            if nummer is None:
+                continue
+            indizes = [self._ordnung[k] for k in el.iter()
+                       if isinstance(getattr(k, "tag", None), str)
+                       and k in self._ordnung]
+            if indizes:
+                self._bereich_je_nummer[nummer] = (min(indizes), max(indizes))
+
     # ------------------------------------------------------------------
     @property
     def beitragszahl(self) -> int:
@@ -331,7 +358,8 @@ class WortlautAbgleich:
 
     # ------------------------------------------------------------------
     def pruefe(self, text_content: str,
-               benannter_beitrag: Optional[int]) -> Abgleichbefund:
+               benannter_beitrag: Optional[int],
+               start_knoten=None, end_knoten=None) -> Abgleichbefund:
         """
         Der dreistufige Abgleich fuer EINE Annotation.
 
@@ -414,15 +442,39 @@ class WortlautAbgleich:
         # aufspalten darf.
         b.bloecke = len(bloecke)
         if bloecke:
-            b.teilstuecke = self.aufspalten(bloecke)
-            mit_beitrag = [s for s in b.teilstuecke if s.post_id is not None]
-            if len(mit_beitrag) > 1:
+            # DIE SCHRANKE. Ohne beide Ankerpunkte gibt es keine Aufspaltung -
+            # sie waere geraten (Festlegung Alex, 08.09.2026).
+            kandidaten = self.kandidaten_zwischen(start_knoten, end_knoten)
+            b.kandidaten = list(kandidaten)
+            if not kandidaten:
                 b.hinweis = (
-                    "kein einzelner Beitrag traegt den Wortlaut; er zerfaellt "
-                    "in %d Beitraege%s"
-                    % (len(mit_beitrag),
-                       "" if len(mit_beitrag) == len(b.teilstuecke)
-                       else " und einen Rest ausserhalb"))
+                    "keine Aufspaltung: die Spanne zwischen den Ankerpunkten "
+                    "ist nicht bestimmbar%s"
+                    % ("" if (start_knoten is not None
+                              and end_knoten is not None)
+                       else " - ein Ankerpunkt loest nicht auf"))
+                self._aehnlichkeit(b)
+                return b
+            b.teilstuecke = self.aufspalten(bloecke, kandidaten)
+            # GEZAEHLT WERDEN BEITRAEGE, NICHT ABSCHNITTE. Ein Beitrag kann
+            # mehrfach vorkommen, wenn zwischen seinen Bloecken etwas liegt,
+            # das in keinem Kandidaten steht. 'ueber 19 Beitraege verteilt'
+            # waere dann falsch - es sind zwei, mit neunzehn Abschnitten.
+            beitraege = sorted({s.post_id for s in b.teilstuecke
+                                if s.post_id is not None})
+            aussen = [s for s in b.teilstuecke if s.post_id is None]
+            if beitraege:
+                b.hinweis = (
+                    "ueber %d %s verteilt, in %d Abschnitten "
+                    "(Spanne: %d Kandidaten)%s"
+                    % (len(beitraege),
+                       "Beitrag" if len(beitraege) == 1 else "Beitraege",
+                       len(b.teilstuecke) - len(aussen), len(kandidaten),
+                       "" if not aussen
+                       else "; dazu %d Abschnitt%s mit %d Zeichen ausserhalb "
+                            "jedes Beitrags" % (
+                                len(aussen), "" if len(aussen) == 1 else "e",
+                                sum(s.zeichen for s in aussen))))
                 return b
 
         self._aehnlichkeit(b)
@@ -492,7 +544,63 @@ class WortlautAbgleich:
         return aus
 
     # ------------------------------------------------------------------
-    def aufspalten(self, bloecke: List[str]) -> List[Teilstueck]:
+    def kandidaten_zwischen(self, start_knoten, end_knoten) -> List[int]:
+        """
+        DIE STRUKTURELLE SCHRANKE. Welche Beitraege koennen von einer
+        Markierung ueberhaupt umfasst sein?
+
+        Antwort: genau die, deren Bereich im Baum die Spanne zwischen den
+        beiden Ankerpunkten beruehrt. Nicht mehr, nicht weniger.
+
+        WARUM DAS NOETIG IST - der Fall 583231/6, gemessen am 08.09.2026:
+        Die Verteilung ohne Schranke sucht JEDEN Block auf der GANZEN Seite
+        und wandert dabei vorwaerts. Kurze Bloecke - einer mit einem Zeichen,
+        einer mit drei - treffen in spaeteren Beitraegen zufaellig, und jeder
+        Zufallstreffer schiebt den Suchzeiger weiter. So wurden aus ZWEI
+        Beitraegen neun. Das Verfahren driftete.
+
+        EINE MINDESTLAENGE JE BLOCK WAERE DER FALSCHE WEG (Festlegung Alex,
+        08.09.2026): sie daempft die Drift, beseitigt sie nicht, und sie
+        waere eine statistische Grenze fuer ein Problem, das STRUKTURELL
+        bestimmt ist. Der Endanker zeigt auf 'article[2]' von 70 - die
+        Beitraege 3 bis 70 KOENNEN nicht umfasst sein, und das ist keine
+        Schaetzung.
+
+        Leere Liste, wenn ein Ankerpunkt fehlt. Dann gibt es KEINE
+        Aufspaltung, sondern eine Vorlage: eine Aufspaltung ohne Schranke
+        waere geraten, und eine geratene Zuordnung ist schlimmer als keine.
+        """
+        if start_knoten is None or end_knoten is None:
+            return []
+        von = self._index_von(start_knoten)
+        bis = self._index_von(end_knoten)
+        if von is None or bis is None:
+            return []
+        if von > bis:
+            von, bis = bis, von
+        aus: List[int] = []
+        for nummer in self._nummern:
+            bereich = self._bereich_je_nummer.get(nummer)
+            if bereich is None:
+                continue
+            # Beruehrt der Beitrag die Spanne?
+            if bereich[0] <= bis and bereich[1] >= von:
+                aus.append(nummer)
+        return aus
+
+    # ------------------------------------------------------------------
+    def _index_von(self, knoten) -> Optional[int]:
+        """Die Dokumentreihenfolge eines Knotens - auch eines Textknotens."""
+        el = knoten
+        if not isinstance(getattr(knoten, "tag", None), str):
+            el = knoten.getparent() if hasattr(knoten, "getparent") else None
+            if el is not None and getattr(knoten, "is_tail", False):
+                el = el.getparent()
+        return self._ordnung.get(el)
+
+    # ------------------------------------------------------------------
+    def aufspalten(self, bloecke: List[str],
+                   kandidaten: Optional[List[int]] = None) -> List[Teilstueck]:
         """
         DIE AUFSPALTUNG. Eine Markierung, die MEHRERE Beitraege umfasst, auf
         die einzelnen Beitraege verteilen - so, wie die Migration sie spaeter
@@ -521,13 +629,17 @@ class WortlautAbgleich:
         # zwischen zwei Beitraegen), kaeme eine beitragsweise Schleife gar
         # nicht erst in Gang und wuerde die ganze Markierung als 'ausserhalb'
         # abtun. Gemessen an einer Probe mit vorangestellter Fusszeile.
+        # BUILD 769: Gesucht wird NUR in den Kandidaten. Ohne Schranke
+        # driftet das Verfahren (siehe kandidaten_zwischen).
+        reihe = (list(kandidaten) if kandidaten is not None
+                 else list(self._nummern))
         zuordnung: List[Optional[int]] = []
         pos_beitrag = 0          # ab welchem Beitrag weitergesucht wird
         stelle_im_text = 0       # Fundstelle im aktuellen Beitrag
         for block in bloecke:
             gefunden = None
-            for k in range(pos_beitrag, len(self._nummern)):
-                nummer = self._nummern[k]
+            for k in range(pos_beitrag, len(reihe)):
+                nummer = reihe[k]
                 text = self._text_je_nummer.get(nummer, "")
                 if not text:
                     continue
@@ -599,7 +711,11 @@ class WortlautAbgleich:
         b.bester_beitrag = beste_nummer
         if bester_ausschnitt:
             b.editierdistanz = editierdistanz(bester_ausschnitt, b.wortlaut)
-        if not b.hinweis:
-            b.hinweis = ("kein exakter Treffer auf keiner der drei Stufen"
-                         if self._nummern
-                         else "die Seite traegt keine Beitraege")
+        # Der Befund ueber den Treffer wird IMMER genannt, auch wenn schon
+        # ein Hinweis zur Aufspaltung steht. Zwei Aussagen, zwei Saetze -
+        # sonst verdeckt die eine die andere.
+        kein_treffer = ("kein exakter Treffer auf keiner der drei Stufen"
+                        if self._nummern
+                        else "die Seite traegt keine Beitraege")
+        b.hinweis = ("%s; %s" % (kein_treffer, b.hinweis) if b.hinweis
+                     else kein_treffer)

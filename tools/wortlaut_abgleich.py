@@ -180,6 +180,33 @@ def _selection(roh):
     return sel if isinstance(sel, dict) else None
 
 
+def _ankerknoten(d, sichten, sel):
+    """
+    Die beiden Endpunkte einer Markierung als Knoten im Baum.
+
+    BUILD 769: Sie sind die SCHRANKE der Aufspaltung. Loest einer nicht auf,
+    gibt es keine Aufspaltung, sondern eine Vorlage - eine Verteilung ohne
+    Schranke driftet (gemessen an 583231/6: neun Beitraege statt zwei).
+    """
+    if not sichten or not isinstance(sel, dict):
+        return None, None
+    if sel.get("target") == "translation":
+        return None, None
+    aus = []
+    for feld in ("xpathStart", "xpathEnd"):
+        ausdruck = str(sel.get(feld) or "")
+        if not ausdruck:
+            aus.append(None)
+            continue
+        try:
+            befund = d._anker_pruefen(sichten[2], ausdruck)
+            aus.append(befund.letzter_knoten
+                       if befund.bricht_bei == "" else None)
+        except Exception:                          # pragma: no cover
+            aus.append(None)
+    return aus[0], aus[1]
+
+
 def _beitrag_aus_anker(d, sichten, sel):
     """
     Die Beitragsnummer, die der ANKER benennt.
@@ -302,7 +329,8 @@ def _ein_bestand(m, uid: str, ev_pfad: str, fo_pfad: str, grenze: int):
             else:
                 zaehlung["beitrag_aus_anker"] += 1
 
-            b = a.pruefe(wortlaut, post_id)
+            start_knoten, end_knoten = _ankerknoten(d, sichten, sel)
+            b = a.pruefe(wortlaut, post_id, start_knoten, end_knoten)
             zaehlung["geprueft"] += 1
             if b.gefunden:
                 zaehlung["gefunden"] += 1
@@ -319,10 +347,12 @@ def _ein_bestand(m, uid: str, ev_pfad: str, fo_pfad: str, grenze: int):
                 zaehlung["blockweise"] += 1
             if b.teilstuecke:
                 mit = [s for s in b.teilstuecke if s.post_id is not None]
-                if len(mit) > 1:
+                anzahl = len({s.post_id for s in b.teilstuecke
+                              if s.post_id is not None})
+                if anzahl > 1:
                     zaehlung["aufgespalten"] += 1
-                    zaehlung["teilstuecke_gesamt"] += len(mit)
-                    if all(s.post_id is not None for s in b.teilstuecke):
+                    zaehlung["teilstuecke_gesamt"] += anzahl
+                    if all(s.post_id is not None for s in b.teilstuecke):  # noqa
                         zaehlung["aufspaltung_vollstaendig"] += 1
                     else:
                         zaehlung["aufspaltung_mit_rest"] += 1
@@ -392,10 +422,13 @@ def _bericht(m, uid, z, belege, aufspaltungen=()) -> None:
           % len(aufspaltungen))
         for kennung, url, b in aufspaltungen:
             mit = [s for s in b.teilstuecke if s.post_id is not None]
-            m("   Beleg %-6d %-44s %d Bloecke -> %d Beitraege%s"
-              % (kennung, url[:44], b.bloecke, len(mit),
-                 "" if len(mit) == len(b.teilstuecke)
-                 else ", REST ausserhalb"))
+            d = b.als_dict()
+            m("   Beleg %-6d %-40s %d Bloecke -> %d Beitraege in %d "
+              "Abschnitten (Spanne: %d Kandidaten)%s"
+              % (kennung, url[:40], b.bloecke, d["split_post_count"],
+                 d["split_sections"], len(b.kandidaten),
+                 "" if not d["chars_outside"]
+                 else ", %d Zeichen ausserhalb" % d["chars_outside"]))
             for s in b.teilstuecke:
                 m("      Bloecke %3d-%-3d  post %-9s %-8s %6d Zeichen  ->  %s"
                   % (s.block_von, s.block_bis,
