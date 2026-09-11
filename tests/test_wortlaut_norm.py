@@ -188,7 +188,7 @@ def test_AS01_der_arbeitsstand_nennt_die_ausgelieferte_buildnummer():
     import json
 
     wurzel = Path(__file__).resolve().parent.parent
-    pfad = wurzel / "documents" / "Arbeitsstand.md"
+    pfad = wurzel / "documents" / "annotation_migration" / "Arbeitsstand.md"
     assert pfad.exists(), "documents/Arbeitsstand.md fehlt"
     text = pfad.read_text(encoding="utf-8")
 
@@ -199,7 +199,83 @@ def test_AS01_der_arbeitsstand_nennt_die_ausgelieferte_buildnummer():
 
     # Die Dokumente, ohne die keine Entscheidung nachvollziehbar ist.
     for pflicht in ("Regelkatalog_selection_json_2_0.md",
+                    "Metadaten_Katalog.json",
                     "Post_Bereiche_Katalog.md",
                     "build.json",
                     "issues.json"):
         assert pflicht in text, "Der Arbeitsstand verweist nicht auf %s" % pflicht
+
+    # BUILD 768: Der Auftrag an die naechste Sitzung muss IM KOPF stehen -
+    # sonst wird die Akte gelesen wie ein Bericht statt gepflegt wie ein
+    # Auftrag. Der Adressat ist ausdruecklich zu benennen.
+    # Leerraum falten: ein Begriff kann im Markdown ueber einen Zeilenumbruch
+    # laufen ('mit **jedem\nausgelieferten Build**'). Eine Pruefung, die daran
+    # scheitert, prueft die Zeilenbreite und nicht den Inhalt.
+    import re as _re
+    flach = _re.sub(r"[\s*]+", " ", text)
+    for pflicht in ("Adressat", "jedem ausgelieferten Build", "chronologisch"):
+        assert pflicht in flach, \
+            "Der Arbeitsstand benennt '%s' nicht" % pflicht
+
+    # Und jeder ausgelieferte Build muss einen eigenen Abschnitt haben.
+    for nummer in range(763, build + 1):
+        assert ("### Build %d" % nummer) in text, \
+            "Kein Abschnitt fuer Build %d in der Chronologie" % nummer
+
+
+def test_AS02_der_metadaten_katalog_ist_gueltig_und_belegt():
+    """
+    DER KATALOG, DER DIE HAEUFIGSTE FEHLERQUELLE SCHLIESST.
+
+    Erwartungen an Datenbankspalten und JSON-Keys haben in dieser Arbeit
+    wiederholt Tage gekostet: eine Spalte, die gefuellt schien und NULL war;
+    ein Exportwerkzeug, das NULL als leere Zeichenkette zeigt; ein
+    meta-Zweig, der laengst existierte und neu entworfen wurde.
+
+    JSON und nicht YAML, weil YAML 'NULL', 'no', 'on' und '~' still in Typen
+    umwandelt - und genau diese Unterscheidung festzuhalten ist der halbe
+    Zweck des Dokuments.
+
+    EIN BEFUND OHNE ZITAT IST EINE BEHAUPTUNG. Deshalb wird hier geprueft,
+    dass jeder Befund Build, Zeitstempel und Quelle traegt.
+    """
+    import json
+
+    wurzel = Path(__file__).resolve().parent.parent
+    akte = wurzel / "documents" / "annotation_migration"
+    pfad = akte / "Metadaten_Katalog.json"
+    assert pfad.exists(), "Metadaten_Katalog.json fehlt"
+    assert (akte / "Metadaten_Katalog.schema.json").exists(), \
+        "Das Schema fehlt - ohne es ist die Datei nicht pruefbar"
+
+    roh = pfad.read_text(encoding="utf-8")
+    k = json.loads(roh)
+
+    # Lesbar OHNE jq: Einrueckung 2, Zeilenumbruch nach jedem Paar.
+    assert "\n  \"kopf\"" in roh, "nicht mit Einrueckung 2 geschrieben"
+
+    for feld in ("zweck", "adressat", "pflege"):
+        assert k["kopf"].get(feld), "Kopf ohne '%s'" % feld
+    assert "kuenftiger KI-Chat" in k["kopf"]["adressat"], \
+        "Der Adressat ist nicht benannt"
+
+    assert k["eintraege"], "Der Katalog ist leer"
+    for e in k["eintraege"]:
+        for feld in ("ort", "feld", "art", "erkenntnisse"):
+            assert e.get(feld), "Eintrag ohne '%s': %r" % (feld, e.get("feld"))
+        assert e["art"] in ("db_spalte", "json_key", "json_zweig"), e["art"]
+        for x in e["erkenntnisse"]:
+            for feld in ("befund", "build", "ts", "quelle"):
+                assert x.get(feld), \
+                    "Befund zu %s ohne '%s'" % (e["feld"], feld)
+        for w in e.get("beispielwerte", ()):
+            assert "haeufigkeit" in w, \
+                "Beispielwert zu %s ohne Haeufigkeit" % e["feld"]
+
+    # Die Felder, deren Verwechslung uns bereits Zeit gekostet hat.
+    gefuehrt = {(e["ort"], e["feld"]) for e in k["eintraege"]}
+    for pflicht in (("annotations", "post_id"),
+                    ("annotations", "deleted_at"),
+                    ("selection_json", "textContent"),
+                    ("selection_json", "meta")):
+        assert pflicht in gefuehrt, "%s fehlt im Metadaten-Katalog" % (pflicht,)

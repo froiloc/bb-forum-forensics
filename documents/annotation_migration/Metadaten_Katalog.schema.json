@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Metadaten-Katalog AIW",
+  "description": "Was zu jedem Datenbankfeld und jedem JSON-Key gemessen wurde. Adressat ist ein unabhaengiger kuenftiger KI-Chat ohne Kenntnis der bisherigen Sitzungen; Zweck ist, dass er ohne Rueckfrage arbeitsfaehig wird und keine Fehlannahme ueber Spalteninhalte trifft.",
+  "type": "object",
+  "required": ["kopf", "eintraege"],
+  "properties": {
+    "kopf": {
+      "type": "object",
+      "required": ["zweck", "adressat", "pflege"],
+      "properties": {
+        "zweck": {"type": "string"},
+        "adressat": {"type": "string"},
+        "pflege": {"type": "string"},
+        "stand_build": {"type": "integer"}
+      }
+    },
+    "eintraege": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["ort", "feld", "art", "erkenntnisse"],
+        "properties": {
+          "ort": {
+            "type": "string",
+            "description": "Wo das Feld lebt: 'annotations' fuer eine Spalte, 'selection_json' fuer einen Key, 'selection_json.meta' fuer einen Key im meta-Zweig."
+          },
+          "feld": {"type": "string"},
+          "art": {
+            "type": "string",
+            "enum": ["db_spalte", "json_key", "json_zweig"]
+          },
+          "bedeutung": {"type": "string"},
+          "erkenntnisse": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["befund", "build", "ts"],
+              "properties": {
+                "befund": {"type": "string"},
+                "build": {"type": "integer"},
+                "ts": {"type": "string"},
+                "quelle": {
+                  "type": "string",
+                  "description": "Woher der Befund stammt: Datei und Zeile, Laufname, oder 'Alex' mit Datum."
+                },
+                "zitat": {
+                  "type": "string",
+                  "description": "Woertliches Zitat aus Quelltext, Protokoll oder Nachricht. Ein Befund ohne Zitat ist eine Behauptung."
+                }
+              }
+            }
+          },
+          "beispielwerte": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["wert", "haeufigkeit"],
+              "properties": {
+                "wert": {"type": "string"},
+                "haeufigkeit": {"type": "integer"},
+                "grundgesamtheit": {"type": "integer"},
+                "gemessen_in_build": {"type": "integer"},
+                "anmerkung": {"type": "string"}
+              }
+            }
+          },
+          "fallstricke": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Fehlannahmen, die hier bereits einmal gemacht wurden."
+          }
+        }
+      }
+    }
+  }
+}

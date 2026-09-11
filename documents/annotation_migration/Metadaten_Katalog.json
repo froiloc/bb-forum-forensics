@@ -1,0 +1,355 @@
+{
+  "kopf": {
+    "zweck": "Was zu jedem Datenbankfeld und jedem JSON-Key GEMESSEN wurde - nicht was vermutet wird. Fehlannahmen ueber Spalteninhalte haben in dieser Arbeit wiederholt Tage gekostet: eine Spalte, die gefuellt schien und NULL war; ein Exportwerkzeug, das NULL als leere Zeichenkette zeigt; ein meta-Zweig, der laengst existierte und neu entworfen wurde. Dieser Katalog verhindert die Wiederholung.",
+    "adressat": "Ein unabhaengiger kuenftiger KI-Chat OHNE Kenntnis der bisherigen Sitzungen. Er muss aus dieser Datei allein entscheiden koennen, welchen Wert ein Feld traegt, wie oft, und welche Annahme darueber bereits widerlegt ist - ohne Rueckfrage beim Auftraggeber.",
+    "pflege": "Mit JEDEM ausgelieferten Build fortzuschreiben. Jeder Befund traegt Build, Zeitstempel, Quelle und - wo moeglich - ein woertliches Zitat. Ein Befund ohne Zitat ist eine Behauptung. Beispielwerte tragen ihre Haeufigkeit und die Grundgesamtheit, sonst ist 'kommt vor' nicht von 'ist der Regelfall' zu unterscheiden. Waechter MK01 haelt die Datei an build.json.",
+    "stand_build": 768
+  },
+  "eintraege": [
+    {
+      "ort": "annotations",
+      "feld": "post_id",
+      "art": "db_spalte",
+      "bedeutung": "Die Beitragsnummer, auf die sich die Annotation bezieht.",
+      "erkenntnisse": [
+        {
+          "befund": "IST BEI TEXTMARKIERUNGEN LEER. Von 456 aktiven Annotationen tragen 455 NULL. Der benannte Beitrag steht NICHT in dieser Spalte, sondern ergibt sich aus dem XPath-Anker ueber den Aufstieg zum post container.",
+          "build": 767,
+          "ts": "2026-09-08",
+          "quelle": "Lauf tools/wortlaut_abgleich.py, Build 767",
+          "zitat": "named_post gesetzt: 1 / named_post ist null: 455"
+        },
+        {
+          "befund": "Gefuellt ist sie bei Beitragsmarkierungen (15 Stueck) und bei der Testannotation 1488/273 in Version 1.9.0.",
+          "build": 766,
+          "ts": "2026-09-08",
+          "quelle": "Lauf tools/anker_diagnose.py, Build 766",
+          "zitat": "annotations_post_level 15"
+        }
+      ],
+      "beispielwerte": [
+        {
+          "wert": "NULL",
+          "haeufigkeit": 455,
+          "grundgesamtheit": 456,
+          "gemessen_in_build": 767
+        },
+        {
+          "wert": "1038061",
+          "haeufigkeit": 1,
+          "grundgesamtheit": 456,
+          "gemessen_in_build": 767,
+          "anmerkung": "Testannotation 1488/273"
+        }
+      ],
+      "fallstricke": [
+        "Build 767 hat diese Spalte als 'benannten Beitrag' gelesen. Folge: die Stufenmessung des Laufs war wertlos - 425 Treffer landeten auf Stufe 3, weil es nichts zu vergleichen gab. Der benannte Beitrag ist aus dem Anker zu bestimmen."
+      ]
+    },
+    {
+      "ort": "annotations",
+      "feld": "deleted_at",
+      "art": "db_spalte",
+      "bedeutung": "Zeitpunkt, zu dem die Annotation ersetzt oder geloescht wurde.",
+      "erkenntnisse": [
+        {
+          "befund": "Aktive Annotationen tragen NULL. Die Abfrage lautet 'deleted_at IS NULL'; eine LEERE ZEICHENKETTE ist NICHT NULL und faellt aus jeder Auswertung heraus.",
+          "build": 767,
+          "ts": "2026-09-08",
+          "quelle": "management/maintenance/anker_diagnose.py, _kandidaten()",
+          "zitat": "WHERE selection_json IS NOT NULL AND selection_json != '' AND deleted_at IS NULL"
+        },
+        {
+          "befund": "46 der 517 Zeilen sind als geloescht gefuehrt. Keine davon traegt eine leere Zeichenkette.",
+          "build": 767,
+          "ts": "2026-09-08",
+          "quelle": "Lauf tools/wortlaut_abgleich.py, Build 767",
+          "zitat": "aktiv 471 / geloescht 46 / deleted_at_leer 0"
+        }
+      ],
+      "beispielwerte": [
+        {
+          "wert": "NULL",
+          "haeufigkeit": 471,
+          "grundgesamtheit": 517,
+          "gemessen_in_build": 767,
+          "anmerkung": "aktiv"
+        },
+        {
+          "wert": "<Zeitstempel>",
+          "haeufigkeit": 46,
+          "grundgesamtheit": 517,
+          "gemessen_in_build": 767
+        }
+      ],
+      "fallstricke": [
+        "Ein Exportwerkzeug zeigt NULL als leere Zeichenkette an. Ein daraus kopiertes INSERT schreibt dann '' statt NULL, und die Zeile gilt als geloescht. Beim Einfuegen von Hand pruefen."
+      ]
+    },
+    {
+      "ort": "annotations",
+      "feld": "element_id",
+      "art": "db_spalte",
+      "bedeutung": "Die aeussere Beitragskennung bei Beitragsmarkierungen.",
+      "erkenntnisse": [
+        {
+          "befund": "Konvention seit Build 430: Annotationen der Toolbar verankern GANZE Posts als element_id = 'p' + post_id, dann OHNE selection_json. Eine Textmarkierung traegt bewusst KEIN element_id.",
+          "build": 764,
+          "ts": "2026-09-07",
+          "quelle": "forensic_api/annotations.py Z. 62-64, toolbar.js Z. 3842",
+          "zitat": "element_id-Konvention 'p<postid>' (Beleg: annotations der Toolbar verankern ganze Posts als element_id='p'+post_id)"
+        }
+      ],
+      "beispielwerte": [
+        {
+          "wert": "p<nummer>",
+          "haeufigkeit": 15,
+          "grundgesamtheit": 470,
+          "gemessen_in_build": 764,
+          "anmerkung": "Beitragsmarkierungen"
+        },
+        {
+          "wert": "NULL oder leer",
+          "haeufigkeit": 455,
+          "grundgesamtheit": 470,
+          "gemessen_in_build": 764
+        }
+      ],
+      "fallstricke": [
+        "Der Typ 'whole post' ist NICHT neu zu erfinden - er existiert seit Build 430 in genau dieser Form."
+      ]
+    },
+    {
+      "ort": "annotations",
+      "feld": "investigator_id",
+      "art": "db_spalte",
+      "bedeutung": "Frueher: der handelnde Ermittler.",
+      "erkenntnisse": [
+        {
+          "befund": "DEPRECATED. Wird global nicht mehr verwendet.",
+          "build": 767,
+          "ts": "2026-09-08",
+          "quelle": "Alex, 08.09.2026",
+          "zitat": "investigator_id ist deprecated und sollte bald entfernt werden. Es wird global nirgendwo mehr verwendet."
+        }
+      ]
+    },
+    {
+      "ort": "annotations",
+      "feld": "created_by",
+      "art": "db_spalte",
+      "bedeutung": "Kennung des Ermittlers, der die Annotation angelegt hat.",
+      "erkenntnisse": [
+        {
+          "befund": "Bei einer Migration NORMALISIERT vom Vorgaenger zu uebernehmen: Buchstaben als Grossbuchstaben, wenn UND NUR WENN der Eintrag mit 'h0' beginnt.",
+          "build": 767,
+          "ts": "2026-09-08",
+          "quelle": "Alex, 08.09.2026",
+          "zitat": "created_by muss normalisiert uebernommen werden. Unter normalisiert ist hier zu verstehen, dass Buchstaben als Grossbuchstaben geschrieben werden muessen, wenn - und nur wenn - der Eintrag mit h0 beginnt."
+        }
+      ],
+      "beispielwerte": [
+        {
+          "wert": "paul",
+          "haeufigkeit": 1,
+          "grundgesamtheit": 456,
+          "gemessen_in_build": 767,
+          "anmerkung": "beginnt nicht mit h0, bleibt klein"
+        },
+        {
+          "wert": "h0a2898",
+          "haeufigkeit": 0,
+          "grundgesamtheit": 0,
+          "gemessen_in_build": 0,
+          "anmerkung": "Form aus Testvorrichtungen; normalisiert H0A2898"
+        }
+      ]
+    },
+    {
+      "ort": "annotations",
+      "feld": "local_id",
+      "art": "db_spalte",
+      "bedeutung": "Client-seitig erzeugte UUID, Kennung der VERSIONSKETTE.",
+      "erkenntnisse": [
+        {
+          "befund": "Kein Primaerschluessel und NICHT eindeutig. Sie entsteht im Browser vor der ersten Speicherung und ist der key der Map _state.annotations; der Server sucht darueber den aktiven Vorgaenger. Der eindeutige Index wurde in Build 178 bewusst entfernt, damit mehrere Versionen dieselbe local_id tragen koennen.",
+          "build": 767,
+          "ts": "2026-09-08",
+          "quelle": "toolbar.js Z. 1214, db/evidence_db.py Z. 693 f. und Z. 888",
+          "zitat": "Build 178 (Bug 2.75): annotations_local_id_uniq ENTFERNT. Der eindeutige Index auf local_id verhindert mehrere Versionen mit gleicher local_id"
+        }
+      ]
+    },
+    {
+      "ort": "selection_json",
+      "feld": "textContent",
+      "art": "json_key",
+      "bedeutung": "Der markierte Wortlaut, wie ihn der Browser beim Markieren lieferte.",
+      "erkenntnisse": [
+        {
+          "befund": "Entsteht aus Selection.toString(), NICHT aus Range.toString(). Das erste liefert den SICHTBAR ausgewaehlten Text mit browserabhaengigen Leerraumregeln, das zweite die Verkettung der Textknoten. Ein zeichengenauer Vergleich mit dem Abzug ist deshalb nicht schwierig, sondern unmoeglich.",
+          "build": 767,
+          "ts": "2026-09-08",
+          "quelle": "toolbar.js Z. 1101; WHATWG-Archiv Februar 2011",
+          "zitat": "var text = sel.toString().trim();"
+        },
+        {
+          "befund": "Nach Normalisierung (NFKC, Leerraumfaltung, casefold) sind 426 von 456 Wortlauten zeichengleich im Abzug wiederzufinden - ohne jede Aehnlichkeitsschwelle.",
+          "build": 767,
+          "ts": "2026-09-08",
+          "quelle": "Lauf tools/wortlaut_abgleich.py, Build 767",
+          "zitat": "geprueft 456 / gefunden 426 / davon eindeutig 403"
+        },
+        {
+          "befund": "Die 30 nicht gefundenen sind fast durchweg 'ganzer Post als text-range markiert'. Ursache ist nicht Textabweichung, sondern dass der Wortlaut dort Rahmen UND Inhalt umfasst und in einer Reihenfolge, die eine beitragsweise Teilkettensuche nicht abbildet.",
+          "build": 767,
+          "ts": "2026-09-08",
+          "quelle": "Abgleich der 30 gegen die Durchsicht von Alex",
+          "zitat": "davon von dir BEREITS durchgesehen: 30 / davon NEU: 0"
+        }
+      ],
+      "beispielwerte": [
+        {
+          "wert": "@Alice   @*censored*",
+          "haeufigkeit": 1,
+          "grundgesamtheit": 456,
+          "gemessen_in_build": 767,
+          "anmerkung": "1488/273; die unzensierte Fassung steht im Abzug, ist aber display:none"
+        },
+        {
+          "wert": "<62988 Zeichen>",
+          "haeufigkeit": 1,
+          "grundgesamtheit": 456,
+          "gemessen_in_build": 767,
+          "anmerkung": "1704143/1, die ganze Seite markiert"
+        }
+      ],
+      "fallstricke": [
+        "Fehlt der Schluessel, faellt die Annotation aus jeder Auswertung: 15 von 471 aktiven tragen keinen Wortlaut - das sind die Beitragsmarkierungen.",
+        "Ein Vergleich gegen den Baumtext ohne Ausschluss der 'display: none'-Elemente scheitert bei Gleichheit, obwohl die Teilkettensuche trifft. Zwoelf Annotationen im Bestand sind betroffen."
+      ]
+    },
+    {
+      "ort": "selection_json",
+      "feld": "offsetEnd",
+      "art": "json_key",
+      "bedeutung": "Zeichenversatz des Endpunkts im Zielknoten.",
+      "erkenntnisse": [
+        {
+          "befund": "EXKLUSIV und nicht-negativ. Uebernommen aus range.endOffset. Fuer Version 2.0 ist festgelegt: null bedeutet 'bis zum Ende des Nodes'; ein negativer Wert wird NICHT verwendet, weil er in Python und JavaScript beim Slicing das letzte Zeichen gerade ausschliesst.",
+          "build": 767,
+          "ts": "2026-09-08",
+          "quelle": "toolbar.js Z. 1133; W3C Web Annotation Data Model",
+          "zitat": "offsetEnd:   range.endOffset,"
+        }
+      ]
+    },
+    {
+      "ort": "selection_json",
+      "feld": "meta",
+      "art": "json_zweig",
+      "bedeutung": "Metadaten des Beitrags, von PostMetaModule beim Markieren erhoben.",
+      "erkenntnisse": [
+        {
+          "befund": "EXISTIERT BEREITS und ist nicht neu zu entwerfen. Enthaelt ansicht, postId, postIdWeg, postIdGegenprobe, Zeit in fuenf Formen mit Zone und Herkunft, betreff, themenbetreff, autor/eroeffner/konto als DREI getrennte Feldgruppen, forumId, themaId, seiteNr, autorZeilen, dauerlinkPid, meldelinkPid, moderationAktionen, hinweise.",
+          "build": 767,
+          "ts": "2026-09-08",
+          "quelle": "toolbar.js Z. 2585-3579, PostMetaModule",
+          "zitat": "JEDER WERT TRAEGT DEN NAMEN SEINES VERFAHRENS. Ein Wert ohne Herkunft ist in einer Akte nicht ueberpruefbar (Grundregel 1)."
+        },
+        {
+          "befund": "Im Bestand traegt ihn genau EINE Annotation - die Testannotation 1488/273 in Version 1.9.0. Die Migration darf ihn also nicht voraussetzen.",
+          "build": 767,
+          "ts": "2026-09-08",
+          "quelle": "Lauf tools/wortlaut_abgleich.py, Build 767",
+          "zitat": "mit_meta 1"
+        },
+        {
+          "befund": "null heisst UNBEKANNT, nicht 'nein' und nicht 'niemand'. Bei privaten Nachrichten bleiben Verfasser und Eroeffnerschaft null, weil es dort kein OP-Kennzeichen gibt.",
+          "build": 767,
+          "ts": "2026-09-08",
+          "quelle": "toolbar.js Z. 3504-3510",
+          "zitat": "dort bleiben die Felder null, und null heisst UNBEKANNT - nicht 'nein' und nicht 'niemand'."
+        },
+        {
+          "befund": "Die Schluessel sind DEUTSCH (zeitRoh, betreffWeg, autorIstEroeffner). Sie bleiben bis zu einem beauftragten Refactoring stehen; eine Mischung in derselben Datei waere schlimmer.",
+          "build": 767,
+          "ts": "2026-09-08",
+          "quelle": "Alex, 08.09.2026",
+          "zitat": "Bis dahin werden wir, wo bereits eingefuehrt, und nur dort, weiterhin die deutschen Begriffe nutzen"
+        }
+      ],
+      "fallstricke": [
+        "Build 767 hat im Regelkatalog eine Metadatenliste entworfen, die es bereits gab. Vor dem Entwerfen in toolbar.js nachsehen."
+      ]
+    },
+    {
+      "ort": "selection_json.meta",
+      "feld": "postIdWeg",
+      "art": "json_key",
+      "bedeutung": "Auf welchem Weg die Beitragsnummer bestimmt wurde.",
+      "erkenntnisse": [
+        {
+          "befund": "'P1+P3' heisst: zwei Wege, gleiches Ergebnis. Weichen sie ab, wird GAR KEINE Nummer geschrieben - eine geratene Beitragsnummer gilt als schlimmer als keine.",
+          "build": 767,
+          "ts": "2026-09-08",
+          "quelle": "toolbar.js Z. 3403-3409",
+          "zitat": "NICHTS SCHREIBEN. Zwei Quellen, zwei Zahlen - welche stimmt, ist ohne Sichtpruefung nicht zu sagen, und eine geratene Beitragsnummer ist schlimmer als keine."
+        }
+      ],
+      "beispielwerte": [
+        {
+          "wert": "P1+P3",
+          "haeufigkeit": 1,
+          "grundgesamtheit": 1,
+          "gemessen_in_build": 767
+        }
+      ]
+    },
+    {
+      "ort": "page BLOB",
+      "feld": "id-Attribute",
+      "art": "db_spalte",
+      "bedeutung": "Elementkennungen im gesicherten Seitenabzug.",
+      "erkenntnisse": [
+        {
+          "befund": "DAS FORUM IST NICHT NORMKONFORM. Mehrfach vergebene ids: progressbar bis 269-mal je Seite, contentType4 bis 24-mal, page-footer 2-mal auf 139 der 144 Seiten. Jede Verankerung ueber id MUSS die Eindeutigkeit pruefen.",
+          "build": 766,
+          "ts": "2026-09-08",
+          "quelle": "Lauf tools/anker_diagnose.py, Build 766; viewtopic0.php Z. 989",
+          "zitat": "{'page-footer': 2, 'progressbar': 269, 'contentType4': 24}"
+        },
+        {
+          "befund": "Die Umstellung von 'id' auf 'name' im Forenquelltext am 08.09.2026 wirkt NICHT rueckwirkend: die 144 page BLOBs wurden vorher gesichert. Ein Anker muss beide Formen treffen.",
+          "build": 765,
+          "ts": "2026-09-08",
+          "quelle": "Alex, 08.09.2026",
+          "zitat": "Ich habe das jetzt im PHP-Quelltext des Forums vom Attribut id auf name geaendert."
+        }
+      ],
+      "beispielwerte": [
+        {
+          "wert": "progressbar",
+          "haeufigkeit": 269,
+          "grundgesamtheit": 144,
+          "gemessen_in_build": 766,
+          "anmerkung": "Hoechstzahl je Seite; steht je Beitrag einmal"
+        },
+        {
+          "wert": "contentType4",
+          "haeufigkeit": 24,
+          "grundgesamtheit": 144,
+          "gemessen_in_build": 766,
+          "anmerkung": "je Systembeitrag einmal"
+        },
+        {
+          "wert": "page-footer",
+          "haeufigkeit": 2,
+          "grundgesamtheit": 144,
+          "gemessen_in_build": 766,
+          "anmerkung": "auf 139 von 144 Seiten doppelt"
+        }
+      ]
+    }
+  ]
+}
