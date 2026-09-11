@@ -232,7 +232,8 @@ def test_WA12_whole_post_wird_blockweise_gefunden():
     der Wortlaut nicht zu finden - die Teile stehen im Abzug mit anderem Text
     dazwischen. Blockweise und in Reihenfolge steht er vollstaendig da.
     """
-    a = WortlautAbgleich(_whole_post_seite(), "viewtopic")
+    doc = _whole_post_seite()
+    a = WortlautAbgleich(doc, "viewtopic")
     wortlaut = "Hello77\nRe: Verification\nDer eigentliche Beitragstext."
 
     # Als eine Kette: kein Treffer.
@@ -310,8 +311,12 @@ def _mehrere_beitraege(anzahl=5):
                 '<div class="postmsg">Text von Beitrag %d.</div>'
                 '</div></div></div></article>'
                 % (900 + i, 900 + i, i, i, i))
+    # Der Themenbetreff steht VOR den Beitraegen, die Fusszeile dahinter -
+    # wie im echten Abzug. Die Geometrie ist wesentlich: eine Markierung, die
+    # in der Fusszeile beginnt und bei Beitrag 2 endet, kann es nicht geben.
     return LH.fromstring(
-        '<div><div id="page-body">%s<div id="page-footer">Fusszeile</div>'
+        '<div><div id="page-body"><h2 class="topic-title">Themenbetreff</h2>'
+        '%s<div id="page-footer">Fusszeile</div>'
         '</div></div>' % "".join(eins(i) for i in range(anzahl)))
 
 
@@ -319,13 +324,31 @@ def _rumpf(i):
     return "Autor%d\nBetreff %d\nText von Beitrag %d." % (i, i, i)
 
 
+def _anker(doc, erster, letzter):
+    """
+    Die beiden Ankerpunkte einer Markierung - als Textknoten im Baum.
+
+    BUILD 769: Die Aufspaltung braucht sie zwingend. Ohne sie ist die Spanne
+    nicht bestimmbar, und dann gibt es keine Aufspaltung, sondern eine
+    Vorlage (siehe WA21).
+    """
+    def knoten(wortlaut):
+        tr = doc.xpath("//text()[contains(., $t)]", t=wortlaut)
+        assert tr, "Testvorrichtung: %r steht nicht im Baum" % wortlaut
+        return tr[0]
+    return knoten(erster), knoten(letzter)
+
+
 def test_WA16_markierung_ueber_drei_beitraege_zerfaellt():
-    a = WortlautAbgleich(_mehrere_beitraege(), "viewtopic")
-    b = a.pruefe("\n".join(_rumpf(i) for i in (1, 2, 3)), 901)
+    doc = _mehrere_beitraege()
+    a = WortlautAbgleich(doc, "viewtopic")
+    b = a.pruefe("\n".join(_rumpf(i) for i in (1, 2, 3)), 901,
+                 *_anker(doc, "Autor1", "Text von Beitrag 3."))
     assert not b.gefunden, "kein EINZELNER Beitrag traegt ihn"
     assert [s.post_id for s in b.teilstuecke] == [901, 902, 903], \
         [s.als_dict() for s in b.teilstuecke]
-    assert "zerfaellt in 3 Beitraege" in b.hinweis, b.hinweis
+    assert "ueber 3 Beitraege verteilt" in b.hinweis, b.hinweis
+    assert b.als_dict()["candidates"] == [901, 902, 903], b.als_dict()
     assert b.als_dict()["split_complete"] is True
 
 
@@ -336,14 +359,18 @@ def test_WA17_je_teilstueck_steht_was_daraus_wuerde():
     derselben Regel wie in Build 764, naemlich ob alle Bloecke im
     Inhaltsbereich liegen.
     """
-    a = WortlautAbgleich(_mehrere_beitraege(), "viewtopic")
+    doc = _mehrere_beitraege()
+    a = WortlautAbgleich(doc, "viewtopic")
     # Mit Rahmen (Autor, Betreff) -> whole post.
-    mit_rahmen = a.pruefe("\n".join(_rumpf(i) for i in (1, 2)), 901)
+    mit_rahmen = a.pruefe("\n".join(_rumpf(i) for i in (1, 2)), 901,
+                          *_anker(doc, "Autor1", "Text von Beitrag 2."))
     assert all(s.als_dict()["would_become"] == "whole post"
                for s in mit_rahmen.teilstuecke), \
         [s.als_dict() for s in mit_rahmen.teilstuecke]
     # Nur Inhalt -> text range.
-    nur_inhalt = a.pruefe("Text von Beitrag 1.\nText von Beitrag 2.", 901)
+    nur_inhalt = a.pruefe("Text von Beitrag 1.\nText von Beitrag 2.", 901,
+                          *_anker(doc, "Text von Beitrag 1.",
+                                  "Text von Beitrag 2."))
     stuecke = [s for s in nur_inhalt.teilstuecke if s.post_id is not None]
     assert stuecke, nur_inhalt.als_dict()
     assert all(s.als_dict()["would_become"] == "text range" for s in stuecke), \
@@ -356,9 +383,11 @@ def test_WA18_bloecke_ausserhalb_werden_ausgewiesen():
     ersatzlos (Festlegung Alex, 08.09.2026). DASS es entfaellt, muss zu SEHEN
     sein - sonst waere es ein stiller Verlust (Grundregel 1).
     """
-    a = WortlautAbgleich(_mehrere_beitraege(), "viewtopic")
+    doc = _mehrere_beitraege()
+    a = WortlautAbgleich(doc, "viewtopic")
     b = a.pruefe("Text von Beitrag 1.\nirgendwas fremdes\n"
-                 "Text von Beitrag 3.", 901)
+                 "Text von Beitrag 3.", 901,
+                 *_anker(doc, "Text von Beitrag 1.", "Text von Beitrag 3."))
     arten = [s.als_dict()["would_become"] for s in b.teilstuecke]
     assert "entfaellt" in arten, [s.als_dict() for s in b.teilstuecke]
     assert b.als_dict()["split_complete"] is False, \
@@ -375,11 +404,14 @@ def test_WA19_ein_fuehrender_block_ausserhalb_blockiert_nicht():
     ganze Markierung gaelte als 'ausserhalb'. Verteilt wird deshalb JE
     BLOCK der naechste Beitrag, der ihn traegt.
     """
-    a = WortlautAbgleich(_mehrere_beitraege(), "viewtopic")
-    b = a.pruefe("Fusszeile\nText von Beitrag 2.\nText von Beitrag 3.", 901)
+    doc = _mehrere_beitraege()
+    a = WortlautAbgleich(doc, "viewtopic")
+    b = a.pruefe("Themenbetreff\nText von Beitrag 2.\nText von Beitrag 3.",
+                 901, *_anker(doc, "Themenbetreff", "Text von Beitrag 3."))
     assert [s.post_id for s in b.teilstuecke] == [None, 902, 903], \
         [s.als_dict() for s in b.teilstuecke]
     assert b.teilstuecke[0].block_von == 0
+    assert b.teilstuecke[0].als_dict()["would_become"] == "entfaellt"
 
 
 def test_WA20_die_ganze_seite_zerfaellt_in_ihre_beitraege():
@@ -390,9 +422,10 @@ def test_WA20_die_ganze_seite_zerfaellt_in_ihre_beitraege():
     jedem wuerde - sonst waere es kein Fortschritt, sondern die Wiederholung
     einer bekannten Feststellung.
     """
-    a = WortlautAbgleich(_mehrere_beitraege(5), "viewtopic")
+    doc = _mehrere_beitraege(5)
+    a = WortlautAbgleich(doc, "viewtopic")
     ganze = "\n".join(_rumpf(i) for i in range(5)) + "\nFusszeile"
-    b = a.pruefe(ganze, 900)
+    b = a.pruefe(ganze, 900, *_anker(doc, "Autor0", "Fusszeile"))
     d = b.als_dict()
     assert d["split_posts"] == [900, 901, 902, 903, 904], d["split_posts"]
     assert d["split_complete"] is False, "die Fusszeile entfaellt"
@@ -401,3 +434,62 @@ def test_WA20_die_ganze_seite_zerfaellt_in_ihre_beitraege():
     # Je Beitrag ein eigener Datensatz - das ist die Aussage, die die
     # Migration braucht.
     assert len([s for s in b.teilstuecke if s.post_id is not None]) == 5
+
+
+
+def test_WA21_ohne_ankerpunkte_gibt_es_keine_aufspaltung():
+    """
+    DIE REGEL AUS BUILD 769. Ohne beide Ankerpunkte ist die Spanne nicht
+    bestimmbar - und eine Aufspaltung ohne Schranke waere geraten.
+
+    Gemessen am Fall 583231/6: ohne Schranke verteilte das Verfahren die
+    Bloecke ueber NEUN Beitraege, weil kurze Bloecke in spaeteren Beitraegen
+    zufaellig treffen und jeder Zufallstreffer den Suchzeiger weiterschiebt.
+    Mit Schranke sind es ZWEI - die beiden, die zwischen Start- und Endanker
+    liegen.
+
+    Eine geratene Zuordnung ist schlimmer als keine (Grundregel 1). Der Fall
+    kommt deshalb auf die Vorlageliste.
+    """
+    doc = _mehrere_beitraege()
+    a = WortlautAbgleich(doc, "viewtopic")
+    b = a.pruefe("\n".join(_rumpf(i) for i in (1, 2, 3)), 901)
+    assert not b.teilstuecke, [s.als_dict() for s in b.teilstuecke]
+    assert b.kandidaten == [], b.kandidaten
+    assert "nicht bestimmbar" in b.hinweis, b.hinweis
+
+
+def test_WA22_die_schranke_begrenzt_auf_die_spanne():
+    """
+    Die Kandidaten sind genau die Beitraege, deren Bereich im Baum die Spanne
+    zwischen den Ankerpunkten beruehrt - nicht alle Beitraege der Seite.
+    """
+    doc = _mehrere_beitraege(5)
+    a = WortlautAbgleich(doc, "viewtopic")
+    start, ende = _anker(doc, "Autor1", "Text von Beitrag 2.")
+    assert a.kandidaten_zwischen(start, ende) == [901, 902], \
+        a.kandidaten_zwischen(start, ende)
+    # Ein Endpunkt AUSSERHALB jedes Beitrags verschiebt die Grenze nicht
+    # willkuerlich: die Fusszeile steht hinter allen Beitraegen.
+    start2, ende2 = _anker(doc, "Autor3", "Fusszeile")
+    assert a.kandidaten_zwischen(start2, ende2) == [903, 904], \
+        a.kandidaten_zwischen(start2, ende2)
+    assert a.beitragszahl == 5
+
+
+def test_WA23_beitraege_werden_gezaehlt_nicht_abschnitte():
+    """
+    Ein Beitrag kann mehrfach vorkommen, wenn zwischen seinen Bloecken etwas
+    liegt, das in keinem Kandidaten steht. 'ueber 19 Beitraege verteilt' war
+    in einer Messung zu 583231/6 die Ausgabe - es waren ZWEI Beitraege mit
+    neunzehn Abschnitten.
+    """
+    doc = _mehrere_beitraege(3)
+    a = WortlautAbgleich(doc, "viewtopic")
+    # Zweimal derselbe Beitrag, dazwischen Fremdtext.
+    wortlaut = "Autor1\nirgendwas fremdes\nText von Beitrag 1."
+    b = a.pruefe(wortlaut, 901, *_anker(doc, "Autor1", "Text von Beitrag 1."))
+    d = b.als_dict()
+    assert d["split_post_count"] == 1, d
+    assert d["split_sections"] >= 2, d
+    assert "ueber 1 Beitrag verteilt" in b.hinweis, b.hinweis

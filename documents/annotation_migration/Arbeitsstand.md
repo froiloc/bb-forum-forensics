@@ -168,3 +168,33 @@ wird deshalb **je Block der naechste Beitrag, der ihn traegt**.
 aufgespalten, und je Beitrag steht, **was daraus wuerde** — `text range` oder
 `whole post`. Was zwischen den Beitraegen lag, wird als `entfaellt`
 ausgewiesen statt stillschweigend getilgt.
+
+### Build 769 — die Schranke
+
+**Entscheidungen (Alex, 08.09.2026).** Die Aufspaltung wird auf die Beitraege
+zwischen den beiden Ankerpunkten begrenzt. Eine Mindestlaenge je Block waere
+der falsche Weg: sie daempft die Drift, beseitigt sie nicht, und sie waere
+eine statistische Grenze fuer ein strukturell bestimmtes Problem. Ohne beide
+Ankerpunkte gibt es keine Aufspaltung, sondern eine Vorlage.
+
+**Revidiert.** Die Verteilung aus Build 768 driftete: sie suchte jeden Block
+auf der ganzen Seite, und kurze Bloecke trafen in spaeteren Beitraegen
+zufaellig. Aus zwei Beitraegen wurden neun.
+
+Ebenso revidiert: die Vermutung, ein gebrochener Anker in der anonymisierten
+Fassung belege einen unvollstaendigen Abzug. Er belegte nur, dass ich gegen
+die falsche Wurzel gemessen habe.
+
+**Erkenntnisse ueber vorhandenen Code.** Die XPath-Ausdruecke der Toolbar sind
+relativ zu `div#forensic-viewport` gebildet, nicht zur Dokumentwurzel. Dass
+`anker_diagnose` trotzdem richtig misst, liegt daran, dass es gegen den page
+BLOB auswertet, dessen Wurzel der Viewport entspricht — eine Uebereinstimmung,
+die bis hierhin ungeprueft war.
+
+`<donate>`, `<my_leftbar>` und `<my_warning>` sind Platzhalter der
+Forensoftware, die `header0.php` Z. 435 ff. zur Laufzeit ersetzt.
+
+**Messwerte.** Build 768: 449 benannte Beitraege aus dem Anker, 340 auf Stufe
+1, 78 auf Stufe 2, 32 auf Stufe 3, 6 nicht gefunden; 24 blockweise, 3
+aufgespalten. Die 78 Stufe-2-Faelle liegen ausschliesslich auf `pmsnew` und
+dort auf neun Seiten; auf sechs davon stehen gleichzeitig Stufe-1-Faelle.
