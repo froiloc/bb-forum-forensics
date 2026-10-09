@@ -80,7 +80,8 @@ class DemoSeedTests(unittest.TestCase):
         # +1 ab Build 542: metrics.view aus M035 -> 45.
         # +1 ab Build 698: caseoverview.view aus M038 (Vorgang 60fe72fb -
         #   'dashboard.view' in Rahmen und Inhalt getrennt) -> 46.
-        self.assertEqual(self._count("rbac_capability"), 46)
+        # +1 ab Build 771: imageveil.lift aus M040 (Bildschleier) -> 47.
+        self.assertEqual(self._count("rbac_capability"), 47)
         # Leitung hat die Supervisor-Rolle + Grants.
         self.assertGreater(self._count("rbac_grant"), 0)
         self.assertEqual(self.summary["demo"], True)

@@ -272,9 +272,15 @@ class ManagementDashboardTests(unittest.TestCase):
         #     python tools/pruefe_migrationskette.py --db <coordinator.db>
         # Build 725: 39 kommt dazu (person.first_name/last_name/rank fuer den
         # Ermittlernamen im Vollzitat). Rein additiv, nur coordinator.db.
+        # Build 771: 40 kommt dazu (Bildschleier: Rolle researcher, Recht
+        # imageveil.lift, Tabelle person_image_veil). Rein additiv, nur
+        # coordinator.db, KEIN Grant. Die Nummer 40 war bis Build 543 an die
+        # damalige m040_fulltext_release vergeben, die in KEINER Datenbank
+        # gelaufen ist (m036_fulltext_release.py, Kopf; mc 2026-07-26) — sie
+        # ist also frei.
         _ALLE = [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
                  19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-                 33, 34, 35, 36, 37, 38, 39]
+                 33, 34, 35, 36, 37, 38, 39, 40]
         self.assertEqual(self.applied,
                          sorted(_ALLE)
                          if 3 not in self.applied

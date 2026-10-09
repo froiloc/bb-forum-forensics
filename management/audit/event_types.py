@@ -14,6 +14,7 @@
 #   wiederverwendet.
 #
 # Version: v0.7.469 · Build: 469 · 2026-07-20
+#   Build 771: IMAGE_VEIL_SET (Bildschleier, Tabelle person_image_veil, M040).
 # =============================================================================
 
 from typing import FrozenSet
@@ -419,6 +420,21 @@ class EventType:
     VIEW_PREF_SET: str = "view_pref_set"
     VIEW_PREF_RESET: str = "view_pref_reset"
 
+    # --- Build 771 (Bildschleier): Umschalten der Bildverschleierung -------
+    #   IMAGE_VEIL_SET: eine Person mit dem Recht 'imageveil.lift' hat den
+    #   Bildschleier im Forenviewer ein- oder ausgeschaltet (Tabelle
+    #   person_image_veil, M040). EIN Beleg je Umschalten.
+    #
+    #   WARUM IN DIE KETTE (Alex, 09.10.2026: "Umschalten ... direkt mit ins
+    #   Audit-Log aufnehmen"): der Schleier entscheidet, WAS eine Person auf
+    #   dem Bildschirm gesehen hat. Ob jemand ein Bild unverschleiert vor sich
+    #   hatte, ist spaeter nur aus diesem Beleg rekonstruierbar.
+    #
+    #   Payload: {"veiled": bool} — der VOLLSTAENDIGE Zustand nach der
+    #   Aenderung, kein Delta (Muster VIEW_PREF_SET). Kein Fallbezug, keine
+    #   subject_id, keine URL; der Beleg kann konstruktiv keinen tragen.
+    IMAGE_VEIL_SET: str = "image_veil_set"
+
     # --- reserviert für spätere Builds (hier dokumentiert, noch nicht aktiv) ---
     # NOTIFICATION_SENT, RESTORE_PERFORMED
 
@@ -509,6 +525,8 @@ class EventType:
             # --- Build 545 (AP-3G) ---
             VIEW_PREF_SET,
             VIEW_PREF_RESET,
+            # --- Build 771 (Bildschleier) ---
+            IMAGE_VEIL_SET,
         }
     )
 

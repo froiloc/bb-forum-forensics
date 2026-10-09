@@ -18,6 +18,7 @@
 #       IGNORE) und dupliziert nicht ("green and alive": direkter up()-Aufruf).
 #
 # Version: v0.7.343 · Build: 343 · 2026-07-10
+#   Build 771: Anker 47 Faehigkeiten / 9 Rollen (M040, Bildschleier).
 # =============================================================================
 
 import os
@@ -193,7 +194,10 @@ class ManagementRbacSchemaTests(unittest.TestCase):
         #   Rahmen des Kachel-Dashboards UND die Falltabelle darin. Getrennt
         #   nach demselben Muster wie M030/M031: ein eigener Zweck bekommt
         #   ein eigenes Recht. -> 46.
-        self.assertEqual(len(cat_caps), 46)
+        # +1 ab Build 771 ('imageveil.lift', geseedet in M040, Bildschleier)
+        #   -> 47.
+        self.assertEqual(len(cat_caps), 47)
+        self.assertIn("imageveil.lift", cat_caps)
         self.assertIn("caseoverview.view", cat_caps)
         # M038 berichtigt zugleich den TEXT von 'dashboard.view'. Der Vergleich
         # oben (db_caps == cat_caps) deckt das ab; hier steht die Erwartung
@@ -240,7 +244,9 @@ class ManagementRbacSchemaTests(unittest.TestCase):
         self.assertIn("maintenance", cat_roles)
         # 6 Rollen ab Build 343, +1 ab Build 420 ('template_editor'),
         # +1 ab Build 439 ('maintenance') -> 8.
-        self.assertEqual(len(cat_roles), 8)
+        # +1 ab Build 771 ('researcher', Seed in M040, Bildschleier) -> 9.
+        self.assertIn("researcher", cat_roles)
+        self.assertEqual(len(cat_roles), 9)
 
     # R03 --------------------------------------------------------------------
     def test_r03_grant_and_person_role_empty(self):

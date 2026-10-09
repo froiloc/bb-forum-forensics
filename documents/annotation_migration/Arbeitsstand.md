@@ -40,7 +40,8 @@ naechsten Abschnitt. Umsortieren kann eine Maschine, Kontext erfinden nicht.
 
 ## Aktueller Stand
 
-**Build 770.** Die Migration der Annotationen von `selection_json` 1.0.0 auf
+**Build 771** — in dieser Akte unveraendert seit Build 770 (Builds 771 ff.
+bauen den Bildschleier, siehe Chronologie). Die Migration der Annotationen von `selection_json` 1.0.0 auf
 2.0.0 ist **vorbereitet, aber nicht begonnen** — es ist noch kein Datensatz
 migriert.
 
@@ -223,3 +224,21 @@ Zeichen Praefix, Beitrag 1550483 vollstaendig, Beitrag 1550508 teilweise.
 **Messwerte.** Build 769: 449 benannte Beitraege aus dem Anker, 340/78/32 auf
 den drei Stufen, 6 nicht gefunden, 24 blockweise — aber 0 aufgespalten, was
 den Feldnamen-Fehler sichtbar gemacht hat.
+
+### Build 771 — kein Fortschritt in dieser Akte (Bildschleier)
+
+**Entscheidungen.** Keine zur Annotationsmigration. Builds 771 bis 773 bauen
+den Bildschleier im Forenviewer (Auftrag Alex, 09.10.2026; Bauplan
+`management/Bauplan_Builds771-773_Bildschleier_v0_1.md`). Der naechste
+Schritt dieser Akte ist unveraendert der aus Build 770.
+
+**Erkenntnisse, die diese Akte beruehren.** Der Bildschleier wirkt
+ausschliesslich ueber CSS und veraendert den DOM unter
+`div#forensic-viewport` nicht: kein Attribut, keine Klasse, kein Knoten an
+den Bildern. Das ist eine Bauvorgabe GERADE wegen dieser Akte — die
+XPath-Ausdruecke der Annotationen haengen am Viewport-DOM (Metadaten-Katalog:
+Bezugsebene `div#forensic-viewport`), und der Rang `by_class` des
+XPath-Generators liest Klassen. Build 771 selbst beruehrt den Viewer noch gar
+nicht (nur `coordinator.db`, Migration M040).
+
+**Messwerte.** Keine.
