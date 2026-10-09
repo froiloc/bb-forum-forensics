@@ -1,6 +1,6 @@
 # Bauplan Builds 771–773 — Bildschleier (optischer Selbstschutz)
 
-**Version:** 0.2 · **Datum:** 2026-10-09 · **Baubasis:** `98035a5` (v0.8.770)
+**Version:** 0.3 · **Datum:** 2026-10-09 · **Baubasis:** `98035a5` (v0.8.770)
 **Klassifikation:** VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
 **Freigabe:** ausstehend (`mc`)
 
@@ -33,6 +33,8 @@ speichern unter“) ist hingenommen (Alex, 09.10.2026).
 | F4 | Normale Ermittler:innen: Voreinstellung **klar**. Ihre Wahl wird dauerhaft je Person in der Datenbank gespeichert, nicht im Browser. |
 | F5 | Unverschleiert bleiben nur: `/forum/img/…` außer `/forum/img/avatars/…` und `/forum/img/signatures/…`; `/forum/style/…` und `/forum/v4/style/…` mit Unterverzeichnissen; der exakte Pfad `/forum/1bg.png`. **Alles andere** wird verschleiert, egal von welcher Quelle — ausdrücklich auch `/pix/…`. |
 | F6 | Ausnahmen gelten nur auf dem Forenhost, in relativer, wurzelrelativer und absoluter Schreibweise. Werte mit `..` sind nie ausgenommen. Im Zweifel: verschleiern. |
+| F6a | Die Dokumentwurzel des Original-Webservers ist `forum/html/`. Ein Pfad `/X` im Forenquelltext und `/forum/X` bezeichnen dieselbe Datei (Alex, 09.10.2026). Jede Ausnahme und jeder Ausschluss aus F5 gilt deshalb unter **beiden** Wurzeln `/forum/` und `/` — `/style/bg.webp` ist klar, `/img/avatars/x.jpg` bleibt verschleiert. |
+| F6b | `/pix/…` liegt außerhalb der Dokumentwurzel und ist vermutlich ein Relikt aus 2019/20. Wird es angetroffen, wird es verschleiert. |
 | F7 | Filterkette: `blur(48px) grayscale(100%) contrast(35%) brightness(115%)` mit `!important`, dazu `clip-path: inset(0)`. Konfigurierbar. |
 | F8 | Direktaufruf eines Bildes (neuer Tab, Klick auf Bildlink) liefert bei aktivem Schleier eine HTML-Hülle mit verschleiertem Bild. |
 | F9 | Umschalten wird auditiert. Nach dem Umschalten lädt die Seite neu (Scrollposition über `scroll_memory.js`). |
@@ -73,7 +75,7 @@ speichern unter“) ist hingenommen (Alex, 09.10.2026).
 | Icons, Userbar, Badges, Logo `img/…` | `viewforum.php`, `user.php`, `header0.php` | klar. |
 | `url(…)` in Stylesheets: 106× `./images/`, 21× `Air/img/`, 9× `./img/`, 4× `../img/icons/` | `style/*.css`, `v4/style/*.css` | klar (lösen in `/forum/style/…` bzw. `/forum/img/…` auf). |
 | `url("/pix/banner/s9/1–4.jpg")` | `style/index.css` Z. 584–587 | verschleiert (F5: zeigen Kinder). |
-| `url(/style/bg.webp)` — Wurzelverzeichnis `/style/`, **nicht** `/forum/style/` | `style/old.css` Z. 6 | **offen** (v0.2): nicht besprochen; nach F5 fiele es unter „alles andere“. Entscheidung Alex ausstehend. |
+| `url(/style/bg.webp)` | `style/old.css` Z. 6 | klar (F6a: `/style/` ≡ `/forum/style/`). |
 | `do_smilies()` ist ein No-op | `include/parser.php` Z. 246 | Smilies sind im Repo-Parser nicht belegbar. Liegen sie unter `/forum/img/smilies/`, bleiben sie klar, sonst verschleiert. |
 
 ---
@@ -119,7 +121,7 @@ Die Gründe:
 
 | `reason` | Bedeutung | `veiled` | `locked` |
 |---|---|---|---|
-| `required_by_role` | Person trägt Rolle `researcher` (Vorschlag v0.2) | true | true |
+| `required_by_role` | Person trägt Rolle `researcher` | true | true |
 | `no_capability` | Recht `imageveil.lift` fehlt, keine Rolle `researcher` | true | true |
 | `no_investigator` | `investigator_id` nicht auflösbar | true | true |
 | `rbac_unavailable` | `coordinator.db` / RBAC nicht lesbar | true | true |
@@ -178,7 +180,7 @@ Die `avatars`- und `signatures`-Ausschlüsse gelten nur für das `img`-Verzeichn
 
 | Form | Beispiel | Woher |
 |---|---|---|
-| wurzelrelativ | `/forum/img/` | statisch |
+| wurzelrelativ, beide Wurzeln (F6a) | `/forum/img/`, `/img/` | statisch |
 | absolut je Forenhost, `http` und `https` | `http://<host>/forum/img/` | statisch aus `image_veil.forum_hosts` |
 | kodierte `fileasset`-Form | `/_forensic/fileasset?url=http%3A%2F%2F<host>%2Fforum%2Fimg%2F` | statisch, mit derselben `quote()`-Funktion wie `blob_handler` |
 | relativ zur Seite | `img/`, `../img/`, `./img/` | je Seite, `posixpath.relpath(D, basisverzeichnis)` |
@@ -229,14 +231,28 @@ erhalten zusätzlich `Vary: Sec-Fetch-Dest, Accept`, damit der Browser eine
 ### 5.5 Schaltfläche
 
 In Sektion 5 der Toolbar direkt vor `#forensic-session-user`
-(`toolbar.js` Z. 1822). Eigene Datei `toolbar/bildschleier.js` (IIFE,
+(`toolbar.js` Z. 1822). Zeichen: 👁 (U+1F441), wie die übrigen
+Toolbar-Symbole als Unicode-Zeichen (Alex, 09.10.2026). Die drei Zustände
+entstehen per CSS am Zeichen selbst; das Zeichen steht als Konstante an
+einer Stelle und ist austauschbar. Eigene Datei `toolbar/bildschleier.js` (IIFE,
 `'use strict'`, Debug-Logging mit PROD-Schalter).
 
 | Zustand | Darstellung | Klick |
 |---|---|---|
-| gesperrt | Icon verschleiert, ausgegraut, `aria-disabled="true"`, Tooltip nennt den Grund | keine Wirkung |
-| verschleiert | Icon verschleiert, farbig | ausschalten |
-| klar | Icon klar, farbig | einschalten |
+| gesperrt | 👁 mit `blur(1.5px) grayscale(100%) opacity(.45)`, `aria-disabled="true"`, Tooltip nennt den Grund | keine Wirkung |
+| verschleiert | 👁 mit `blur(1.5px)`, farbig | ausschalten |
+| klar | 👁 scharf, farbig | einschalten |
+
+Tooltip-Texte (Deutsch, Endnutzer):
+
+| Grund | Text |
+|---|---|
+| `required_by_role` | „Für Ihre Rolle ist die Bildverschleierung vorgeschrieben.“ |
+| `no_capability` | „Das Recht ‚Bildschleier aufheben‘ ist Ihnen nicht zugeteilt. Bitte an die Chef-Ermittlerin wenden.“ |
+| `no_investigator` | „Ihr Benutzerkonto ist nicht als Person hinterlegt. Bilder bleiben verschleiert.“ |
+| `rbac_unavailable` | „Die Rechteverwaltung ist nicht erreichbar. Bilder bleiben verschleiert.“ |
+| `chosen`/`default`, verschleiert | „Bilder sind verschleiert. Klicken zum Aufheben.“ |
+| `chosen`/`default`, klar | „Bilder werden unverschleiert gezeigt. Klicken zum Verschleiern.“ |
 
 **Einschalten:** zuerst Klasse setzen (sofortiger Schutz), dann `POST`, dann
 Neuladen. **Ausschalten:** zuerst `POST`, dann Neuladen. Schlägt der `POST`
@@ -319,15 +335,20 @@ image_veil:
   forum_hosts:
     - "alicefe3b2dqil3mk3ipwtyoqjol23kdai7cjpgzrtvemfvtzz2s67ad.onion"   # Alex, 09.10.2026
   filter: "blur(48px) grayscale(100%) contrast(35%) brightness(115%)"
+  # F6a: Dokumentwurzel forum/html/ ist unter beiden Praefixen erreichbar.
+  # Jeder Eintrag unten wird mit JEDER Wurzel kombiniert.
+  roots:
+    - "/forum/"
+    - "/"
   exempt_dirs:
-    - "/forum/img/"
-    - "/forum/style/"
-    - "/forum/v4/style/"
+    - "img/"
+    - "style/"
+    - "v4/style/"
   exempt_files:
-    - "/forum/1bg.png"
+    - "1bg.png"
   excluded_dirs:
-    - "/forum/img/avatars/"
-    - "/forum/img/signatures/"
+    - "img/avatars/"
+    - "img/signatures/"
 ```
 
 Die Vorgaben stehen zusätzlich in `core.config_loader.coded_default()`
@@ -385,7 +406,8 @@ Jeder Build ist für sich lauffähig und getestet (Grundregel 2).
 | BS10 | `http://fremd.onion/img/x.jpg` → verschleiert (fremder Host mit `/img/`) |
 | BS11 | `/forum/img/../uploads/x.jpg` → verschleiert |
 | BS12 | `/pix/…`, `/forum/uploads/…` → verschleiert; `/forum/style/x.png` und `/forum/v4/style/a/b.png` → klar |
-| BS13 | `/forum/1bg.png` klar, `/forum/1bg.png.jpg` und `/forum/x/1bg.png` verschleiert |
+| BS13 | `/forum/1bg.png` und `/1bg.png` klar, `/forum/1bg.png.jpg` und `/forum/x/1bg.png` verschleiert |
+| BS13a | F6a: `/style/bg.webp`, `/img/icons/x.gif` klar; `/img/avatars/1.jpg`, `/img/signatures/1.png` verschleiert; `/pix/icon/warning.png` verschleiert |
 | BS14 | Forenquelltext: kein Inline-Stil mit zwei `url()` (Annahme aus 5.2) |
 | BS15 | Relative Präfixe: Seite `/forum/beginner/…` → `../img/` klar, `img/` verschleiert |
 | BS16 | Kodierte `fileasset`-Form entsteht mit derselben Funktion wie in `blob_handler` |
@@ -419,13 +441,12 @@ Jeder Build ist für sich lauffähig und getestet (Grundregel 2).
 
 - **Entschieden (Alex, 09.10.2026):** Benennungen wie vorgeschlagen;
   Forenhost `alicefe3…onion`; Cache-Verhalten (5.4) wird im PoC P3 getestet.
-- **`/style/` (Wurzel):** siehe 3.2 — Entscheidung ausstehend.
-- **Grund `required_by_role`:** Vorschlag v0.2, damit Forschende einen
-  eigenen Tooltip-Text erhalten. Entscheidung ausstehend.
+- **Entschieden (Alex, 09.10.2026, v0.3):** `/X` ≡ `/forum/X` (F6a);
+  `/pix/` verschleiert (F6b); Grund `required_by_role` mit eigenem Text;
+  Forenhost in `config.yaml`; Icon 👁 (U+1F441).
 - **Weitere Hosts im Forenquelltext** (gezählt über alle `.php`): `alicefe3…`
   69×, `alice34mdngm…` 25×, `alice4n4kd5…` 3×, `6hvtnsvqo5jpq…` 2×
   (`bbcode.php` Z. 52) und sechs weitere mit 1–3 Nennungen. Nur `alicefe3…`
   ist als Forenhost bestätigt. Alle anderen sind nicht ausgenommen; folgt
   daraus Überverschleierung von Forenelementen, wird der Host in
   `forum_hosts` nachgetragen (reine Konfigurationsänderung).
-- **Icon:** Inline-SVG statt Unicode-Zeichen. Entscheidung ausstehend.
