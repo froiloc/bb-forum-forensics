@@ -320,8 +320,12 @@ class TestAssetHandlerKaskade(unittest.TestCase):
         handler.handle(req_handler, "/forum/img/avatars/42.png")
 
         # send_response_body muss mit assets-Daten aufgerufen worden sein
+        # Build 773 (Bildschleier): jede Bildantwort traegt 'Vary', damit der
+        # Browser eine <img>-Antwort nicht fuer eine Navigation wiederverwendet
+        # (server/bildschleier_huelle.py). Gewollte Verhaltensaenderung.
         req_handler.send_response_body.assert_called_once_with(
-            status=200, body=b"ASSETS_DATA", content_type="image/png"
+            status=200, body=b"ASSETS_DATA", content_type="image/png",
+            extra_headers={"Vary": "Sec-Fetch-Dest, Accept"},
         )
         # default.get_asset darf NICHT aufgerufen worden sein
         bundle.default.get_asset.assert_not_called()
@@ -333,8 +337,11 @@ class TestAssetHandlerKaskade(unittest.TestCase):
         handler, req_handler, bundle = self._make_handler_and_mock(None, default_rec)
         handler.handle(req_handler, "/forum/style/main.css")
 
+        # Build 773 (Bildschleier): CSS ist nie cachebar — nach dem
+        # Umschalten muss das Neuladen die Stylesheets im neuen Zustand holen.
         req_handler.send_response_body.assert_called_once_with(
-            status=200, body=b"CSS_DATA", content_type="text/css"
+            status=200, body=b"CSS_DATA", content_type="text/css",
+            extra_headers={"Cache-Control": "no-store"},
         )
 
     def test_T14_beide_dbs_leer_404(self):

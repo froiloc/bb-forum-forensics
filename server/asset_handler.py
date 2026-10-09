@@ -26,6 +26,12 @@
 #   visuelle Darstellung. NOT_IN_SCOPE gilt ausschließlich für
 #   Forum-Seiten, nicht für Assets.
 #
+# Build 773 (Bildschleier): bei aktivem Schleier werden Bildquellen in CSS
+#   durch einen Platzhalter ersetzt (core/bildschleier_css_umschreiber.py),
+#   und ein Bild, das als eigenes Dokument aufgerufen wird, kommt in einer
+#   verschleiernden Huelle (server/bildschleier_huelle.py). CSS traegt
+#   'Cache-Control: no-store', Bilder 'Vary: Sec-Fetch-Dest, Accept'.
+#
 # Abhängigkeiten: keine externen Abhängigkeiten
 # Version: v0.1.0 · Build: 270 · 2026-05-31
 #
@@ -62,8 +68,21 @@ class AssetHandler:
         asset_handler.handle(request_handler, url_path)
     """
 
-    def __init__(self, bundle: "DatabaseBundle") -> None:
+    def __init__(self, bundle: "DatabaseBundle", config=None,
+                 context=None) -> None:
         self._bundle = bundle
+        # Build 773 (Bildschleier): config/context fuer den prozessweiten
+        # BildschleierDienst. Ohne sie (aeltere Aufrufer, Tests) gibt es
+        # keinen Schleier-Teil — router.py uebergibt beide.
+        self._config = config
+        self._context = context
+
+    def _bildschleier(self):
+        """Build 773: der BildschleierDienst, oder None ohne config/context."""
+        if self._config is None or self._context is None:
+            return None
+        from core.bildschleier_dienst import dienst
+        return dienst(self._config, self._context)
 
     def handle(
         self,
@@ -95,8 +114,46 @@ class AssetHandler:
         # CSS-Rewriting: url(...)-Einträge mit bekannten vollständigen
         # URLs durch /_forensic/fileasset?url=... ersetzen.
         # Beleg: Projektgespräch 2026-05-31.
-        if mime_type and "css" in mime_type and data:
+        ist_css = bool(mime_type and "css" in mime_type)
+        if ist_css and data:
             data = self._rewrite_css_urls(data)
+
+        # Build 773 (Bildschleier, Bauplan §5.3/§5.4). Nur bei aktivem
+        # Schleier: Bildquellen in CSS ersetzen, Direktaufrufe von Bildern
+        # mit einer Huelle beantworten. Ein Asset-Pfad ist ein Pfad auf dem
+        # Forenhost — die Regel prueft ihn wurzelrelativ.
+        from server.bildschleier_huelle import VARY, BildschleierHuelle
+        extra: dict = {}
+        ist_bild = BildschleierHuelle.ist_bild(mime_type)
+        if ist_bild:
+            extra["Vary"] = VARY
+        if ist_css:
+            # Nie zwischenspeichern: nach dem Umschalten muss das Neuladen
+            # die Stylesheets im neuen Zustand holen.
+            extra["Cache-Control"] = "no-store"
+        d = self._bildschleier()
+        if d is not None and (ist_css or ist_bild):
+            zustand = d.zustand()
+            if zustand.veiled:
+                if ist_css and data:
+                    from core.bildschleier_css_umschreiber import (
+                        BildschleierCssUmschreiber)
+                    text, anzahl = BildschleierCssUmschreiber(d.regel).umschreiben(
+                        data.decode("utf-8", errors="replace"), url_path)
+                    if anzahl:
+                        data = text.encode("utf-8")
+                if ist_bild and BildschleierHuelle.ist_dokumentanfrage(
+                        getattr(handler, "headers", None)) \
+                        and not d.regel.ist_ausgenommen(url_path, "/"):
+                    anfrage = getattr(handler, "path", None) or url_path
+                    logger.info("Bildschleier: Direktaufruf von '%s' -> Huelle",
+                                url_path)
+                    handler.send_response_body(
+                        status=200, body=BildschleierHuelle.html(anfrage),
+                        content_type="text/html; charset=utf-8",
+                        extra_headers={"Cache-Control": "no-store",
+                                       "Vary": VARY})
+                    return
 
         logger.debug(
             "Asset ausgeliefert: '%s' (%s, %d bytes)",
@@ -106,6 +163,7 @@ class AssetHandler:
             status=200,
             body=data,
             content_type=mime_type,
+            extra_headers=extra or None,
         )
 
     _CSS_URL_RE = re.compile(

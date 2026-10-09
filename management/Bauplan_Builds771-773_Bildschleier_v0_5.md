@@ -1,8 +1,33 @@
 # Bauplan Builds 771–773 — Bildschleier (optischer Selbstschutz)
 
-**Version:** 0.4 · **Datum:** 2026-10-09 · **Baubasis:** `98035a5` (v0.8.770)
+**Version:** 0.5 (Stand nach Bau) · **Datum:** 2026-10-09 · **Baubasis:** `98035a5` (v0.8.770)
 **Klassifikation:** VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
-**Freigabe:** ausstehend (`mc`)
+**Freigabe:** `mc`, 09.10.2026 ("Gut, dann geht's los")
+
+---
+
+## 0. Stand nach Bau (v0.5) — Abweichungen von diesem Plan
+
+Gebaut in den Builds 771–773. Diese Datei hiess bis Build 772
+`Bauplan_Builds771-773_Bildschleier_v0_1.md`; der Kopf von
+`m040_image_veil.py` nennt noch diesen Namen und wird BEWUSST nicht
+angepasst — jede Aenderung an einer Migration aendert ihre Pruefsumme
+(`runner.py`, sha256 des Moduls), und wer Build 771 einzeln einspielt,
+haette sonst eine abweichende Pruefsumme im Bestand. Wo der Bau vom Plan abweicht, steht es hier; die
+Abschnitte darunter sind die Planfassung 0.4 und bleiben zur Nachvollziehbarkeit
+stehen.
+
+| # | Plan (0.4) | Gebaut | Grund |
+|---|---|---|---|
+| A1 | §6: eine zweite Rolle mit `imageveil.lift` hebt den Pflichtschleier auf; Sache der Personalverwaltung | Rolle `researcher` hat **Vorrang** vor dem Recht | Der freigegebene Grund `required_by_role` braucht die Rollenpruefung ohnehin; ein Selbstschutz, der an einer Fehlzuweisung scheitert, schuetzt nicht. Warnung im Protokoll bei beidem. Waechter BS22. |
+| A2 | §4: `db/bildschleier_repo.py` | `management/bildschleier/bildschleier_repo.py` (+ `bildschleier_zustand.py`) | Schreibt ueber `CoordinatorWriter` mit Beleg (Muster `ViewPrefRepo`); `db/` sind die lesenden Zugriffe des Webservers. |
+| A3 | §4.1: fuenf Gruende | sieben: zusaetzlich `store_unavailable` und `internal_error` | Nur `sqlite3.Error` wird zum Grund (Lehre Build 769); ein Programmierfehler wird an EINER Stelle (`BildschleierDienst.aktualisieren`) mit Traceback als `internal_error` gemeldet — verschleiert, gesperrt, eigener Kurzhinweis. |
+| A4 | §5.2: Praefix-Selektoren, relative Praefixe per `relpath` | **Exakte Attributwerte** je Seite (`core/bildschleier_seitenausnahmen.py`) | Ein Praefix-Selektor vergleicht woertlich, der Browser loest auf (`..`, `%2e`, `\`, `//`, Schreibung). Python entscheidet jetzt je Bild mit voller Aufloesung; ausgenommen wird `img[src="…"]` exakt. Die Grenze „zwei `url()` in einem Stil“ entfaellt (BS14n). |
+| A5 | — | Grundregel und Ausnahmen: **ein Regelblock je Ziel** | Ein unbekannter Selektor in einer Liste verwirft die ganze Regel. |
+| A6 | §5.2: `img`, Inline-`url(` | zusaetzlich `iframe`, `canvas`, `svg:has(image)`, `[background]`, `image-set(`, `image(`, `src(`, `element(`, `cross-fade(`, Rueckstrich im Stil | Jede Bildquelle, die ein Inline-Stil tragen kann. |
+| A7 | §7: Wurzeln als Praefix in `exempt_dirs` | `roots` getrennt von `exempt_dirs`/`excluded_dirs` (F6a) | Ausnahme UND Ausschluss gelten unter jeder Wurzel. |
+| A8 | §6.1 | Nummer 40 war bis Build 543 an `m040_fulltext_release` vergeben (nie angewandt, umnummeriert zu 36). FR18 prueft jetzt, was gemeint war. | Vor dem Einspielen: `python tools/pruefe_migrationskette.py --db <coordinator.db>`. |
+| A9 | §5.3 | Schriften und Stylesheets (`.woff2`, `.ttf`, `.css` …) und `url(#…)` werden in CSS nicht ersetzt; `data:` immer | Keine Bilder; ein Platzhalter braeche Schrift oder Gestaltung, ohne etwas zu schuetzen. |
 
 ---
 

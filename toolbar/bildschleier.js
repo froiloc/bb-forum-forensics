@@ -7,7 +7,7 @@
  * ZWECK
  *   Die Augen-Schaltflaeche 👁 in der Werkzeugleiste und das Setzen der
  *   seitenbezogenen Ausnahmen vom Bildschleier. Bauplan:
- *   management/Bauplan_Builds771-773_Bildschleier_v0_1.md, §5.1 und §5.5.
+ *   management/Bauplan_Builds771-773_Bildschleier_v0_5.md, §5.1 und §5.5.
  *
  * WAS DIESE DATEI NICHT TUT — UND WARUM DAS DIE SICHERHEIT TRAEGT
  *   Sie schaltet den Schleier NICHT ein. Das tut der Server: er schreibt die

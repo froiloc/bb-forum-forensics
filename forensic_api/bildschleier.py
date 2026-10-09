@@ -12,6 +12,8 @@
 #                                      -> 403 Umschalten nicht zulaessig
 #                                         (gesperrt; Grund im Rumpf)
 #     GET  /_forensic/image-veil.css   -> die Grundregel (alles verschleiern)
+#     GET  /_forensic/image-veil-placeholder.svg -> grauer Platzhalter fuer
+#                                      ersetzte Bildquellen in CSS (Build 773)
 #
 #   Die Person kommt AUSSCHLIESSLICH aus dem Kontext des Webservers
 #   (context.investigator_id) — ein Rumpf kann keine andere Person nennen.
@@ -106,6 +108,20 @@ class BildschleierEndpoint:
             _json(handler, 500, {"error": "store_failed", "detail": str(exc)})
             return
         _json(handler, 200, nachher.to_dict())
+
+    # ---------------------------------------------------------- Platzhalter
+    #: Build 773: neutrales Grau an Stelle einer ersetzten Bildquelle in CSS
+    #: (core/bildschleier_css_umschreiber.py). Kein Muster, kein Text — es
+    #: soll nur eine Flaeche fuellen, ohne etwas anzudeuten.
+    PLATZHALTER_SVG = (
+        b'<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" '
+        b'viewBox="0 0 64 64"><rect width="64" height="64" fill="#a0a0a0"/>'
+        b'</svg>')
+
+    def handle_placeholder(self, handler: "ForensicRequestHandler") -> None:
+        handler.send_response_body(
+            200, self.PLATZHALTER_SVG, content_type="image/svg+xml",
+            extra_headers={"Cache-Control": "max-age=3600"})
 
     # ------------------------------------------------------------------ CSS
     def handle_css(self, handler: "ForensicRequestHandler") -> None:

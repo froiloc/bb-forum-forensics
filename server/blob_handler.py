@@ -322,7 +322,8 @@ class BlobHandler:
         # aus dem Inhalt GENAU SO berechnet, wie er ausgeliefert wird (nach
         # _rewrite_asset_urls), und von toolbar/bildschleier.js VOR dem
         # Einfuegen gesetzt. Der DOM des Seiteninhalts bleibt unveraendert.
-        image_veil = self._bildschleier_umschlag(page, head_data, body_html)
+        image_veil, head_data, body_html = self._bildschleier_umschlag(
+            page, head_data, body_html)
 
         return {
             "html":            body_html,
@@ -338,12 +339,24 @@ class BlobHandler:
             "image_veil":      image_veil,       # Build 772, Bildschleier
         }
 
-    def _bildschleier_umschlag(self, page, head_data, body_html) -> dict:
-        """
-        Build 772: der Bildschleier-Teil des Seitenumschlags.
+    #: Build 773: <style>-Bloecke im Seiteninhalt (Inhalt in Gruppe 'css').
+    _STYLE_BLOCK = re.compile(
+        r"(?P<auf><style\b[^>]*>)(?P<css>.*?)(?P<zu></style\s*>)",
+        re.IGNORECASE | re.DOTALL)
 
-        {veiled, locked, reason, tooltip, exempt_css}. 'exempt_css' ist leer,
-        wenn der Schleier nicht wirkt — dann gibt es nichts auszunehmen.
+    def _bildschleier_umschlag(self, page, head_data, body_html):
+        """
+        Build 772/773: der Bildschleier-Teil des Seitenumschlags.
+
+        Rueckgabe: (umschlag, head_data, body_html).
+          umschlag  — {veiled, locked, reason, tooltip, exempt_css};
+                      'exempt_css' ist leer, wenn der Schleier nicht wirkt.
+          head_data — bei aktivem Schleier mit ersetzten Bildquellen in
+                      'inline_styles' (Build 773)
+          body_html — bei aktivem Schleier mit ersetzten Bildquellen in
+                      <style>-Bloecken (Build 773). Nur der TEXT innerhalb
+                      von <style> aendert sich; kein Element, kein Attribut
+                      — die XPath-Ausdruecke der Annotationen bleiben gueltig.
 
         Die Basis fuer relative Angaben: <base href> (bzw. der daraus
         abgeleitete Pfad in head_data) gegen die volle Seiten-URL aufgeloest.
@@ -354,13 +367,29 @@ class BlobHandler:
         zustand = d.aktualisieren()
         umschlag = zustand.to_dict()
         umschlag["exempt_css"] = ""
-        if zustand.veiled and body_html:
-            basis = page.url or "/"
-            if head_data and head_data.get("base_href"):
-                basis = urllib.parse.urljoin(basis, head_data["base_href"])
+        if not zustand.veiled:
+            return umschlag, head_data, body_html
+
+        basis = page.url or "/"
+        if head_data and head_data.get("base_href"):
+            basis = urllib.parse.urljoin(basis, head_data["base_href"])
+
+        from core.bildschleier_css_umschreiber import BildschleierCssUmschreiber
+        umschreiber = BildschleierCssUmschreiber(d.regel)
+        if head_data and head_data.get("inline_styles"):
+            head_data = dict(head_data)
+            head_data["inline_styles"] = [
+                umschreiber.umschreiben(css, basis)[0]
+                for css in head_data["inline_styles"]]
+        if body_html and "<style" in body_html.lower():
+            def _block(m):
+                neu, _anzahl = umschreiber.umschreiben(m.group("css"), basis)
+                return m.group("auf") + neu + m.group("zu")
+            body_html = self._STYLE_BLOCK.sub(_block, body_html)
+        if body_html:
             umschlag["exempt_css"] = d.seitenausnahmen.stylesheet(
                 body_html, basis)
-        return umschlag
+        return umschlag, head_data, body_html
 
     def _resolve_aliases(
         self,

@@ -9,7 +9,7 @@
 #   nicht hier, sondern beim Webserver (core/bildschleier_regel.py, ab Build
 #   772) — sie haengt an URLs und Konfiguration, nicht an coordinator.db.
 #
-#   Bauplan: management/Bauplan_Builds771-773_Bildschleier_v0_1.md
+#   Bauplan: management/Bauplan_Builds771-773_Bildschleier_v0_5.md
 #
 # Version: v0.8.771 · Build: 771 · 2026-10-09
 # =============================================================================

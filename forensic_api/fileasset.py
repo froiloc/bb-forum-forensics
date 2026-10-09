@@ -42,6 +42,8 @@
 #   Beleg: Projektgespräch 2026-05-31.
 #
 # Version: v0.8.722 · Build: 722 · 2026-08-14
+#   Build 773: Bildschleier — CSS-Ersetzung und Huelle fuer Direktaufrufe
+#   (wie server/asset_handler.py), Vary an jeder Bildantwort.
 #
 # Changelog Build 272 (2026-05-31):
 #   - urllib.parse.unquote() auf den url-Parameter entfernt.
@@ -82,8 +84,12 @@ class FileassetEndpoint:
     Beleg: Projektgespräch 2026-05-31.
     """
 
-    def __init__(self, bundle: "DatabaseBundle") -> None:
+    def __init__(self, bundle: "DatabaseBundle", config=None,
+                 context=None) -> None:
         self._bundle = bundle
+        # Build 773 (Bildschleier): siehe server/asset_handler.py.
+        self._config = config
+        self._context = context
 
     def handle(
         self,
@@ -189,6 +195,44 @@ class FileassetEndpoint:
         data = asset.data or b""
         mime = asset.mime_type or "application/octet-stream"
 
+        # Build 773 (Bildschleier, Bauplan §5.3/§5.4) — Gegenstueck zu
+        # server/asset_handler.py. Die Regel prueft die VOLLE Original-URL:
+        # der Host entscheidet mit (der Image-Hoster ist nie ausgenommen).
+        from server.bildschleier_huelle import VARY, BildschleierHuelle
+        kopf = {"Cache-Control": "max-age=3600, immutable"}
+        ist_bild = BildschleierHuelle.ist_bild(mime)
+        ist_css = "css" in mime.lower()
+        if ist_bild:
+            kopf["Vary"] = VARY
+        if ist_css:
+            kopf["Cache-Control"] = "no-store"
+        if self._config is not None and self._context is not None \
+                and (ist_bild or ist_css):
+            from core.bildschleier_dienst import dienst
+            d = dienst(self._config, self._context)
+            if d.zustand().veiled:
+                if ist_css and data:
+                    from core.bildschleier_css_umschreiber import (
+                        BildschleierCssUmschreiber)
+                    text, anzahl = BildschleierCssUmschreiber(d.regel).umschreiben(
+                        data.decode("utf-8", errors="replace"), full_url)
+                    if anzahl:
+                        data = text.encode("utf-8")
+                if ist_bild and BildschleierHuelle.ist_dokumentanfrage(
+                        getattr(handler, "headers", None)) \
+                        and not d.regel.ist_ausgenommen(full_url, "/"):
+                    anfrage = getattr(handler, "path", None) or (
+                        "/_forensic/fileasset?url="
+                        + urllib.parse.quote(full_url, safe=""))
+                    logger.info("Bildschleier: Direktaufruf von '%s' -> Huelle",
+                                full_url[:80])
+                    handler.send_response_body(
+                        200, BildschleierHuelle.html(anfrage),
+                        content_type="text/html; charset=utf-8",
+                        extra_headers={"Cache-Control": "no-store",
+                                       "Vary": VARY})
+                    return
+
         logger.debug(
             "/_forensic/fileasset: ausgeliefert '%s' (%s, %d bytes)",
             full_url[:60], mime, len(data),
@@ -196,5 +240,5 @@ class FileassetEndpoint:
         handler.send_response_body(
             200, data,
             content_type=mime,
-            extra_headers={"Cache-Control": "max-age=3600, immutable"},
+            extra_headers=kopf,
         )

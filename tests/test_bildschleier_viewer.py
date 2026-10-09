@@ -493,9 +493,10 @@ class UmschlagTests(unittest.TestCase):
         bh._config = ConfigLoader(str(WURZEL / "config.yaml"))
         bh._context = types.SimpleNamespace(investigator_id=1)
         page = types.SimpleNamespace(url=SEITE)
+        # Build 773: Rueckgabe (umschlag, head_data, body_html).
         return bh._bildschleier_umschlag(
             page, head_data,
-            '<img src="img/icons/a.gif"><img src="/forum/img/avatars/1.jpg">')
+            '<img src="img/icons/a.gif"><img src="/forum/img/avatars/1.jpg">')[0]
 
     def test_bsu01_ausnahmen_nur_bei_schleier(self):
         _stub_setzen(BildschleierZustand(veiled=True, locked=False,

@@ -33,6 +33,7 @@
 #     Beleg: Bauplan B6 v0.5 §4.1, Projektgespraech 2026-05-06
 #
 # Version: v0.6.254 · Build: 254 · 2026-05-25
+#   Build 772: /_forensic/bildschleier.js registriert.
 # =============================================================================
 
 from __future__ import annotations
