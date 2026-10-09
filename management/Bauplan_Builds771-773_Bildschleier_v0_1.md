@@ -1,6 +1,6 @@
 # Bauplan Builds 771–773 — Bildschleier (optischer Selbstschutz)
 
-**Version:** 0.3 · **Datum:** 2026-10-09 · **Baubasis:** `98035a5` (v0.8.770)
+**Version:** 0.4 · **Datum:** 2026-10-09 · **Baubasis:** `98035a5` (v0.8.770)
 **Klassifikation:** VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
 **Freigabe:** ausstehend (`mc`)
 
@@ -332,8 +332,10 @@ image_veil:
   # Der Host allein nimmt NIE aus: derselbe Host liefert unter /images/
   # die BB-Code-Bilder (include/parser.php Z. 523-525). Ausgenommen wird
   # immer nur Host + Pfad aus exempt_dirs/exempt_files.
+  # alice4n4…: der Forenhost (Alex, 09.10.2026). NICHT alicefe3…: das ist
+  # der Image-Hoster des Forums und wird nie ausgenommen.
   forum_hosts:
-    - "alicefe3b2dqil3mk3ipwtyoqjol23kdai7cjpgzrtvemfvtzz2s67ad.onion"   # Alex, 09.10.2026
+    - "alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion"
   filter: "blur(48px) grayscale(100%) contrast(35%) brightness(115%)"
   # F6a: Dokumentwurzel forum/html/ ist unter beiden Praefixen erreichbar.
   # Jeder Eintrag unten wird mit JEDER Wurzel kombiniert.
@@ -440,13 +442,15 @@ Jeder Build ist für sich lauffähig und getestet (Grundregel 2).
 ## 11. Offene Punkte
 
 - **Entschieden (Alex, 09.10.2026):** Benennungen wie vorgeschlagen;
-  Forenhost `alicefe3…onion`; Cache-Verhalten (5.4) wird im PoC P3 getestet.
+  Forenhost `alice4n4kd5…onion` (v0.4; `alicefe3…` ist der Image-Hoster und
+  bleibt ausdrücklich ohne Ausnahme); Cache-Verhalten (5.4) wird im PoC P3 getestet.
 - **Entschieden (Alex, 09.10.2026, v0.3):** `/X` ≡ `/forum/X` (F6a);
   `/pix/` verschleiert (F6b); Grund `required_by_role` mit eigenem Text;
   Forenhost in `config.yaml`; Icon 👁 (U+1F441).
 - **Weitere Hosts im Forenquelltext** (gezählt über alle `.php`): `alicefe3…`
-  69×, `alice34mdngm…` 25×, `alice4n4kd5…` 3×, `6hvtnsvqo5jpq…` 2×
-  (`bbcode.php` Z. 52) und sechs weitere mit 1–3 Nennungen. Nur `alicefe3…`
-  ist als Forenhost bestätigt. Alle anderen sind nicht ausgenommen; folgt
+  69× (Image-Hoster), `alice34mdngm…` 25×, `alice4n4kd5…` 3×, `6hvtnsvqo5jpq…` 2×
+  (`bbcode.php` Z. 52) und sechs weitere mit 1–3 Nennungen. Bestätigt sind
+  `alice4n4…` als Forenhost und `alicefe3…` als Image-Hoster. Nur der
+  Forenhost trägt Ausnahmen; alle anderen Hosts nicht. Folgt
   daraus Überverschleierung von Forenelementen, wird der Host in
   `forum_hosts` nachgetragen (reine Konfigurationsänderung).
