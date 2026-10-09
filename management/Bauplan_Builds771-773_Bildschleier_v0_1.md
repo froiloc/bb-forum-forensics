@@ -1,6 +1,6 @@
 # Bauplan Builds 771–773 — Bildschleier (optischer Selbstschutz)
 
-**Version:** 0.1 · **Datum:** 2026-10-09 · **Baubasis:** `98035a5` (v0.8.770)
+**Version:** 0.2 · **Datum:** 2026-10-09 · **Baubasis:** `98035a5` (v0.8.770)
 **Klassifikation:** VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
 **Freigabe:** ausstehend (`mc`)
 
@@ -31,7 +31,7 @@ speichern unter“) ist hingenommen (Alex, 09.10.2026).
 | F2 | Steuerung über ein RBAC-Recht. Wer es **nicht** hat, sieht immer den Schleier, die Schaltfläche ist ausgegraut. |
 | F3 | Rolle `researcher` für die wissenschaftlichen Mitarbeiter:innen. Der IT-ler erhält vorerst keinen Zugang. |
 | F4 | Normale Ermittler:innen: Voreinstellung **klar**. Ihre Wahl wird dauerhaft je Person in der Datenbank gespeichert, nicht im Browser. |
-| F5 | Unverschleiert bleiben nur: `/forum/img/…` außer `/forum/img/avatars/…` und `/forum/img/signatures/…`; `/forum/style/…` und `/forum/v4/style/…` mit Unterverzeichnissen; der exakte Pfad `/forum/1bg.png`. **Alles andere** wird verschleiert, egal von welcher Quelle — ausdrücklich auch `/pix/…` und `/style/…`. |
+| F5 | Unverschleiert bleiben nur: `/forum/img/…` außer `/forum/img/avatars/…` und `/forum/img/signatures/…`; `/forum/style/…` und `/forum/v4/style/…` mit Unterverzeichnissen; der exakte Pfad `/forum/1bg.png`. **Alles andere** wird verschleiert, egal von welcher Quelle — ausdrücklich auch `/pix/…`. |
 | F6 | Ausnahmen gelten nur auf dem Forenhost, in relativer, wurzelrelativer und absoluter Schreibweise. Werte mit `..` sind nie ausgenommen. Im Zweifel: verschleiern. |
 | F7 | Filterkette: `blur(48px) grayscale(100%) contrast(35%) brightness(115%)` mit `!important`, dazu `clip-path: inset(0)`. Konfigurierbar. |
 | F8 | Direktaufruf eines Bildes (neuer Tab, Klick auf Bildlink) liefert bei aktivem Schleier eine HTML-Hülle mit verschleiertem Bild. |
@@ -73,7 +73,7 @@ speichern unter“) ist hingenommen (Alex, 09.10.2026).
 | Icons, Userbar, Badges, Logo `img/…` | `viewforum.php`, `user.php`, `header0.php` | klar. |
 | `url(…)` in Stylesheets: 106× `./images/`, 21× `Air/img/`, 9× `./img/`, 4× `../img/icons/` | `style/*.css`, `v4/style/*.css` | klar (lösen in `/forum/style/…` bzw. `/forum/img/…` auf). |
 | `url("/pix/banner/s9/1–4.jpg")` | `style/index.css` Z. 584–587 | verschleiert (F5: zeigen Kinder). |
-| `url(/style/bg.webp)` | `style/old.css` Z. 6 | verschleiert. |
+| `url(/style/bg.webp)` — Wurzelverzeichnis `/style/`, **nicht** `/forum/style/` | `style/old.css` Z. 6 | **offen** (v0.2): nicht besprochen; nach F5 fiele es unter „alles andere“. Entscheidung Alex ausstehend. |
 | `do_smilies()` ist ein No-op | `include/parser.php` Z. 246 | Smilies sind im Repo-Parser nicht belegbar. Liegen sie unter `/forum/img/smilies/`, bleiben sie klar, sonst verschleiert. |
 
 ---
@@ -119,7 +119,8 @@ Die Gründe:
 
 | `reason` | Bedeutung | `veiled` | `locked` |
 |---|---|---|---|
-| `no_capability` | Recht `imageveil.lift` fehlt | true | true |
+| `required_by_role` | Person trägt Rolle `researcher` (Vorschlag v0.2) | true | true |
+| `no_capability` | Recht `imageveil.lift` fehlt, keine Rolle `researcher` | true | true |
 | `no_investigator` | `investigator_id` nicht auflösbar | true | true |
 | `rbac_unavailable` | `coordinator.db` / RBAC nicht lesbar | true | true |
 | `chosen` | Recht vorhanden, eigene Wahl gespeichert | gespeichert | false |
@@ -312,7 +313,11 @@ ausdrücklich.
 image_veil:
   # Forenhosts, auf denen F5-Ausnahmen in absoluter Schreibweise gelten.
   # Leer = absolute Forenhost-URLs werden verschleiert (sichere Richtung).
-  forum_hosts: []
+  # Der Host allein nimmt NIE aus: derselbe Host liefert unter /images/
+  # die BB-Code-Bilder (include/parser.php Z. 523-525). Ausgenommen wird
+  # immer nur Host + Pfad aus exempt_dirs/exempt_files.
+  forum_hosts:
+    - "alicefe3b2dqil3mk3ipwtyoqjol23kdai7cjpgzrtvemfvtzz2s67ad.onion"   # Alex, 09.10.2026
   filter: "blur(48px) grayscale(100%) contrast(35%) brightness(115%)"
   exempt_dirs:
     - "/forum/img/"
@@ -326,7 +331,7 @@ image_veil:
 ```
 
 Die Vorgaben stehen zusätzlich in `core.config_loader.coded_default()`
-(Wächter PH04). `forum_hosts` muss für PROD von Alex befüllt werden.
+(Wächter PH04).
 
 ---
 
@@ -379,7 +384,7 @@ Jeder Build ist für sich lauffähig und getestet (Grundregel 2).
 | BS09 | `/forum/img/avatars/x.jpg`, `/forum/img/signatures/x.png` → verschleiert |
 | BS10 | `http://fremd.onion/img/x.jpg` → verschleiert (fremder Host mit `/img/`) |
 | BS11 | `/forum/img/../uploads/x.jpg` → verschleiert |
-| BS12 | `/pix/…`, `/style/bg.webp`, `/forum/uploads/…` → verschleiert |
+| BS12 | `/pix/…`, `/forum/uploads/…` → verschleiert; `/forum/style/x.png` und `/forum/v4/style/a/b.png` → klar |
 | BS13 | `/forum/1bg.png` klar, `/forum/1bg.png.jpg` und `/forum/x/1bg.png` verschleiert |
 | BS14 | Forenquelltext: kein Inline-Stil mit zwei `url()` (Annahme aus 5.2) |
 | BS15 | Relative Präfixe: Seite `/forum/beginner/…` → `../img/` klar, `img/` verschleiert |
@@ -412,11 +417,11 @@ Jeder Build ist für sich lauffähig und getestet (Grundregel 2).
 
 ## 11. Offene Punkte
 
-- **Benennung:** Recht `imageveil.lift`, Tabelle `person_image_veil`, Ereignis
-  `IMAGE_VEIL_SET`, Klassen `Bildschleier…`, Konfiguration `image_veil` —
-  bitte bestätigen oder ändern.
-- **Icon:** Vorschlag Unicode-freies Inline-SVG (Auge, verschleiert als
-  Auge hinter Milchglas), damit die Darstellung nicht von Schriftarten der VM
-  abhängt.
-- **`forum_hosts`:** Liste der Forenhostnamen für PROD (siehe
-  `bbcode.php` Z. 52: mindestens ein weiterer `.onion`-Host im Forenquelltext).
+- **Entschieden (Alex, 09.10.2026):** Benennungen wie vorgeschlagen;
+  Forenhost `alicefe3…onion`; Cache-Verhalten (5.4) wird im PoC P3 getestet.
+- **`/style/` (Wurzel):** siehe 3.2 — Entscheidung ausstehend.
+- **Grund `required_by_role`:** Vorschlag v0.2, damit Forschende einen
+  eigenen Tooltip-Text erhalten. Entscheidung ausstehend.
+- **Weiterer Host `6hvtnsvqo5jpq…onion`** (`bbcode.php` Z. 52): Forenhost
+  oder nicht? Entscheidung ausstehend; bis dahin nicht ausgenommen.
+- **Icon:** Inline-SVG statt Unicode-Zeichen. Entscheidung ausstehend.
