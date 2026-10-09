@@ -40,7 +40,7 @@ naechsten Abschnitt. Umsortieren kann eine Maschine, Kontext erfinden nicht.
 
 ## Aktueller Stand
 
-**Build 771** — in dieser Akte unveraendert seit Build 770 (Builds 771 ff.
+**Build 772** — in dieser Akte unveraendert seit Build 770 (Builds 771 ff.
 bauen den Bildschleier, siehe Chronologie). Die Migration der Annotationen von `selection_json` 1.0.0 auf
 2.0.0 ist **vorbereitet, aber nicht begonnen** — es ist noch kein Datensatz
 migriert.
@@ -240,5 +240,20 @@ XPath-Ausdruecke der Annotationen haengen am Viewport-DOM (Metadaten-Katalog:
 Bezugsebene `div#forensic-viewport`), und der Rang `by_class` des
 XPath-Generators liest Klassen. Build 771 selbst beruehrt den Viewer noch gar
 nicht (nur `coordinator.db`, Migration M040).
+
+**Messwerte.** Keine.
+
+### Build 772 — kein Fortschritt in dieser Akte (Bildschleier im Viewer)
+
+**Entscheidungen.** Keine zur Annotationsmigration.
+
+**Erkenntnisse, die diese Akte beruehren.** Der Bildschleier wirkt jetzt im
+Viewer. Er schreibt die Klasse `aiw-image-veil` an `<html>`, ein
+`<style id="aiw-image-veil-page">` in den `<head>` und eine Schaltflaeche in
+die Toolbar — alles AUSSERHALB von `div#forensic-viewport`. Der Seiteninhalt
+wird unveraendert eingefuegt; die Ausnahmen nennen die Bilder ueber ihre
+exakten Attributwerte, ohne ein Attribut hinzuzufuegen. Waechter BS17c haelt
+fest, dass `seiteAnwenden()` vor `viewport.innerHTML` steht und es genau eine
+Einfuegestelle gibt.
 
 **Messwerte.** Keine.

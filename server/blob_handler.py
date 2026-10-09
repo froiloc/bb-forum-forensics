@@ -57,6 +57,10 @@
 #   - investigator:   scrape_context='investigator' im JSON
 #   Alle drei Zustände sind für toolbar.js sichtbar und werden angezeigt.
 #
+# Build 772 (Bildschleier): der Seitenumschlag traegt 'image_veil'
+#   ({veiled, locked, reason, tooltip, exempt_css}); siehe
+#   _bildschleier_umschlag().
+#
 # Abhängigkeiten: json, urllib.parse — Stdlib + interne Module
 # Version: v0.1.0 · Build: 699 · 2026-08-12
 #
@@ -313,6 +317,13 @@ class BlobHandler:
             page.page_id
         )
 
+        # Build 772 (Bildschleier): Zustand NEU lesen und — nur wenn der
+        # Schleier wirkt — die Ausnahmen DIESER Seite mitgeben. Sie werden
+        # aus dem Inhalt GENAU SO berechnet, wie er ausgeliefert wird (nach
+        # _rewrite_asset_urls), und von toolbar/bildschleier.js VOR dem
+        # Einfuegen gesetzt. Der DOM des Seiteninhalts bleibt unveraendert.
+        image_veil = self._bildschleier_umschlag(page, head_data, body_html)
+
         return {
             "html":            body_html,
             "head":            head_data,
@@ -324,7 +335,32 @@ class BlobHandler:
             "fragment":        fragment,
             "trace_elements":  trace_elements,  # z.B. ["p1891354", "p1903927"]
             "fragment_source": fragment_source,  # Build 699, s. Kopf
+            "image_veil":      image_veil,       # Build 772, Bildschleier
         }
+
+    def _bildschleier_umschlag(self, page, head_data, body_html) -> dict:
+        """
+        Build 772: der Bildschleier-Teil des Seitenumschlags.
+
+        {veiled, locked, reason, tooltip, exempt_css}. 'exempt_css' ist leer,
+        wenn der Schleier nicht wirkt — dann gibt es nichts auszunehmen.
+
+        Die Basis fuer relative Angaben: <base href> (bzw. der daraus
+        abgeleitete Pfad in head_data) gegen die volle Seiten-URL aufgeloest.
+        So sieht die Regel denselben Host, den der Browser anspricht.
+        """
+        from core.bildschleier_dienst import dienst
+        d = dienst(self._config, self._context)
+        zustand = d.aktualisieren()
+        umschlag = zustand.to_dict()
+        umschlag["exempt_css"] = ""
+        if zustand.veiled and body_html:
+            basis = page.url or "/"
+            if head_data and head_data.get("base_href"):
+                basis = urllib.parse.urljoin(basis, head_data["base_href"])
+            umschlag["exempt_css"] = d.seitenausnahmen.stylesheet(
+                body_html, basis)
+        return umschlag
 
     def _resolve_aliases(
         self,

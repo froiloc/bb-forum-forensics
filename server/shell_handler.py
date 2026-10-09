@@ -31,6 +31,8 @@
 #
 # Abhängigkeiten: server/head_extractor — internes Modul
 # Version: v0.1.0 · Build: 021 · 2026-04-15
+#   Build 772: Bildschleier — Klasse/data-Attribute an <html>, Grundregel
+#   image-veil.css als erstes Stylesheet, bildschleier.js vor toolbar.js.
 # =============================================================================
 
 from __future__ import annotations
@@ -73,6 +75,16 @@ _SCROLL_MEMORY_JS_TAG = f'<script src="/_forensic/scroll_memory.js?v={_BUILD_NR}
 # Popups auf window.TatzeitPanel. Fehlt die Datei, protokolliert toolbar.js
 # eine Warnung und laesst den Bereich weg (kein stiller Ausfall).
 _TATZEIT_PANEL_JS_TAG = f'<script src="/_forensic/tatzeit_panel.js?v={_BUILD_NR}"></script>'
+# Build 772 (Bildschleier): die GRUNDREGEL steht als ERSTES Stylesheet im
+# <head> — vor jedem Seiteninhalt, der erst per AJAX kommt (Bauplan §5.1,
+# Festlegung F1). Sie ist nicht cachebar (no-store), weil sie aus config.yaml
+# erzeugt wird; der Versionsparameter haelt sie trotzdem buildgenau.
+_BILDSCHLEIER_CSS_TAG = f'<link rel="stylesheet" href="/_forensic/image-veil.css?v={_BUILD_NR}">'
+# Der Schalter MUSS VOR toolbar.js geladen sein: toolbar.js ruft ihn beim
+# Zeichnen der Leiste und vor jedem Einfuegen eines Seiteninhalts. Fehlt er,
+# protokolliert toolbar.js eine Warnung; der Schleier wirkt trotzdem (die
+# Klasse setzt der Server), nur ohne Ausnahmen und ohne Schaltflaeche.
+_BILDSCHLEIER_JS_TAG = f'<script src="/_forensic/bildschleier.js?v={_BUILD_NR}"></script>'
 # Build 086: Tabulator.js wird in userinfo.py eingebunden (eigenes Fenster).
 # Beleg: Projektgespräch 2026-05-05 — shell_handler lädt für Hauptfenster, nicht Userinfo-Tab.
 
@@ -128,8 +140,15 @@ class ShellHandler:
             from server.head_extractor import ExtractedHead
             extracted = ExtractedHead()
 
+        # Build 772 (Bildschleier): den Zustand der angemeldeten Person NEU
+        # lesen. Die Shell ist der Ort, an dem er wirksam wird — die Klasse
+        # an <html> steht im ersten Byte, das der Browser rendert.
+        from core.bildschleier_dienst import dienst, zustand_html_attribute
+        bildschleier = dienst(self._config, self._context).aktualisieren()
+        html_attribute = zustand_html_attribute(bildschleier)
+
         # Shell-HTML zusammenbauen
-        html = self._build_shell(extracted, canonical_url)
+        html = self._build_shell(extracted, canonical_url, html_attribute)
         html_bytes = html.encode("utf-8")
 
         # HTTP-Status und Zusatz-Header bestimmen
@@ -153,7 +172,8 @@ class ShellHandler:
             extra_headers=extra_headers if extra_headers else None,
         )
 
-    def _build_shell(self, extracted, canonical_url: str) -> str:
+    def _build_shell(self, extracted, canonical_url: str,
+                     html_attribute: str = "") -> str:
         """
         Baut die vollständige Shell-HTML aus den extrahierten <head>-Elementen.
 
@@ -179,14 +199,20 @@ class ShellHandler:
         # Shell-HTML und nochmals nach jedem AJAX-Load.
         head_content = extracted.to_html(include_css=False)
 
+        # Build 772: html_attribute traegt die Schleier-Klasse und die
+        # data-image-veil-* Angaben (core/bildschleier_dienst.py). Die
+        # Grundregel steht VOR allem anderen im <head>.
+        oeffner = "<html %s>" % html_attribute if html_attribute else "<html>"
         return f"""<!DOCTYPE html>
-<html>
+{oeffner}
 <head>
 <meta charset="utf-8">
+{_BILDSCHLEIER_CSS_TAG}
 {head_content}
 {_TOOLBAR_CSS_TAG}
 </head>
 {_SHELL_BODY}
+{_BILDSCHLEIER_JS_TAG}
 {_TOOLBAR_JS_TAG}
 {_SCROLL_MEMORY_JS_TAG}
 {_TATZEIT_PANEL_JS_TAG}

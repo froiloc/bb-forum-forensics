@@ -3376,3 +3376,39 @@ li.aiw-translate-item.aux-part {
 .forensic-tatzeit-btn-set {
   width: 100%;
 }
+
+/* ===========================================================================
+ * Build 772 — Bildschleier-Schaltflaeche (#forensic-image-veil)
+ * ---------------------------------------------------------------------------
+ * Drei Zustaende (Alex, 09.10.2026), gesetzt von toolbar/bildschleier.js:
+ *   .is-locked  — gesperrt: Auge verschwommen, grau, blass; kein Zeiger
+ *   .is-veiled  — verschleiert, umschaltbar: Auge verschwommen, farbig
+ *   .is-clear   — klar, umschaltbar: Auge scharf, farbig
+ * Dazu .is-busy (Speichern laeuft) und .is-error (Umschalten gescheitert).
+ * Der Filter wirkt auf das Zeichen selbst; die Leiste liegt AUSSERHALB von
+ * #forensic-viewport, die Grundregel des Schleiers trifft sie nicht.
+ * ======================================================================== */
+#forensic-image-veil.forensic-image-veil-btn {
+  font-size: 1.15em;
+  line-height: 1;
+  padding: 2px 6px;
+  margin-right: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  /* Emoji-Darstellung erzwingen, damit das Auge farbig erscheint. */
+  font-family: "Segoe UI Emoji", "Noto Color Emoji", "Apple Color Emoji", sans-serif;
+}
+#forensic-image-veil.is-clear  { filter: none; }
+#forensic-image-veil.is-veiled { filter: blur(1.5px); }
+#forensic-image-veil.is-locked {
+  filter: blur(1.5px) grayscale(100%) opacity(0.45);
+  cursor: not-allowed;
+}
+#forensic-image-veil.is-busy   { cursor: progress; opacity: 0.7; }
+#forensic-image-veil.is-error  { border-color: #c0392b; }
+#forensic-image-veil:not(.is-locked):hover,
+#forensic-image-veil:not(.is-locked):focus-visible {
+  border-color: currentColor;
+}

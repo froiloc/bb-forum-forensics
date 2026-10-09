@@ -37,6 +37,9 @@
 #   /_forensic/placeholders/library  (GET)       -> PlaceholdersEndpoint [B6]
 #   /_forensic/templates             (GET)       -> TemplatesEndpoint    [B6]
 #   /_forensic/templates/<id>        (GET)       -> TemplatesEndpoint    [B6]
+#   /_forensic/image-veil            (GET, POST) -> BildschleierEndpoint [Build 772]
+#   /_forensic/image-veil.css        (GET)       -> BildschleierEndpoint [Build 772]
+#   /_forensic/bildschleier.js       (GET)       -> StaticEndpoint       [Build 772]
 #
 # Routing-Reihenfolge bei Praefix-Konflikten:
 #   Laengere/spezifischere Pfade werden zuerst geprueft:
@@ -357,6 +360,7 @@ class ForensicApi:
             "/_forensic/annotation_recherche.js",   # B4 Welle 1 Recherche (Build 428)
             "/_forensic/annotation_recherche.css",  # B4 Welle 1 Recherche (Build 428)
             "/_forensic/tatzeit_panel.js",      # AP-3A Tatzeit-Aufklappbereich (Build 534)
+            "/_forensic/bildschleier.js",       # Build 772: Bildschleier-Schalter
         ):
             if method not in ("GET", "HEAD"):
                 self._method_not_allowed(handler)
@@ -541,6 +545,34 @@ class ForensicApi:
                 self._method_not_allowed(handler)
                 return
             self._get_export_ep().handle_get(handler, params)
+            return
+
+        # /_forensic/image-veil.css (GET) [Build 772, Bildschleier]
+        # Die Grundregel: alles im Viewport verschleiern, wenn <html> die
+        # Klasse 'aiw-image-veil' traegt. Erzeugt aus config.yaml
+        # (image_veil.filter), deshalb kein statisches Asset.
+        # WICHTIG: der laengere Pfad MUSS vor /_forensic/image-veil stehen.
+        if url_path == "/_forensic/image-veil.css":
+            if method not in ("GET", "HEAD"):
+                self._method_not_allowed(handler)
+                return
+            self._get_bildschleier().handle_css(handler)
+            return
+
+        # /_forensic/image-veil (GET, POST) [Build 772, Bildschleier]
+        # GET: Zustand der angemeldeten Person. POST {"veiled": bool}:
+        # umschalten (Recht imageveil.lift, auditiert).
+        if url_path == "/_forensic/image-veil":
+            if method in ("GET", "HEAD"):
+                self._get_bildschleier().handle_get(handler)
+                return
+            if method == "POST":
+                body = self._read_body(handler)
+                if body is None:
+                    return
+                self._get_bildschleier().handle_post(handler, body)
+                return
+            self._method_not_allowed(handler)
             return
 
         # /_forensic/investigator/me (GET) [B6 Phase 9]
@@ -991,6 +1023,14 @@ class ForensicApi:
                 self._bundle, self._context, self._config
             )
         return self._export_ep_inst
+
+    def _get_bildschleier(self):
+        """[Build 772] Lazy-Init fuer BildschleierEndpoint."""
+        if getattr(self, "_bildschleier_ep", None) is None:
+            from forensic_api.bildschleier import BildschleierEndpoint
+            self._bildschleier_ep = BildschleierEndpoint(
+                self._bundle, self._context, self._config)
+        return self._bildschleier_ep
 
     def _get_investigator_me(self):
         """[B6 Phase 9] Lazy-Init fuer InvestigatorMeEndpoint."""
