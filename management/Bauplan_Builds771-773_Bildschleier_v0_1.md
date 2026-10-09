@@ -422,6 +422,10 @@ Jeder Build ist für sich lauffähig und getestet (Grundregel 2).
 - **`/style/` (Wurzel):** siehe 3.2 — Entscheidung ausstehend.
 - **Grund `required_by_role`:** Vorschlag v0.2, damit Forschende einen
   eigenen Tooltip-Text erhalten. Entscheidung ausstehend.
-- **Weiterer Host `6hvtnsvqo5jpq…onion`** (`bbcode.php` Z. 52): Forenhost
-  oder nicht? Entscheidung ausstehend; bis dahin nicht ausgenommen.
+- **Weitere Hosts im Forenquelltext** (gezählt über alle `.php`): `alicefe3…`
+  69×, `alice34mdngm…` 25×, `alice4n4kd5…` 3×, `6hvtnsvqo5jpq…` 2×
+  (`bbcode.php` Z. 52) und sechs weitere mit 1–3 Nennungen. Nur `alicefe3…`
+  ist als Forenhost bestätigt. Alle anderen sind nicht ausgenommen; folgt
+  daraus Überverschleierung von Forenelementen, wird der Host in
+  `forum_hosts` nachgetragen (reine Konfigurationsänderung).
 - **Icon:** Inline-SVG statt Unicode-Zeichen. Entscheidung ausstehend.
