@@ -20377,6 +20377,215 @@
           "comment": "Importiert aus eintraege_claude_Build770.json"
         }
       ]
+    },
+    {
+      "id": "f55d7dae-5398-43fd-b238-ada31cd6e4f6",
+      "type": "feature_request",
+      "title": "Bildschleier: Rolle researcher, Recht imageveil.lift, M040",
+      "affected_version": "0.8.770",
+      "reporter": "Alex",
+      "reported_at": "2026-10-09T19:07:00+02:00",
+      "status": "review",
+      "resolved_in_version": "0.8.771",
+      "priority": "high",
+      "description": "Fundament des Bildschleiers im Forenviewer (Bauplan Builds 771-773). Forschungsteam des LKA soll die Forenbilder nur verschleiert sehen; alle uebrigen Ermittler:innen koennen verschleiern und den Schleier wieder abschalten.\n\nM040 (coordinator.db, additiv): Rolle 'researcher', Recht 'imageveil.lift', Tabelle person_image_veil (eine Zeile je Person, laufende Wahl). Historie im audit_log ueber IMAGE_VEIL_SET.\n\nM040 vergibt KEINEN Grant. Bis zur Vergabe im Wartungsfenster sieht jede Person den Schleier.",
+      "expected_behavior": "Ohne Recht immer verschleiert und gesperrt; mit Recht frei, Voreinstellung klar; researcher immer verschleiert.",
+      "environment": {
+        "python_version": "3.13 (Bau) / 3.14 (PROD)",
+        "database": "SQLite coordinator.db"
+      },
+      "tags": [
+        "bildschleier",
+        "rbac",
+        "migration",
+        "build771"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-10-09T23:30:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Waechter BS01-BS09t, BS22; vier Mutationsgegenproben, alle gefangen."
+        },
+        {
+          "timestamp": "2026-10-10T10:20:19.170520+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build771.json"
+        }
+      ]
+    },
+    {
+      "id": "0faa911f-00ad-4edc-ad1c-3c8072ccd9fc",
+      "type": "improvement",
+      "title": "Rolle researcher setzt sich gegen das Recht imageveil.lift durch",
+      "affected_version": "0.8.771",
+      "reporter": "Claude",
+      "reported_at": "2026-10-09T23:30:00+02:00",
+      "status": "review",
+      "resolved_in_version": "0.8.771",
+      "priority": "high",
+      "description": "Abweichung vom Bauplan 0.4 Abschnitt 6, in die sichere Richtung. Dort stand: eine zweite Rolle mit 'imageveil.lift' hebt den Pflichtschleier auf; die Zuweisung sei Sache der Personalverwaltung.\n\nDer freigegebene Tooltip-Grund 'required_by_role' braucht die Rollenpruefung ohnehin. Sie steht jetzt VOR der Rechtepruefung und setzt sich durch. Eine Person mit beiden wird im Protokoll benannt (Warnung), der Schleier bleibt.\n\nRBAC ist sonst additiv; diese Rolle wirkt als einzige einschraenkend. Das ist im Katalog und in der Hilfe ausdruecklich beschrieben.",
+      "expected_behavior": "Fehlzuweisung einer zweiten Rolle hebt den Pflichtschleier nicht auf.",
+      "environment": {
+        "database": "SQLite coordinator.db"
+      },
+      "tags": [
+        "bildschleier",
+        "rbac",
+        "build771"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-10-09T23:30:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Waechter BS22 (mit Gegenprobe: Person 4 hat das Recht tatsaechlich). Mutation M1 gefangen."
+        },
+        {
+          "timestamp": "2026-10-10T10:20:19.170780+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build771.json"
+        }
+      ]
+    },
+    {
+      "id": "e113de83-4825-4792-ba25-24b87eac49a3",
+      "type": "feature_request",
+      "title": "Bildschleier im Forenviewer: Grundregel, Ausnahmen, Schaltflaeche",
+      "affected_version": "0.8.771",
+      "reporter": "Alex",
+      "reported_at": "2026-10-09T19:07:00+02:00",
+      "status": "review",
+      "resolved_in_version": "0.8.772",
+      "priority": "high",
+      "description": "Bilder im Forenviewer werden verschleiert (blur 48px, grau, kontrastarm), wenn der Schleier fuer die Person wirkt. Die Klasse an <html> setzt der Server in der Shell, die Grundregel ist das erste Stylesheet - kein Aufblitzen des Originals.\n\nUnverschleiert bleiben nur Forenelemente (img/, style/, v4/style/, 1bg.png unter /forum/ und /), ausser img/avatars/ und img/signatures/. Ausnahmen je Seite mit exakten Attributwerten, gesetzt vor dem Einfuegen des Inhalts.\n\nSchaltflaeche 👁 vor dem Benutzernamen: gesperrt / verschleiert / klar.",
+      "expected_behavior": "Kein Bild erscheint unverschleiert, das verschleiert sein soll; Forensymbole bleiben erkennbar.",
+      "environment": {
+        "browser": "Chromium (PROD, Stand 08/2026)",
+        "python_version": "3.13 (Bau) / 3.14 (PROD)"
+      },
+      "tags": [
+        "bildschleier",
+        "viewer",
+        "toolbar",
+        "build772"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-10-09T23:55:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Waechter BS09-BS18, BSc/BSs/BSd/BSu (pytest), BS19-BS21d (vitest). Fuenf Python- und eine JS-Mutationsgegenprobe, alle gefangen. PoC P1/P2/P4 in PROD offen."
+        },
+        {
+          "timestamp": "2026-10-10T10:20:19.373716+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build772.json"
+        }
+      ]
+    },
+    {
+      "id": "4a045334-62bf-4719-820e-39da1f0e68e4",
+      "type": "improvement",
+      "title": "Bildschleier-Ausnahmen mit exakten Werten statt Praefix-Selektoren",
+      "affected_version": "0.8.772",
+      "reporter": "Claude",
+      "reported_at": "2026-10-09T23:55:00+02:00",
+      "status": "review",
+      "resolved_in_version": "0.8.772",
+      "priority": "high",
+      "description": "Abweichung vom Bauplan 0.4 Abschnitt 5.2. Ein CSS-Praefix-Selektor vergleicht den Attributwert woertlich, der Browser loest ihn auf. '..', %2e, Rueckstrich, doppelte Schraegstriche und Schreibvarianten haetten jeweils eine Gegenregel gebraucht.\n\nJetzt entscheidet Python je Bild der ausgelieferten Seite mit voller URL-Aufloesung, und ausgenommen wird mit dem exakten Wert. Der DOM des Viewports bleibt unveraendert (XPath-Ausdruecke der Annotationen unberuehrt).",
+      "expected_behavior": "Keine Schreibweise kommt an der Ausnahmeregel vorbei.",
+      "environment": {
+        "browser": "Chromium"
+      },
+      "tags": [
+        "bildschleier",
+        "css",
+        "build772"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-10-09T23:55:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "BS11 (Umgehungsschreibweisen), BS14n (zwei url() in einem Stil), BSs02 (srcset)."
+        },
+        {
+          "timestamp": "2026-10-10T10:20:19.373752+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build772.json"
+        }
+      ]
+    },
+    {
+      "id": "70389e53-9ed6-489e-90a4-8e657e96a233",
+      "type": "feature_request",
+      "title": "Bildschleier: Bildquellen in CSS und Direktaufruf von Bildern",
+      "affected_version": "0.8.772",
+      "reporter": "Claude",
+      "reported_at": "2026-10-10T00:20:00+02:00",
+      "status": "review",
+      "resolved_in_version": "0.8.773",
+      "priority": "high",
+      "description": "Zwei Wege, auf denen ein Bild am Schleier vorbei erscheint:\n\n1. Ein Stylesheet weist einem Element ein Hintergrundbild zu - kein Selektor erreicht es. Bei aktivem Schleier ersetzt der Server solche url() durch einen grauen Platzhalter (Stylesheets, <style> in Kopf und Inhalt).\n\n2. Ein Bild wird als eigenes Dokument geoeffnet (neuer Tab, Bildlink). Dann liefert der Server eine verschleiernde HTML-Huelle statt der Bytes (Sec-Fetch-Dest: document, hilfsweise Accept).",
+      "expected_behavior": "Auch Hintergrundbilder und in neuem Tab geoeffnete Bilder erscheinen verschleiert.",
+      "environment": {
+        "browser": "Chromium (PROD, Stand 08/2026)"
+      },
+      "tags": [
+        "bildschleier",
+        "css",
+        "huelle",
+        "build773"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-10-10T00:20:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Waechter BS23-BS30, BSw/BSf/BSp. PoC P3 (Cache/Vary) in PROD offen."
+        },
+        {
+          "timestamp": "2026-10-10T10:20:19.589120+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build773.json"
+        }
+      ]
+    },
+    {
+      "id": "2db913eb-310c-429f-980b-ad5f3e4e4b64",
+      "type": "documentation",
+      "title": "Bildschleier: PoC P1-P4 in PROD durchfuehren",
+      "affected_version": "0.8.773",
+      "reporter": "Claude",
+      "reported_at": "2026-10-10T00:20:00+02:00",
+      "status": "open",
+      "priority": "high",
+      "description": "Bauplan Builds 771-773, Abschnitt 10, mit einem unverfaenglichen Testbild:\nP1 Slow 3G, kein Frame zeigt das Bild unverschleiert.\nP2 Umschalten: Neuladen, Scrollposition bleibt, Icon im neuen Zustand.\nP3 Bild im Viewer laden, dann Bildlink per Mittelklick in neuem Tab: Huelle, nicht Rohbild aus dem Cache.\nP4 Als researcher: Icon ausgegraut, Kurzhinweis 'Rolle', Klick wirkungslos.",
+      "prerequisites": "M040 angewandt; imageveil.lift an investigator vergeben; eine Testperson mit Rolle researcher.",
+      "environment": {
+        "browser": "Chromium (PROD)"
+      },
+      "tags": [
+        "bildschleier",
+        "poc",
+        "prod",
+        "build773"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-10-10T10:20:19.589153+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build773.json"
+        }
+      ]
     }
   ]
 }
