@@ -33,6 +33,7 @@
 #     Beleg: Bauplan B6 v0.5 §4.1, Projektgespraech 2026-05-06
 #
 # Version: v0.6.254 · Build: 254 · 2026-05-25
+#   Build 772: /_forensic/bildschleier.js registriert.
 # =============================================================================
 
 from __future__ import annotations
@@ -81,6 +82,10 @@ _RESOURCES: dict[str, tuple[str, str, Path]] = {
     # eingebunden — toolbar.js haengt ihn im Popup ueber window.TatzeitPanel
     # ein und laeuft ohne ihn (mit Warnung) weiter.
     "/_forensic/tatzeit_panel.js": ("tatzeit_panel.js", "application/javascript; charset=utf-8", _TOOLBAR_DIR),
+    # Build 772: Bildschleier-Schalter (eigene Klasse, Grundregel 10). Wird in
+    # shell_handler.py VOR toolbar.js eingebunden — toolbar.js ruft ihn beim
+    # Zeichnen der Leiste und vor JEDEM Einfuegen eines Seiteninhalts.
+    "/_forensic/bildschleier.js": ("bildschleier.js", "application/javascript; charset=utf-8", _TOOLBAR_DIR),
     "/_forensic/userinfo.js":  ("userinfo.js",  "application/javascript; charset=utf-8", _USERINFO_DIR),
     "/_forensic/userinfo.css": ("userinfo.css", "text/css; charset=utf-8",               _USERINFO_DIR),
     # Build 390: Erfassungsmaske Ermittlungsergebnis (Baustelle 4).

@@ -40,7 +40,8 @@ naechsten Abschnitt. Umsortieren kann eine Maschine, Kontext erfinden nicht.
 
 ## Aktueller Stand
 
-**Build 770.** Die Migration der Annotationen von `selection_json` 1.0.0 auf
+**Build 773** — in dieser Akte unveraendert seit Build 770 (Builds 771 ff.
+bauen den Bildschleier, siehe Chronologie). Die Migration der Annotationen von `selection_json` 1.0.0 auf
 2.0.0 ist **vorbereitet, aber nicht begonnen** — es ist noch kein Datensatz
 migriert.
 
@@ -223,3 +224,51 @@ Zeichen Praefix, Beitrag 1550483 vollstaendig, Beitrag 1550508 teilweise.
 **Messwerte.** Build 769: 449 benannte Beitraege aus dem Anker, 340/78/32 auf
 den drei Stufen, 6 nicht gefunden, 24 blockweise — aber 0 aufgespalten, was
 den Feldnamen-Fehler sichtbar gemacht hat.
+
+### Build 771 — kein Fortschritt in dieser Akte (Bildschleier)
+
+**Entscheidungen.** Keine zur Annotationsmigration. Builds 771 bis 773 bauen
+den Bildschleier im Forenviewer (Auftrag Alex, 09.10.2026; Bauplan
+`management/Bauplan_Builds771-773_Bildschleier_v0_5.md`). Der naechste
+Schritt dieser Akte ist unveraendert der aus Build 770.
+
+**Erkenntnisse, die diese Akte beruehren.** Der Bildschleier wirkt
+ausschliesslich ueber CSS und veraendert den DOM unter
+`div#forensic-viewport` nicht: kein Attribut, keine Klasse, kein Knoten an
+den Bildern. Das ist eine Bauvorgabe GERADE wegen dieser Akte — die
+XPath-Ausdruecke der Annotationen haengen am Viewport-DOM (Metadaten-Katalog:
+Bezugsebene `div#forensic-viewport`), und der Rang `by_class` des
+XPath-Generators liest Klassen. Build 771 selbst beruehrt den Viewer noch gar
+nicht (nur `coordinator.db`, Migration M040).
+
+**Messwerte.** Keine.
+
+### Build 772 — kein Fortschritt in dieser Akte (Bildschleier im Viewer)
+
+**Entscheidungen.** Keine zur Annotationsmigration.
+
+**Erkenntnisse, die diese Akte beruehren.** Der Bildschleier wirkt jetzt im
+Viewer. Er schreibt die Klasse `aiw-image-veil` an `<html>`, ein
+`<style id="aiw-image-veil-page">` in den `<head>` und eine Schaltflaeche in
+die Toolbar — alles AUSSERHALB von `div#forensic-viewport`. Der Seiteninhalt
+wird unveraendert eingefuegt; die Ausnahmen nennen die Bilder ueber ihre
+exakten Attributwerte, ohne ein Attribut hinzuzufuegen. Waechter BS17c haelt
+fest, dass `seiteAnwenden()` vor `viewport.innerHTML` steht und es genau eine
+Einfuegestelle gibt.
+
+**Messwerte.** Keine.
+
+### Build 773 — kein Fortschritt in dieser Akte (Bildschleier, Lueckenschluss)
+
+**Entscheidungen.** Keine zur Annotationsmigration.
+
+**Erkenntnisse, die diese Akte beruehren.** Bei aktivem Schleier ersetzt der
+Server `url(…)` in `<style>`-Bloecken des Seiteninhalts durch einen
+Platzhalter (`server/blob_handler.py`, `_bildschleier_umschlag`). Das aendert
+TEXT innerhalb von `<style>`, kein Element und kein Attribut; die Zahl der
+Knoten bleibt gleich. Die gespeicherten BLOBs bleiben unberuehrt — alle
+Werkzeuge dieser Akte lesen die BLOBs, nicht den ausgelieferten Inhalt.
+Waechter BS30 haelt fest, dass ausserhalb von `<style>` kein Zeichen
+veraendert wird.
+
+**Messwerte.** Keine.

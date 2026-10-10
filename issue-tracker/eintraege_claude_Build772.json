@@ -1,0 +1,64 @@
+{
+  "issues": [
+    {
+      "id": "e113de83-4825-4792-ba25-24b87eac49a3",
+      "type": "feature_request",
+      "title": "Bildschleier im Forenviewer: Grundregel, Ausnahmen, Schaltflaeche",
+      "affected_version": "0.8.771",
+      "reporter": "Alex",
+      "reported_at": "2026-10-09T19:07:00+02:00",
+      "status": "review",
+      "resolved_in_version": "0.8.772",
+      "priority": "high",
+      "description": "Bilder im Forenviewer werden verschleiert (blur 48px, grau, kontrastarm), wenn der Schleier fuer die Person wirkt. Die Klasse an <html> setzt der Server in der Shell, die Grundregel ist das erste Stylesheet - kein Aufblitzen des Originals.\n\nUnverschleiert bleiben nur Forenelemente (img/, style/, v4/style/, 1bg.png unter /forum/ und /), ausser img/avatars/ und img/signatures/. Ausnahmen je Seite mit exakten Attributwerten, gesetzt vor dem Einfuegen des Inhalts.\n\nSchaltflaeche 👁 vor dem Benutzernamen: gesperrt / verschleiert / klar.",
+      "expected_behavior": "Kein Bild erscheint unverschleiert, das verschleiert sein soll; Forensymbole bleiben erkennbar.",
+      "environment": {
+        "browser": "Chromium (PROD, Stand 08/2026)",
+        "python_version": "3.13 (Bau) / 3.14 (PROD)"
+      },
+      "tags": [
+        "bildschleier",
+        "viewer",
+        "toolbar",
+        "build772"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-10-09T23:55:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Waechter BS09-BS18, BSc/BSs/BSd/BSu (pytest), BS19-BS21d (vitest). Fuenf Python- und eine JS-Mutationsgegenprobe, alle gefangen. PoC P1/P2/P4 in PROD offen."
+        }
+      ]
+    },
+    {
+      "id": "4a045334-62bf-4719-820e-39da1f0e68e4",
+      "type": "improvement",
+      "title": "Bildschleier-Ausnahmen mit exakten Werten statt Praefix-Selektoren",
+      "affected_version": "0.8.772",
+      "reporter": "Claude",
+      "reported_at": "2026-10-09T23:55:00+02:00",
+      "status": "review",
+      "resolved_in_version": "0.8.772",
+      "priority": "high",
+      "description": "Abweichung vom Bauplan 0.4 Abschnitt 5.2. Ein CSS-Praefix-Selektor vergleicht den Attributwert woertlich, der Browser loest ihn auf. '..', %2e, Rueckstrich, doppelte Schraegstriche und Schreibvarianten haetten jeweils eine Gegenregel gebraucht.\n\nJetzt entscheidet Python je Bild der ausgelieferten Seite mit voller URL-Aufloesung, und ausgenommen wird mit dem exakten Wert. Der DOM des Viewports bleibt unveraendert (XPath-Ausdruecke der Annotationen unberuehrt).",
+      "expected_behavior": "Keine Schreibweise kommt an der Ausnahmeregel vorbei.",
+      "environment": {
+        "browser": "Chromium"
+      },
+      "tags": [
+        "bildschleier",
+        "css",
+        "build772"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-10-09T23:55:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "BS11 (Umgehungsschreibweisen), BS14n (zwei url() in einem Stil), BSs02 (srcset)."
+        }
+      ]
+    }
+  ]
+}

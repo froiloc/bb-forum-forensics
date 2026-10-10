@@ -29,7 +29,9 @@
 #   BEWUSST als nachgezaehlter Wert und nicht als Fortschreibung fruehrerer
 #   Notizen — die Angabe "32 -> 36" in build.json 521 zaehlte etwas anderes
 #   (Anker in test_management_rbac_schema.py), nicht die Katalogtupel.
-# Version: v0.8.524 · Build: 524 · 2026-07-25
+# Build 771: +imageveil.lift und Rolle 'researcher' (Bildschleier, Seed in
+#   M040). Auszaehlung am Code-Stand 771: 47 Faehigkeiten, 9 Rollen.
+# Version: v0.8.771 · Build: 771 · 2026-10-09
 # =============================================================================
 
 from typing import FrozenSet, NamedTuple, Tuple
@@ -70,6 +72,19 @@ ROLES: Tuple[Role, ...] = (
     #   Chef-Ermittlerin (supervisor) erhaelt das Recht ueblicherweise ebenfalls
     #   (Grant ueber policy_admin; mc 2026-07-19).
     Role("maintenance", "Wartung / kontrollierter Betriebsstillstand"),
+    # --- Build 771 (Bildschleier, Seed in M040): Forschung ------------------
+    #   Wissenschaftliche Mitarbeiter:innen des LKA-Forschungsteams (Alex,
+    #   09.10.2026). Die Rolle TRAEGT KEIN RECHT; sie wirkt umgekehrt: wer sie
+    #   hat, sieht die Bilder im Forenviewer IMMER verschleiert, auch wenn
+    #   eine zweite Rolle 'imageveil.lift' mitbringt. Durchgesetzt in
+    #   management/bildschleier/bildschleier_repo.py (Grund 'required_by_role').
+    #
+    #   WARUM DIE ROLLE VORRANG VOR DEM RECHT HAT: RBAC ist hier sonst additiv
+    #   (jede Rolle kann nur ERLAUBEN). Waere es das auch hier, haette eine
+    #   versehentlich zusaetzlich zugewiesene Ermittlerrolle den Pflichtschleier
+    #   lautlos aufgehoben. Ein Selbstschutz, der an einer Fehlzuweisung
+    #   scheitert, schuetzt nicht. Die sichere Richtung ist: verschleiert.
+    Role("researcher", "Forschung (Bildschleier verpflichtend)"),
 )
 
 
@@ -456,6 +471,28 @@ CAPABILITIES: Tuple[Capability, ...] = (
                "als Sicht, als Kachel des Ueberblicks und ueber die Fallsuche "
                "der Kommandopalette. Scope 'eigene' beschraenkt auf die "
                "zugewiesenen Faelle."),
+    # -------------------------------------------------------------------------
+    # BUILD 771 (Bildschleier, Seed in M040): den Bildschleier selbst schalten.
+    #
+    # WAS DAS RECHT TRAEGT: die Schaltflaeche in der Toolbar des Forenviewers,
+    # mit der eine Person die Verschleierung der Forenbilder ein- und
+    # ausschaltet. WER ES NICHT HAT, SIEHT IMMER VERSCHLEIERT — das Recht
+    # oeffnet die Sicht, sein Fehlen schliesst sie (default-deny, wie ueberall).
+    #
+    # NICHT scope-behaftet: es wirkt ausschliesslich auf die eigene
+    # Oberflaeche; 'alle' oder 'eigene' haetten keinen Gegenstand.
+    #
+    # KEIN GRANT DURCH DIE MIGRATION (Bauregel M006/M038). Unmittelbar nach
+    # M040 sieht deshalb jede Person den Schleier, bis das Recht im
+    # Wartungsfenster auditiert vergeben ist:
+    #   rbac_admin grant --role investigator --capability imageveil.lift
+    # Die Rolle 'researcher' bekommt es nie — und haette sie es, bliebe der
+    # Schleier trotzdem (siehe Rolle oben).
+    # -------------------------------------------------------------------------
+    Capability("imageveil.lift", "Bildschleier aufheben",
+               "Die Bildverschleierung im Forenviewer selbst ein- und "
+               "ausschalten. Ohne dieses Recht ist der Schleier immer aktiv. "
+               "Wirkt nur auf die eigene Oberflaeche."),
 )
 
 

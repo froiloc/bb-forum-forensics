@@ -539,10 +539,21 @@ class UmnummerierungTests(unittest.TestCase):
         self.assertEqual(fulltext[0].VERSION, 36)
 
         versionen = [m.VERSION for m in module]
-        self.assertNotIn(
-            40, versionen,
-            "Version 40 darf es nicht mehr geben — die alte Datei "
-            "m040_fulltext_release.py ist zu LOESCHEN (Build 544).")
+        # BUILD 771: Bis hierher stand 'assertNotIn(40, versionen)'. Gemeint
+        # war: die ALTE Datei m040_fulltext_release.py darf nicht liegen
+        # bleiben. Seit Build 771 ist die 40 regulaer an m040_image_veil
+        # vergeben (Bildschleier) — die alte Nummer war frei, weil die alte
+        # Datei in keiner Datenbank gelaufen ist (Kopf von
+        # m036_fulltext_release.py). Geprueft wird deshalb jetzt, was gemeint
+        # war: KEIN Modul namens m040_fulltext_release, und KEINE Nummer
+        # doppelt (eine liegengebliebene Altdatei faende sich als zweite 40).
+        self.assertFalse(
+            any(m.__name__.endswith("m040_fulltext_release") for m in module),
+            "Die alte Datei m040_fulltext_release.py ist zu LOESCHEN "
+            "(Build 544).")
+        self.assertEqual(len(versionen), len(set(versionen)),
+                         "Eine Migrationsnummer ist doppelt vergeben: %r"
+                         % sorted(versionen))
         # Und die Kette ist wieder LUECKENLOS: keine Zahl fehlt zwischen 1 und
         # dem Hoechststand. Genau das war der Zweck der Umnummerierung.
         self.assertEqual(sorted(versionen), list(range(1, max(versionen) + 1)),

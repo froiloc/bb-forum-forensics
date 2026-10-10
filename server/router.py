@@ -23,6 +23,7 @@
 #
 # Abhängigkeiten: urllib.parse — Stdlib + interne Module
 # Version: v0.6.114 · Build: 114 · 2026-05-07
+#   Build 773: AssetHandler bekommt config/context (Bildschleier).
 # =============================================================================
 
 from __future__ import annotations
@@ -218,7 +219,9 @@ class Router:
     def _get_asset_handler(self):
         if self._asset_handler is None:
             from server.asset_handler import AssetHandler
-            self._asset_handler = AssetHandler(self._bundle)
+            # Build 773: config/context fuer den Bildschleier.
+            self._asset_handler = AssetHandler(self._bundle, self._config,
+                                               self._context)
         return self._asset_handler
 
     def _get_forensic_api(self):

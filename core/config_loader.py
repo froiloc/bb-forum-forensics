@@ -162,6 +162,28 @@ _DEFAULTS: dict[str, Any] = {
         "forum_hostname": "",
         "target_ip":      "127.0.0.2",
     },
+    # Bildschleier (Build 772, Bauplan Builds 771-773 §7). Welche Bilder im
+    # Forenviewer UNVERSCHLEIERT bleiben duerfen — alles andere wird
+    # verschleiert, wenn der Schleier wirkt. Festlegungen Alex, 09.10.2026.
+    # Die Regel selbst: core/bildschleier_regel.py.
+    "image_veil": {
+        # Hosts, auf denen Ausnahmen in ABSOLUTER Schreibweise gelten. Leer =
+        # absolute Forenhost-URLs werden verschleiert (sichere Richtung).
+        # Der Image-Hoster (alicefe3...onion) gehoert NICHT hierher.
+        "forum_hosts": [
+            "alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion",
+        ],
+        # Die Dokumentwurzel forum/html/ ist unter beiden Praefixen
+        # erreichbar ('/X' == '/forum/X', F6a). Jeder Eintrag unten gilt
+        # unter JEDER Wurzel.
+        "roots":         ["/forum/", "/"],
+        "exempt_dirs":   ["img/", "style/", "v4/style/"],
+        "exempt_files":  ["1bg.png"],
+        "excluded_dirs": ["img/avatars/", "img/signatures/"],
+        # Filterkette (F7). Nur Buchstaben, Ziffern, ( ) . % , - und
+        # Leerraum zulaessig (core/bildschleier_css.py).
+        "filter": "blur(48px) grayscale(100%) contrast(35%) brightness(115%)",
+    },
     "logging": {
         "level":        "info",
         "logfile":      "./logs/forensic_server.log",

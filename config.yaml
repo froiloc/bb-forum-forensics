@@ -304,6 +304,33 @@ ad:
 hosts_management:
   enabled: false
 
+# =============================================================================
+# BILDSCHLEIER (Build 772, Bauplan Builds 771-773 §7)
+#
+# Wenn der Schleier wirkt, werden ALLE Bilder im Forenviewer verschleiert -
+# ausser denen, die hier als Forenelement ausgenommen sind. Festlegungen Alex,
+# 09.10.2026. Die Regel: core/bildschleier_regel.py. Wer wann verschleiert
+# sieht, steht NICHT hier, sondern in den Rechten (imageveil.lift, Rolle
+# researcher) und in der Wahl der Person.
+#
+#   forum_hosts   - Hosts, auf denen Ausnahmen in absoluter Schreibweise
+#                   gelten. Der Image-Hoster alicefe3...onion gehoert NICHT
+#                   hierher: er liefert unter /images/ die Bilder der Beitraege.
+#   roots         - '/X' im Forenquelltext und '/forum/X' sind dieselbe Datei.
+#   exempt_dirs   - unverschleierte Verzeichnisse (unter jeder Wurzel)
+#   exempt_files  - unverschleierte Einzeldateien (unter jeder Wurzel)
+#   excluded_dirs - innerhalb der Ausnahmen trotzdem verschleiert
+#   filter        - die CSS-Filterkette
+# =============================================================================
+image_veil:
+  forum_hosts:
+    - "alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion"
+  roots: ["/forum/", "/"]
+  exempt_dirs: ["img/", "style/", "v4/style/"]
+  exempt_files: ["1bg.png"]
+  excluded_dirs: ["img/avatars/", "img/signatures/"]
+  filter: "blur(48px) grayscale(100%) contrast(35%) brightness(115%)"
+
 logging:
   level: "debug"
   logfile: "./logs/forensic_server.log"

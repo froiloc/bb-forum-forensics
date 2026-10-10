@@ -33,6 +33,8 @@
 # REGEL H-0: kein Falldatum, keine echte Kennung.
 #
 # Version: v0.8.605 - Build: 605 - 2026-07-31
+#   Build 771: Kapitel 'policy', Abschnitt 'bildschleier' (Recht
+#   imageveil.lift, Rolle researcher). Stand des Kapitels: 771.
 # =============================================================================
 
 from __future__ import annotations
@@ -45,6 +47,11 @@ _STAND = 604
 
 #: H14 (Build 605): die vier nachgetragenen Kapitel dieser Gruppe.
 _STAND_H14 = 605
+
+#: Build 771: Abschnitt "Bildschleier im Forenviewer" im Kapitel Rechte /
+#: Policy (Recht 'imageveil.lift', Rolle 'researcher'). Das Kapitel 'policy'
+#: steht damit auf 771; die uebrigen Kapitel dieser Datei bleiben, wo sie sind.
+_STAND_BILDSCHLEIER = 771
 
 
 # =============================================================================
@@ -59,7 +66,7 @@ POLICY = Sichthilfe(
         "Rechtelage der Dienststelle, sonst nur die eigene."
     ),
     anker_praefixe=("policy", "policy_grants", "policy_assign"),
-    stand=_STAND,
+    stand=_STAND_BILDSCHLEIER,
     abschnitte=(
         Abschnitt(
             "zweck", "Zweck und Motivation",
@@ -139,6 +146,46 @@ POLICY = Sichthilfe(
                 "der Kommandozeile „Rechte-Matrix auf Verweise ins Leere "
                 "prüfen“; das Werkzeug liest nur und nennt zu jedem Fund den "
                 "Beleg.",
+            ),
+        ),
+        # Build 771 (Bildschleier). Quellen: management/rbac/catalog.py
+        # (Rolle 'researcher', Recht 'imageveil.lift'),
+        # management/bildschleier/bildschleier_repo.py (Entscheidungsfolge),
+        # Bauplan Builds 771-773 §2 (Ausnahmen F5/F6a).
+        Abschnitt(
+            "bildschleier", "Bildschleier im Forenviewer",
+            (
+                "Im Forenviewer können die Bilder des Forums verschleiert "
+                "werden: stark verschwommen, grau und kontrastarm, so dass "
+                "keine Einzelheiten mehr zu erkennen sind. Das Aussehen des "
+                "Forums bleibt erhalten. Der Schleier ist ein Schutz des "
+                "eigenen Blicks — vor belastenden Bildern oder vor dem Blick "
+                "Dritter —, keine Zugangssperre.",
+                "Das Recht „Bildschleier aufheben“ (imageveil.lift) erlaubt, "
+                "den Schleier mit der Augen-Schaltfläche rechts in der "
+                "Werkzeugleiste selbst ein- und auszuschalten. Die Wahl gilt "
+                "dauerhaft und wird beim nächsten Öffnen wieder so angezeigt. "
+                "Wer nie umgeschaltet hat, sieht die Bilder unverschleiert.",
+                "WER DAS RECHT NICHT HAT, SIEHT DIE BILDER IMMER "
+                "VERSCHLEIERT. Die Schaltfläche ist dann ausgegraut, und der "
+                "Kurzhinweis, wenn Sie mit der Maus darauf zeigen, nennt den "
+                "Grund.",
+                "DIE ROLLE „Forschung (Bildschleier verpflichtend)“ "
+                "(researcher) TRÄGT KEIN RECHT, SIE SETZT SICH DURCH. Wer sie "
+                "hat, sieht die Bilder verschleiert, auch wenn eine weitere "
+                "Rolle das Recht „Bildschleier aufheben“ mitbringt. Eine "
+                "versehentlich zusätzlich zugewiesene Rolle hebt den Schleier "
+                "also nicht auf.",
+                "NACH DER EINRICHTUNG HAT NIEMAND DAS RECHT. Bis es der Rolle "
+                "der Ermittler:innen zugeteilt ist, sehen alle die Bilder "
+                "verschleiert. Das ist gewollt: im Zweifel bleibt ein Bild "
+                "verschleiert.",
+                "Unverschleiert bleiben nur die Bedienelemente des Forums — "
+                "Symbole, Abzeichen und die Gestaltung der Seiten. "
+                "Profilbilder und Signaturbilder gehören nicht dazu; sie sind "
+                "immer verschleiert, wenn der Schleier wirkt.",
+                "Jedes Umschalten wird mit der handelnden Person im "
+                "Protokollbuch eingetragen.",
             ),
         ),
         Abschnitt(

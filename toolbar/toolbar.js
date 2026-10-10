@@ -2,7 +2,18 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.8.693 · Build: 693 · 2026-08-11
+ * Version: v0.8.772 · Build: 772 · 2026-10-09
+ *
+ * Aenderungen Build 772 (Bildschleier — 2026-10-09):
+ *   Sektion 5 traegt die Schaltflaeche #forensic-image-veil (vor dem
+ *   Benutzernamen). build() bindet sie an window.BildschleierSchalter
+ *   (toolbar/bildschleier.js), und _handleEnvelope ruft
+ *   BildschleierSchalter.seiteAnwenden(envelope.image_veil) VOR
+ *   viewport.innerHTML — die Ausnahmen einer Seite stehen damit, bevor
+ *   ihr Inhalt im Dokument ist. Fehlt das Modul, bleibt der vom Server
+ *   gesetzte Schleier ohne Ausnahmen bestehen (Warnung in der Konsole).
+ *
+ * Vorher: v0.8.693 · Build: 693 · 2026-08-11
  *
  * Aenderungen Build 693 (Vorgang b9b830f4 — 2026-08-11):
  *   DER ANKER DER ADRESSZEILE ERREICHT DEN SERVER JETZT AUF ALLEN DREI WEGEN.
@@ -1591,6 +1602,18 @@
 
       toolbar.innerHTML = _renderHTML();
 
+      // Build 772: Bildschleier-Schaltflaeche anbinden. Fehlt das Modul
+      // (bildschleier.js nicht geladen), wirkt der Schleier trotzdem — die
+      // Klasse setzt der Server —, nur die Schaltflaeche bleibt gesperrt.
+      if (window.BildschleierSchalter &&
+          typeof window.BildschleierSchalter.binden === "function") {
+        window.BildschleierSchalter.binden(
+          document.getElementById("forensic-image-veil"));
+      } else {
+        console.warn("[Forensic] bildschleier.js nicht geladen — " +
+                     "Bildschleier-Schaltflaeche ohne Funktion.");
+      }
+
       // Event-Listener auf Kategorie-Buttons
       ForensicToolbar.config.CATEGORIES.forEach(function (cat) {
         var btn = document.getElementById("forensic-cat-" + cat.id);
@@ -1819,6 +1842,14 @@
 
           // Sektion 5: Session-Info
           '<div class="forensic-section forensic-sec5" aria-label="Sitzungsinformationen">' +
+          // Build 772: Bildschleier-Schaltflaeche (toolbar/bildschleier.js).
+          // Steht VOR dem Benutzernamen (Alex, 09.10.2026: "rechts in der
+          // Naehe des Benutzernamens"). Zeichen, Zustand und Kurzhinweis
+          // setzt BildschleierSchalter.binden() — hier nur das Geruest.
+          '<button id="forensic-image-veil" type="button" ' +
+          'class="forensic-btn forensic-image-veil-btn is-locked" ' +
+          'aria-disabled="true" aria-pressed="true" ' +
+          'title="Bildschleier">\uD83D\uDC41</button>' +
           '<span id="forensic-session-user" class="forensic-session-info">…</span>' +
           '<span id="forensic-annotation-count" class="forensic-session-info" ' +
           'aria-label="Anzahl Annotationen auf dieser Seite">0 Ann.</span>' +
@@ -2096,6 +2127,19 @@
       // mehrere Datensaetze, und bereits erfasste Erkenntnisse waeren unter
       // dem alten Schluessel nicht mehr auffindbar.
       ForensicToolbar._setState({ currentUrl: envelope.url_canonical || _stripFragment(url) });
+
+      // Build 772 (Bildschleier): Zustand und Ausnahmen DIESER Seite setzen,
+      // BEVOR ihr Inhalt im Dokument steht. Danach koennen die Bilder nur so
+      // erscheinen, wie die Regeln es zulassen (Bauplan §5.1). Fehlt das
+      // Modul, bleibt die Klasse der Shell stehen — verschleiert, ohne
+      // Ausnahmen.
+      if (window.BildschleierSchalter &&
+          typeof window.BildschleierSchalter.seiteAnwenden === "function") {
+        window.BildschleierSchalter.seiteAnwenden(envelope.image_veil);
+      } else {
+        console.warn("[Forensic] bildschleier.js nicht geladen — Seite " +
+                     "ohne Bildschleier-Ausnahmen.");
+      }
 
       // BLOB-Inhalt injizieren (erlaubter DOM-Eingriff: Navigation)
       viewport.innerHTML = envelope.html;

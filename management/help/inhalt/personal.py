@@ -32,7 +32,7 @@
 # REGEL H-0: kein Falldatum, keine echte Kennung.
 # REGEL H-1: Anwendersprache.
 #
-# Version: v0.8.714 - Build: 714 - 2026-08-13
+# Version: v0.8.771 - Build: 771 - 2026-10-09
 #   Build 603: Erstfassung. Build 701: Kapitel "Ausscheiden und
 #   Rueckkehr" + sieben Texte fuer die Spalte "Ruhestand"
 #   (Ticket 95139d2a). Build 709: Zeitfilter der Kapazitaetspflege.
@@ -46,6 +46,9 @@
 #   wird hier auf 714 gezogen. Das ist kein stiller Eingriff in
 #   fremde Arbeit, sondern die Berichtigung einer Angabe, die sonst
 #   ein aelteres Kapitel behauptet, als tatsaechlich vorliegt.
+#
+#   Build 771: Arbeitsablauf "Rolle researcher zuweisen" (Bildschleier).
+#   '_STAND' auf 771.
 # =============================================================================
 
 from __future__ import annotations
@@ -54,7 +57,7 @@ from typing import List, Tuple
 
 from management.help.modell import Abschnitt, Kontexthilfe, Sichthilfe
 
-_STAND = 714
+_STAND = 771
 
 
 # =============================================================================
@@ -127,6 +130,11 @@ PERSONNEL = Sichthilfe(
                 "„Rolle zuweisen …“ öffnen. Angeboten wird nur, was die "
                 "Person noch nicht hat.",
                 "Eine Rolle widerrufen: das × am Rollen-Schildchen.",
+                "Wissenschaftliche Mitarbeiter:innen, die keine Bilder sehen "
+                "sollen: die Rolle „researcher“ zuweisen. Die Bilder im "
+                "Forenviewer sind dann immer verschleiert, gleich welche "
+                "Rolle die Person sonst noch hat (siehe Rechte / Policy, "
+                "Abschnitt „Bildschleier im Forenviewer“).",
                 "Jemanden suchen: der Kopffilter der Spalte „Rollen“ "
                 "durchsucht die Rollenkürzel — so findet man alle, die eine "
                 "bestimmte Rolle tragen.",
