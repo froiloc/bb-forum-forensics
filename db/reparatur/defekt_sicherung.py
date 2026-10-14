@@ -19,6 +19,7 @@
 #
 # Das Original wird NUR gelesen.
 # Version: v0.8.776 · Build: 776 · 2026-10-14
+#   Build 778: eine Sicherung wird nie ueberschrieben (_freier_name).
 # =============================================================================
 from __future__ import annotations
 
@@ -54,7 +55,9 @@ class DefektSicherung:
         """Pfad einer vorhandenen, nachgeprueft identischen Sicherung, sonst None."""
         if not os.path.isdir(self._ziel):
             return None
-        muster = re.compile(r"^%s_defekt_\d{8}_\d{6}\.db$" % re.escape(stamm))
+        # Build 778: auch '_<n>'-Fassungen (s. _freier_name).
+        muster = re.compile(r"^%s_defekt_\d{8}_\d{6}(_\d+)?\.db$"
+                            % re.escape(stamm))
         for name in sorted(os.listdir(self._ziel)):
             if not muster.match(name):
                 continue
@@ -80,6 +83,26 @@ class DefektSicherung:
         return None
 
     # ------------------------------------------------------------------
+    def _freier_name(self, stamm: str, zeitstempel: str) -> str:
+        """
+        Build 778 (Befund der unabhaengigen Durchsicht): eine Sicherung wird
+        NIE ueberschrieben. Gibt es <stamm>_defekt_<ts>.db oder eine ihrer
+        Begleitdateien schon (zweite Sicherung derselben Datei mit anderem
+        Inhalt im selben Lauf, z. B. nach dem Zurueckrollen eines Journals),
+        bekommt die neue Sicherung den Zusatz _2, _3, ... — sonst laege eine
+        fremde '-journal'-Kopie neben einer Sicherung, auf die sie nicht
+        gehoert, und der erste Stand waere verloren.
+        """
+        n = 1
+        while True:
+            name = ("%s_defekt_%s.db" % (stamm, zeitstempel) if n == 1
+                    else "%s_defekt_%s_%d.db" % (stamm, zeitstempel, n))
+            pfad = os.path.join(self._ziel, name)
+            if not any(os.path.exists(pfad + e)
+                       for e in ("",) + tuple(BEGLEIT) + (".sha256",)):
+                return pfad
+            n += 1
+
     def sichern(self, original: str, stamm: str, zeitstempel: str) -> SicherungsErgebnis:
         os.makedirs(self._ziel, exist_ok=True)
         begleit_endungen = [s for s in BEGLEIT if os.path.exists(original + s)]
@@ -95,7 +118,7 @@ class DefektSicherung:
                         "und wurde wiederverwendet: %s" % vorhanden,
                 sha256_nachher=h_vorher, sha256_kopie=h_vorher)
 
-        ziel = os.path.join(self._ziel, "%s_defekt_%s.db" % (stamm, zeitstempel))
+        ziel = self._freier_name(stamm, zeitstempel)
         shutil.copy2(original, ziel)
         for e in begleit_endungen:
             shutil.copy2(original + e, ziel + e)

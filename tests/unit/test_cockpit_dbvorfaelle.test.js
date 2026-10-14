@@ -141,6 +141,8 @@ describe("cockpit_dbvorfaelle.js — Register Datenbank-Vorfaelle (Build 777)", 
     expect(api.ergebnisStufe("repariert_nicht_freigegeben")).toBe("rot");
     expect(api.ergebnisStufe("start_verweigert")).toBe("rot");
     expect(api.ergebnisStufe("repariert_freigegeben")).toBe("gelb");
+    // Build 778: unterbrochener Schreibvorgang zurueckgerollt.
+    expect(api.ergebnisStufe("journal_zurueckgerollt")).toBe("gelb");
     expect(api.ergebnisStufe("neu_und_unbekannt")).toBe("grau");
   });
 

@@ -45,6 +45,7 @@
 //   textContent, nie via innerHTML.
 //
 // Version: v0.8.777 · Build: 777 · 2026-10-14
+//   Build 778: Ergebnis 'journal_zurueckgerollt' gelb.
 // =============================================================================
 
 (function () {
@@ -87,11 +88,13 @@
 
     // ergebnisStufe: Ampelfarbe des Ergebnisses.
     //   rot  = Start verweigert ODER nicht freigegeben (Handlungsbedarf),
-    //   gelb = repariert und freigegeben (es WAR ein Schaden),
+    //   gelb = repariert und freigegeben (es WAR ein Schaden), sowie (Build
+    //          778) ein zurueckgerollter, unterbrochener Schreibvorgang,
     //   grau = unbekanntes Ergebnis (verschwindet nicht, wird nur nicht
     //          eingefaerbt — Grundregel 1).
     function ergebnisStufe(ergebnis) {
-        if (ergebnis === 'repariert_freigegeben') { return 'gelb'; }
+        if (ergebnis === 'repariert_freigegeben'
+            || ergebnis === 'journal_zurueckgerollt') { return 'gelb'; }
         if (ergebnis === 'repariert_nicht_freigegeben'
             || ergebnis === 'start_verweigert') { return 'rot'; }
         return 'grau';

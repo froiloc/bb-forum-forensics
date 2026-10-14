@@ -59,6 +59,11 @@ _STAND_BILDSCHLEIER = 771
 #: Build 777: Kapitel 'dbvorfaelle' (Register Datenbank-Vorfaelle) neu.
 _STAND_DBVORFAELLE = 777
 
+#: Build 778: die Startpruefung meldet tatsaechlich ein; Kapitel um das
+#: Ergebnis "unterbrochener Schreibvorgang", die Fehlerseite und den
+#: Supportmodus ergaenzt.
+_STAND_DBVORFAELLE_778 = 778
+
 #: Build 775: Abschnitt "Bildschleier im Forenviewer" ergaenzt um das
 #: Verhalten, wenn das Speichern scheitert (Befund 13.10.2026, D2) und um die
 #: sofort unverschleierten Symbole beim Einschalten (D1). Kapitel 'policy'
@@ -1203,7 +1208,7 @@ DBVORFAELLE = Sichthilfe(
         "geprüft. Ohne das zweite Recht zeigt die Sicht alles, bietet aber "
         "keinen Prüfvermerk an."
     ),
-    stand=_STAND_DBVORFAELLE,
+    stand=_STAND_DBVORFAELLE_778,
     abschnitte=(
         Abschnitt(
             "zweck", "Zweck und Motivation",
@@ -1244,7 +1249,20 @@ DBVORFAELLE = Sichthilfe(
                 "DIE LISTE ZEIGT DEN NEUESTEN VORFALL OBEN. Die Farbe vor dem "
                 "Ergebnis sagt, wie dringend er ist: rot heißt „nicht "
                 "freigegeben“ oder „Start verweigert“, gelb heißt „repariert "
-                "und freigegeben“.",
+                "und freigegeben“ oder „unterbrochener Schreibvorgang "
+                "zurückgerollt“.",
+                "DIE VIER ERGEBNISSE. „Repariert und ausgetauscht — "
+                "freigegeben“: die Datei war beschädigt, alle "
+                "Ermittlungsergebnisse sind vollständig übernommen. „Repariert "
+                "und ausgetauscht — NICHT freigegeben“: die Ermittlerin oder "
+                "der Ermittler arbeitet bereits mit der neuen Datei, aber "
+                "Ermittlungsergebnisse waren betroffen — hier ist zu prüfen, "
+                "was fehlt. „Unterbrochener Schreibvorgang zurückgerollt“: "
+                "das Werkzeug war mitten im Speichern beendet worden; der "
+                "unvollständige letzte Speichervorgang wurde verworfen, die "
+                "Datei ist unversehrt. „Start verweigert“: der Fall wurde "
+                "nicht geöffnet; die Ermittlerin oder der Ermittler hat dazu "
+                "eine Fehlerseite mit Hinweisen gesehen.",
                 "DER PUFFER: Konnte ein Vorfall beim Erkennen nicht eingetragen "
                 "werden, weil die zentrale Verwaltungsdatei gerade nicht "
                 "erreichbar war, wartet er in einem Pufferordner und wird beim "
@@ -1285,6 +1303,21 @@ DBVORFAELLE = Sichthilfe(
                 "Protokollbuch. Der Beleg des Eintrags hält auch einen "
                 "Fingerabdruck des vollständigen Befunds fest; eine spätere "
                 "Änderung am Befund fiele damit auf.",
+                "IM SUPPORTMODUS WIRD NICHTS REPARIERT. Die Datei gehört dann "
+                "einer anderen Person, deren Fenster womöglich gerade offen "
+                "ist. Der Vorfall wird eingetragen, der Start verweigert; "
+                "repariert wird beim nächsten Öffnen durch die Ermittlerin "
+                "oder den Ermittler selbst.",
+                "Ist die Datei beim Öffnen von einem anderen Programm gesperrt "
+                "oder nicht lesbar (etwa weil das Netzlaufwerk kurz weg war), "
+                "wird NICHTS repariert: der Fall wird nicht geöffnet, und es "
+                "entsteht ein Eintrag „Start verweigert“, dessen Befund das "
+                "ausdrücklich sagt. Die Datei ist dann nicht beschädigt, nur "
+                "belegt oder gerade nicht erreichbar.",
+                "Endet das Werkzeug ausgerechnet zwischen dem Ersetzen der "
+                "Datei und dem Eintrag, wird der Vorfall beim nächsten Öffnen "
+                "irgendeines Falls nachgetragen; sein Befund trägt dann den "
+                "Vermerk „vorläufig“.",
                 "Ist der Pufferordner nicht lesbar, sagt die Pufferzeile das "
                 "in Rot — dann ist unbekannt, ob Vorfälle auf ihren Nachtrag "
                 "warten.",

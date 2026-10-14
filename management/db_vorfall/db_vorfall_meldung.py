@@ -30,6 +30,7 @@
 #   Register landen.
 #
 # Version: v0.8.777 · Build: 777 · 2026-10-14
+#   Build 778: Ergebnis 'journal_zurueckgerollt'.
 # =============================================================================
 
 from __future__ import annotations
@@ -59,6 +60,12 @@ ARTEN: Dict[str, str] = {
 ERGEBNIS_FREIGEGEBEN = "repariert_freigegeben"
 ERGEBNIS_NICHT_FREIGEGEBEN = "repariert_nicht_freigegeben"
 ERGEBNIS_START_VERWEIGERT = "start_verweigert"
+#: Build 778: beim Start lag ein '-journal' einer unterbrochenen Transaktion
+#: vor (Absturz waehrend eines Schreibvorgangs). Der Zustand DAVOR wurde samt
+#: Journal gesichert, SQLite hat zurueckgerollt, die Datei war danach
+#: unversehrt. Kein Schaden — aber der letzte, unterbrochene Schreibvorgang
+#: ist verloren, und das soll die Leitung wissen.
+ERGEBNIS_JOURNAL = "journal_zurueckgerollt"
 
 ERGEBNISSE: Dict[str, str] = {
     ERGEBNIS_FREIGEGEBEN:
@@ -68,6 +75,8 @@ ERGEBNISSE: Dict[str, str] = {
         "betroffen, bitte prüfen)",
     ERGEBNIS_START_VERWEIGERT:
         "Start verweigert — nicht repariert",
+    ERGEBNIS_JOURNAL:
+        "Unterbrochener Schreibvorgang zurückgerollt — Datei danach unversehrt",
 }
 
 _UID = re.compile(r"^[0-9a-f]{32}$")

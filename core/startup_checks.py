@@ -13,6 +13,10 @@
 #      SUPPORTED_FORENSIC_DB_SCHEMA_VERSIONS sein (aktuell {"1", "2"})
 #   4. SHA-256-Integritätsprüfung: forensic_db (aus forensic_meta['sha256'])
 #   5. forensic_db ist READ-ONLY geöffnet (Schreibversuch schlägt fehl)
+#   6. (Build 778) evidence_db: integrity_check; ein Schaden wird gesichert,
+#      repariert und die Datei ersetzt (core/evidence_startpruefung.py) —
+#      oder der Start wird verweigert. Jeder Befund kommt ins Register
+#      "Datenbank-Vorfaelle" (Build 777).
 #
 # Forensische Relevanz:
 #   Die SHA-256-Prüfung ist das Herzstück der Beweissicherung. Sie stellt
@@ -31,6 +35,9 @@
 # Abhängigkeiten: sqlite3, hashlib, pathlib — ausschließlich Stdlib
 # Version: v0.7.469 · Build: 469 · 2026-07-20
 # Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Build 778: Pruefung 6 (evidence_db); sqlite3.DatabaseError (beschaedigte
+#   oder fremde Datei) wird in den forensic-Pruefungen zur verstaendlichen
+#   Meldung statt zum Traceback.
 # =============================================================================
 
 import hashlib
@@ -96,6 +103,16 @@ FORENSIC_DB_SCHEMA_VERSION = "2"
 # NICHT aufgenommen. Beleg: Befund 2026-06-26; aiw_sqlite_prepper Build 098/101.
 SUPPORTED_FORENSIC_DB_SCHEMA_VERSIONS = frozenset({"1", "2"})
 
+# Build 778: Zusatz zu jeder Meldung ueber eine nicht lesbare forensic_db.
+# Die forensic_db ist versiegelt und wird NIE repariert (anders als die
+# evidence_db): sie kommt unveraendert aus Stage 2 und laesst sich von dort
+# neu beziehen.
+_HINWEIS_BESCHAEDIGT = (
+    "Die Datei ist beschädigt oder keine SQLite-Datenbank. Die forensic_db "
+    "wird nicht repariert, sondern aus der Aufbereitung (Stage 2) neu "
+    "bereitgestellt. Bitte die Leitung informieren."
+)
+
 # Blockgröße für SHA-256-Berechnung (4 MB)
 _HASH_BLOCK_SIZE = 4 * 1024 * 1024
 
@@ -125,10 +142,17 @@ class StartupChecker:
         self,
         context: ResolvedContext,
         config: ConfigLoader,
+        evidence_pruefung: Optional[object] = None,
     ) -> None:
         # Reihenfolge (context, config) entspricht dem Aufruf in main.py.
         self._config = config
         self._ctx = context
+        # Build 778: die Startpruefung der evidence_db. Injizierbar (Tests);
+        # sonst core.evidence_startpruefung.EvidenceStartpruefung.
+        self._evidence_pruefung = evidence_pruefung
+        #: Ergebnis der Meldung ins Register, falls die evidence_db behoben
+        #: wurde (None: in Ordnung). main.py nennt es auf der Konsole.
+        self.evidence_meldung = None
 
     def run_all(self) -> None:
         """
@@ -150,8 +174,24 @@ class StartupChecker:
         self._check_forensic_db_schema_version()
         self._check_forensic_db_integrity()
         self._check_forensic_db_readonly()
+        # Build 778: ZULETZT — erst wenn die forensic_db stimmt, lohnt es,
+        # die Arbeitsdatei zu pruefen und notfalls zu ersetzen.
+        self._check_evidence_db()
 
         logger.info("Alle Voraussetzungsprüfungen erfolgreich abgeschlossen.")
+
+    def _check_evidence_db(self) -> None:
+        """
+        Build 778: Startpruefung der evidence_db (core/evidence_startpruefung.py).
+        Wirft EvidenceStartpruefungFehler (eine StartupCheckError), wenn der
+        Start zu verweigern ist. Wurde die Datei behoben, steht das Ergebnis
+        der Registermeldung in self.evidence_meldung.
+        """
+        pruefung = self._evidence_pruefung
+        if pruefung is None:
+            from core.evidence_startpruefung import EvidenceStartpruefung
+            pruefung = EvidenceStartpruefung(self._ctx, self._config)
+        self.evidence_meldung = pruefung.ausfuehren()
 
     # ------------------------------------------------------------------
     # Einzelne Prüfungen
@@ -361,10 +401,14 @@ class StartupChecker:
                 ).fetchone()
             finally:
                 con.close()
-        except sqlite3.OperationalError as exc:
+        except sqlite3.DatabaseError as exc:
+            # Build 778: DatabaseError (Oberklasse von OperationalError) — eine
+            # beschaedigte oder fremde Datei ('file is not a database',
+            # 'database disk image is malformed') endete vorher im Traceback.
             raise StartupCheckError(
                 f"forensic_db konnte nicht geöffnet werden: '{path}'\n"
-                f"SQLite-Fehler: {exc}"
+                f"SQLite-Fehler: {type(exc).__name__}: {exc}\n"
+                f"{_HINWEIS_BESCHAEDIGT}"
             ) from exc
 
         if row is None:
@@ -442,10 +486,12 @@ class StartupChecker:
             finally:
                 con.close()
 
-        except sqlite3.OperationalError as exc:
+        except sqlite3.DatabaseError as exc:
+            # Build 778: siehe _check_forensic_db_schema_version.
             raise StartupCheckError(
                 f"forensic_db konnte nicht für Integritätsprüfung geöffnet "
-                f"werden: '{path}'\nSQLite-Fehler: {exc}"
+                f"werden: '{path}'\nSQLite-Fehler: {type(exc).__name__}: "
+                f"{exc}\n{_HINWEIS_BESCHAEDIGT}"
             ) from exc
 
         if computed_hash != stored_hash:
@@ -501,11 +547,13 @@ class StartupChecker:
                 logger.debug("forensic_db READ-ONLY-Prüfung bestanden ✓")
             finally:
                 con.close()
-        except sqlite3.OperationalError as exc:
-            # Datei konnte nicht geöffnet werden — separater Fehler
+        except sqlite3.DatabaseError as exc:
+            # Datei konnte nicht geöffnet werden — separater Fehler.
+            # Build 778: DatabaseError statt OperationalError (s. oben).
             raise StartupCheckError(
                 f"forensic_db konnte nicht für READ-ONLY-Prüfung geöffnet "
-                f"werden: '{path}'\nSQLite-Fehler: {exc}"
+                f"werden: '{path}'\nSQLite-Fehler: {type(exc).__name__}: "
+                f"{exc}\n{_HINWEIS_BESCHAEDIGT}"
             ) from exc
 
     # ------------------------------------------------------------------

@@ -231,6 +231,11 @@ class TestKommandozeile(_Basis):
         r = _werkzeug("evidence_reparatur.py", str(p), "--ziel", str(self.ziel))
         self.assertEqual(r.returncode, 0, r.stdout[-800:] + r.stderr)
         self.assertIn("AUSTAUSCH (von Hand", r.stdout)
+        # Build 778 (Befund der Durchsicht): das Original wandert in den
+        # Zielordner, nicht als '.ersetzt_*' neben die neue Datei.
+        self.assertIn('move "%s" "%s' % (p, os.path.join(str(self.ziel), "")),
+                      r.stdout)
+        self.assertNotIn(".ersetzt_", r.stdout)
         q, _ = self._kaputt("annotations")
         r = _werkzeug("evidence_reparatur.py", str(q), "--ziel", str(self.dir / "z2"))
         self.assertEqual(r.returncode, 3, r.stdout[-800:])

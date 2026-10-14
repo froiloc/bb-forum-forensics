@@ -39,6 +39,7 @@
 #      14.10.2026 — "Die Ermittler MUESSEN ARBEITEN KOENNEN").
 #
 # Version: v0.8.776 · Build: 776 · 2026-10-14
+#   Build 778: liegengebliebene Arbeitskopie wird gemeldet.
 # =============================================================================
 from __future__ import annotations
 
@@ -167,7 +168,23 @@ class EvidenceReparierer:
             self._prot.close()
             self._prot = None
             if arbeit:
-                shutil.rmtree(arbeit, ignore_errors=True)
+                # Build 778 (Befund der Durchsicht): nicht still. Bleibt die
+                # Arbeitskopie liegen (Windows: Virenscanner, Indexdienst),
+                # liegt eine Kopie der Falldaten im temporaeren Ordner — das
+                # muss im Protokoll stehen.
+                try:
+                    shutil.rmtree(arbeit)
+                except OSError as exc:
+                    hinweis = ("WARNUNG: Arbeitskopie %s konnte nicht entfernt "
+                               "werden (%s) — bitte von Hand loeschen."
+                               % (arbeit, exc))
+                    if self._ausgabe is not None:
+                        self._ausgabe(hinweis)
+                    try:
+                        with open(p_txt, "a", encoding="utf-8") as fh:
+                            fh.write(hinweis + "\n")
+                    except OSError:
+                        pass
 
     # ------------------------------------------------------------------
     def _reparieren(self, erg: ReparaturErgebnis, daten: dict,

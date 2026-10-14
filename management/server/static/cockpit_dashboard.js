@@ -427,7 +427,11 @@
                     text: 'Fall ' + (v.subject_id === null
                         || v.subject_id === undefined ? EM_DASH : v.subject_id)
                         + ': ' + (v.ergebnis_klartext || v.ergebnis),
-                    stufe: v.ergebnis === 'repariert_freigegeben' ? 'gelb' : 'rot'
+                    // Build 778: der zurueckgerollte Schreibvorgang ist
+                    // wie die freigegebene Reparatur gelb (kein Schaden mehr).
+                    stufe: (v.ergebnis === 'repariert_freigegeben'
+                        || v.ergebnis === 'journal_zurueckgerollt')
+                        ? 'gelb' : 'rot'
                 };
             }),
             gesamt: offen.length,

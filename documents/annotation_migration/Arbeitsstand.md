@@ -40,10 +40,11 @@ naechsten Abschnitt. Umsortieren kann eine Maschine, Kontext erfinden nicht.
 
 ## Aktueller Stand
 
-**Build 777** — in dieser Akte unveraendert seit Build 770 (Builds 771 ff.
+**Build 778** — in dieser Akte unveraendert seit Build 770 (Builds 771 ff.
 bauen den Bildschleier, Build 774 den Transaktionsschutz, Build 775 korrigiert
 den Bildschleier, Build 776 nimmt die Reparaturwerkzeuge auf, Build 777 baut
-das Register der Datenbank-Vorfaelle, siehe Chronologie). Die Migration der Annotationen von `selection_json` 1.0.0 auf
+das Register der Datenbank-Vorfaelle, Build 778 die Startpruefung der
+evidence_<uid>.db, siehe Chronologie). Die Migration der Annotationen von `selection_json` 1.0.0 auf
 2.0.0 ist **vorbereitet, aber nicht begonnen** — es ist noch kein Datensatz
 migriert.
 
@@ -328,5 +329,18 @@ Jeder solche Austausch steht als Vorfall im Register `db_vorfall`
 Tabelle. Fuer die Migration heisst das: bevor ein Bestand migriert wird, ist
 im Register nachzusehen, ob seine Datei ersetzt wurde — eine ersetzte Datei
 kann Annotationen weniger haben als ihre Sicherung.
+
+**Messwerte.** Keine.
+
+### Build 778 — kein Fortschritt in dieser Akte (Startpruefung evidence)
+
+**Entscheidungen.** Keine zur Annotationsmigration.
+
+**Erkenntnisse, die diese Akte beruehren.** Ab diesem Build kann eine
+`evidence_<uid>.db` beim Start ersetzt werden (Eintrag im Register
+`db_vorfall`, Build 777). Ein heisses Journal wird beim Start zurueckgerollt;
+der Zustand davor liegt samt Journal unter `<backup.dest_dir>/defekt`. Fuer
+die Migration: ein Bestand mit Eintrag 'repariert_nicht_freigegeben' ist vor
+der Migration mit seiner Sicherung abzugleichen.
 
 **Messwerte.** Keine.

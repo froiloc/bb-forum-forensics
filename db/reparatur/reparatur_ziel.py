@@ -23,15 +23,17 @@
 #      tools/diag_matrix_laufzeit.py Z. 170).
 #
 # Version: v0.8.776 · Build: 776 · 2026-10-14
+#   Build 778: ReparaturZielFehler in eigene Datei.
 # =============================================================================
 from __future__ import annotations
 
 import os
 from typing import Any, Optional, Tuple
 
-
-class ReparaturZielFehler(Exception):
-    """Zielordner nicht ermittelbar oder nicht zulaessig — VOR jedem Schreiben."""
+# Build 778: die Fehlerklasse steht in ihrer eigenen Datei (Grundregel 10);
+# hier weitergefuehrt, damit 'from db.reparatur.reparatur_ziel import
+# ReparaturZielFehler' unveraendert gilt.
+from db.reparatur.reparatur_ziel_fehler import ReparaturZielFehler  # noqa: F401
 
 
 class ReparaturZiel:

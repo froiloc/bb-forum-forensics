@@ -489,11 +489,15 @@ describe("cockpit_dashboard.js — Reduzierer (Build 547)", () => {
           ergebnis_klartext: "NICHT freigegeben" },
         { id: 1, status: "offen", subject_id: null,
           ergebnis: "repariert_freigegeben", ergebnis_klartext: "frei" },
+        // Build 778
+        { id: 3, status: "offen", subject_id: 8,
+          ergebnis: "journal_zurueckgerollt", ergebnis_klartext: "Journal" },
       ],
     });
     expect(offen.tonung).toBe("rot");
     expect(offen.zeilen.map((z) => [z.text, z.stufe])).toEqual([
-      ["Fall 7: NICHT freigegeben", "rot"], ["Fall —: frei", "gelb"]]);
+      ["Fall 7: NICHT freigegeben", "rot"], ["Fall —: frei", "gelb"],
+      ["Fall 8: Journal", "gelb"]]);
 
     // Nur der Puffer wartet -> trotzdem rot und KEIN Leerbefund.
     const puffer = D.reduceDbVorfaelle({

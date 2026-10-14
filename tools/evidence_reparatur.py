@@ -44,6 +44,8 @@
 #     Ermittlungsergebnissen war beschaedigt — ein Mensch entscheidet
 #
 # Version: v0.8.776 · Build: 776 · 2026-10-14
+#   Build 778: Austauschbefehle verschieben Original und Begleitdateien in
+#   den Ordner fuer beschaedigte Dateien (nicht mehr nach data/evidence).
 # =============================================================================
 from __future__ import annotations
 
@@ -56,6 +58,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from management.help import cli_epilog  # noqa: E402
 from db.reparatur.evidence_reparierer import EvidenceReparierer  # noqa: E402
+from db.reparatur.hilfen import BEGLEIT  # noqa: E402
 from db.reparatur.reparatur_ziel import (  # noqa: E402
     ReparaturZiel, ReparaturZielFehler)
 
@@ -124,10 +127,22 @@ def main(argv=None) -> int:
         erg.protokoll_anhaengen(text)
 
     if erg.status == "freigegeben":
+        # Build 778 (Befund der unabhaengigen Durchsicht): Das Original kommt
+        # in den Ordner fuer beschaedigte Dateien und NICHT als '.ersetzt_*'
+        # nach data/evidence (Festlegung Alex 14.10.2026). Begleitdateien
+        # gehen mit — ein -journal neben der neuen Datei wuerde SQLite als
+        # heisses Journal auf sie anwenden und sie zerstoeren.
+        stamm = os.path.splitext(os.path.basename(original))[0]
+        abgelegt = os.path.join(ziel, "%s_ersetzt_%s.db" % (stamm, erg.zeitstempel))
         nachwort("")
         nachwort("AUSTAUSCH (von Hand, Webserver beendet) — erst nach Durchsicht")
-        nachwort("dieses Protokolls:")
-        nachwort('  move "%s" "%s.ersetzt_%s"' % (original, original, erg.zeitstempel))
+        nachwort("dieses Protokolls. Das Original liegt bereits als Sicherung vor")
+        nachwort("(%s); es wird aus dem Datenordner in den Ordner" % erg.sicherung.pfad)
+        nachwort("fuer beschaedigte Dateien verschoben, Begleitdateien mit ihm:")
+        nachwort('  move "%s" "%s"' % (original, abgelegt))
+        for endung in BEGLEIT:
+            if os.path.exists(original + endung):
+                nachwort('  move "%s" "%s"' % (original + endung, abgelegt + endung))
         nachwort('  copy "%s" "%s"' % (erg.neu, original))
         nachwort('Danach zur Kontrolle: python tools/integritaetssonde.py "%s"'
                  % original)
