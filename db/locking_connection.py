@@ -40,13 +40,32 @@ NICHT im Scope:
     con nicht — sie koennen dessen Cursor nicht korrumpieren (Datei-Ebene regelt WAL).
 
 Build 325 — 2026-07-06.
+
+BUILD 774 — TRANSAKTIONS-BESITZER UND SICHERHEITSNETZ (Befund 13./14.10.2026):
+    Eine gescheiterte Schreibanweisung ohne rollback() liess die Transaktion der
+    geteilten Verbindung offen; jede folgende Lesung auf coordinator.db (cdb)
+    hielt darin eine SHARED-Sperre, und der Bildschleier-Schreiber einer anderen
+    Verbindung bekam nach 5 s 'database is locked'.
+    Abhilfe 1 (db/schreibvorgang.py): jede Schreibfunktion rollt bei Fehlern
+    selbst zurueck. Abhilfe 2 (hier): der Wrapper merkt sich, WELCHER Thread die
+    laufende Transaktion eroeffnet hat (transaktions_besitzer). Am Ende jedes
+    HTTP-Requests ruft der Server sicherheitsnetz() auf. Zurueckgerollt wird NUR,
+    wenn dieser Thread der Besitzer ist — die halbfertige Transaktion eines
+    gleichzeitig laufenden anderen Requests bleibt unberuehrt (Festlegung Alex,
+    14.10.2026: "Rollback nur im Thread, der die Transaktion eroeffnet hat").
+    Eine Zaehlung laufender Requests haette nicht gereicht: die SSE-Verbindung
+    des Berichtseditors ist dauerhaft offen und zaehlt immer mit.
 """
 
 from __future__ import annotations
 
 import sqlite3
 import threading
-from typing import Any, Iterator, List, Optional, Sequence
+from typing import Any, Callable, Iterator, List, Optional, Sequence
+
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class _LockedCursor:
@@ -59,27 +78,53 @@ class _LockedCursor:
     """
 
     # Interne Attribute, die NICHT an den realen Cursor weitergereicht werden.
-    _INTERNAL = ("_real", "_lock", "_rows", "_idx")
+    _INTERNAL = ("_real", "_lock", "_rows", "_idx", "_waechter", "_real_con")
 
-    def __init__(self, real_con: sqlite3.Connection, lock: "threading.RLock") -> None:
+    def __init__(self, real_con: sqlite3.Connection, lock: "threading.RLock",
+                 waechter: Optional[Callable[[bool], None]] = None) -> None:
         object.__setattr__(self, "_lock", lock)
         object.__setattr__(self, "_real", real_con.cursor())
         object.__setattr__(self, "_rows", [])   # materialisierte Zeilen
         object.__setattr__(self, "_idx", 0)      # Leseposition
+        # Build 774: Rueckruf an die LockingConnection nach jeder Ausfuehrung,
+        # damit sie den Transaktions-Besitzer fuehren kann. Bekommt den
+        # Zustand in_transaction VOR der Anweisung.
+        object.__setattr__(self, "_waechter", waechter)
+        object.__setattr__(self, "_real_con", real_con)
+
+    def _vorher_offen(self) -> bool:
+        # getattr mit Vorgabe: auch Verbindungs-Attrappen ohne in_transaction
+        # (tests/test_locking_connection.py, _FakeConnection) muessen gehen.
+        try:
+            return bool(getattr(self._real_con, "in_transaction", False))
+        except sqlite3.Error:
+            return False
 
     # --- Ausfuehrung (unter Lock, mit Materialisierung) ---------------------
     def execute(self, sql: str, parameters: Sequence[Any] = ()) -> "_LockedCursor":
         with self._lock:
-            self._real.execute(sql, parameters)
-            object.__setattr__(self, "_rows", self._real.fetchall())
-            object.__setattr__(self, "_idx", 0)
+            vorher = self._vorher_offen()
+            try:
+                self._real.execute(sql, parameters)
+                object.__setattr__(self, "_rows", self._real.fetchall())
+                object.__setattr__(self, "_idx", 0)
+            finally:
+                # AUCH nach einem Fehler: genau dann bleibt die Transaktion
+                # offen (implizites BEGIN gelungen, Anweisung gescheitert).
+                if self._waechter is not None:
+                    self._waechter(vorher)
         return self
 
     def executemany(self, sql: str, seq_of_parameters: Any) -> "_LockedCursor":
         with self._lock:
-            self._real.executemany(sql, seq_of_parameters)
-            object.__setattr__(self, "_rows", [])
-            object.__setattr__(self, "_idx", 0)
+            vorher = self._vorher_offen()
+            try:
+                self._real.executemany(sql, seq_of_parameters)
+                object.__setattr__(self, "_rows", [])
+                object.__setattr__(self, "_idx", 0)
+            finally:
+                if self._waechter is not None:
+                    self._waechter(vorher)
         return self
 
     # --- Lesen aus dem materialisierten Puffer ------------------------------
@@ -134,38 +179,120 @@ class LockingConnection:
     (row_factory, set_authorizer, create_function, text_factory, backup, ...).
     """
 
-    _INTERNAL = ("_con", "lock")
+    _INTERNAL = ("_con", "lock", "_besitzer", "_unbekannt_gemeldet")
 
     def __init__(self, con: sqlite3.Connection) -> None:
         object.__setattr__(self, "_con", con)
         object.__setattr__(self, "lock", threading.RLock())
+        # Build 774: Thread-Kennung (threading.get_ident) des Threads, dessen
+        # Anweisung die laufende Transaktion eroeffnet hat; None = keine offen
+        # bzw. unbekannt.
+        object.__setattr__(self, "_besitzer", None)
+        object.__setattr__(self, "_unbekannt_gemeldet", False)
+
+    # --- Build 774: Transaktions-Besitzer -----------------------------------
+    def _transaktion_beobachten(self, vorher_offen: bool) -> None:
+        """Nach jeder Anweisung (unter dem Lock): Besitzer fortschreiben."""
+        try:
+            offen = bool(getattr(self._con, "in_transaction", False))
+        except sqlite3.Error:
+            return
+        if offen and not vorher_offen:
+            object.__setattr__(self, "_besitzer", threading.get_ident())
+        elif not offen:
+            object.__setattr__(self, "_besitzer", None)
+            object.__setattr__(self, "_unbekannt_gemeldet", False)
+
+    @property
+    def transaktions_besitzer(self) -> Optional[int]:
+        """Thread-Kennung des Eroeffners der offenen Transaktion, sonst None."""
+        return self._besitzer
+
+    def sicherheitsnetz(self, kontext: str) -> Optional[str]:
+        """
+        Am Ende eines HTTP-Requests im Request-Thread aufzurufen.
+
+        Ist eine Transaktion offen und hat DIESER Thread sie eroeffnet, wurde
+        eine Schreibstelle ohne Transaktionsschutz verlassen: rollback() und
+        Meldung der Stufe ERROR mit dem Kontext (Methode und Pfad).
+        Rueckgabe: 'zurueckgerollt', 'rollback_gescheitert', 'unbekannt'
+        (offen, Eroeffner unbekannt — nur gemeldet, einmal je Transaktion)
+        oder None (nichts zu tun, auch: fremder Besitzer -> unberuehrt).
+        """
+        with self.lock:
+            try:
+                offen = bool(getattr(self._con, "in_transaction", False))
+            except sqlite3.Error:
+                return None              # z. B. geschlossene Verbindung
+            if not offen:
+                object.__setattr__(self, "_besitzer", None)
+                object.__setattr__(self, "_unbekannt_gemeldet", False)
+                return None
+            ich = threading.get_ident()
+            if self._besitzer == ich:
+                try:
+                    self._con.rollback()
+                except sqlite3.Error as exc:
+                    logger.error(
+                        "Sicherheitsnetz: offene Transaktion am Ende von %s "
+                        "gefunden, rollback() gescheitert: %s: %s",
+                        kontext, type(exc).__name__, exc)
+                    return "rollback_gescheitert"
+                object.__setattr__(self, "_besitzer", None)
+                logger.error(
+                    "Sicherheitsnetz: offene Transaktion am Ende von %s "
+                    "zurueckgerollt (Thread %s). Ursache ist eine Schreibstelle "
+                    "ohne Transaktionsschutz (db/schreibvorgang.py) — bitte "
+                    "dieses Protokoll melden.", kontext, ich)
+                return "zurueckgerollt"
+            if self._besitzer is None and not self._unbekannt_gemeldet:
+                object.__setattr__(self, "_unbekannt_gemeldet", True)
+                logger.warning(
+                    "Sicherheitsnetz: am Ende von %s ist eine Transaktion "
+                    "offen, deren Eroeffner unbekannt ist. Sie bleibt "
+                    "unberuehrt.", kontext)
+                return "unbekannt"
+            return None
 
     # --- Kern: serialisierte Ausfuehrung mit Materialisierung ---------------
     def execute(self, sql: str, parameters: Sequence[Any] = ()) -> _LockedCursor:
-        cur = _LockedCursor(self._con, self.lock)
+        cur = _LockedCursor(self._con, self.lock, self._transaktion_beobachten)
         return cur.execute(sql, parameters)
 
     def executemany(self, sql: str, seq_of_parameters: Any) -> _LockedCursor:
-        cur = _LockedCursor(self._con, self.lock)
+        cur = _LockedCursor(self._con, self.lock, self._transaktion_beobachten)
         return cur.executemany(sql, seq_of_parameters)
 
     def executescript(self, script: str) -> Any:
         # Zur Laufzeit auf dem geteilten con ungenutzt (Beleg: Muster-grep leer);
         # defensiv unter Lock durchgereicht, damit kuenftige Nutzung sicher bleibt.
         with self.lock:
-            return self._con.executescript(script)
+            try:
+                vorher = bool(getattr(self._con, "in_transaction", False))
+            except sqlite3.Error:
+                vorher = False
+            try:
+                return self._con.executescript(script)
+            finally:
+                self._transaktion_beobachten(vorher)
 
     def cursor(self) -> _LockedCursor:
         # Frischer, noch nicht ausgefuehrter Cursor (Muster assets_db/default_db).
-        return _LockedCursor(self._con, self.lock)
+        return _LockedCursor(self._con, self.lock, self._transaktion_beobachten)
 
     def commit(self) -> None:
         with self.lock:
-            self._con.commit()
+            try:
+                self._con.commit()
+            finally:
+                self._transaktion_beobachten(True)
 
     def rollback(self) -> None:
         with self.lock:
-            self._con.rollback()
+            try:
+                self._con.rollback()
+            finally:
+                self._transaktion_beobachten(True)
 
     def close(self) -> None:
         with self.lock:
@@ -177,10 +304,13 @@ class LockingConnection:
 
     def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> bool:
         with self.lock:
-            if exc_type is None:
-                self._con.commit()
-            else:
-                self._con.rollback()
+            try:
+                if exc_type is None:
+                    self._con.commit()
+                else:
+                    self._con.rollback()
+            finally:
+                self._transaktion_beobachten(True)
         return False  # Exceptions nicht unterdruecken
 
     # --- Attribut-Proxy fuer alles Uebrige ----------------------------------

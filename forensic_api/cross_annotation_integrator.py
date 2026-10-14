@@ -26,6 +26,11 @@
 #
 # Beleg: Projektgespraech 2026-05-12 — Bug 2.78 (BS3).
 # Version: v0.7.469 · Build: 469 · 2026-07-20
+# Build 774 (2026-10-14): Transaktionsschutz. Jede Schreibfunktion laeuft in
+#   'with Schreibvorgang(...)' (db/schreibvorgang.py): Lock fuer die ganze
+#   Dauer, rollback() bei jeder Ausnahme. Befund 13./14.10.2026: eine
+#   gescheiterte Anweisung ohne rollback() liess die Transaktion der
+#   geteilten Verbindung offen und sperrte coordinator.db.
 # Build 469: Schluesselumstellung user_id -> subject_id (M019)
 # =============================================================================
 
@@ -38,6 +43,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from core.logger import get_logger
+from db.schreibvorgang import Schreibvorgang  # Build 774: Transaktionsschutz
 
 if TYPE_CHECKING:
     from db.connection_manager import DatabaseBundle
@@ -288,11 +294,12 @@ class CrossAnnotationIntegrator:
         wir legen eine an falls noetig (cross_pages).
         Beleg: Projektgespraech 2026-05-12 — voller BLOB fuer XPath-Konsistenz.
         """
-        url = str(page_row["url_canonical"])
+        with Schreibvorgang(edb._con, "_ensure_page_in_evidence"):
+            url = str(page_row["url_canonical"])
 
-        # cross_pages-Tabelle sicherstellen (einmalig, idempotent)
-        edb._con.execute(
-            """
+            # cross_pages-Tabelle sicherstellen (einmalig, idempotent)
+            edb._con.execute(
+                """
             CREATE TABLE IF NOT EXISTS cross_pages (
                 id              INTEGER PRIMARY KEY AUTOINCREMENT,
                 url_canonical   TEXT    NOT NULL UNIQUE,
@@ -305,33 +312,33 @@ class CrossAnnotationIntegrator:
                 imported_at     INTEGER NOT NULL
             )
             """
-        )
-        edb._con.execute(
-            "CREATE INDEX IF NOT EXISTS cp_url_idx ON cross_pages (url_canonical)"
-        )
+            )
+            edb._con.execute(
+                "CREATE INDEX IF NOT EXISTS cp_url_idx ON cross_pages (url_canonical)"
+            )
 
-        # Eintragen wenn noch nicht vorhanden
-        existing = edb._con.execute(
-            "SELECT id FROM cross_pages WHERE url_canonical = ?", (url,)
-        ).fetchone()
-        if existing:
-            return
+            # Eintragen wenn noch nicht vorhanden
+            existing = edb._con.execute(
+                "SELECT id FROM cross_pages WHERE url_canonical = ?", (url,)
+            ).fetchone()
+            if existing:
+                return
 
-        edb._con.execute(
-            "INSERT INTO cross_pages "
-            "(url_canonical, html_blob, http_status, scrape_context, "
-            " fetched_at, title, in_scope, imported_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                url,
-                bytes(page_row["html_blob"]) if page_row["html_blob"] else None,
-                page_row["http_status"],
-                page_row["scrape_context"],
-                page_row["fetched_at"],
-                page_row["title"],
-                page_row["in_scope"],
-                int(time.time()),
-            ),
-        )
-        edb._con.commit()
-        logger.debug("CrossAnnotationIntegrator: Page importiert: %r", url)
+            edb._con.execute(
+                "INSERT INTO cross_pages "
+                "(url_canonical, html_blob, http_status, scrape_context, "
+                " fetched_at, title, in_scope, imported_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    url,
+                    bytes(page_row["html_blob"]) if page_row["html_blob"] else None,
+                    page_row["http_status"],
+                    page_row["scrape_context"],
+                    page_row["fetched_at"],
+                    page_row["title"],
+                    page_row["in_scope"],
+                    int(time.time()),
+                ),
+            )
+            edb._con.commit()
+            logger.debug("CrossAnnotationIntegrator: Page importiert: %r", url)

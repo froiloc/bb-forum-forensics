@@ -37,6 +37,11 @@
 #
 # Abhängigkeiten: sqlite3 — ausschließlich Stdlib
 # Version: v0.1.1 · Build: 699 · 2026-08-12
+# Build 774 (2026-10-14): Transaktionsschutz. Jede Schreibfunktion laeuft in
+#   'with Schreibvorgang(...)' (db/schreibvorgang.py): Lock fuer die ganze
+#   Dauer, rollback() bei jeder Ausnahme. Befund 13./14.10.2026: eine
+#   gescheiterte Anweisung ohne rollback() liess die Transaktion der
+#   geteilten Verbindung offen und sperrte coordinator.db.
 # Änderungen Build 699 (Vorgang f5956e6b):
 #   - resolve_post_page(): loest EINEN Beitrag auf die erfasste Seite auf,
 #     die seinen Anker traegt. Zwei Quellen: die Messung des Preppers
@@ -66,6 +71,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from core.logger import get_logger
+from db.schreibvorgang import Schreibvorgang  # Build 774: Transaktionsschutz
 
 logger = get_logger(__name__)
 
@@ -390,23 +396,24 @@ class ForensicDb:
         Liest forum_base_url aus forensic_meta um Onion-Präfixe aus
         url_canonical und url_raw zu entfernen.
         """
-        try:
-            # forum_base_url aus forensic_meta lesen (kann None sein)
-            forum_base_url = self.get_forum_base_url() or ""
-            view_sql = _make_blob_lookup_sql(forum_base_url)
-            self._con.execute("DROP VIEW IF EXISTS blob_lookup")
-            self._con.execute(view_sql)
-            self._con.commit()
-            logger.debug(
-                "blob_lookup TEMP VIEW angelegt (forum_base_url='%s')",
-                forum_base_url or "(leer)",
-            )
-        except sqlite3.OperationalError as exc:
-            raise sqlite3.OperationalError(
-                f"blob_lookup-View konnte nicht angelegt werden. "
-                f"Ist fdb korrekt per ATTACH angebunden?\n"
-                f"SQLite-Fehler: {exc}"
-            ) from exc
+        with Schreibvorgang(self._con, "_setup_view"):
+            try:
+                # forum_base_url aus forensic_meta lesen (kann None sein)
+                forum_base_url = self.get_forum_base_url() or ""
+                view_sql = _make_blob_lookup_sql(forum_base_url)
+                self._con.execute("DROP VIEW IF EXISTS blob_lookup")
+                self._con.execute(view_sql)
+                self._con.commit()
+                logger.debug(
+                    "blob_lookup TEMP VIEW angelegt (forum_base_url='%s')",
+                    forum_base_url or "(leer)",
+                )
+            except sqlite3.OperationalError as exc:
+                raise sqlite3.OperationalError(
+                    f"blob_lookup-View konnte nicht angelegt werden. "
+                    f"Ist fdb korrekt per ATTACH angebunden?\n"
+                    f"SQLite-Fehler: {exc}"
+                ) from exc
 
     # ------------------------------------------------------------------
     # BLOB-Lookup

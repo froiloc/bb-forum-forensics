@@ -35,6 +35,10 @@
 #
 # Abhängigkeiten: http.server, socketserver, errno, threading — ausschließlich Stdlib
 # Version: v0.1.0 · Build: 030 · 2026-05-07
+# Build 774 (2026-10-14): Sicherheitsnetz am Ende jedes Requests
+#   (_sicherheitsnetz -> LockingConnection.sicherheitsnetz): eine von
+#   DIESEM Thread offen gelassene Transaktion wird zurueckgerollt und
+#   mit Stufe ERROR gemeldet.
 # =============================================================================
 #
 # Änderungen Build 030 (Bugfix: Socket-Backlog-Erschöpfung durch SSE-Verbindungen):
@@ -188,8 +192,30 @@ class ForensicRequestHandler(http.server.BaseHTTPRequestHandler):
                 )
                 self._send_500()
         finally:
+            # Build 774 — Sicherheitsnetz (Befund 13./14.10.2026): hat DIESER
+            # Request-Thread auf der geteilten Verbindung eine Transaktion
+            # eroeffnet und offen gelassen, wird sie hier zurueckgerollt und
+            # mit Stufe ERROR gemeldet. Transaktionen anderer Threads bleiben
+            # unberuehrt (LockingConnection.sicherheitsnetz, Festlegung Alex
+            # 14.10.2026). Steht VOR gate.leave(), damit ein Wartungs-Drain
+            # erst nach der Bereinigung die Verbindung schliesst.
+            self._sicherheitsnetz(method)
             if gate is not None:
                 gate.leave()
+
+    def _sicherheitsnetz(self, method: str) -> None:
+        """Ruft LockingConnection.sicherheitsnetz() fuer diesen Request auf."""
+        try:
+            bundle = getattr(self.server, "bundle", None)
+            con = getattr(bundle, "connection", None)
+            netz = getattr(con, "sicherheitsnetz", None)
+            if callable(netz):
+                netz("%s %s" % (method, self.path))
+        except Exception as exc:
+            # Das Netz darf die Antwort nie gefaehrden — aber auch nie still
+            # versagen (Grundregel 1).
+            logger.error("Sicherheitsnetz nach %s %s gescheitert: %s",
+                         method, self.path, exc)
 
     def _send_503_wartung(self) -> None:
         """HTTP 503 waehrend des Wartungsmodus (kein DB-Zugriff)."""

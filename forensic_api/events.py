@@ -49,6 +49,12 @@
 #   evidence_<uid>.db (READ/WRITE) — Lock-Freigabe bei Grace-Period-Ablauf
 #
 # Version: v0.7.469 · Build: 469 · 2026-07-20
+# Build 774 (2026-10-14): Transaktionsschutz. Jede Schreibfunktion laeuft in
+#   'with Schreibvorgang(...)' (db/schreibvorgang.py): Lock fuer die ganze
+#   Dauer, rollback() bei jeder Ausnahme. Befund 13./14.10.2026: eine
+#   gescheiterte Anweisung ohne rollback() liess die Transaktion der
+#   geteilten Verbindung offen und sperrte coordinator.db.
+#   _send_lock_status: stilles 'except: pass' der Bereinigung wird gemeldet.
 # Build 469: Schluesselumstellung user_id -> subject_id (M019)
 #
 # Changelog Build 278 (2026-06-07):
@@ -117,6 +123,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
 from core.logger import get_logger
+from db.schreibvorgang import Schreibvorgang  # Build 774: Transaktionsschutz
 from forensic_api.windows import get_registry as _get_window_registry
 from forensic_api.support_presence import SupportPresenceBinder  # NEU Build 312
 
@@ -962,12 +969,22 @@ class EventsEndpoint:
             # Korrupter Lock-Datensatz (z.B. locked_at=NULL) — als 'kein Lock' behandeln
             logger.warning("_send_lock_status: Korrupter Lock-Datensatz — bereinige: %s", exc)
             try:
-                self._bundle.evidence._con.execute(
-                    "DELETE FROM editor_locks WHERE locked_at IS NULL"
-                )
-                self._bundle.evidence._con.commit()
-            except Exception:
-                pass
+                # Build 774: Schreibvorgang rollt bei einem Fehler zurueck,
+                # BEVOR das 'except' unten ihn verschluckt — sonst bliebe die
+                # Transaktion der geteilten Verbindung offen. Bewusst NUR um
+                # die Schreibanweisung gelegt: send_fn schreibt auf den
+                # SSE-Socket und darf den Verbindungs-Lock nicht halten.
+                _econ = self._bundle.evidence._con
+                with Schreibvorgang(_econ, "_send_lock_status.bereinigen"):
+                    _econ.execute(
+                        "DELETE FROM editor_locks WHERE locked_at IS NULL"
+                    )
+                    _econ.commit()
+            except Exception as _exc:
+                # Vorher stilles 'pass' (Grundregel 1): jetzt gemeldet.
+                logger.warning(
+                    "_send_lock_status: Bereinigung korrupter Lock-Datensaetze "
+                    "gescheitert: %s", _exc)
             return send_fn("editor_lock_released", {})
         except Exception as exc:
             logger.warning("_send_lock_status: Fehler: %s", exc)

@@ -40,8 +40,8 @@ naechsten Abschnitt. Umsortieren kann eine Maschine, Kontext erfinden nicht.
 
 ## Aktueller Stand
 
-**Build 773** — in dieser Akte unveraendert seit Build 770 (Builds 771 ff.
-bauen den Bildschleier, siehe Chronologie). Die Migration der Annotationen von `selection_json` 1.0.0 auf
+**Build 774** — in dieser Akte unveraendert seit Build 770 (Builds 771 ff.
+bauen den Bildschleier, Build 774 den Transaktionsschutz, siehe Chronologie). Die Migration der Annotationen von `selection_json` 1.0.0 auf
 2.0.0 ist **vorbereitet, aber nicht begonnen** — es ist noch kein Datensatz
 migriert.
 
@@ -270,5 +270,21 @@ Knoten bleibt gleich. Die gespeicherten BLOBs bleiben unberuehrt — alle
 Werkzeuge dieser Akte lesen die BLOBs, nicht den ausgelieferten Inhalt.
 Waechter BS30 haelt fest, dass ausserhalb von `<style>` kein Zeichen
 veraendert wird.
+
+**Messwerte.** Keine.
+
+### Build 774 — kein Fortschritt in dieser Akte (Transaktionsschutz)
+
+**Entscheidungen.** Keine zur Annotationsmigration.
+
+**Erkenntnisse, die diese Akte beruehren.** Jede Schreibfunktion in
+`db/evidence_db.py` laeuft jetzt in `with Schreibvorgang(...)`
+(`db/schreibvorgang.py`): Lock der geteilten Verbindung fuer die ganze Dauer,
+`rollback()` bei jeder Ausnahme. Betroffen sind auch `save_annotation`,
+`delete_annotation` und `restore_annotation`. Ihr Verhalten im Erfolgsfall ist
+unveraendert — nachgewiesen per AST-Vergleich (alt gegen neu, nach Entfernen
+der Huelle gleich). Ein Migrationslauf, der ueber diese Funktionen schreibt,
+bekommt bei einem Fehler kuenftig ein sauberes `rollback()` statt einer offen
+gelassenen Transaktion.
 
 **Messwerte.** Keine.
