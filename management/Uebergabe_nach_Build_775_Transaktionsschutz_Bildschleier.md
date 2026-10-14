@@ -67,11 +67,32 @@ uebernommen. Seitdem schaltet der Schleier in PROD in beide Richtungen
 - Hilfe: Kapitel Rechte/Policy, Abschnitt „Bildschleier im Forenviewer“,
   Stand 775.
 
+## 3a. Unabhaengige Durchsicht (14.10.2026) — in 775 behoben
+
+Ein eigener Pruefer, der an der Entstehung nicht beteiligt war, hat den Diff
+774/775 durchgesehen. Befunde und Behebung:
+
+1. **Regression aus 774 (bestaetigt):** `get_sort_index_after` verschob
+   Bloecke ohne `commit()`; das kam erst aus `save_block`. Die mit 774
+   eingefuehrten `rollback()` anderer Threads (z. B. `acquire_lock` bei
+   Konkurrenz um den Editor) nahmen die Verschiebung mit -> doppelter
+   `sort_index`. Behoben (eigener Schreibvorgang mit commit), neue
+   Waechterregel R3 (jede DML im Schreibvorgang, auch ohne eigenes commit).
+   **Build 774 darf deshalb nicht allein eingespielt werden.**
+2. Leck aus einem Thread, der kein Request ist, blieb stumm -> Meldung
+   „verwaist“ (ohne Rollback).
+3. `sicherheitsnetz()` nahm nach jedem Request den Lock -> Schnellpfad.
+4. Bildschleier: Blaettern waehrend des Einschaltens entschleierte (seit 772);
+   gescheitertes Ausschalten mit gespeichert „klar“ -> beides behoben.
+
+Ohne Befund: Verklemmungen durch den gehaltenen Lock, Besitzer-Verfolgung im
+Uebrigen, Erfolgspfad (AST-Gleichheit bestaetigt).
+
 ## 4. Einspielen
 
-Zwei Bundles: `aiw_webserver_774` (nur 774) und `aiw_webserver_775`
-(enthaelt 774 und 775; gleicher Zweig, die Lieferung folgt der letzten
-Nummer). Keine Migration, keine Schemaaenderung. PROD-Einspielung geplant
+Einzuspielen ist `aiw_webserver_775` (enthaelt 774 und 775; gleicher Zweig,
+die Lieferung folgt der letzten Nummer). Das zuvor gelieferte
+`aiw_webserver_774` NICHT allein einspielen (Befund 1 in 3a). Keine Migration, keine Schemaaenderung. PROD-Einspielung geplant
 am 15.10.2026; vorher DEV-Test durch Alex.
 
 ## 5. Offen

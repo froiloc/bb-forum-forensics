@@ -206,8 +206,10 @@ POLICY = Sichthilfe(
                 "wieder auf; ein weiterer Klick versucht erneut zu speichern. "
                 "Bilder, die die Seitengestaltung als Hintergrund einsetzt, "
                 "werden im lokalen Schleier nicht ersetzt. Schlägt das "
-                "Ausschalten fehl, bleibt der Schleier stehen. In beiden Fällen "
-                "nennt der Kurzhinweis den Fehler — bitte melden.",
+                "Ausschalten fehl, bleibt der Schleier stehen; meldet das "
+                "Werkzeug dabei, dass gespeichert „unverschleiert“ gilt, "
+                "erscheint derselbe Hinweis „Nur lokal verschleiert“. In allen "
+                "Fällen nennt der Kurzhinweis den Fehler — bitte melden.",
             ),
         ),
         Abschnitt(

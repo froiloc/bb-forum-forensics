@@ -23,7 +23,11 @@
  *   BS35 — seiteAnwenden im Zustand 'lokal': klar gemeldet -> Klasse
  *          bleibt; verschleiert gemeldet -> 'lokal' endet
  *   BS36 — seiteAnwenden im klaren Zustand setzt die Ausnahmen (D1)
- *   BS37 — gescheitertes AUSschalten ist nie 'lokal'
+ *   BS37 — gescheitertes AUSschalten, gespeichert "verschleiert": nicht 'lokal'
+ *   BS38 — Blaettern, WAEHREND das Einschalten gespeichert wird: Klasse
+ *          bleibt (Befund 4a der unabhaengigen Durchsicht, seit Build 772)
+ *   BS39 — gescheitertes AUSschalten, Antwort meldet gespeichert "klar":
+ *          'lokal', Klick hebt ohne Request auf (Befund 4b)
  *
  * MUTATIONSGEGENPROBE (Build 772): in umschalten() das Setzen der Klasse
  * hinter den Request verschoben -> BS20 rot.
@@ -279,7 +283,7 @@ describe("Bildschleier-Schalter", () => {
     expect(f.w.document.documentElement.classList.contains("aiw-image-veil")).toBe(false);
   });
 
-  it("BS37 gescheitertes Ausschalten ist nie lokal", async () => {
+  it("BS37 gescheitertes Ausschalten (gespeichert verschleiert) ist nicht lokal", async () => {
     const f = _fenster(VERSCHLEIERT, { ok: false, status: 500,
       daten: { veiled: true, locked: false, reason: "chosen", tooltip: "v",
                error: "store_failed", detail: "database is locked" } });
@@ -291,5 +295,37 @@ describe("Bildschleier-Schalter", () => {
     await f.w.BildschleierSchalter.umschalten();
     expect(f.aufrufe.length).toBe(2);
     expect(JSON.parse(f.aufrufe[1].opts.body)).toEqual({ veiled: false });
+  });
+
+  it("BS38 Blaettern waehrend das Einschalten gespeichert wird", async () => {
+    let freigeben;
+    const f = _fenster(KLAR, { ok: true, status: 200, daten: {} });
+    // Eigene fetch-Attrappe, deren Antwort erst auf freigeben() kommt —
+    // so laesst sich zwischen Anfrage und Antwort blaettern.
+    f.w.fetch = () => new Promise((r) => { freigeben = () => r({
+      ok: true, status: 200,
+      json: () => Promise.resolve({ veiled: true, locked: false,
+                                    reason: "chosen", tooltip: "v" }) }); });
+    const S = f.w.BildschleierSchalter;
+    const laeuft = S.umschalten();
+    // Antwort steht aus — jetzt wird geblaettert, der Umschlag meldet "klar".
+    S.seiteAnwenden({ veiled: false, locked: false, reason: "default",
+                      tooltip: "klar", exempt_css: "" });
+    expect(f.w.document.documentElement.classList.contains("aiw-image-veil")).toBe(true);
+    freigeben();
+    expect(await laeuft).toBe(true);
+    expect(f.neuGeladen()).toBe(1);
+  });
+
+  it("BS39 gescheitertes Ausschalten, gespeichert klar -> lokal", async () => {
+    const f = _fenster(VERSCHLEIERT, FEHLER_KLAR);
+    await f.w.BildschleierSchalter.umschalten();
+    expect(f.w.document.documentElement.classList.contains("aiw-image-veil")).toBe(true);
+    expect(f.w.BildschleierSchalter.zustand().lokal).toBe(true);
+    expect(f.knopf.classList.contains("is-local")).toBe(true);
+    await f.w.BildschleierSchalter.umschalten();
+    expect(f.aufrufe.length).toBe(1);      // Aufheben ohne Request
+    expect(f.w.document.documentElement.classList.contains("aiw-image-veil")).toBe(false);
+    expect(f.knopf.classList.contains("is-clear")).toBe(true);
   });
 });

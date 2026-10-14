@@ -517,6 +517,27 @@ class UmschlagTests(unittest.TestCase):
             self.assertTrue(u["exempt_css"].lstrip().startswith(
                 "html.aiw-image-veil"), u["exempt_css"][:80])
 
+    def test_bsu03_fehler_in_ausnahmen_klare_seite_bleibt(self):
+        # Build 775 (Befund der unabhaengigen Durchsicht): seit die Ausnahmen
+        # auch im klaren Zustand berechnet werden, darf ein Fehler dort eine
+        # klare Seite nicht scheitern lassen.
+        z = BildschleierZustand(veiled=False, locked=False, reason="default")
+        stub = _Stub(z)
+
+        def _wirft(*_a, **_k):
+            raise ValueError("kaputt")
+        stub.seitenausnahmen = types.SimpleNamespace(stylesheet=_wirft)
+        alt = bd.dienst
+        bd.dienst = lambda *_a, **_k: stub
+        try:
+            import server.blob_handler as bh_mod
+            with self.assertLogs(bh_mod.logger, level="ERROR"):
+                u = self._umschlag({"base_href": "/forum/"})
+        finally:
+            bd.dienst = alt
+        self.assertFalse(u["veiled"])
+        self.assertEqual(u["exempt_css"], "")
+
     def test_bsu02_basis_aus_base_href(self):
         _stub_setzen(BildschleierZustand.gesperrt("required_by_role"))
         # <base href="/forum/beginner/"> -> 'img/…' liegt NICHT unter /forum/img/

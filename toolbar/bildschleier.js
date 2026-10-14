@@ -55,6 +55,16 @@
  *   Der Server liefert seit Build 775 auch bei HTTP 500 den gespeicherten
  *   Zustand mit (forensic_api/bildschleier.py, _fehlerantwort).
  *
+ * BUILD 775 — BEFUNDE DER UNABHAENGIGEN DURCHSICHT (14.10.2026)
+ *   4a (seit Build 772): Waehrend das EINschalten noch gespeichert wurde,
+ *      entfernte ein Blaettern (Umschlag: gespeichert "klar") die Klasse —
+ *      die neue Seite erschien unverschleiert, obwohl Schutz angefordert
+ *      war (bis zu 5 s Busy-Wartezeit). Jetzt haelt _ausstehendEin die
+ *      Klasse, bis die Antwort da ist.
+ *   4b: Ein gescheitertes AUSschalten, dessen Fehlerantwort gespeichert
+ *      "klar" meldet, liess Klasse und Anzeige auseinanderlaufen. 'lokal'
+ *      gilt jetzt allgemein: Klasse steht, gespeichert ist "klar".
+ *
  * BUILD 775 — AUSNAHMEN AUCH IM KLAREN ZUSTAND (D1)
  *   Der Umschlag traegt 'exempt_css' jetzt immer; seiteAnwenden() setzt es
  *   in beiden Zustaenden. Die Regeln wirken nur unter html.aiw-image-veil.
@@ -119,6 +129,8 @@
   var _fehlertext = '';
   /** Build 775: Klasse steht nur lokal, gespeichert ist "klar". */
   var _lokal = false;
+  /** Build 775 (4a): ein Einschalten wird gerade gespeichert. */
+  var _ausstehendEin = false;
 
   function _ausHtml() {
     var el = document.documentElement;
@@ -227,10 +239,12 @@
       _lokal = false;
       el.classList.add(HTML_KLASSE);
       _dbg('seiteAnwenden: verschleiert, Ausnahmen (Zeichen):', stil.textContent.length);
-    } else if (_lokal) {
-      // Build 775 (D2): lokal verschleiert bleibt beim Blaettern stehen.
+    } else if (_lokal || _ausstehendEin) {
+      // Build 775 (D2): lokal verschleiert bleibt beim Blaettern stehen;
+      // ebenso waehrend ein Einschalten noch gespeichert wird (4a).
       el.classList.add(HTML_KLASSE);
-      _dbg('seiteAnwenden: gespeichert klar, lokal verschleiert — bleibt');
+      _dbg('seiteAnwenden: gespeichert klar, lokal verschleiert bzw. Einschalten '
+           + 'ausstehend — Klasse bleibt', { lokal: _lokal, ausstehend: _ausstehendEin });
     } else {
       el.classList.remove(HTML_KLASSE);
       _dbg('seiteAnwenden: klar, Ausnahmen bereit (Zeichen):', stil.textContent.length);
@@ -289,18 +303,21 @@
     if (ziel) {
       // Einschalten: Schutz SOFORT, vor jeder Netzwerkantwort.
       document.documentElement.classList.add(HTML_KLASSE);
+      _ausstehendEin = true;
     }
     _beschaeftigt = true;
     _fehlertext = '';
     _darstellen();
     _dbg('umschalten: speichere veiled=' + ziel);
     return _speichern(ziel).then(function (daten) {
+      _ausstehendEin = false;
       _zustandSetzen(daten);
       _dbg('umschalten: gespeichert, lade neu', daten);
       api._neuLaden();
       return true;
     }).catch(function (fehler) {
       _beschaeftigt = false;
+      _ausstehendEin = false;
       _fehlertext = 'Umschalten fehlgeschlagen: ' + (fehler && fehler.message);
       if (fehler && fehler.daten && typeof fehler.daten.veiled === 'boolean' &&
           typeof fehler.daten.locked === 'boolean') {
@@ -309,10 +326,12 @@
       // Gleich was der Server meldet: nach einem Fehler bleibt die Klasse,
       // die vorher stand — und war der Wunsch "einschalten", steht sie jetzt.
       if (ziel) document.documentElement.classList.add(HTML_KLASSE);
-      // Build 775 (D2): Einschalten gescheitert und gespeichert gilt (laut
-      // Server bzw. mangels Antwort laut letztem Stand) "klar" -> 'lokal'.
+      // Build 775 (D2, 4b): Klasse steht, gespeichert gilt (laut Server bzw.
+      // mangels Antwort laut letztem Stand) "klar" -> 'lokal'. Das gilt nach
+      // einem gescheiterten Ein- WIE Ausschalten.
       var nachher = _zustandHolen();
-      _lokal = !!ziel && !nachher.veiled && !nachher.locked;
+      _lokal = document.documentElement.classList.contains(HTML_KLASSE) &&
+               !nachher.veiled && !nachher.locked;
       _warn(_fehlertext);
       _darstellen();
       return false;

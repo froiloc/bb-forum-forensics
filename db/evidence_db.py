@@ -2155,18 +2155,31 @@ class EvidenceDb:
 
         base = int(row["sort_index"])
 
-        # Alle nachfolgenden Bloecke um +2 verschieben
-        self._con.execute(
-            "UPDATE report_block_order SET sort_index = sort_index + 2, "
-            "last_modified_at = ? "
-            "WHERE block_id IN ("
-            "  SELECT rbo.block_id FROM report_block_order rbo "
-            "  JOIN report_blocks rb ON rb.block_id = rbo.block_id "
-            "  WHERE rb.report_id = ? AND rbo.sort_index > ?"
-            ")",
-            (now, report_id, base),
-        )
-        # Kein separates commit — wird vom aufrufenden save_block-commit erfasst.
+        # Alle nachfolgenden Bloecke um +2 verschieben.
+        #
+        # Build 775 (Befund der unabhaengigen Durchsicht, 14.10.2026): bis
+        # hierher blieb die Verschiebung UNCOMMITTET liegen und wurde erst vom
+        # spaeteren save_block-commit erfasst. Dazwischen ist der Lock der
+        # geteilten Verbindung frei. Seit Build 774 rollen gescheiterte
+        # Schreibvorgaenge anderer Threads zurueck (z. B. acquire_lock bei
+        # Konkurrenz um den Editor) — und nahmen die Verschiebung mit. Folge
+        # (gemessen): zwei Bloecke mit demselben sort_index, Reihenfolge im
+        # Bericht undefiniert. Jetzt eigener Schreibvorgang mit commit.
+        # Scheitert save_block danach, bleibt eine Luecke von 2 in der
+        # Nummerierung — die Reihenfolge bleibt richtig (Luecken sind ohnehin
+        # vorgesehen, siehe +1000 oben).
+        with Schreibvorgang(self._con, "get_sort_index_after"):
+            self._con.execute(
+                "UPDATE report_block_order SET sort_index = sort_index + 2, "
+                "last_modified_at = ? "
+                "WHERE block_id IN ("
+                "  SELECT rbo.block_id FROM report_block_order rbo "
+                "  JOIN report_blocks rb ON rb.block_id = rbo.block_id "
+                "  WHERE rb.report_id = ? AND rbo.sort_index > ?"
+                ")",
+                (now, report_id, base),
+            )
+            self._con.commit()
         return base + 1
 
     # ------------------------------------------------------------------

@@ -41,6 +41,14 @@
 #   TS11  Besitzer wird auch dann gesetzt, wenn die eroeffnende Anweisung
 #         selbst scheitert (genau der Fall des Befunds).
 #
+# Build 775 — Befunde der unabhaengigen Durchsicht (14.10.2026):
+#   TS12  get_sort_index_after: eine Blockverschiebung ueberlebt ein
+#         fremdes rollback() (acquire_lock bei belegtem Lock) zwischen
+#         Verschiebung und save_block — keine doppelten sort_index.
+#   TS13  Sicherheitsnetz: Eroeffner-Thread lebt nicht mehr -> 'verwaist',
+#         ERROR, einmal je Transaktion, NICHT zurueckgerollt.
+#   TS14  Sicherheitsnetz ohne offene Transaktion wartet nicht auf den Lock.
+#
 # Version: v0.8.774 · Build: 774 · 2026-10-14
 # =============================================================================
 from __future__ import annotations
@@ -277,6 +285,63 @@ class TestSicherheitsnetz(_Aufbau):
         self.assertEqual(self.lc.transaktions_besitzer, threading.get_ident())
         self.lc.rollback()
         self.assertIsNone(self.lc.transaktions_besitzer)
+
+
+class TestBefundeDurchsicht(_Aufbau):
+
+    def test_ts12_verschiebung_ueberlebt_fremdes_rollback(self):
+        rid = self.edb.create_report("interim", "T", "u")
+        for bid, idx in (("b1", 1000), ("b2", 1001), ("b3", 2000)):
+            self.edb.save_block(bid, rid, "u", "paragraph", sort_index=idx)
+        # Den Editor-Lock VOR der Verschiebung belegen: sein commit() soll
+        # die Verschiebung nicht nebenbei festschreiben (erste Fassung dieses
+        # Tests tat das und blieb bei der Gegenprobe gruen).
+        self.assertIsNotNone(self.edb.acquire_lock(rid, "a", "sse-a"))
+        neu_idx = self.edb.get_sort_index_after("b1", rid)
+        self.assertEqual(neu_idx, 1001)
+        # Fremder Thread: belegter Editor-Lock -> IntegrityError -> rollback()
+        t = threading.Thread(target=lambda: self.edb.acquire_lock(rid, "b", "sse-b"))
+        t.start()
+        t.join()
+        self.edb.save_block("bNEU", rid, "u", "paragraph", sort_index=neu_idx)
+        reihe = self.lc.execute(
+            "SELECT block_id, sort_index FROM report_block_order "
+            "ORDER BY sort_index").fetchall()
+        indizes = [r[1] for r in reihe]
+        self.assertEqual(len(indizes), len(set(indizes)), reihe)
+        self.assertEqual([r[0] for r in reihe], ["b1", "bNEU", "b2", "b3"])
+
+    def test_ts13_verwaister_eroeffner_wird_gemeldet(self):
+        def leck():
+            self.lc.execute("INSERT INTO scraper_log (event, user_id, detail, ts) "
+                            "VALUES ('verwaist', 1, NULL, 13)")
+        t = threading.Thread(target=leck)
+        t.start()
+        t.join()                                   # Eroeffner ist beendet
+        self.assertTrue(self.lc.in_transaction)
+        with self.assertLogs(_lc_modul.logger, level="ERROR") as log:
+            self.assertEqual(self.lc.sicherheitsnetz("TEST /ts13"), "verwaist")
+        self.assertIn("nicht mehr lebt", "\n".join(log.output))
+        self.assertIsNone(self.lc.sicherheitsnetz("TEST /ts13"))   # einmal
+        self.assertTrue(self.lc.in_transaction)    # NICHT zurueckgerollt
+        self.lc.rollback()
+
+    def test_ts14_ohne_transaktion_kein_warten_auf_den_lock(self):
+        gehalten = threading.Event()
+        loslassen = threading.Event()
+
+        def halter():
+            with self.lc.lock:
+                gehalten.set()
+                loslassen.wait(5)
+        t = threading.Thread(target=halter)
+        t.start()
+        gehalten.wait(2)
+        t0 = time.monotonic()
+        self.assertIsNone(self.lc.sicherheitsnetz("TEST /ts14"))
+        self.assertLess(time.monotonic() - t0, 0.5)
+        loslassen.set()
+        t.join()
 
 
 class TestRequestHandler(_Aufbau):

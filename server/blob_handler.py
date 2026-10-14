@@ -387,8 +387,19 @@ class BlobHandler:
             # Die Bildquellen in CSS werden dagegen weiterhin nur bei aktivem
             # Schleier ersetzt — ein Einschalten laedt die Seite neu.
             if body_html:
-                umschlag["exempt_css"] = d.seitenausnahmen.stylesheet(
-                    body_html, basis)
+                # Befund der unabhaengigen Durchsicht (14.10.2026): ein Fehler
+                # hier traf bis Build 774 nur verschleierte Seiten. Eine klare
+                # Seite soll daran nicht scheitern — ohne Ausnahmen bleiben
+                # beim sofortigen Einschalten nur die Symbole verschleiert
+                # (sichere Richtung). Gemeldet mit Traceback (Grundregel 1).
+                try:
+                    umschlag["exempt_css"] = d.seitenausnahmen.stylesheet(
+                        body_html, basis)
+                except Exception:                       # noqa: BLE001
+                    logger.exception(
+                        "Bildschleier: Ausnahmen fuer die klare Seite '%s' "
+                        "nicht berechenbar — ausgeliefert ohne Ausnahmen.",
+                        page.url)
             return umschlag, head_data, body_html
 
         from core.bildschleier_css_umschreiber import BildschleierCssUmschreiber

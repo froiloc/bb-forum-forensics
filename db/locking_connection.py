@@ -216,9 +216,23 @@ class LockingConnection:
         eine Schreibstelle ohne Transaktionsschutz verlassen: rollback() und
         Meldung der Stufe ERROR mit dem Kontext (Methode und Pfad).
         Rueckgabe: 'zurueckgerollt', 'rollback_gescheitert', 'unbekannt'
-        (offen, Eroeffner unbekannt — nur gemeldet, einmal je Transaktion)
-        oder None (nichts zu tun, auch: fremder Besitzer -> unberuehrt).
+        (offen, Eroeffner unbekannt — nur gemeldet, einmal je Transaktion),
+        'verwaist' (Build 775: Eroeffner-Thread lebt nicht mehr — nur
+        gemeldet, einmal je Transaktion) oder None (nichts zu tun, auch:
+        fremder, lebender Besitzer -> unberuehrt).
         """
+        # Build 775 (Befund der unabhaengigen Durchsicht, 14.10.2026): Schnell-
+        # pfad OHNE Lock. Ohne ihn wartete JEDES Request-Ende (auch fuer
+        # statische Dateien) auf den Verbindungs-Lock — haelt ihn gerade ein
+        # Schreibvorgang waehrend einer Busy-Wartezeit, bis zu 5 s. Das Lesen
+        # von in_transaction ist ein reiner Zustandsabruf der Verbindung
+        # (sqlite3_get_autocommit); ist keine Transaktion offen, gibt es
+        # nichts zu tun. Ist eine offen, wird unter dem Lock erneut geprueft.
+        try:
+            if not getattr(self._con, "in_transaction", False):
+                return None
+        except sqlite3.Error:
+            return None
         with self.lock:
             try:
                 offen = bool(getattr(self._con, "in_transaction", False))
@@ -252,6 +266,24 @@ class LockingConnection:
                     "offen, deren Eroeffner unbekannt ist. Sie bleibt "
                     "unberuehrt.", kontext)
                 return "unbekannt"
+            # Build 775 (Befund der unabhaengigen Durchsicht): ein Leck aus
+            # einem Thread, der KEIN Request ist (SSE, Poller, Timer), blieb
+            # bisher stumm, und nach dem Ende dieses Threads kann ihn auch
+            # niemand mehr schliessen. Gemeldet wird, wenn der Eroeffner nicht
+            # mehr lebt — zurueckgerollt wird NICHT (Festlegung Alex
+            # 14.10.2026: nur im eroeffnenden Thread). Eine wiederverwendete
+            # Thread-Kennung laesst ihn faelschlich 'lebend' erscheinen; das
+            # fuehrt nur dazu, dass NICHT gemeldet wird.
+            if (self._besitzer is not None and not self._unbekannt_gemeldet
+                    and self._besitzer not in {t.ident for t in threading.enumerate()}):
+                object.__setattr__(self, "_unbekannt_gemeldet", True)
+                logger.error(
+                    "Sicherheitsnetz: am Ende von %s ist eine Transaktion "
+                    "offen, deren Eroeffner (Thread %s) nicht mehr lebt. Sie "
+                    "bleibt unberuehrt, haelt aber Sperren auf angebundenen "
+                    "Dateien — bitte dieses Protokoll melden.",
+                    kontext, self._besitzer)
+                return "verwaist"
             return None
 
     # --- Kern: serialisierte Ausfuehrung mit Materialisierung ---------------
