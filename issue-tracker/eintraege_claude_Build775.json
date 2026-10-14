@@ -1,0 +1,88 @@
+{
+ "issues": [
+  {
+   "id": "a8a8a5f2-2c30-498a-b03d-79ca22d83edf",
+   "type": "bug",
+   "title": "Bildschleier: Einschalten auf klarer Seite verschleiert auch Symbole",
+   "affected_version": "0.8.773",
+   "reporter": "Alex",
+   "reported_at": "2026-10-13T21:00:00+02:00",
+   "status": "review",
+   "priority": "high",
+   "severity": "major",
+   "resolved_in_version": "0.8.775",
+   "description": "Befund 13.10.2026 (PROD): Badges und Smileys aus /forum/img/ waren verschleiert. Ursache: server/blob_handler.py _bildschleier_umschlag lieferte exempt_css nur bei veiled=true. Auf einer klar geladenen Seite setzt toolbar/bildschleier.js beim Einschalten die Klasse SOFORT - ohne Ausnahmen dieser Seite. Der Test BSU01 hatte genau das als Sollverhalten festgeschrieben ('ausnahmen_nur_bei_schleier').\n\nBuild 775: exempt_css immer (die Regeln sind auf html.aiw-image-veil beschraenkt und wirken ohne die Klasse nicht); seiteAnwenden() setzt sie in beiden Zustaenden. BSU01 umgeschrieben (gewollte Verhaltensaenderung).",
+   "expected_behavior": "Symbole, Abzeichen und Smileys bleiben beim Einschalten unverschleiert.",
+   "related_to": [
+    "e113de83-4825-4792-ba25-24b87eac49a3",
+    "4a045334-62bf-4719-820e-39da1f0e68e4"
+   ],
+   "tags": [
+    "bildschleier",
+    "ausnahmen",
+    "build775"
+   ],
+   "updates": [
+    {
+     "timestamp": "2026-10-14T15:00:00+02:00",
+     "author": "Claude",
+     "action": "comment",
+     "comment": "BSU01, BS36; Gegenproben M10 (Server) und M11 (JS) rot."
+    }
+   ]
+  },
+  {
+   "id": "a8bb36cc-df02-4bf9-a229-02ca832db6d3",
+   "type": "bug",
+   "title": "Bildschleier: nach gescheitertem Einschalten nur per F5 zurueck",
+   "affected_version": "0.8.773",
+   "reporter": "Alex",
+   "reported_at": "2026-10-13T21:00:00+02:00",
+   "status": "review",
+   "priority": "high",
+   "severity": "major",
+   "resolved_in_version": "0.8.775",
+   "description": "Befund 13.10.2026 (PROD): 'Umschalten fehlgeschlagen: database is locked'. Nach gescheitertem EINschalten stand die Klasse, der gemeldete Zustand blieb 'klar': die Schaltflaeche zeigte 'klar', ein zweiter Klick versuchte erneut einzuschalten, zurueck ging es nur mit F5. Die 500-Antwort trug keinen Zustand.\n\nBuild 775: vierter Zustand 'lokal' (Klasse steht, gespeichert ist klar). Darstellung verschleiert + gestrichelter roter Rahmen (.is-local), Hinweis 'Nur lokal verschleiert - nicht gespeichert'. Klick hebt den lokalen Schleier ohne Request auf, der naechste Klick speichert erneut. Beim Blaettern in der Shell bleibt er, nach dem Neuladen gilt der gespeicherte Zustand. Server: 500-Antwort mit gespeichertem Zustand, auch bei unerwarteten Fehlern (forensic_api/bildschleier.py, _fehlerantwort). Hilfe: Kapitel Rechte/Policy, Abschnitt Bildschleier (Stand 775).",
+   "expected_behavior": "Nach einem gescheiterten Einschalten zeigt die Schaltflaeche den lokalen Schleier an und kann ihn ohne Neuladen aufheben.",
+   "related_to": [
+    "e113de83-4825-4792-ba25-24b87eac49a3",
+    "db1b69da-0983-4715-9831-ffcbc7f10d0c"
+   ],
+   "tags": [
+    "bildschleier",
+    "fehlerzustand",
+    "build775"
+   ],
+   "updates": [
+    {
+     "timestamp": "2026-10-14T15:00:00+02:00",
+     "author": "Claude",
+     "action": "comment",
+     "comment": "BS31-BS35, BS37, BSE01, BSE02; Gegenproben M12, M13, M14, M15 rot."
+    }
+   ]
+  },
+  {
+   "id": "a23826a1-8e80-4e19-ab7f-f33aa8eca18c",
+   "type": "improvement",
+   "title": "Bildschleier: Durchlauf des Befunds 13.10. als Integrationstest",
+   "affected_version": "0.8.774",
+   "reporter": "Claude",
+   "reported_at": "2026-10-14T15:00:00+02:00",
+   "status": "review",
+   "priority": "medium",
+   "resolved_in_version": "0.8.775",
+   "description": "tests/test_bildschleier_umschalten.py BSE03: evidence (main) und coordinator (cdb) auf EINER LockingConnection, gescheiterter Schreibvorgang auf viewport_events (TEMP-Trigger statt beschaedigter Datei), Lesung auf cdb, dann POST /_forensic/image-veil -> 200 und Wahl gespeichert. BSE04 als Gegenprobe: dieselbe Folge mit einer Schreibstelle ohne Schutz -> 500 'database is locked' nach ~5 s (busy_timeout wie in PROD), Rumpf meldet gespeichert 'klar'; nach rollback() -> 200. Der Aufbau bildet den Befund also nachweislich ab.",
+   "related_to": [
+    "db1b69da-0983-4715-9831-ffcbc7f10d0c",
+    "a8bb36cc-df02-4bf9-a229-02ca832db6d3"
+   ],
+   "tags": [
+    "bildschleier",
+    "integrationstest",
+    "transaktion",
+    "build775"
+   ]
+  }
+ ]
+}

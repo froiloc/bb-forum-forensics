@@ -14,8 +14,20 @@
  *           Server; fehlender Umschlag aendert die Klasse NICHT
  *   BS21d — Darstellung: drei Zustaende, Zeichen U+1F441, Kurzhinweis
  *
+ * Build 775 (Befund 13.10.2026):
+ *   BS31 — gescheitertes EINschalten (500 mit Zustand 'klar'): Zustand
+ *          'lokal' — Klasse steht, Knopf verschleiert + is-local, Hinweis
+ *   BS32 — Klick im Zustand 'lokal': KEIN Request, Klasse weg, klar
+ *   BS33 — danach versucht der naechste Klick erneut zu speichern
+ *   BS34 — Netzwerkfehler beim Einschalten: ebenfalls 'lokal'
+ *   BS35 — seiteAnwenden im Zustand 'lokal': klar gemeldet -> Klasse
+ *          bleibt; verschleiert gemeldet -> 'lokal' endet
+ *   BS36 — seiteAnwenden im klaren Zustand setzt die Ausnahmen (D1)
+ *   BS37 — gescheitertes AUSschalten ist nie 'lokal'
+ *
  * MUTATIONSGEGENPROBE (Build 772): in umschalten() das Setzen der Klasse
  * hinter den Request verschoben -> BS20 rot.
+ * Build 775: siehe build.json (M10-M13).
  * =============================================================================
  */
 
@@ -177,5 +189,107 @@ describe("Bildschleier-Schalter", () => {
     expect(v.knopf.getAttribute("aria-pressed")).toBe("true");
     expect(k.knopf.getAttribute("aria-pressed")).toBe("false");
     expect(k.knopf.title).toBe("klar");
+  });
+
+  // ===========================================================================
+  // Build 775 — Befund 13.10.2026 (D1, D2)
+  // ===========================================================================
+
+  const FEHLER_KLAR = { ok: false, status: 500,
+    daten: { veiled: false, locked: false, reason: "default", tooltip: "klar",
+             error: "store_failed", detail: "database is locked" } };
+
+  it("BS31 gescheitertes Einschalten -> lokal verschleiert", async () => {
+    const f = _fenster(KLAR, FEHLER_KLAR);
+    const ok = await f.w.BildschleierSchalter.umschalten();
+    expect(ok).toBe(false);
+    expect(f.neuGeladen()).toBe(0);
+    expect(f.w.document.documentElement.classList.contains("aiw-image-veil")).toBe(true);
+    const z = f.w.BildschleierSchalter.zustand();
+    expect(z.veiled).toBe(false);          // gespeichert: klar
+    expect(z.lokal).toBe(true);
+    expect(f.knopf.classList.contains("is-veiled")).toBe(true);
+    expect(f.knopf.classList.contains("is-local")).toBe(true);
+    expect(f.knopf.classList.contains("is-clear")).toBe(false);
+    expect(f.knopf.getAttribute("aria-pressed")).toBe("true");
+    expect(f.knopf.title).toContain("Nur lokal verschleiert");
+    expect(f.knopf.title).toContain("database is locked");
+  });
+
+  it("BS32 Klick im Zustand lokal: kein Request, Klasse weg", async () => {
+    const f = _fenster(KLAR, FEHLER_KLAR);
+    await f.w.BildschleierSchalter.umschalten();
+    expect(f.aufrufe.length).toBe(1);
+    await f.w.BildschleierSchalter.umschalten();
+    expect(f.aufrufe.length).toBe(1);      // KEIN zweiter Request
+    expect(f.w.document.documentElement.classList.contains("aiw-image-veil")).toBe(false);
+    expect(f.w.BildschleierSchalter.zustand().lokal).toBe(false);
+    expect(f.knopf.classList.contains("is-clear")).toBe(true);
+    expect(f.knopf.classList.contains("is-local")).toBe(false);
+    expect(f.knopf.classList.contains("is-error")).toBe(false);
+    expect(f.knopf.title).toBe("klar");
+  });
+
+  it("BS33 danach speichert der naechste Klick erneut", async () => {
+    let n = 0;
+    const f = _fenster(KLAR, () => (++n === 1 ? FEHLER_KLAR
+      : { ok: true, status: 200,
+          daten: { veiled: true, locked: false, reason: "chosen", tooltip: "v" } }));
+    await f.w.BildschleierSchalter.umschalten();   // scheitert -> lokal
+    await f.w.BildschleierSchalter.umschalten();   // lokal aufheben
+    const ok = await f.w.BildschleierSchalter.umschalten();
+    expect(ok).toBe(true);
+    expect(f.aufrufe.length).toBe(2);
+    expect(JSON.parse(f.aufrufe[1].opts.body)).toEqual({ veiled: true });
+    expect(f.aufrufe[1].klasseBeimRequest).toBe(true);
+    expect(f.neuGeladen()).toBe(1);
+  });
+
+  it("BS34 Netzwerkfehler beim Einschalten -> lokal", async () => {
+    const f = _fenster(KLAR, new Error("offline"));
+    await f.w.BildschleierSchalter.umschalten();
+    expect(f.w.BildschleierSchalter.zustand().lokal).toBe(true);
+    expect(f.w.document.documentElement.classList.contains("aiw-image-veil")).toBe(true);
+    expect(f.knopf.classList.contains("is-local")).toBe(true);
+  });
+
+  it("BS35 Blaettern im Zustand lokal", async () => {
+    const f = _fenster(KLAR, FEHLER_KLAR);
+    const S = f.w.BildschleierSchalter;
+    await S.umschalten();
+    S.seiteAnwenden({ veiled: false, locked: false, reason: "default",
+                      tooltip: "klar", exempt_css: "a { }" });
+    expect(f.w.document.documentElement.classList.contains("aiw-image-veil")).toBe(true);
+    expect(S.zustand().lokal).toBe(true);
+    S.seiteAnwenden({ veiled: true, locked: false, reason: "chosen",
+                      tooltip: "v", exempt_css: "" });
+    expect(S.zustand().lokal).toBe(false);
+    expect(f.knopf.classList.contains("is-local")).toBe(false);
+    expect(f.w.document.documentElement.classList.contains("aiw-image-veil")).toBe(true);
+  });
+
+  it("BS36 klarer Zustand: Ausnahmen stehen bereit (D1)", () => {
+    const f = _fenster(KLAR, { ok: true, status: 200, daten: {} });
+    const S = f.w.BildschleierSchalter;
+    S.seiteAnwenden({ veiled: false, locked: false, reason: "default",
+                      tooltip: "klar", exempt_css: "html.aiw-image-veil x { }" });
+    const stil = f.w.document.getElementById("aiw-image-veil-page");
+    expect(stil).not.toBeNull();
+    expect(stil.textContent).toBe("html.aiw-image-veil x { }");
+    expect(f.w.document.documentElement.classList.contains("aiw-image-veil")).toBe(false);
+  });
+
+  it("BS37 gescheitertes Ausschalten ist nie lokal", async () => {
+    const f = _fenster(VERSCHLEIERT, { ok: false, status: 500,
+      daten: { veiled: true, locked: false, reason: "chosen", tooltip: "v",
+               error: "store_failed", detail: "database is locked" } });
+    await f.w.BildschleierSchalter.umschalten();
+    expect(f.w.BildschleierSchalter.zustand().lokal).toBe(false);
+    expect(f.w.document.documentElement.classList.contains("aiw-image-veil")).toBe(true);
+    expect(f.knopf.classList.contains("is-local")).toBe(false);
+    // Ein weiterer Klick versucht erneut AUSzuschalten (mit Request).
+    await f.w.BildschleierSchalter.umschalten();
+    expect(f.aufrufe.length).toBe(2);
+    expect(JSON.parse(f.aufrufe[1].opts.body)).toEqual({ veiled: false });
   });
 });

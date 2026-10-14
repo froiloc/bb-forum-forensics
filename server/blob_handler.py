@@ -60,6 +60,9 @@
 # Build 772 (Bildschleier): der Seitenumschlag traegt 'image_veil'
 #   ({veiled, locked, reason, tooltip, exempt_css}); siehe
 #   _bildschleier_umschlag().
+# Build 775 (Bildschleier, D1): 'exempt_css' wird auch im klaren Zustand
+#   geliefert, damit ein Einschalten auf der Seite Symbole und Abzeichen
+#   sofort ausnimmt.
 #
 # Abhängigkeiten: json, urllib.parse — Stdlib + interne Module
 # Version: v0.1.0 · Build: 699 · 2026-08-12
@@ -350,7 +353,14 @@ class BlobHandler:
 
         Rueckgabe: (umschlag, head_data, body_html).
           umschlag  — {veiled, locked, reason, tooltip, exempt_css};
-                      'exempt_css' ist leer, wenn der Schleier nicht wirkt.
+                      'exempt_css' wird ab Build 775 IMMER berechnet, auch
+                      bei klarem Zustand (Befund 13.10.2026, D1): schaltet
+                      die Person auf einer klar geladenen Seite ein, setzt
+                      toolbar/bildschleier.js die Klasse SOFORT — ohne die
+                      Ausnahmen dieser Seite waren dann auch Symbole,
+                      Abzeichen und Smileys verschleiert. Die Regeln sind auf
+                      html.aiw-image-veil beschraenkt und wirken ohne die
+                      Klasse nicht.
           head_data — bei aktivem Schleier mit ersetzten Bildquellen in
                       'inline_styles' (Build 773)
           body_html — bei aktivem Schleier mit ersetzten Bildquellen in
@@ -367,12 +377,19 @@ class BlobHandler:
         zustand = d.aktualisieren()
         umschlag = zustand.to_dict()
         umschlag["exempt_css"] = ""
-        if not zustand.veiled:
-            return umschlag, head_data, body_html
 
         basis = page.url or "/"
         if head_data and head_data.get("base_href"):
             basis = urllib.parse.urljoin(basis, head_data["base_href"])
+
+        if not zustand.veiled:
+            # Build 775 (D1): Ausnahmen auch im klaren Zustand mitliefern.
+            # Die Bildquellen in CSS werden dagegen weiterhin nur bei aktivem
+            # Schleier ersetzt — ein Einschalten laedt die Seite neu.
+            if body_html:
+                umschlag["exempt_css"] = d.seitenausnahmen.stylesheet(
+                    body_html, basis)
+            return umschlag, head_data, body_html
 
         from core.bildschleier_css_umschreiber import BildschleierCssUmschreiber
         umschreiber = BildschleierCssUmschreiber(d.regel)
