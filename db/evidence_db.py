@@ -98,6 +98,11 @@
 #     - # Schema v2.0: alle Spalten direkt im _SCHEMA_DDL.
 # Keine Legacy-Migrationen mehr noetig.
 # Beleg: Architektur-Revision 2026-05-18
+# Build 774 (2026-10-14): Transaktionsschutz. Jede Schreibfunktion laeuft in
+#   'with Schreibvorgang(...)' (db/schreibvorgang.py): Lock fuer die ganze
+#   Dauer, rollback() bei jeder Ausnahme. Befund 13./14.10.2026: eine
+#   gescheiterte Anweisung ohne rollback() liess die Transaktion der
+#   geteilten Verbindung offen und sperrte coordinator.db.
 from __future__ import annotations
 
 import json
@@ -109,6 +114,8 @@ import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
+
+from db.schreibvorgang import Schreibvorgang  # Build 774: Transaktionsschutz
 
 logger = logging.getLogger(__name__)
 
@@ -661,80 +668,100 @@ class EvidenceDb:
 
     def _setup_schema(self) -> None:
         """Legt Tabellen und Indizes an falls nicht vorhanden. Idempotent."""
-        try:
-            self._con.executescript(_SCHEMA_DDL)
-            self._con.commit()
-            logger.debug("evidence_db Schema initialisiert (oder bereits vorhanden)")
-        except sqlite3.OperationalError as exc:
-            raise sqlite3.OperationalError(
-                f"evidence_db Schema konnte nicht initialisiert werden: {exc}"
-            ) from exc
+        with Schreibvorgang(self._con, "_setup_schema"):
+            try:
+                self._con.executescript(_SCHEMA_DDL)
+                self._con.commit()
+                logger.debug("evidence_db Schema initialisiert (oder bereits vorhanden)")
+            except sqlite3.OperationalError as exc:
+                raise sqlite3.OperationalError(
+                    f"evidence_db Schema konnte nicht initialisiert werden: {exc}"
+                ) from exc
 
     def _migrate_schema(self) -> None:
         """Ergaenzt fehlende Spalten in aelteren evidence_db-Instanzen."""
-        for table, column, col_def in _MIGRATION_COLUMNS:
-            try:
-                self._con.execute(
-                    f"ALTER TABLE {table} ADD COLUMN {column} {col_def}"
-                )
-                self._con.commit()
-                logger.info(
-                    "evidence_db Migration: Spalte '%s.%s' ergaenzt", table, column
-                )
-            except sqlite3.OperationalError as exc:
-                if "duplicate column" in str(exc).lower():
-                    logger.debug(
-                        "evidence_db Migration: '%s.%s' bereits vorhanden",
-                        table, column,
+        with Schreibvorgang(self._con, "_migrate_schema"):
+            for table, column, col_def in _MIGRATION_COLUMNS:
+                try:
+                    self._con.execute(
+                        f"ALTER TABLE {table} ADD COLUMN {column} {col_def}"
                     )
-                else:
-                    raise
+                    self._con.commit()
+                    logger.info(
+                        "evidence_db Migration: Spalte '%s.%s' ergaenzt", table, column
+                    )
+                except sqlite3.OperationalError as exc:
+                    # Build 774: DDL setzt im Legacy-Modus kein implizites BEGIN ab,
+                    # rollback() ist hier also im Regelfall ein No-op. Es steht
+                    # trotzdem da, damit die Regel 'wer einen DB-Fehler
+                    # verschluckt, rollt zurueck' (Waechtertest R2) ohne
+                    # Ausnahme gilt.
+                    self._con.rollback()
+                    if "duplicate column" in str(exc).lower():
+                        logger.debug(
+                            "evidence_db Migration: '%s.%s' bereits vorhanden",
+                            table, column,
+                        )
+                    else:
+                        raise
 
-        # Build 178 (Bug 2.75): annotations_local_id_uniq ENTFERNT.
-        # Der eindeutige Index auf local_id verhindert mehrere Versionen
-        # mit gleicher local_id (Append-only-Prinzip). Er wird durch
-        # ann_local_id_idx (nicht-unique) ersetzt.
-        # Beleg: Projektgespräch 2026-05-12 — T63-Regression.
-        try:
-            self._con.execute("DROP INDEX IF EXISTS annotations_local_id_uniq")
-            self._con.execute(
-                "CREATE INDEX IF NOT EXISTS ann_local_id_idx "
-                "ON annotations (local_id) WHERE local_id IS NOT NULL"
-            )
-            self._con.commit()
-            logger.debug("evidence_db Migration: ann_local_id_idx (nicht-unique) sichergestellt")
-        except sqlite3.OperationalError as exc:
-            logger.warning(
-                "evidence_db Migration: ann_local_id_idx fehlgeschlagen: %s", exc
-            )
-
-        # Build 178 (Bug 2.75): Partielle Indizes auf new columns anlegen.
-        # Müssen nach ALTER TABLE (Migration) angelegt werden, da sie
-        # deleted_at / prev_id voraussetzen.
-        # Beleg: T24-Regression Build 178 — partieller Index mit WHERE deleted_at
-        # schlägt in _SCHEMA_DDL fehl wenn Spalte noch nicht existiert.
-        _partial_indices = [
-            (
-                "ann_active_url_idx",
-                "CREATE INDEX IF NOT EXISTS ann_active_url_idx "
-                "ON annotations (page_url) WHERE deleted_at IS NULL",
-            ),
-            (
-                "ann_prev_id_idx",
-                "CREATE INDEX IF NOT EXISTS ann_prev_id_idx "
-                "ON annotations (prev_id) WHERE prev_id IS NOT NULL",
-            ),
-        ]
-        for idx_name, idx_ddl in _partial_indices:
+            # Build 178 (Bug 2.75): annotations_local_id_uniq ENTFERNT.
+            # Der eindeutige Index auf local_id verhindert mehrere Versionen
+            # mit gleicher local_id (Append-only-Prinzip). Er wird durch
+            # ann_local_id_idx (nicht-unique) ersetzt.
+            # Beleg: Projektgespräch 2026-05-12 — T63-Regression.
             try:
-                self._con.execute(idx_ddl)
-                self._con.commit()
-                logger.debug("evidence_db Migration: Index '%s' sichergestellt", idx_name)
-            except sqlite3.OperationalError as exc:
-                logger.warning(
-                    "evidence_db Migration: Index '%s' fehlgeschlagen: %s",
-                    idx_name, exc,
+                self._con.execute("DROP INDEX IF EXISTS annotations_local_id_uniq")
+                self._con.execute(
+                    "CREATE INDEX IF NOT EXISTS ann_local_id_idx "
+                    "ON annotations (local_id) WHERE local_id IS NOT NULL"
                 )
+                self._con.commit()
+                logger.debug("evidence_db Migration: ann_local_id_idx (nicht-unique) sichergestellt")
+            except sqlite3.OperationalError as exc:
+                # Build 774: DDL setzt im Legacy-Modus kein implizites BEGIN ab,
+                # rollback() ist hier also im Regelfall ein No-op. Es steht
+                # trotzdem da, damit die Regel 'wer einen DB-Fehler
+                # verschluckt, rollt zurueck' (Waechtertest R2) ohne
+                # Ausnahme gilt.
+                self._con.rollback()
+                logger.warning(
+                    "evidence_db Migration: ann_local_id_idx fehlgeschlagen: %s", exc
+                )
+
+            # Build 178 (Bug 2.75): Partielle Indizes auf new columns anlegen.
+            # Müssen nach ALTER TABLE (Migration) angelegt werden, da sie
+            # deleted_at / prev_id voraussetzen.
+            # Beleg: T24-Regression Build 178 — partieller Index mit WHERE deleted_at
+            # schlägt in _SCHEMA_DDL fehl wenn Spalte noch nicht existiert.
+            _partial_indices = [
+                (
+                    "ann_active_url_idx",
+                    "CREATE INDEX IF NOT EXISTS ann_active_url_idx "
+                    "ON annotations (page_url) WHERE deleted_at IS NULL",
+                ),
+                (
+                    "ann_prev_id_idx",
+                    "CREATE INDEX IF NOT EXISTS ann_prev_id_idx "
+                    "ON annotations (prev_id) WHERE prev_id IS NOT NULL",
+                ),
+            ]
+            for idx_name, idx_ddl in _partial_indices:
+                try:
+                    self._con.execute(idx_ddl)
+                    self._con.commit()
+                    logger.debug("evidence_db Migration: Index '%s' sichergestellt", idx_name)
+                except sqlite3.OperationalError as exc:
+                    # Build 774: DDL setzt im Legacy-Modus kein implizites BEGIN ab,
+                    # rollback() ist hier also im Regelfall ein No-op. Es steht
+                    # trotzdem da, damit die Regel 'wer einen DB-Fehler
+                    # verschluckt, rollt zurueck' (Waechtertest R2) ohne
+                    # Ausnahme gilt.
+                    self._con.rollback()
+                    logger.warning(
+                        "evidence_db Migration: Index '%s' fehlgeschlagen: %s",
+                        idx_name, exc,
+                    )
 
     # ------------------------------------------------------------------
     # Seitenbesuche
@@ -747,15 +774,16 @@ class EvidenceDb:
         investigator_id: Optional[int] = None,
         ts: Optional[int] = None,
     ) -> int:
-        if ts is None:
-            ts = int(time.time())
-        cursor = self._con.execute(
-            "INSERT INTO page_visits (page_url, scrape_context, ts, investigator_id) "
-            "VALUES (?, ?, ?, ?)",
-            (page_url, scrape_context, ts, investigator_id),
-        )
-        self._con.commit()
-        return cursor.lastrowid
+        with Schreibvorgang(self._con, "log_page_visit"):
+            if ts is None:
+                ts = int(time.time())
+            cursor = self._con.execute(
+                "INSERT INTO page_visits (page_url, scrape_context, ts, investigator_id) "
+                "VALUES (?, ?, ?, ?)",
+                (page_url, scrape_context, ts, investigator_id),
+            )
+            self._con.commit()
+            return cursor.lastrowid
 
     def get_page_visits(self, page_url: str) -> list[PageVisitRecord]:
         rows = self._con.execute(
@@ -790,55 +818,57 @@ class EvidenceDb:
         ts_leave: int,
         investigator_id: Optional[int] = None,
     ) -> Optional[int]:
-        if ts_leave < ts_enter:
-            raise EvidenceDbError(
-                "ts_leave darf nicht vor ts_enter liegen."
+        with Schreibvorgang(self._con, "save_viewport_event"):
+            if ts_leave < ts_enter:
+                raise EvidenceDbError(
+                    "ts_leave darf nicht vor ts_enter liegen."
+                )
+            if visible_ms < 0:
+                raise EvidenceDbError(
+                    "visible_ms darf nicht negativ sein."
+                )
+            cursor = self._con.execute(
+                "INSERT INTO viewport_events "
+                "(page_url, element_id, visible_ms, ts_enter, ts_leave, investigator_id) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (page_url, element_id, visible_ms, ts_enter, ts_leave, investigator_id),
             )
-        if visible_ms < 0:
-            raise EvidenceDbError(
-                "visible_ms darf nicht negativ sein."
-            )
-        cursor = self._con.execute(
-            "INSERT INTO viewport_events "
-            "(page_url, element_id, visible_ms, ts_enter, ts_leave, investigator_id) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (page_url, element_id, visible_ms, ts_enter, ts_leave, investigator_id),
-        )
-        self._con.commit()
-        return cursor.lastrowid
+            self._con.commit()
+            return cursor.lastrowid
 
     def save_viewport_batch(
         self,
         events: list[dict],
         investigator_id: Optional[int] = None,
     ) -> int:
-        saved = 0
-        for ev in events:
-            try:
-                ts_enter = int(ev.get("ts_enter", 0))
-                ts_leave = int(ev.get("ts_leave", 0))
-                visible_ms = int(ev.get("visible_ms", 0))
-                if ts_leave < ts_enter or visible_ms < 0:
+        with Schreibvorgang(self._con, "save_viewport_batch"):
+            saved = 0
+            for ev in events:
+                try:
+                    ts_enter = int(ev.get("ts_enter", 0))
+                    ts_leave = int(ev.get("ts_leave", 0))
+                    visible_ms = int(ev.get("visible_ms", 0))
+                    if ts_leave < ts_enter or visible_ms < 0:
+                        continue
+                    self._con.execute(
+                        "INSERT INTO viewport_events "
+                        "(page_url, element_id, visible_ms, ts_enter, ts_leave, investigator_id) "
+                        "VALUES (?, ?, ?, ?, ?, ?)",
+                        (
+                            str(ev.get("page_url", "")),
+                            ev.get("element_id"),
+                            visible_ms,
+                            ts_enter,
+                            ts_leave,
+                            investigator_id,
+                        ),
+                    )
+                    saved += 1
+                except (TypeError, ValueError):
                     continue
-                self._con.execute(
-                    "INSERT INTO viewport_events "
-                    "(page_url, element_id, visible_ms, ts_enter, ts_leave, investigator_id) "
-                    "VALUES (?, ?, ?, ?, ?, ?)",
-                    (
-                        str(ev.get("page_url", "")),
-                        ev.get("element_id"),
-                        visible_ms,
-                        ts_enter,
-                        ts_leave,
-                        investigator_id,
-                    ),
-                )
-                saved += 1
-            except (TypeError, ValueError):
-                continue
-        if saved:
-            self._con.commit()
-        return saved
+            if saved:
+                self._con.commit()
+            return saved
 
     # ------------------------------------------------------------------
     # Annotationen
@@ -875,78 +905,79 @@ class EvidenceDb:
           → Bedeutung: "geändert am ts", nicht "gelöscht".
           Beleg: Projektgespräch 2026-05-12 — Bug 2.75 (BS3).
         """
-        if category not in VALID_CATEGORIES:
-            raise EvidenceDbError(
-                f"Unbekannte Kategorie '{category}'. "
-                f"Zulaessig: {sorted(VALID_CATEGORIES)}"
-            )
-        if ts is None:
-            ts = int(time.time())
-
-        if local_id is not None:
-            # Aktiven Vorgänger suchen (deleted_at IS NULL)
-            existing = self._con.execute(
-                "SELECT id, version_nr FROM annotations "
-                "WHERE local_id = ? AND deleted_at IS NULL",
-                (local_id,),
-            ).fetchone()
-
-            if existing is not None:
-                # Append-only: Vorgänger als "ersetzt" markieren (deleted_at = now)
-                # und neuen Datensatz anlegen (version_nr+1, prev_id = alter.id).
-                old_id      = int(existing["id"])
-                new_version = int(existing["version_nr"]) + 1
-
-                self._con.execute(
-                    "UPDATE annotations SET deleted_at = ? WHERE id = ?",
-                    (ts, old_id),
+        with Schreibvorgang(self._con, "save_annotation"):
+            if category not in VALID_CATEGORIES:
+                raise EvidenceDbError(
+                    f"Unbekannte Kategorie '{category}'. "
+                    f"Zulaessig: {sorted(VALID_CATEGORIES)}"
                 )
-                cursor = self._con.execute(
-                    "INSERT INTO annotations "
-                    "(page_url, element_id, category, text, ts, investigator_id,"
-                    " selection_json, tags_json, local_id, post_id, created_by,"
-                    " version_nr, prev_id, actual_uid) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    (
-                        page_url, element_id, category, text, ts, investigator_id,
-                        selection_json, tags_json, local_id, post_id, created_by,
-                        new_version, old_id, actual_uid,
-                    ),
-                )
-                logger.debug(
-                    "save_annotation: Neue Version v%d für local_id=%s "
-                    "(Vorgänger id=%d als ersetzt markiert)",
-                    new_version, local_id, old_id,
-                )
+            if ts is None:
+                ts = int(time.time())
+
+            if local_id is not None:
+                # Aktiven Vorgänger suchen (deleted_at IS NULL)
+                existing = self._con.execute(
+                    "SELECT id, version_nr FROM annotations "
+                    "WHERE local_id = ? AND deleted_at IS NULL",
+                    (local_id,),
+                ).fetchone()
+
+                if existing is not None:
+                    # Append-only: Vorgänger als "ersetzt" markieren (deleted_at = now)
+                    # und neuen Datensatz anlegen (version_nr+1, prev_id = alter.id).
+                    old_id      = int(existing["id"])
+                    new_version = int(existing["version_nr"]) + 1
+
+                    self._con.execute(
+                        "UPDATE annotations SET deleted_at = ? WHERE id = ?",
+                        (ts, old_id),
+                    )
+                    cursor = self._con.execute(
+                        "INSERT INTO annotations "
+                        "(page_url, element_id, category, text, ts, investigator_id,"
+                        " selection_json, tags_json, local_id, post_id, created_by,"
+                        " version_nr, prev_id, actual_uid) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        (
+                            page_url, element_id, category, text, ts, investigator_id,
+                            selection_json, tags_json, local_id, post_id, created_by,
+                            new_version, old_id, actual_uid,
+                        ),
+                    )
+                    logger.debug(
+                        "save_annotation: Neue Version v%d für local_id=%s "
+                        "(Vorgänger id=%d als ersetzt markiert)",
+                        new_version, local_id, old_id,
+                    )
+                else:
+                    # Ersteintrag für diese local_id
+                    cursor = self._con.execute(
+                        "INSERT INTO annotations "
+                        "(page_url, element_id, category, text, ts, investigator_id,"
+                        " selection_json, tags_json, local_id, post_id, created_by,"
+                        " version_nr, prev_id, actual_uid) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NULL, ?)",
+                        (
+                            page_url, element_id, category, text, ts, investigator_id,
+                            selection_json, tags_json, local_id, post_id, created_by,
+                            actual_uid,
+                        ),
+                    )
             else:
-                # Ersteintrag für diese local_id
+                # Ohne local_id: anonyme Einmal-Annotation, immer Insert
                 cursor = self._con.execute(
                     "INSERT INTO annotations "
                     "(page_url, element_id, category, text, ts, investigator_id,"
                     " selection_json, tags_json, local_id, post_id, created_by,"
                     " version_nr, prev_id, actual_uid) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NULL, ?)",
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, 1, NULL, ?)",
                     (
                         page_url, element_id, category, text, ts, investigator_id,
-                        selection_json, tags_json, local_id, post_id, created_by,
-                        actual_uid,
+                        selection_json, tags_json, post_id, created_by, actual_uid,
                     ),
                 )
-        else:
-            # Ohne local_id: anonyme Einmal-Annotation, immer Insert
-            cursor = self._con.execute(
-                "INSERT INTO annotations "
-                "(page_url, element_id, category, text, ts, investigator_id,"
-                " selection_json, tags_json, local_id, post_id, created_by,"
-                " version_nr, prev_id, actual_uid) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, 1, NULL, ?)",
-                (
-                    page_url, element_id, category, text, ts, investigator_id,
-                    selection_json, tags_json, post_id, created_by, actual_uid,
-                ),
-            )
-        self._con.commit()
-        return cursor.lastrowid or 0
+            self._con.commit()
+            return cursor.lastrowid or 0
 
     def delete_annotation(self, annotation_id: int) -> bool:
         """
@@ -957,23 +988,24 @@ class EvidenceDb:
         = tatsächlich gelöscht, wiederherstellbar via restore_annotation().
         Beleg: Projektgespräch 2026-05-12 — Bug 2.75 (BS3).
         """
-        ts_now = int(time.time())
-        cursor = self._con.execute(
-            "UPDATE annotations SET deleted_at = ? "
-            "WHERE id = ? AND deleted_at IS NULL",
-            (ts_now, annotation_id),
-        )
-        self._con.commit()
-        deleted = cursor.rowcount > 0
-        if deleted:
-            logger.debug("delete_annotation: Soft-Delete id=%d (deleted_at=%d)",
-                         annotation_id, ts_now)
-        else:
-            logger.warning(
-                "delete_annotation: id=%d nicht gefunden oder bereits gelöscht",
-                annotation_id,
+        with Schreibvorgang(self._con, "delete_annotation"):
+            ts_now = int(time.time())
+            cursor = self._con.execute(
+                "UPDATE annotations SET deleted_at = ? "
+                "WHERE id = ? AND deleted_at IS NULL",
+                (ts_now, annotation_id),
             )
-        return deleted
+            self._con.commit()
+            deleted = cursor.rowcount > 0
+            if deleted:
+                logger.debug("delete_annotation: Soft-Delete id=%d (deleted_at=%d)",
+                             annotation_id, ts_now)
+            else:
+                logger.warning(
+                    "delete_annotation: id=%d nicht gefunden oder bereits gelöscht",
+                    annotation_id,
+                )
+            return deleted
 
     def restore_annotation(self, annotation_id: int) -> bool:
         """
@@ -984,29 +1016,30 @@ class EvidenceDb:
         echte Löschung.
         Beleg: Projektgespräch 2026-05-12 — Bug 2.75 (BS3).
         """
-        # Prüfen ob ein Nachfolger existiert (dann ist dies "nur" eine alte Version)
-        successor = self._con.execute(
-            "SELECT id FROM annotations WHERE prev_id = ? LIMIT 1",
-            (annotation_id,),
-        ).fetchone()
-        if successor is not None:
-            logger.warning(
-                "restore_annotation: id=%d ist eine Vorgängerversion "
-                "(Nachfolger id=%d) — keine Wiederherstellung möglich",
-                annotation_id, int(successor["id"]),
-            )
-            return False
+        with Schreibvorgang(self._con, "restore_annotation"):
+            # Prüfen ob ein Nachfolger existiert (dann ist dies "nur" eine alte Version)
+            successor = self._con.execute(
+                "SELECT id FROM annotations WHERE prev_id = ? LIMIT 1",
+                (annotation_id,),
+            ).fetchone()
+            if successor is not None:
+                logger.warning(
+                    "restore_annotation: id=%d ist eine Vorgängerversion "
+                    "(Nachfolger id=%d) — keine Wiederherstellung möglich",
+                    annotation_id, int(successor["id"]),
+                )
+                return False
 
-        cursor = self._con.execute(
-            "UPDATE annotations SET deleted_at = NULL "
-            "WHERE id = ? AND deleted_at IS NOT NULL",
-            (annotation_id,),
-        )
-        self._con.commit()
-        restored = cursor.rowcount > 0
-        if restored:
-            logger.info("restore_annotation: Wiederhergestellt id=%d", annotation_id)
-        return restored
+            cursor = self._con.execute(
+                "UPDATE annotations SET deleted_at = NULL "
+                "WHERE id = ? AND deleted_at IS NOT NULL",
+                (annotation_id,),
+            )
+            self._con.commit()
+            restored = cursor.rowcount > 0
+            if restored:
+                logger.info("restore_annotation: Wiederhergestellt id=%d", annotation_id)
+            return restored
 
     def get_annotation_history(self, annotation_id: int) -> list[AnnotationRecord]:
         """
@@ -1206,33 +1239,40 @@ class EvidenceDb:
         UNIQUE auf term (COLLATE NOCASE via SQL-Vergleich).
         Beleg: Bug 2.79 — Projektgespräch 2026-05-12.
         """
-        term = term.strip()
-        if not term:
-            raise EvidenceDbError("Alias-Begriff darf nicht leer sein")
-        ts = int(time.time())
-        try:
-            cursor = self._con.execute(
-                "INSERT INTO investigator_aliases (term, created_by, created_at) "
-                "VALUES (?, ?, ?)",
-                (term, created_by, ts),
-            )
-            self._con.commit()
-            return cursor.lastrowid or 0
-        except sqlite3.IntegrityError:
-            # Term existiert bereits (UNIQUE-Constraint)
-            row = self._con.execute(
-                "SELECT id FROM investigator_aliases WHERE term = ? COLLATE NOCASE",
-                (term,),
-            ).fetchone()
-            return int(row["id"]) if row else 0
+        with Schreibvorgang(self._con, "save_alias"):
+            term = term.strip()
+            if not term:
+                raise EvidenceDbError("Alias-Begriff darf nicht leer sein")
+            ts = int(time.time())
+            try:
+                cursor = self._con.execute(
+                    "INSERT INTO investigator_aliases (term, created_by, created_at) "
+                    "VALUES (?, ?, ?)",
+                    (term, created_by, ts),
+                )
+                self._con.commit()
+                return cursor.lastrowid or 0
+            except sqlite3.IntegrityError:
+                # Build 774: Das implizite BEGIN vor dem INSERT ist gelaufen,
+                # die Transaktion ist trotz gescheiterter Anweisung OFFEN. Der
+                # Fehler wird hier verschluckt, also rollt die Funktion selbst
+                # zurueck — der Schreibvorgang-Rahmen sieht ihn nicht.
+                self._con.rollback()
+                # Term existiert bereits (UNIQUE-Constraint)
+                row = self._con.execute(
+                    "SELECT id FROM investigator_aliases WHERE term = ? COLLATE NOCASE",
+                    (term,),
+                ).fetchone()
+                return int(row["id"]) if row else 0
 
     def delete_alias(self, alias_id: int) -> bool:
         """Löscht einen Alias-Eintrag anhand seiner ID. Physisches Delete (kein Soft-Delete)."""
-        cursor = self._con.execute(
-            "DELETE FROM investigator_aliases WHERE id = ?", (alias_id,)
-        )
-        self._con.commit()
-        return cursor.rowcount > 0
+        with Schreibvorgang(self._con, "delete_alias"):
+            cursor = self._con.execute(
+                "DELETE FROM investigator_aliases WHERE id = ?", (alias_id,)
+            )
+            self._con.commit()
+            return cursor.rowcount > 0
 
     def get_aliases(self) -> list:
         """Gibt alle Aliasse alphabetisch sortiert zurück."""
@@ -1359,42 +1399,43 @@ class EvidenceDb:
             EvidenceDbError: Bei ungueltigem Typ, leerem Titel oder
                              doppeltem Abschlussbericht.
         """
-        if report_type not in VALID_REPORT_TYPES:
-            raise EvidenceDbError(
-                f"Ungueltiger Berichtstyp: '{report_type}'. "
-                f"Zulaessig: {sorted(VALID_REPORT_TYPES)}"
+        with Schreibvorgang(self._con, "create_report"):
+            if report_type not in VALID_REPORT_TYPES:
+                raise EvidenceDbError(
+                    f"Ungueltiger Berichtstyp: '{report_type}'. "
+                    f"Zulaessig: {sorted(VALID_REPORT_TYPES)}"
+                )
+            if not title.strip():
+                raise EvidenceDbError("Berichtstitel darf nicht leer sein.")
+            if not created_by.strip():
+                raise EvidenceDbError("created_by darf nicht leer sein.")
+
+            row = self._con.execute(
+                "SELECT COALESCE(MAX(sequence_nr), 0) FROM reports WHERE report_type = ?",
+                (report_type,),
+            ).fetchone()
+            sequence_nr = int(row[0]) + 1
+
+            now = int(time.time())
+            try:
+                cursor = self._con.execute(
+                    "INSERT INTO reports "
+                    "(report_type, sequence_nr, title, created_by, created_at, status) "
+                    "VALUES (?, ?, ?, ?, ?, 'draft')",
+                    (report_type, sequence_nr, title.strip(), created_by.strip(), now),
+                )
+                self._con.commit()
+            except sqlite3.IntegrityError as exc:
+                raise EvidenceDbError(
+                    "Es existiert bereits ein Abschlussbericht. "
+                    "Pro Ermittlungsakte ist nur ein Abschlussbericht zulaessig."
+                ) from exc
+
+            logger.info(
+                "Bericht angelegt: id=%d type='%s' seq=%d von '%s'",
+                cursor.lastrowid, report_type, sequence_nr, created_by,
             )
-        if not title.strip():
-            raise EvidenceDbError("Berichtstitel darf nicht leer sein.")
-        if not created_by.strip():
-            raise EvidenceDbError("created_by darf nicht leer sein.")
-
-        row = self._con.execute(
-            "SELECT COALESCE(MAX(sequence_nr), 0) FROM reports WHERE report_type = ?",
-            (report_type,),
-        ).fetchone()
-        sequence_nr = int(row[0]) + 1
-
-        now = int(time.time())
-        try:
-            cursor = self._con.execute(
-                "INSERT INTO reports "
-                "(report_type, sequence_nr, title, created_by, created_at, status) "
-                "VALUES (?, ?, ?, ?, ?, 'draft')",
-                (report_type, sequence_nr, title.strip(), created_by.strip(), now),
-            )
-            self._con.commit()
-        except sqlite3.IntegrityError as exc:
-            raise EvidenceDbError(
-                "Es existiert bereits ein Abschlussbericht. "
-                "Pro Ermittlungsakte ist nur ein Abschlussbericht zulaessig."
-            ) from exc
-
-        logger.info(
-            "Bericht angelegt: id=%d type='%s' seq=%d von '%s'",
-            cursor.lastrowid, report_type, sequence_nr, created_by,
-        )
-        return cursor.lastrowid
+            return cursor.lastrowid
 
     def get_reports(self) -> list[ReportRecord]:
         rows = self._con.execute(
@@ -1450,35 +1491,36 @@ class EvidenceDb:
             EvidenceDbError: Bei leerem Titel, unbekanntem Bericht oder
                              wenn der Bericht nicht (mehr) im Status 'draft' ist.
         """
-        if not title.strip():
-            raise EvidenceDbError("Vermerksname darf nicht leer sein.")
+        with Schreibvorgang(self._con, "update_report_title"):
+            if not title.strip():
+                raise EvidenceDbError("Vermerksname darf nicht leer sein.")
 
-        row = self._con.execute(
-            "SELECT status FROM reports WHERE id = ?",
-            (report_id,),
-        ).fetchone()
-        if row is None:
-            raise EvidenceDbError(f"Bericht id={report_id} existiert nicht.")
+            row = self._con.execute(
+                "SELECT status FROM reports WHERE id = ?",
+                (report_id,),
+            ).fetchone()
+            if row is None:
+                raise EvidenceDbError(f"Bericht id={report_id} existiert nicht.")
 
-        status = str(row["status"])
-        if status != "draft":
-            raise EvidenceDbError(
-                "Der Vermerk kann nur im Entwurf ('draft') umbenannt werden. "
-                f"Aktueller Status: '{status}'. Ein bereits vorgelegter oder "
-                "versiegelter Vermerk darf nicht umbenannt werden "
-                "(Siegel-Integritaet)."
+            status = str(row["status"])
+            if status != "draft":
+                raise EvidenceDbError(
+                    "Der Vermerk kann nur im Entwurf ('draft') umbenannt werden. "
+                    f"Aktueller Status: '{status}'. Ein bereits vorgelegter oder "
+                    "versiegelter Vermerk darf nicht umbenannt werden "
+                    "(Siegel-Integritaet)."
+                )
+
+            self._con.execute(
+                "UPDATE reports SET title = ? WHERE id = ?",
+                (title.strip(), report_id),
             )
-
-        self._con.execute(
-            "UPDATE reports SET title = ? WHERE id = ?",
-            (title.strip(), report_id),
-        )
-        self._con.commit()
-        logger.info(
-            "Vermerk umbenannt: id=%d neuer_titel='%s' durch '%s'",
-            report_id, title.strip(), updated_by,
-        )
-        return True
+            self._con.commit()
+            logger.info(
+                "Vermerk umbenannt: id=%d neuer_titel='%s' durch '%s'",
+                report_id, title.strip(), updated_by,
+            )
+            return True
 
     def update_report_status(
         self,
@@ -1509,46 +1551,47 @@ class EvidenceDb:
         True, um submitted -> draft zu erlauben. Der Ermittler-Webserver ruft
         die Methode ohne dieses Flag.
         """
-        if status not in VALID_REPORT_STATUSES:
-            raise EvidenceDbError(
-                f"Ungueltiger Berichtsstatus: '{status}'. "
-                f"Zulaessig: {sorted(VALID_REPORT_STATUSES)}"
+        with Schreibvorgang(self._con, "update_report_status"):
+            if status not in VALID_REPORT_STATUSES:
+                raise EvidenceDbError(
+                    f"Ungueltiger Berichtsstatus: '{status}'. "
+                    f"Zulaessig: {sorted(VALID_REPORT_STATUSES)}"
+                )
+
+            current = self._report_status(report_id)
+            if current is None:
+                return False
+            if current == status:
+                return True  # No-op, kein Fehler
+
+            allowed = {
+                ("draft", "submitted"),
+                ("submitted", "approved"),
+                ("approved", "final"),
+            }
+            if allow_reset:
+                allowed.add(("submitted", "draft"))
+
+            if (current, status) not in allowed:
+                raise ReportSealedError(
+                    f"Unzulaessiger Statuswechsel '{current}' -> '{status}'. "
+                    f"Freigegebene ('approved') und versandte ('final') Berichte "
+                    f"koennen nicht zurueckgestuft werden; die Rueckgabe eines "
+                    f"eingereichten Berichts zur Nachbesserung ist dem Lektor und "
+                    f"der Chef-Ermittlerin vorbehalten."
+                )
+
+            cursor = self._con.execute(
+                "UPDATE reports SET status = ? WHERE id = ?",
+                (status, report_id),
             )
-
-        current = self._report_status(report_id)
-        if current is None:
-            return False
-        if current == status:
-            return True  # No-op, kein Fehler
-
-        allowed = {
-            ("draft", "submitted"),
-            ("submitted", "approved"),
-            ("approved", "final"),
-        }
-        if allow_reset:
-            allowed.add(("submitted", "draft"))
-
-        if (current, status) not in allowed:
-            raise ReportSealedError(
-                f"Unzulaessiger Statuswechsel '{current}' -> '{status}'. "
-                f"Freigegebene ('approved') und versandte ('final') Berichte "
-                f"koennen nicht zurueckgestuft werden; die Rueckgabe eines "
-                f"eingereichten Berichts zur Nachbesserung ist dem Lektor und "
-                f"der Chef-Ermittlerin vorbehalten."
-            )
-
-        cursor = self._con.execute(
-            "UPDATE reports SET status = ? WHERE id = ?",
-            (status, report_id),
-        )
-        self._con.commit()
-        if cursor.rowcount > 0:
-            logger.info(
-                "Berichtsstatus: id=%d status='%s' von '%s'",
-                report_id, status, updated_by,
-            )
-        return cursor.rowcount > 0
+            self._con.commit()
+            if cursor.rowcount > 0:
+                logger.info(
+                    "Berichtsstatus: id=%d status='%s' von '%s'",
+                    report_id, status, updated_by,
+                )
+            return cursor.rowcount > 0
 
     def get_report_status(self) -> dict:
         """
@@ -1622,128 +1665,129 @@ class EvidenceDb:
         Raises:
             EvidenceDbError: Bei leerem author, leerem block_type.
         """
-        # Build 379: Schreibsperre (BERICHTS-STATUSMODELL). Vorher UNGESCHUETZT
-        # -> einem freigegebenen Bericht konnten neue Bloecke hinzugefuegt
-        # werden, die im Siegel-Hash stecken.
-        self._assert_report_editable(report_id)
+        with Schreibvorgang(self._con, "save_block"):
+            # Build 379: Schreibsperre (BERICHTS-STATUSMODELL). Vorher UNGESCHUETZT
+            # -> einem freigegebenen Bericht konnten neue Bloecke hinzugefuegt
+            # werden, die im Siegel-Hash stecken.
+            self._assert_report_editable(report_id)
 
-        if not author.strip():
-            raise EvidenceDbError("author darf nicht leer sein.")
-        if not block_type.strip():
-            raise EvidenceDbError("block_type darf nicht leer sein.")
+            if not author.strip():
+                raise EvidenceDbError("author darf nicht leer sein.")
+            if not block_type.strip():
+                raise EvidenceDbError("block_type darf nicht leer sein.")
 
-        now = int(time.time())
-        # Bestehenden Block laden um created_at zu erhalten (autor ist unveraenderlich).
-        # Build 477: report_id wird mitgelesen, weil report_id — wie author und
-        # created_at — nach dem INSERT UNVERAENDERLICH ist (siehe Guard unten).
-        existing = self._con.execute(
-            "SELECT created_at, author, report_id FROM report_blocks WHERE block_id = ?",
-            (block_id,),
-        ).fetchone()
-        if existing is not None:
-            # -----------------------------------------------------------------
-            # Bug 2.x Fix Build 477 (BERICHTS-VERTAUSCHUNG): report_id ist bei
-            # einem UPDATE UNVERAENDERLICH.
-            #
-            # GESICHERTE ERKENNTNIS / URSACHE:
-            #   Der alte UPDATE setzte "report_id=?" mit. Der Auto-Save
-            #   (report_editor.js:_performAutoSave -> _docSend('save_block'))
-            #   sendet KEINE report_id im Payload; DocumentLayer._sendRequest
-            #   injiziert daher report_id aus dem AKTUELLEN ReportLayer-Kontext.
-            #   Beim Anlegen eines neuen Vermerks/Berichts hatte der ReportLayer
-            #   bereits auf den NEUEN Vermerk umgeschaltet, waehrend der Editor
-            #   noch die Bloecke des ALTEN Vermerks hielt. Der (redundante)
-            #   Switch-Save in _loadReportImpl schrieb diese Bloecke dann mit der
-            #   NEUEN report_id -> das UPDATE VERSCHOB die Bloecke in den neuen
-            #   Vermerk; der alte blieb leer. Persistiert, weil in
-            #   evidence_<uid>.db geschrieben.
-            #   Belege: db/evidence_db.py (alter SET report_id=?),
-            #           userinfo/document_layer.js:_sendRequest
-            #             (report_id: payload.report_id ?? ctx.reportId),
-            #           userinfo/report_editor.js:_performAutoSave
-            #             (save_block-Payload ohne report_id),
-            #           userinfo/report_editor.js:_loadReportImpl
-            #             (Switch-Save await _performAutoSave(_prevReportId)).
-            #
-            # INVARIANTE (forensisch zwingend):
-            #   Ein Beleg-Block gehoert dauerhaft zu genau EINEM Vermerk. Ein
-            #   Save darf einen Block NIE zwischen Vermerken verschieben. Diese
-            #   Regel schuetzt die Beweiskette unabhaengig von Frontend-Fehlern.
-            #
-            # GRUNDREGEL 1 (kein Beleg still uebersprungen): Ein abweichender
-            #   report_id wird NICHT stillschweigend ignoriert, sondern als
-            #   WARN protokolliert (Beleg-Spur), damit ein Verschiebeversuch
-            #   nachvollziehbar bleibt. Der Block bleibt beim urspruenglichen
-            #   Vermerk.
-            # -----------------------------------------------------------------
-            existing_report_id = existing["report_id"]
-            if existing_report_id != report_id:
-                logger.warning(
-                    "save_block: report_id-Wechsel fuer bestehenden Block %s "
-                    "ABGEWIESEN (DB=%s, angefordert=%s). report_id ist nach "
-                    "INSERT unveraenderlich; Block bleibt beim urspruenglichen "
-                    "Vermerk. Beleg: Bugfix Build 477 (Berichts-Vertauschung).",
-                    block_id, existing_report_id, report_id,
-                )
-            # Ab hier ist die effektive report_id immer die bereits gespeicherte.
-            report_id = existing_report_id
+            now = int(time.time())
+            # Bestehenden Block laden um created_at zu erhalten (autor ist unveraenderlich).
+            # Build 477: report_id wird mitgelesen, weil report_id — wie author und
+            # created_at — nach dem INSERT UNVERAENDERLICH ist (siehe Guard unten).
+            existing = self._con.execute(
+                "SELECT created_at, author, report_id FROM report_blocks WHERE block_id = ?",
+                (block_id,),
+            ).fetchone()
+            if existing is not None:
+                # -----------------------------------------------------------------
+                # Bug 2.x Fix Build 477 (BERICHTS-VERTAUSCHUNG): report_id ist bei
+                # einem UPDATE UNVERAENDERLICH.
+                #
+                # GESICHERTE ERKENNTNIS / URSACHE:
+                #   Der alte UPDATE setzte "report_id=?" mit. Der Auto-Save
+                #   (report_editor.js:_performAutoSave -> _docSend('save_block'))
+                #   sendet KEINE report_id im Payload; DocumentLayer._sendRequest
+                #   injiziert daher report_id aus dem AKTUELLEN ReportLayer-Kontext.
+                #   Beim Anlegen eines neuen Vermerks/Berichts hatte der ReportLayer
+                #   bereits auf den NEUEN Vermerk umgeschaltet, waehrend der Editor
+                #   noch die Bloecke des ALTEN Vermerks hielt. Der (redundante)
+                #   Switch-Save in _loadReportImpl schrieb diese Bloecke dann mit der
+                #   NEUEN report_id -> das UPDATE VERSCHOB die Bloecke in den neuen
+                #   Vermerk; der alte blieb leer. Persistiert, weil in
+                #   evidence_<uid>.db geschrieben.
+                #   Belege: db/evidence_db.py (alter SET report_id=?),
+                #           userinfo/document_layer.js:_sendRequest
+                #             (report_id: payload.report_id ?? ctx.reportId),
+                #           userinfo/report_editor.js:_performAutoSave
+                #             (save_block-Payload ohne report_id),
+                #           userinfo/report_editor.js:_loadReportImpl
+                #             (Switch-Save await _performAutoSave(_prevReportId)).
+                #
+                # INVARIANTE (forensisch zwingend):
+                #   Ein Beleg-Block gehoert dauerhaft zu genau EINEM Vermerk. Ein
+                #   Save darf einen Block NIE zwischen Vermerken verschieben. Diese
+                #   Regel schuetzt die Beweiskette unabhaengig von Frontend-Fehlern.
+                #
+                # GRUNDREGEL 1 (kein Beleg still uebersprungen): Ein abweichender
+                #   report_id wird NICHT stillschweigend ignoriert, sondern als
+                #   WARN protokolliert (Beleg-Spur), damit ein Verschiebeversuch
+                #   nachvollziehbar bleibt. Der Block bleibt beim urspruenglichen
+                #   Vermerk.
+                # -----------------------------------------------------------------
+                existing_report_id = existing["report_id"]
+                if existing_report_id != report_id:
+                    logger.warning(
+                        "save_block: report_id-Wechsel fuer bestehenden Block %s "
+                        "ABGEWIESEN (DB=%s, angefordert=%s). report_id ist nach "
+                        "INSERT unveraenderlich; Block bleibt beim urspruenglichen "
+                        "Vermerk. Beleg: Bugfix Build 477 (Berichts-Vertauschung).",
+                        block_id, existing_report_id, report_id,
+                    )
+                # Ab hier ist die effektive report_id immer die bereits gespeicherte.
+                report_id = existing_report_id
 
-            # UPDATE: created_at, author UND report_id bleiben unveraendert.
-            # Bug 2.51 Fix Build 144: placeholder_values_json nur ueberschreiben
-            # wenn im Request-Payload explizit enthalten. Der normale Auto-Save
-            # (_performAutoSave) sendet das Feld nicht — NULL wuerde den zuvor
-            # gespeicherten Wert loeschen. Loesung: DB-Wert beibehalten
-            # wenn None uebergeben wird.
-            # Beleg: Bugfix Build 144, Projektgespraech 2026-05-10
-            if placeholder_values_json is not None:
-                self._con.execute(
-                    "UPDATE report_blocks "
-                    "SET updated_at=?, block_type=?, block_data=?, "
-                    "    placeholder_values_json=?, module_id=? "
-                    "WHERE block_id=?",
-                    (
-                        now, block_type.strip(), block_data,
-                        placeholder_values_json, module_id, block_id,
-                    ),
-                )
+                # UPDATE: created_at, author UND report_id bleiben unveraendert.
+                # Bug 2.51 Fix Build 144: placeholder_values_json nur ueberschreiben
+                # wenn im Request-Payload explizit enthalten. Der normale Auto-Save
+                # (_performAutoSave) sendet das Feld nicht — NULL wuerde den zuvor
+                # gespeicherten Wert loeschen. Loesung: DB-Wert beibehalten
+                # wenn None uebergeben wird.
+                # Beleg: Bugfix Build 144, Projektgespraech 2026-05-10
+                if placeholder_values_json is not None:
+                    self._con.execute(
+                        "UPDATE report_blocks "
+                        "SET updated_at=?, block_type=?, block_data=?, "
+                        "    placeholder_values_json=?, module_id=? "
+                        "WHERE block_id=?",
+                        (
+                            now, block_type.strip(), block_data,
+                            placeholder_values_json, module_id, block_id,
+                        ),
+                    )
+                else:
+                    # placeholder_values_json nicht im Request — vorhandenen DB-Wert beibehalten
+                    self._con.execute(
+                        "UPDATE report_blocks "
+                        "SET updated_at=?, block_type=?, block_data=?, "
+                        "    module_id=? "
+                        "WHERE block_id=?",
+                        (
+                            now, block_type.strip(), block_data,
+                            module_id, block_id,
+                        ),
+                    )
             else:
-                # placeholder_values_json nicht im Request — vorhandenen DB-Wert beibehalten
+                # INSERT: neuer Block.
                 self._con.execute(
-                    "UPDATE report_blocks "
-                    "SET updated_at=?, block_type=?, block_data=?, "
-                    "    module_id=? "
-                    "WHERE block_id=?",
+                    "INSERT INTO report_blocks "
+                    "(block_id, report_id, author, created_at, updated_at, "
+                    " block_type, block_data, placeholder_values_json, module_id) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     (
-                        now, block_type.strip(), block_data,
-                        module_id, block_id,
+                        block_id, report_id, author.strip(), now, now,
+                        block_type.strip(), block_data,
+                        placeholder_values_json, module_id,
                     ),
                 )
-        else:
-            # INSERT: neuer Block.
-            self._con.execute(
-                "INSERT INTO report_blocks "
-                "(block_id, report_id, author, created_at, updated_at, "
-                " block_type, block_data, placeholder_values_json, module_id) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    block_id, report_id, author.strip(), now, now,
-                    block_type.strip(), block_data,
-                    placeholder_values_json, module_id,
-                ),
+            if sort_index is not None:
+                self._con.execute(
+                    "INSERT OR REPLACE INTO report_block_order "
+                    "(block_id, sort_index, last_modified_by, last_modified_at) "
+                    "VALUES (?, ?, ?, ?)",
+                    (block_id, sort_index, author.strip(), now),
+                )
+            self._con.commit()
+            logger.info(
+                "Block gespeichert: block_id=%s type=%s report_id=%d von '%s'",
+                block_id, block_type, report_id, author,
             )
-        if sort_index is not None:
-            self._con.execute(
-                "INSERT OR REPLACE INTO report_block_order "
-                "(block_id, sort_index, last_modified_by, last_modified_at) "
-                "VALUES (?, ?, ?, ?)",
-                (block_id, sort_index, author.strip(), now),
-            )
-        self._con.commit()
-        logger.info(
-            "Block gespeichert: block_id=%s type=%s report_id=%d von '%s'",
-            block_id, block_type, report_id, author,
-        )
-        return block_id
+            return block_id
 
     def save_blocks_bulk(
         self,
@@ -1786,88 +1830,89 @@ class EvidenceDb:
             EvidenceDbError: Bei leerem author, leerer Blockliste, fehlendem
                              block_type/block_id — sowie bei gesperrtem Bericht.
         """
-        # Schreibsperre des Berichts-Statusmodells (Build 379) — VOR allem
-        # anderen, damit ein freigegebener Bericht nicht erweitert wird.
-        self._assert_report_editable(report_id)
+        with Schreibvorgang(self._con, "save_blocks_bulk"):
+            # Schreibsperre des Berichts-Statusmodells (Build 379) — VOR allem
+            # anderen, damit ein freigegebener Bericht nicht erweitert wird.
+            self._assert_report_editable(report_id)
 
-        if not author.strip():
-            raise EvidenceDbError("author darf nicht leer sein.")
-        if not blocks:
-            raise EvidenceDbError("Die Vorlage enthaelt keine Bloecke.")
+            if not author.strip():
+                raise EvidenceDbError("author darf nicht leer sein.")
+            if not blocks:
+                raise EvidenceDbError("Die Vorlage enthaelt keine Bloecke.")
 
-        # Vollstaendige Vorpruefung ALLER Bloecke, BEVOR der erste geschrieben
-        # wird. Ein Fehler im 5. Block darf nicht 4 Bloecke hinterlassen.
-        prepared: list[tuple[str, str, str, Optional[str]]] = []
-        for idx, blk in enumerate(blocks):
-            block_id = str(blk.get("block_id") or "").strip()
-            if not block_id:
-                raise EvidenceDbError(
-                    "Vorlagen-Block %d hat keine block_id." % idx
+            # Vollstaendige Vorpruefung ALLER Bloecke, BEVOR der erste geschrieben
+            # wird. Ein Fehler im 5. Block darf nicht 4 Bloecke hinterlassen.
+            prepared: list[tuple[str, str, str, Optional[str]]] = []
+            for idx, blk in enumerate(blocks):
+                block_id = str(blk.get("block_id") or "").strip()
+                if not block_id:
+                    raise EvidenceDbError(
+                        "Vorlagen-Block %d hat keine block_id." % idx
+                    )
+                block_type = str(blk.get("block_type") or "").strip()
+                if not block_type:
+                    raise EvidenceDbError(
+                        "Vorlagen-Block %d (%s) hat keinen block_type." % (idx, block_id)
+                    )
+                block_data = blk.get("block_data")
+                if not isinstance(block_data, str):
+                    raise EvidenceDbError(
+                        "Vorlagen-Block %d (%s): block_data muss ein JSON-String sein."
+                        % (idx, block_id)
+                    )
+                pvj = blk.get("placeholder_values_json")
+                prepared.append(
+                    (block_id, block_type, block_data,
+                     str(pvj) if pvj is not None else None)
                 )
-            block_type = str(blk.get("block_type") or "").strip()
-            if not block_type:
-                raise EvidenceDbError(
-                    "Vorlagen-Block %d (%s) hat keinen block_type." % (idx, block_id)
+
+            now = int(time.time())
+
+            # Hoechsten vorhandenen sort_index dieses Berichts ermitteln.
+            row = self._con.execute(
+                "SELECT MAX(o.sort_index) FROM report_block_order o "
+                "JOIN report_blocks b ON b.block_id = o.block_id "
+                "WHERE b.report_id = ?",
+                (report_id,),
+            ).fetchone()
+            base = (row[0] if row and row[0] is not None else -1) + 1
+
+            created: list[str] = []
+            try:
+                # sqlite3 im Standardmodus oeffnet die Transaktion implizit beim
+                # ersten INSERT; ein einziges commit() am Ende macht alles oder
+                # nichts sichtbar. Bei einer Ausnahme wird zurueckgerollt.
+                for offset, (block_id, block_type, block_data, pvj) in enumerate(prepared):
+                    self._con.execute(
+                        "INSERT INTO report_blocks "
+                        "(block_id, report_id, author, created_at, updated_at, "
+                        " block_type, block_data, placeholder_values_json, module_id) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)",
+                        (block_id, report_id, author.strip(), now, now,
+                         block_type, block_data, pvj),
+                    )
+                    self._con.execute(
+                        "INSERT OR REPLACE INTO report_block_order "
+                        "(block_id, sort_index, last_modified_by, last_modified_at) "
+                        "VALUES (?, ?, ?, ?)",
+                        (block_id, base + offset, author.strip(), now),
+                    )
+                    created.append(block_id)
+                self._con.commit()
+            except Exception:
+                self._con.rollback()
+                logger.error(
+                    "save_blocks_bulk: ZURUECKGEROLLT — report_id=%d, %d Bloecke "
+                    "verworfen (kein Teil-Einfuegen).", report_id, len(prepared),
                 )
-            block_data = blk.get("block_data")
-            if not isinstance(block_data, str):
-                raise EvidenceDbError(
-                    "Vorlagen-Block %d (%s): block_data muss ein JSON-String sein."
-                    % (idx, block_id)
-                )
-            pvj = blk.get("placeholder_values_json")
-            prepared.append(
-                (block_id, block_type, block_data,
-                 str(pvj) if pvj is not None else None)
+                raise
+
+            logger.info(
+                "save_blocks_bulk: %d Bloecke angelegt fuer report_id=%d von '%s' "
+                "(sort_index %d..%d)",
+                len(created), report_id, author, base, base + len(created) - 1,
             )
-
-        now = int(time.time())
-
-        # Hoechsten vorhandenen sort_index dieses Berichts ermitteln.
-        row = self._con.execute(
-            "SELECT MAX(o.sort_index) FROM report_block_order o "
-            "JOIN report_blocks b ON b.block_id = o.block_id "
-            "WHERE b.report_id = ?",
-            (report_id,),
-        ).fetchone()
-        base = (row[0] if row and row[0] is not None else -1) + 1
-
-        created: list[str] = []
-        try:
-            # sqlite3 im Standardmodus oeffnet die Transaktion implizit beim
-            # ersten INSERT; ein einziges commit() am Ende macht alles oder
-            # nichts sichtbar. Bei einer Ausnahme wird zurueckgerollt.
-            for offset, (block_id, block_type, block_data, pvj) in enumerate(prepared):
-                self._con.execute(
-                    "INSERT INTO report_blocks "
-                    "(block_id, report_id, author, created_at, updated_at, "
-                    " block_type, block_data, placeholder_values_json, module_id) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)",
-                    (block_id, report_id, author.strip(), now, now,
-                     block_type, block_data, pvj),
-                )
-                self._con.execute(
-                    "INSERT OR REPLACE INTO report_block_order "
-                    "(block_id, sort_index, last_modified_by, last_modified_at) "
-                    "VALUES (?, ?, ?, ?)",
-                    (block_id, base + offset, author.strip(), now),
-                )
-                created.append(block_id)
-            self._con.commit()
-        except Exception:
-            self._con.rollback()
-            logger.error(
-                "save_blocks_bulk: ZURUECKGEROLLT — report_id=%d, %d Bloecke "
-                "verworfen (kein Teil-Einfuegen).", report_id, len(prepared),
-            )
-            raise
-
-        logger.info(
-            "save_blocks_bulk: %d Bloecke angelegt fuer report_id=%d von '%s' "
-            "(sort_index %d..%d)",
-            len(created), report_id, author, base, base + len(created) - 1,
-        )
-        return created
+            return created
 
     def get_block(self, block_id: str) -> Optional[ReportBlockRecord]:
         """Einzelnen Block per block_id laden."""
@@ -1914,37 +1959,38 @@ class EvidenceDb:
         Raises:
             EvidenceDbError: Wenn nicht Eigentuemer oder Bericht freigegeben.
         """
-        row = self._con.execute(
-            "SELECT rb.author, r.status AS report_status "
-            "FROM report_blocks rb "
-            "JOIN reports r ON r.id = rb.report_id "
-            "WHERE rb.block_id = ?",
-            (block_id,),
-        ).fetchone()
-        if not row:
-            return False
-        # Build 379: sperrt bei submitted/approved/final (vorher NUR 'approved'
-        # -> 'final' war ungeschuetzt). Siehe BERICHTS-STATUSMODELL.
-        if str(row["report_status"]) in LOCKED_REPORT_STATUSES:
-            raise ReportSealedError(
-                f"Bericht im Status '{row['report_status']}' kann nicht mehr "
-                f"geaendert werden. Nur der Lektor oder die Chef-Ermittlerin "
-                f"koennen ihn zur Nachbesserung zuruecksetzen."
+        with Schreibvorgang(self._con, "update_block"):
+            row = self._con.execute(
+                "SELECT rb.author, r.status AS report_status "
+                "FROM report_blocks rb "
+                "JOIN reports r ON r.id = rb.report_id "
+                "WHERE rb.block_id = ?",
+                (block_id,),
+            ).fetchone()
+            if not row:
+                return False
+            # Build 379: sperrt bei submitted/approved/final (vorher NUR 'approved'
+            # -> 'final' war ungeschuetzt). Siehe BERICHTS-STATUSMODELL.
+            if str(row["report_status"]) in LOCKED_REPORT_STATUSES:
+                raise ReportSealedError(
+                    f"Bericht im Status '{row['report_status']}' kann nicht mehr "
+                    f"geaendert werden. Nur der Lektor oder die Chef-Ermittlerin "
+                    f"koennen ihn zur Nachbesserung zuruecksetzen."
+                )
+            if str(row["author"]) != requesting_author:
+                raise EvidenceDbError(
+                    f"Nur der Eigentuemer darf einen Block bearbeiten. "
+                    f"Eigentuemer: '{row['author']}'"
+                )
+            now = int(time.time())
+            self._con.execute(
+                "UPDATE report_blocks "
+                "SET block_data = ?, placeholder_values_json = ?, updated_at = ? "
+                "WHERE block_id = ?",
+                (block_data, placeholder_values_json, now, block_id),
             )
-        if str(row["author"]) != requesting_author:
-            raise EvidenceDbError(
-                f"Nur der Eigentuemer darf einen Block bearbeiten. "
-                f"Eigentuemer: '{row['author']}'"
-            )
-        now = int(time.time())
-        self._con.execute(
-            "UPDATE report_blocks "
-            "SET block_data = ?, placeholder_values_json = ?, updated_at = ? "
-            "WHERE block_id = ?",
-            (block_data, placeholder_values_json, now, block_id),
-        )
-        self._con.commit()
-        return True
+            self._con.commit()
+            return True
 
     def delete_block(self, block_id: str, requesting_author: str) -> bool:
         """
@@ -1955,45 +2001,46 @@ class EvidenceDb:
         Returns:
             True wenn geloescht, False wenn Block nicht gefunden.
         """
-        row = self._con.execute(
-            "SELECT rb.author, r.status AS report_status "
-            "FROM report_blocks rb "
-            "JOIN reports r ON r.id = rb.report_id "
-            "WHERE rb.block_id = ?",
-            (block_id,),
-        ).fetchone()
-        if not row:
-            return False
-        # Build 379: sperrt bei submitted/approved/final (vorher NUR 'approved'
-        # -> 'final' war ungeschuetzt). Siehe BERICHTS-STATUSMODELL.
-        if str(row["report_status"]) in LOCKED_REPORT_STATUSES:
-            raise ReportSealedError(
-                f"Bericht im Status '{row['report_status']}' kann nicht mehr "
-                f"geaendert werden. Nur der Lektor oder die Chef-Ermittlerin "
-                f"koennen ihn zur Nachbesserung zuruecksetzen."
+        with Schreibvorgang(self._con, "delete_block"):
+            row = self._con.execute(
+                "SELECT rb.author, r.status AS report_status "
+                "FROM report_blocks rb "
+                "JOIN reports r ON r.id = rb.report_id "
+                "WHERE rb.block_id = ?",
+                (block_id,),
+            ).fetchone()
+            if not row:
+                return False
+            # Build 379: sperrt bei submitted/approved/final (vorher NUR 'approved'
+            # -> 'final' war ungeschuetzt). Siehe BERICHTS-STATUSMODELL.
+            if str(row["report_status"]) in LOCKED_REPORT_STATUSES:
+                raise ReportSealedError(
+                    f"Bericht im Status '{row['report_status']}' kann nicht mehr "
+                    f"geaendert werden. Nur der Lektor oder die Chef-Ermittlerin "
+                    f"koennen ihn zur Nachbesserung zuruecksetzen."
+                )
+            if str(row["author"]) != requesting_author:
+                raise EvidenceDbError(
+                    f"Nur der Eigentuemer darf einen Block loeschen. "
+                    f"Eigentuemer: '{row['author']}'"
+                )
+            # Kaskade: report_block_order, report_anchors, report_comments mitloeschen.
+            self._con.execute(
+                "DELETE FROM report_block_order WHERE block_id = ?", (block_id,)
             )
-        if str(row["author"]) != requesting_author:
-            raise EvidenceDbError(
-                f"Nur der Eigentuemer darf einen Block loeschen. "
-                f"Eigentuemer: '{row['author']}'"
+            self._con.execute(
+                "DELETE FROM report_anchors WHERE block_id = ?", (block_id,)
             )
-        # Kaskade: report_block_order, report_anchors, report_comments mitloeschen.
-        self._con.execute(
-            "DELETE FROM report_block_order WHERE block_id = ?", (block_id,)
-        )
-        self._con.execute(
-            "DELETE FROM report_anchors WHERE block_id = ?", (block_id,)
-        )
-        self._con.execute(
-            "DELETE FROM report_comments WHERE block_id = ?", (block_id,)
-        )
-        cursor = self._con.execute(
-            "DELETE FROM report_blocks WHERE block_id = ?", (block_id,)
-        )
-        self._con.commit()
-        if cursor.rowcount > 0:
-            logger.info("Block geloescht: block_id=%s von '%s'", block_id, requesting_author)
-        return cursor.rowcount > 0
+            self._con.execute(
+                "DELETE FROM report_comments WHERE block_id = ?", (block_id,)
+            )
+            cursor = self._con.execute(
+                "DELETE FROM report_blocks WHERE block_id = ?", (block_id,)
+            )
+            self._con.commit()
+            if cursor.rowcount > 0:
+                logger.info("Block geloescht: block_id=%s von '%s'", block_id, requesting_author)
+            return cursor.rowcount > 0
 
     # ------------------------------------------------------------------
     # Blockreihenfolge (report_block_order, B6)
@@ -2040,32 +2087,33 @@ class EvidenceDb:
         Returns:
             Anzahl aktualisierter Eintraege.
         """
-        # Build 379: Schreibsperre (BERICHTS-STATUSMODELL). Vorher UNGESCHUETZT
-        # -> die Block-REIHENFOLGE ist Teil des Berichts und steckt im Siegel.
-        # set_block_order kennt keine report_id — die Pruefung erfolgt daher
-        # ueber die Bloecke selbst (jeder Block gehoert zu genau einem Bericht).
-        for _entry in order:
-            _bid = str(_entry.get("block_id", ""))
-            if _bid:
-                self._assert_block_editable(_bid)
+        with Schreibvorgang(self._con, "set_block_order"):
+            # Build 379: Schreibsperre (BERICHTS-STATUSMODELL). Vorher UNGESCHUETZT
+            # -> die Block-REIHENFOLGE ist Teil des Berichts und steckt im Siegel.
+            # set_block_order kennt keine report_id — die Pruefung erfolgt daher
+            # ueber die Bloecke selbst (jeder Block gehoert zu genau einem Bericht).
+            for _entry in order:
+                _bid = str(_entry.get("block_id", ""))
+                if _bid:
+                    self._assert_block_editable(_bid)
 
-        now = int(time.time())
-        updated = 0
-        for entry in order:
-            block_id   = str(entry.get("block_id", ""))
-            sort_index = int(entry.get("sort_index", 0))
-            if not block_id:
-                continue
-            self._con.execute(
-                "INSERT OR REPLACE INTO report_block_order "
-                "(block_id, sort_index, last_modified_by, last_modified_at) "
-                "VALUES (?, ?, ?, ?)",
-                (block_id, sort_index, modified_by, now),
-            )
-            updated += 1
-        if updated:
-            self._con.commit()
-        return updated
+            now = int(time.time())
+            updated = 0
+            for entry in order:
+                block_id   = str(entry.get("block_id", ""))
+                sort_index = int(entry.get("sort_index", 0))
+                if not block_id:
+                    continue
+                self._con.execute(
+                    "INSERT OR REPLACE INTO report_block_order "
+                    "(block_id, sort_index, last_modified_by, last_modified_at) "
+                    "VALUES (?, ?, ?, ?)",
+                    (block_id, sort_index, modified_by, now),
+                )
+                updated += 1
+            if updated:
+                self._con.commit()
+            return updated
 
     def get_sort_index_after(self, after_block_id: str, report_id: int) -> int:
         """
@@ -2139,40 +2187,42 @@ class EvidenceDb:
         Returns:
             id des neuen Anker-Eintrags.
         """
-        # Build 379: Schreibsperre (BERICHTS-STATUSMODELL). Vorher UNGESCHUETZT
-        # -> Beweisanker stecken im Siegel-Hash.
-        self._assert_block_editable(block_id)
+        with Schreibvorgang(self._con, "add_anchor"):
+            # Build 379: Schreibsperre (BERICHTS-STATUSMODELL). Vorher UNGESCHUETZT
+            # -> Beweisanker stecken im Siegel-Hash.
+            self._assert_block_editable(block_id)
 
-        now = int(time.time())
-        try:
-            cursor = self._con.execute(
-                "INSERT INTO report_anchors "
-                "(block_id, annotation_id, anchor_text, created_at) "
-                "VALUES (?, ?, ?, ?)",
-                (block_id, annotation_id, anchor_text, now),
-            )
-            self._con.commit()
-            return cursor.lastrowid
-        except sqlite3.IntegrityError as exc:
-            raise EvidenceDbError(
-                f"Beweisanker fuer block_id='{block_id}', "
-                f"annotation_id={annotation_id} existiert bereits."
-            ) from exc
+            now = int(time.time())
+            try:
+                cursor = self._con.execute(
+                    "INSERT INTO report_anchors "
+                    "(block_id, annotation_id, anchor_text, created_at) "
+                    "VALUES (?, ?, ?, ?)",
+                    (block_id, annotation_id, anchor_text, now),
+                )
+                self._con.commit()
+                return cursor.lastrowid
+            except sqlite3.IntegrityError as exc:
+                raise EvidenceDbError(
+                    f"Beweisanker fuer block_id='{block_id}', "
+                    f"annotation_id={annotation_id} existiert bereits."
+                ) from exc
 
     def remove_anchor(self, anchor_id: int) -> bool:
         # Build 379: Schreibsperre (BERICHTS-STATUSMODELL). Vorher UNGESCHUETZT.
         # Der Anker verweist auf einen Block -> ueber diesen den Bericht pruefen.
-        row = self._con.execute(
-            "SELECT block_id FROM report_anchors WHERE id = ?", (anchor_id,)
-        ).fetchone()
-        if row:
-            self._assert_block_editable(str(row["block_id"]))
+        with Schreibvorgang(self._con, "remove_anchor"):
+            row = self._con.execute(
+                "SELECT block_id FROM report_anchors WHERE id = ?", (anchor_id,)
+            ).fetchone()
+            if row:
+                self._assert_block_editable(str(row["block_id"]))
 
-        cursor = self._con.execute(
-            "DELETE FROM report_anchors WHERE id = ?", (anchor_id,)
-        )
-        self._con.commit()
-        return cursor.rowcount > 0
+            cursor = self._con.execute(
+                "DELETE FROM report_anchors WHERE id = ?", (anchor_id,)
+            )
+            self._con.commit()
+            return cursor.rowcount > 0
 
     def get_anchors_for_block(self, block_id: str) -> list[ReportAnchorRecord]:
         rows = self._con.execute(
@@ -2232,12 +2282,13 @@ class EvidenceDb:
         implementiert. Der fehlende Aufruf erzeugte AttributeError -> HTTP 500.
         Beleg: Projektgespraech 2026-05-11
         """
-        cur = self._con.execute(
-            "DELETE FROM report_anchors WHERE block_id = ? AND annotation_id = ?",
-            (block_id, evidence_id),
-        )
-        self._con.commit()
-        return cur.rowcount > 0
+        with Schreibvorgang(self._con, "remove_block_evidence"):
+            cur = self._con.execute(
+                "DELETE FROM report_anchors WHERE block_id = ? AND annotation_id = ?",
+                (block_id, evidence_id),
+            )
+            self._con.commit()
+            return cur.rowcount > 0
 
     # ------------------------------------------------------------------
     # Kommentare (report_comments, B6)
@@ -2257,19 +2308,20 @@ class EvidenceDb:
         Returns:
             id des neuen Kommentars.
         """
-        if not author.strip():
-            raise EvidenceDbError("author darf nicht leer sein.")
-        if not comment_text.strip():
-            raise EvidenceDbError("comment_text darf nicht leer sein.")
-        now = int(time.time())
-        cursor = self._con.execute(
-            "INSERT INTO report_comments "
-            "(block_id, author, created_at, comment_text, suggested_content, status) "
-            "VALUES (?, ?, ?, ?, ?, 'pending')",
-            (block_id, author.strip(), now, comment_text.strip(), suggested_content),
-        )
-        self._con.commit()
-        return cursor.lastrowid
+        with Schreibvorgang(self._con, "add_comment"):
+            if not author.strip():
+                raise EvidenceDbError("author darf nicht leer sein.")
+            if not comment_text.strip():
+                raise EvidenceDbError("comment_text darf nicht leer sein.")
+            now = int(time.time())
+            cursor = self._con.execute(
+                "INSERT INTO report_comments "
+                "(block_id, author, created_at, comment_text, suggested_content, status) "
+                "VALUES (?, ?, ?, ?, ?, 'pending')",
+                (block_id, author.strip(), now, comment_text.strip(), suggested_content),
+            )
+            self._con.commit()
+            return cursor.lastrowid
 
     def get_comments_for_block(self, block_id: str) -> list[ReportCommentRecord]:
         rows = self._con.execute(
@@ -2298,45 +2350,46 @@ class EvidenceDb:
 
         Returns True wenn gesetzt, False wenn Kommentar nicht gefunden.
         """
-        if new_status not in VALID_COMMENT_STATUSES - {"pending"}:
-            raise EvidenceDbError(
-                f"Ungueltiger Zielstatus: '{new_status}'. "
-                f"Zulaessig: addressed, dismissed, revoked"
+        with Schreibvorgang(self._con, "resolve_comment"):
+            if new_status not in VALID_COMMENT_STATUSES - {"pending"}:
+                raise EvidenceDbError(
+                    f"Ungueltiger Zielstatus: '{new_status}'. "
+                    f"Zulaessig: addressed, dismissed, revoked"
+                )
+            row = self._con.execute(
+                "SELECT rc.author, rc.status, rb.author as block_author "
+                "FROM report_comments rc "
+                "JOIN report_blocks rb ON rb.block_id = rc.block_id "
+                "WHERE rc.id = ?",
+                (comment_id,),
+            ).fetchone()
+            if not row:
+                return False
+            if str(row["status"]) != "pending":
+                raise EvidenceDbError("Kommentar-Status-Uebergaenge sind One-Way.")
+
+            # Berechtigungspruefung
+            if new_status == "revoked":
+                if str(row["author"]) != requesting_user:
+                    raise EvidenceDbError(
+                        "Nur der Kommentator selbst darf einen Kommentar zurueckziehen."
+                    )
+            else:
+                # addressed / dismissed: Eigentuemer oder Chef
+                if str(row["block_author"]) != requesting_user and not is_chef:
+                    raise EvidenceDbError(
+                        "Nur der Eigentuemer des Blocks oder die "
+                        "Chef-Ermittlerin darf Kommentare bearbeiten."
+                    )
+
+            now = int(time.time())
+            self._con.execute(
+                "UPDATE report_comments "
+                "SET status=?, resolved_by=?, resolved_at=? WHERE id=?",
+                (new_status, resolved_by, now, comment_id),
             )
-        row = self._con.execute(
-            "SELECT rc.author, rc.status, rb.author as block_author "
-            "FROM report_comments rc "
-            "JOIN report_blocks rb ON rb.block_id = rc.block_id "
-            "WHERE rc.id = ?",
-            (comment_id,),
-        ).fetchone()
-        if not row:
-            return False
-        if str(row["status"]) != "pending":
-            raise EvidenceDbError("Kommentar-Status-Uebergaenge sind One-Way.")
-
-        # Berechtigungspruefung
-        if new_status == "revoked":
-            if str(row["author"]) != requesting_user:
-                raise EvidenceDbError(
-                    "Nur der Kommentator selbst darf einen Kommentar zurueckziehen."
-                )
-        else:
-            # addressed / dismissed: Eigentuemer oder Chef
-            if str(row["block_author"]) != requesting_user and not is_chef:
-                raise EvidenceDbError(
-                    "Nur der Eigentuemer des Blocks oder die "
-                    "Chef-Ermittlerin darf Kommentare bearbeiten."
-                )
-
-        now = int(time.time())
-        self._con.execute(
-            "UPDATE report_comments "
-            "SET status=?, resolved_by=?, resolved_at=? WHERE id=?",
-            (new_status, resolved_by, now, comment_id),
-        )
-        self._con.commit()
-        return True
+            self._con.commit()
+            return True
 
     # ------------------------------------------------------------------
     # Platzhalter-Cache (placeholder_cache, B6)
@@ -2377,13 +2430,14 @@ class EvidenceDb:
         Setzt oder aktualisiert einen Cache-Eintrag (UPSERT).
         Beleg: Bauplan B6 v0.5 §3.1 (Cache-Hit)
         """
-        now = int(time.time())
-        self._con.execute(
-            "INSERT OR REPLACE INTO placeholder_cache "
-            "(query_id, uid, cached_value, cached_at) VALUES (?, ?, ?, ?)",
-            (query_id, uid, value, now),
-        )
-        self._con.commit()
+        with Schreibvorgang(self._con, "set_cache_entry"):
+            now = int(time.time())
+            self._con.execute(
+                "INSERT OR REPLACE INTO placeholder_cache "
+                "(query_id, uid, cached_value, cached_at) VALUES (?, ?, ?, ?)",
+                (query_id, uid, value, now),
+            )
+            self._con.commit()
 
     def clear_cache_for_uid(self, uid: int) -> int:
         """
@@ -2399,15 +2453,16 @@ class EvidenceDb:
         Eintraege — dafuer clear_cache_for_query_ids(). Diese Methode leert
         weiterhin ALLES und ist nur fuer echte Voll-Zuruecksetzungen gedacht.
         """
-        cursor = self._con.execute(
-            "DELETE FROM placeholder_cache WHERE uid = ?", (uid,)
-        )
-        self._con.commit()
-        deleted = cursor.rowcount
-        logger.info(
-            "placeholder_cache geleert: uid=%d, %d Eintraege entfernt", uid, deleted
-        )
-        return deleted
+        with Schreibvorgang(self._con, "clear_cache_for_uid"):
+            cursor = self._con.execute(
+                "DELETE FROM placeholder_cache WHERE uid = ?", (uid,)
+            )
+            self._con.commit()
+            deleted = cursor.rowcount
+            logger.info(
+                "placeholder_cache geleert: uid=%d, %d Eintraege entfernt", uid, deleted
+            )
+            return deleted
 
     def get_cache_entries_for_ids(self, uid: int, query_ids) -> dict:
         """
@@ -2448,22 +2503,23 @@ class EvidenceDb:
 
         Returns: Anzahl geloeschter Eintraege.
         """
-        ids = [str(q) for q in (query_ids or [])]
-        if not ids:
-            return 0
-        placeholders = ",".join("?" for _ in ids)
-        cursor = self._con.execute(
-            "DELETE FROM placeholder_cache WHERE uid = ? AND query_id IN (%s)"
-            % placeholders,
-            [uid, *ids],
-        )
-        self._con.commit()
-        deleted = cursor.rowcount
-        logger.info(
-            "placeholder_cache (nur a-Platzhalter) geleert: uid=%d, "
-            "%d/%d Eintraege entfernt", uid, deleted, len(ids)
-        )
-        return deleted
+        with Schreibvorgang(self._con, "clear_cache_for_query_ids"):
+            ids = [str(q) for q in (query_ids or [])]
+            if not ids:
+                return 0
+            placeholders = ",".join("?" for _ in ids)
+            cursor = self._con.execute(
+                "DELETE FROM placeholder_cache WHERE uid = ? AND query_id IN (%s)"
+                % placeholders,
+                [uid, *ids],
+            )
+            self._con.commit()
+            deleted = cursor.rowcount
+            logger.info(
+                "placeholder_cache (nur a-Platzhalter) geleert: uid=%d, "
+                "%d/%d Eintraege entfernt", uid, deleted, len(ids)
+            )
+            return deleted
 
     # ------------------------------------------------------------------
     # Freigaben (report_approvals)
@@ -2476,15 +2532,16 @@ class EvidenceDb:
         note: Optional[str] = None,
         is_final: bool = False,
     ) -> int:
-        now = int(time.time())
-        cursor = self._con.execute(
-            "INSERT INTO report_approvals "
-            "(report_id, approved_by, approved_at, note, is_final) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (report_id, approved_by, now, note, int(is_final)),
-        )
-        self._con.commit()
-        return cursor.lastrowid
+        with Schreibvorgang(self._con, "add_approval"):
+            now = int(time.time())
+            cursor = self._con.execute(
+                "INSERT INTO report_approvals "
+                "(report_id, approved_by, approved_at, note, is_final) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (report_id, approved_by, now, note, int(is_final)),
+            )
+            self._con.commit()
+            return cursor.lastrowid
 
     # ------------------------------------------------------------------
     # Lock-Mechanismus (Lock-System v2, unveraendert)
@@ -2510,24 +2567,29 @@ class EvidenceDb:
         release_lock_with_queue_cascade() beim RELEASING.
         Beleg: SLA Punkt 6, Architektur-Revision 2026-05-18
         """
-        new_lock_id = str(uuid.uuid4())
-        try:
-            self._con.execute(
-                "INSERT INTO editor_locks "
-                "(report_id, locked_by, lock_id, locked_at, sse_client) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (report_id, locked_by, new_lock_id, int(time.time()), sse_client),
-            )
-            self._con.commit()
-            self._lock_change_event.set()
-            logger.info(
-                "Lock erworben: '%s' report_id=%d lock_id=%s",
-                locked_by, report_id, new_lock_id,
-            )
-            return new_lock_id
-        except sqlite3.IntegrityError:
-            logger.debug("acquire_lock: Lock bereits belegt fuer report_id=%d", report_id)
-            return None
+        with Schreibvorgang(self._con, "acquire_lock"):
+            new_lock_id = str(uuid.uuid4())
+            try:
+                self._con.execute(
+                    "INSERT INTO editor_locks "
+                    "(report_id, locked_by, lock_id, locked_at, sse_client) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (report_id, locked_by, new_lock_id, int(time.time()), sse_client),
+                )
+                self._con.commit()
+                self._lock_change_event.set()
+                logger.info(
+                    "Lock erworben: '%s' report_id=%d lock_id=%s",
+                    locked_by, report_id, new_lock_id,
+                )
+                return new_lock_id
+            except sqlite3.IntegrityError:
+                # Build 774: wie save_alias — der belegte Lock ist der
+                # Normalfall bei Konkurrenz, und jedes Mal blieb hier die
+                # Transaktion der geteilten Verbindung offen.
+                self._con.rollback()
+                logger.debug("acquire_lock: Lock bereits belegt fuer report_id=%d", report_id)
+                return None
 
     def create_report_with_lock(
         self, report_type: str, title: str, created_by: str, sse_client: str,
@@ -2537,35 +2599,36 @@ class EvidenceDb:
         Gibt (report_id, lock_id) zurueck.
         Beleg: SLA Punkt 7, Architektur-Revision 2026-05-18
         """
-        now = int(time.time())
-        lock_id = str(uuid.uuid4())
-        seq_nr = self._con.execute(
-            "SELECT COALESCE(MAX(sequence_nr), 0) + 1 FROM reports WHERE report_type=?",
-            (report_type,),
-        ).fetchone()[0]
-        try:
-            cursor = self._con.execute(
-                "INSERT INTO reports (report_type, sequence_nr, title, created_by, created_at) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (report_type, seq_nr, title, created_by, now),
-            )
-            report_id = cursor.lastrowid
-            self._con.execute(
-                "INSERT INTO editor_locks "
-                "(report_id, locked_by, lock_id, locked_at, sse_client) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (report_id, created_by, lock_id, now, sse_client),
-            )
-            self._con.commit()
-            self._lock_change_event.set()
-            logger.info(
-                "Bericht+Lock atomar: report_id=%d type=%s lock_id=%s von '%s'",
-                report_id, report_type, lock_id, created_by,
-            )
-            return report_id, lock_id
-        except Exception as exc:
-            self._con.rollback()
-            raise exc
+        with Schreibvorgang(self._con, "create_report_with_lock"):
+            now = int(time.time())
+            lock_id = str(uuid.uuid4())
+            seq_nr = self._con.execute(
+                "SELECT COALESCE(MAX(sequence_nr), 0) + 1 FROM reports WHERE report_type=?",
+                (report_type,),
+            ).fetchone()[0]
+            try:
+                cursor = self._con.execute(
+                    "INSERT INTO reports (report_type, sequence_nr, title, created_by, created_at) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (report_type, seq_nr, title, created_by, now),
+                )
+                report_id = cursor.lastrowid
+                self._con.execute(
+                    "INSERT INTO editor_locks "
+                    "(report_id, locked_by, lock_id, locked_at, sse_client) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (report_id, created_by, lock_id, now, sse_client),
+                )
+                self._con.commit()
+                self._lock_change_event.set()
+                logger.info(
+                    "Bericht+Lock atomar: report_id=%d type=%s lock_id=%s von '%s'",
+                    report_id, report_type, lock_id, created_by,
+                )
+                return report_id, lock_id
+            except Exception as exc:
+                self._con.rollback()
+                raise exc
 
     def release_lock_with_queue_cascade(
         self, report_id: int, lock_id: str,
@@ -2597,16 +2660,17 @@ class EvidenceDb:
         Fuer interne Verwendung wenn Queue bereits extern verarbeitet wird.
         Beleg: Architektur-Revision 2026-05-18
         """
-        cursor = self._con.execute(
-            "DELETE FROM editor_locks WHERE report_id=? AND lock_id=?",
-            (report_id, lock_id),
-        )
-        self._con.commit()
-        freed = cursor.rowcount > 0
-        if freed:
-            self._lock_change_event.set()
-            logger.info("Lock freigegeben: report_id=%d lock_id=%s", report_id, lock_id)
-        return freed
+        with Schreibvorgang(self._con, "release_lock"):
+            cursor = self._con.execute(
+                "DELETE FROM editor_locks WHERE report_id=? AND lock_id=?",
+                (report_id, lock_id),
+            )
+            self._con.commit()
+            freed = cursor.rowcount > 0
+            if freed:
+                self._lock_change_event.set()
+                logger.info("Lock freigegeben: report_id=%d lock_id=%s", report_id, lock_id)
+            return freed
 
     def clear_stale_locks_on_startup(self) -> int:
         """Bereinigt alle Locks beim Server-Start.
@@ -2627,17 +2691,18 @@ class EvidenceDb:
         Beleg: Bugfix-Liste 2.23, Projektgespraech 2026-06-07
         Build 281
         """
-        cursor = self._con.execute("DELETE FROM editor_locks")
-        count  = cursor.rowcount
-        # Queue und Takeover-Eintraege ebenfalls bereinigen
-        self._con.execute("DELETE FROM lock_queue")
-        self._con.execute("DELETE FROM lock_takeover_requests")
-        self._con.commit()
-        if count:
-            logger.info(
-                "Startup: %d Stale-Lock(s) aus editor_locks bereinigt.", count
-            )
-        return count
+        with Schreibvorgang(self._con, "clear_stale_locks_on_startup"):
+            cursor = self._con.execute("DELETE FROM editor_locks")
+            count  = cursor.rowcount
+            # Queue und Takeover-Eintraege ebenfalls bereinigen
+            self._con.execute("DELETE FROM lock_queue")
+            self._con.execute("DELETE FROM lock_takeover_requests")
+            self._con.commit()
+            if count:
+                logger.info(
+                    "Startup: %d Stale-Lock(s) aus editor_locks bereinigt.", count
+                )
+            return count
 
     def release_lock_by_sse_client(self, sse_client: str) -> list[int]:
         """Gibt alle Locks frei die zu einer SSE-Client-ID gehoeren.
@@ -2646,22 +2711,23 @@ class EvidenceDb:
         Gibt Liste der betroffenen report_ids zurueck.
         Beleg: SLA Punkt 1, Architektur-Revision 2026-05-18
         """
-        rows = self._con.execute(
-            "SELECT report_id FROM editor_locks WHERE sse_client=?",
-            (sse_client,),
-        ).fetchall()
-        report_ids = [r[0] for r in rows]
-        if report_ids:
-            self._con.execute(
-                "DELETE FROM editor_locks WHERE sse_client=?", (sse_client,)
-            )
-            self._con.commit()
-            self._lock_change_event.set()
-            logger.info(
-                "Locks durch SSE-Ablauf freigegeben: sse_client=%s report_ids=%s",
-                sse_client, report_ids,
-            )
-        return report_ids
+        with Schreibvorgang(self._con, "release_lock_by_sse_client"):
+            rows = self._con.execute(
+                "SELECT report_id FROM editor_locks WHERE sse_client=?",
+                (sse_client,),
+            ).fetchall()
+            report_ids = [r[0] for r in rows]
+            if report_ids:
+                self._con.execute(
+                    "DELETE FROM editor_locks WHERE sse_client=?", (sse_client,)
+                )
+                self._con.commit()
+                self._lock_change_event.set()
+                logger.info(
+                    "Locks durch SSE-Ablauf freigegeben: sse_client=%s report_ids=%s",
+                    sse_client, report_ids,
+                )
+            return report_ids
 
     def resume_lock(
         self, old_sse_client: str, new_sse_client: str,
@@ -2680,20 +2746,21 @@ class EvidenceDb:
         Beleg: Layer 2 States RESUMING, SLA Punkt 2,
                Architekturentscheidung Paket-4-Review 2026-05-24
         """
-        cursor = self._con.execute(
-            "UPDATE editor_locks "
-            "SET sse_client=?, locked_at=? "
-            "WHERE sse_client=?",
-            (new_sse_client, int(time.time()), old_sse_client),
-        )
-        self._con.commit()
-        ok = cursor.rowcount > 0
-        if ok:
-            logger.info(
-                "Lock-Resume: alte_sse=%s neue_sse=%s",
-                old_sse_client, new_sse_client,
+        with Schreibvorgang(self._con, "resume_lock"):
+            cursor = self._con.execute(
+                "UPDATE editor_locks "
+                "SET sse_client=?, locked_at=? "
+                "WHERE sse_client=?",
+                (new_sse_client, int(time.time()), old_sse_client),
             )
-        return ok
+            self._con.commit()
+            ok = cursor.rowcount > 0
+            if ok:
+                logger.info(
+                    "Lock-Resume: alte_sse=%s neue_sse=%s",
+                    old_sse_client, new_sse_client,
+                )
+            return ok
 
     def get_lock(self, report_id: int) -> Optional[EditorLockRecord]:
         """Liest den aktiven Lock fuer einen Bericht (thread-safe).
@@ -2759,22 +2826,24 @@ class EvidenceDb:
         Schuetzt Lock-Inhaber vor TAKEOVER-Anfragen.
         Beleg: SLA Punkt 8, Layer 4 States TAKEOVER_DENIED
         """
-        cooldown_until = int(time.time()) + seconds
-        cursor = self._con.execute(
-            "UPDATE editor_locks SET cooldown_until=? WHERE report_id=?",
-            (cooldown_until, report_id),
-        )
-        self._con.commit()
-        return cursor.rowcount > 0
+        with Schreibvorgang(self._con, "set_cooldown"):
+            cooldown_until = int(time.time()) + seconds
+            cursor = self._con.execute(
+                "UPDATE editor_locks SET cooldown_until=? WHERE report_id=?",
+                (cooldown_until, report_id),
+            )
+            self._con.commit()
+            return cursor.rowcount > 0
 
     def clear_cooldown(self, report_id: int) -> bool:
         """Entfernt Cooldown vom Lock (bei RELEASING durch Inhaber)."""
-        cursor = self._con.execute(
-            "UPDATE editor_locks SET cooldown_until=NULL WHERE report_id=?",
-            (report_id,),
-        )
-        self._con.commit()
-        return cursor.rowcount > 0
+        with Schreibvorgang(self._con, "clear_cooldown"):
+            cursor = self._con.execute(
+                "UPDATE editor_locks SET cooldown_until=NULL WHERE report_id=?",
+                (report_id,),
+            )
+            self._con.commit()
+            return cursor.rowcount > 0
 
     def get_cooldown_until(self, report_id: int) -> Optional[int]:
         """Gibt Unix-Timestamp des aktiven Cooldowns zurueck oder None."""
@@ -2800,30 +2869,32 @@ class EvidenceDb:
         bestehender Eintrag wird zuerst entfernt.
         Beleg: SLA Punkt 9, Layer 4 States QUEUED
         """
-        now = int(time.time())
-        self._con.execute(
-            "DELETE FROM lock_queue WHERE report_id=? AND requested_by=?",
-            (report_id, requested_by),
-        )
-        cursor = self._con.execute(
-            "INSERT INTO lock_queue (report_id, requested_by, sse_client, requested_at) "
-            "VALUES (?, ?, ?, ?)",
-            (report_id, requested_by, sse_client, now),
-        )
-        self._con.commit()
-        logger.debug(
-            "Queue: '%s' eingereiht fuer report_id=%d", requested_by, report_id
-        )
-        return cursor.lastrowid
+        with Schreibvorgang(self._con, "queue_add"):
+            now = int(time.time())
+            self._con.execute(
+                "DELETE FROM lock_queue WHERE report_id=? AND requested_by=?",
+                (report_id, requested_by),
+            )
+            cursor = self._con.execute(
+                "INSERT INTO lock_queue (report_id, requested_by, sse_client, requested_at) "
+                "VALUES (?, ?, ?, ?)",
+                (report_id, requested_by, sse_client, now),
+            )
+            self._con.commit()
+            logger.debug(
+                "Queue: '%s' eingereiht fuer report_id=%d", requested_by, report_id
+            )
+            return cursor.lastrowid
 
     def queue_remove(self, report_id: int, requested_by: str) -> bool:
         """Entfernt eigenen Queue-Eintrag (QUEUED -> IDLE)."""
-        cursor = self._con.execute(
-            "DELETE FROM lock_queue WHERE report_id=? AND requested_by=?",
-            (report_id, requested_by),
-        )
-        self._con.commit()
-        return cursor.rowcount > 0
+        with Schreibvorgang(self._con, "queue_remove"):
+            cursor = self._con.execute(
+                "DELETE FROM lock_queue WHERE report_id=? AND requested_by=?",
+                (report_id, requested_by),
+            )
+            self._con.commit()
+            return cursor.rowcount > 0
 
     def queue_next_valid(
         self, report_id: int, active_sse_clients: set[str],
@@ -2834,37 +2905,38 @@ class EvidenceDb:
         gibt ersten Eintrag mit aktiver SSE-Verbindung zurueck.
         Beleg: SLA Punkt 4, Architektur-Revision 2026-05-18
         """
-        rows = self._con.execute(
-            "SELECT id, requested_by, sse_client, requested_at "
-            "FROM lock_queue WHERE report_id=? ORDER BY requested_at ASC, id ASC",
-            (report_id,),
-        ).fetchall()
+        with Schreibvorgang(self._con, "queue_next_valid"):
+            rows = self._con.execute(
+                "SELECT id, requested_by, sse_client, requested_at "
+                "FROM lock_queue WHERE report_id=? ORDER BY requested_at ASC, id ASC",
+                (report_id,),
+            ).fetchall()
 
-        stale_ids = []
-        result = None
-        for row in rows:
-            if row["sse_client"] not in active_sse_clients:
-                stale_ids.append(row["id"])
-                logger.debug(
-                    "Queue: Eintrag %d von '%s' bereinigt (SSE inaktiv)",
-                    row["id"], row["requested_by"],
+            stale_ids = []
+            result = None
+            for row in rows:
+                if row["sse_client"] not in active_sse_clients:
+                    stale_ids.append(row["id"])
+                    logger.debug(
+                        "Queue: Eintrag %d von '%s' bereinigt (SSE inaktiv)",
+                        row["id"], row["requested_by"],
+                    )
+                else:
+                    result = {
+                        "id":           row["id"],
+                        "requested_by": row["requested_by"],
+                        "sse_client":   row["sse_client"],
+                    }
+                    break  # Erster gueltiger Eintrag gefunden
+
+            if stale_ids:
+                placeholders = ",".join("?" * len(stale_ids))
+                self._con.execute(
+                    f"DELETE FROM lock_queue WHERE id IN ({placeholders})", stale_ids
                 )
-            else:
-                result = {
-                    "id":           row["id"],
-                    "requested_by": row["requested_by"],
-                    "sse_client":   row["sse_client"],
-                }
-                break  # Erster gueltiger Eintrag gefunden
+                self._con.commit()
 
-        if stale_ids:
-            placeholders = ",".join("?" * len(stale_ids))
-            self._con.execute(
-                f"DELETE FROM lock_queue WHERE id IN ({placeholders})", stale_ids
-            )
-            self._con.commit()
-
-        return result
+            return result
 
     def queue_count(self, report_id: int) -> int:
         """Gibt Anzahl der Eintraege in der Queue zurueck."""
@@ -2879,11 +2951,12 @@ class EvidenceDb:
         Wird bei SSE-Abriss aufgerufen (lazy cleanup als Ergaenzung).
         SLA Punkt 9: Queue-Integrität.
         """
-        cursor = self._con.execute(
-            "DELETE FROM lock_queue WHERE sse_client=?", (sse_client,)
-        )
-        self._con.commit()
-        return cursor.rowcount
+        with Schreibvorgang(self._con, "queue_remove_by_sse_client"):
+            cursor = self._con.execute(
+                "DELETE FROM lock_queue WHERE sse_client=?", (sse_client,)
+            )
+            self._con.commit()
+            return cursor.rowcount
 
     # ------------------------------------------------------------------
     # report_opened — Audit-Log geöffneter Berichte (Layer 3 OPENING)
@@ -2902,25 +2975,26 @@ class EvidenceDb:
         Gibt die neue id zurück.
         Beleg: Layer 3 States OPENING, SLA Paket-6-Ergänzung 2026-05-24
         """
-        now = int(time.time())
-        cursor = self._con.execute(
-            "INSERT INTO report_opened (report_id, sse_client, opened_by, opened_at) "
-            "VALUES (?, ?, ?, ?)",
-            (report_id, sse_client, opened_by, now),
-        )
-        # Queue-Bereinigung: Einträge für ANDERE Berichte dieses Clients löschen.
-        # Beleg: Layer 3 States OPENING: „Einträge in der Warteschlange
-        # für den Client werden alle entfernt."
-        self._con.execute(
-            "DELETE FROM lock_queue WHERE sse_client=? AND report_id!=?",
-            (sse_client, report_id),
-        )
-        self._con.commit()
-        logger.debug(
-            "report_opened: report_id=%d sse_client=%s opened_by=%s",
-            report_id, sse_client, opened_by,
-        )
-        return cursor.lastrowid
+        with Schreibvorgang(self._con, "log_report_opened"):
+            now = int(time.time())
+            cursor = self._con.execute(
+                "INSERT INTO report_opened (report_id, sse_client, opened_by, opened_at) "
+                "VALUES (?, ?, ?, ?)",
+                (report_id, sse_client, opened_by, now),
+            )
+            # Queue-Bereinigung: Einträge für ANDERE Berichte dieses Clients löschen.
+            # Beleg: Layer 3 States OPENING: „Einträge in der Warteschlange
+            # für den Client werden alle entfernt."
+            self._con.execute(
+                "DELETE FROM lock_queue WHERE sse_client=? AND report_id!=?",
+                (sse_client, report_id),
+            )
+            self._con.commit()
+            logger.debug(
+                "report_opened: report_id=%d sse_client=%s opened_by=%s",
+                report_id, sse_client, opened_by,
+            )
+            return cursor.lastrowid
 
     def get_open_report_for_client(self, sse_client: str) -> Optional[int]:
         """Gibt die report_id des zuletzt geöffneten Berichts für einen Client zurück.
@@ -2944,26 +3018,28 @@ class EvidenceDb:
         self, report_id: int, lock_id: str, requested_by: str,
     ) -> int:
         """Schreibt Takeover-Anfrage in Audit-Log."""
-        cursor = self._con.execute(
-            "INSERT INTO lock_takeover_requests "
-            "(report_id, lock_id, requested_by, requested_at, status) "
-            "VALUES (?, ?, ?, ?, 'pending')",
-            (report_id, lock_id, requested_by, int(time.time())),
-        )
-        self._con.commit()
-        return cursor.lastrowid
+        with Schreibvorgang(self._con, "log_takeover_request"):
+            cursor = self._con.execute(
+                "INSERT INTO lock_takeover_requests "
+                "(report_id, lock_id, requested_by, requested_at, status) "
+                "VALUES (?, ?, ?, ?, 'pending')",
+                (report_id, lock_id, requested_by, int(time.time())),
+            )
+            self._con.commit()
+            return cursor.lastrowid
 
     def resolve_takeover(self, request_id: int, status: str) -> bool:
         """Beantwortet Takeover-Anfrage im Audit-Log (status: granted/denied/expired)."""
-        assert status in ('granted', 'denied', 'expired')
-        cursor = self._con.execute(
-            "UPDATE lock_takeover_requests "
-            "SET status=?, responded_at=? "
-            "WHERE id=? AND status='pending'",
-            (status, int(time.time()), request_id),
-        )
-        self._con.commit()
-        return cursor.rowcount > 0
+        with Schreibvorgang(self._con, "resolve_takeover"):
+            assert status in ('granted', 'denied', 'expired')
+            cursor = self._con.execute(
+                "UPDATE lock_takeover_requests "
+                "SET status=?, responded_at=? "
+                "WHERE id=? AND status='pending'",
+                (status, int(time.time()), request_id),
+            )
+            self._con.commit()
+            return cursor.rowcount > 0
 
     def get_pending_takeover(self, report_id: int) -> Optional[dict]:
         """Gibt aelteste offene Takeover-Anfrage fuer einen Bericht zurueck."""

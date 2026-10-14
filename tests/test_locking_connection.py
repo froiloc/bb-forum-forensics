@@ -163,18 +163,40 @@ class _FakeConnection:
 
 
 def _run_threads(target, n_threads=12, n_ops=15):
+    """
+    Startet n_threads Threads mit je n_ops Aufrufen und gibt die Zahl der
+    ERFOLGREICHEN Aufrufe sowie die aufgetretenen Ausnahmen zurueck.
+
+    Build 774: Vorher gingen Ausnahmen in den Threads verloren (ein Thread,
+    der wirft, endet nur — der Test merkt davon nichts). So blieb
+    test_wrapper_prevents_overlap gruen, obwohl JEDER Aufruf scheiterte
+    (gemessen 14.10.2026 an einer Zwischenfassung von Build 774, die auf der
+    Attrappe nach 'in_transaction' fragte): keine Ausfuehrung, also auch keine
+    Ueberlappung. Jetzt zaehlt der Aufrufer die Erfolge mit.
+    """
     barrier = threading.Barrier(n_threads)
+    erfolge = []
+    fehler = []
+    schutz = threading.Lock()
 
     def worker():
         barrier.wait()                          # alle gleichzeitig starten
         for _ in range(n_ops):
-            target()
+            try:
+                target()
+            except Exception as exc:            # noqa: BLE001 — wird gezaehlt
+                with schutz:
+                    fehler.append(exc)
+            else:
+                with schutz:
+                    erfolge.append(1)
 
     threads = [threading.Thread(target=worker) for _ in range(n_threads)]
     for t in threads:
         t.start()
     for t in threads:
         t.join()
+    return len(erfolge), fehler
 
 
 class TestSerialization:
@@ -186,7 +208,11 @@ class TestSerialization:
         def op():
             con.execute("SELECT 1").fetchall()
 
-        _run_threads(op)
+        erfolge, fehler = _run_threads(op)
+        # Build 774: ohne diese beiden Zeilen ist der Test bei lauter
+        # scheiternden Aufrufen 'gruen aber tot'.
+        assert fehler == [], f"{len(fehler)} Aufrufe scheiterten: {fehler[:1]!r}"
+        assert erfolge == 12 * 15
         assert fake.violations == [], (
             "LockingConnection muss gleichzeitigen Zugriff verhindern, "
             f"sah aber {len(fake.violations)} Overlaps"

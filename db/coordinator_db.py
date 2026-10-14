@@ -25,6 +25,11 @@
 #
 # Abhängigkeiten: sqlite3, time — ausschließlich Stdlib
 # Version: v0.7.469 · Build: 469 · 2026-07-20
+# Build 774 (2026-10-14): Transaktionsschutz. Jede Schreibfunktion laeuft in
+#   'with Schreibvorgang(...)' (db/schreibvorgang.py): Lock fuer die ganze
+#   Dauer, rollback() bei jeder Ausnahme. Befund 13./14.10.2026: eine
+#   gescheiterte Anweisung ohne rollback() liess die Transaktion der
+#   geteilten Verbindung offen und sperrte coordinator.db.
 # Build 469: Schluesselumstellung user_id -> subject_id (M019)
 # Änderungen gegenüber Build 007 (Baustelle 3 — §11.5 Bauplan):
 #   - SupportStatusRecord: Neues Dataclass für SSE-Support-Status.
@@ -41,6 +46,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from core.logger import get_logger
+from db.schreibvorgang import Schreibvorgang  # Build 774: Transaktionsschutz
 
 logger = get_logger(__name__)
 
@@ -464,34 +470,35 @@ class CoordinatorDb:
             return False
 
         def _update() -> bool:
-            ts_col = ""
-            ts_val: list = []
-            if status == "running":
-                ts_col = ", started_at = ?"
-                ts_val = [int(time.time())]
-            elif status in ("done", "failed"):
-                ts_col = ", finished_at = ?"
-                ts_val = [int(time.time())]
+            with Schreibvorgang(self._con, "_update"):
+                ts_col = ""
+                ts_val: list = []
+                if status == "running":
+                    ts_col = ", started_at = ?"
+                    ts_val = [int(time.time())]
+                elif status in ("done", "failed"):
+                    ts_col = ", finished_at = ?"
+                    ts_val = [int(time.time())]
 
-            params = [status]
-            extra_cols = ""
-            extra_vals: list = []
-            if worker_id is not None:
-                extra_cols += ", worker_id = ?"
-                extra_vals.append(worker_id)
-            if error_message is not None:
-                extra_cols += ", error_message = ?"
-                extra_vals.append(error_message)
+                params = [status]
+                extra_cols = ""
+                extra_vals: list = []
+                if worker_id is not None:
+                    extra_cols += ", worker_id = ?"
+                    extra_vals.append(worker_id)
+                if error_message is not None:
+                    extra_cols += ", error_message = ?"
+                    extra_vals.append(error_message)
 
-            all_params = params + extra_vals + ts_val + [job_id]
-            cursor = self._con.execute(
-                f"UPDATE cdb.scrape_jobs "
-                f"SET status = ? {extra_cols} {ts_col} "
-                f"WHERE id = ?",
-                all_params,
-            )
-            self._con.commit()
-            return cursor.rowcount > 0
+                all_params = params + extra_vals + ts_val + [job_id]
+                cursor = self._con.execute(
+                    f"UPDATE cdb.scrape_jobs "
+                    f"SET status = ? {extra_cols} {ts_col} "
+                    f"WHERE id = ?",
+                    all_params,
+                )
+                self._con.commit()
+                return cursor.rowcount > 0
 
         result = self._retry(_update)
         logger.debug(
@@ -554,7 +561,8 @@ class CoordinatorDb:
             # unten fuellt weiterhin nur 'target_uid', und SQLite leitet
             # 'subject_id' daraus ab. Genau deshalb koennen die beiden nie
             # divergieren.
-            self._con.executescript("""
+            with Schreibvorgang(self._con, "_insert"):
+                self._con.executescript("""
                 CREATE TABLE IF NOT EXISTS pending_cross_annotations (
                     id                   INTEGER PRIMARY KEY AUTOINCREMENT,
                     source_iid           INTEGER NOT NULL,
@@ -568,23 +576,23 @@ class CoordinatorDb:
                     ON pending_cross_annotations (target_uid)
                     WHERE integrated_at IS NULL;
             """)
-            ts = int(time.time())
-            existing = self._con.execute(
-                "SELECT id FROM cdb.pending_cross_annotations "
-                "WHERE target_uid = ? AND annotation_local_id = ? "
-                "AND integrated_at IS NULL",
-                (target_uid, annotation_local_id),
-            ).fetchone()
-            if existing:
-                return int(existing["id"])
-            cursor = self._con.execute(
-                "INSERT INTO cdb.pending_cross_annotations "
-                "(source_iid, target_uid, db_path, annotation_local_id, created_at) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (source_iid, target_uid, db_path, annotation_local_id, ts),
-            )
-            self._con.commit()
-            return cursor.lastrowid or 0
+                ts = int(time.time())
+                existing = self._con.execute(
+                    "SELECT id FROM cdb.pending_cross_annotations "
+                    "WHERE target_uid = ? AND annotation_local_id = ? "
+                    "AND integrated_at IS NULL",
+                    (target_uid, annotation_local_id),
+                ).fetchone()
+                if existing:
+                    return int(existing["id"])
+                cursor = self._con.execute(
+                    "INSERT INTO cdb.pending_cross_annotations "
+                    "(source_iid, target_uid, db_path, annotation_local_id, created_at) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (source_iid, target_uid, db_path, annotation_local_id, ts),
+                )
+                self._con.commit()
+                return cursor.lastrowid or 0
         return self._retry(_insert)
 
     def get_pending_for_uid(self, target_uid: int) -> list:
@@ -619,14 +627,15 @@ class CoordinatorDb:
     def mark_integrated(self, pending_id: int) -> bool:
         """Markiert Transporteintrag als integriert (integrated_at = now)."""
         def _mark() -> bool:
-            ts = int(time.time())
-            cursor = self._con.execute(
-                "UPDATE cdb.pending_cross_annotations "
-                "SET integrated_at = ? WHERE id = ?",
-                (ts, pending_id),
-            )
-            self._con.commit()
-            return cursor.rowcount > 0
+            with Schreibvorgang(self._con, "_mark"):
+                ts = int(time.time())
+                cursor = self._con.execute(
+                    "UPDATE cdb.pending_cross_annotations "
+                    "SET integrated_at = ? WHERE id = ?",
+                    (ts, pending_id),
+                )
+                self._con.commit()
+                return cursor.rowcount > 0
         return self._retry(_mark)
 
     def _retry(self, func, *args):
