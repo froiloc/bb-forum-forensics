@@ -36,6 +36,7 @@
     "core/startup_checks.py",
     "db/connection_manager.py",
     "db/evidence_db.py",
+    "db/reparatur/evidence_reparierer.py",
     "db/review_addendum_db.py",
     "db/search_index_db.py",
     "forensic_api/annotate.py",

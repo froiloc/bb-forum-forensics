@@ -83,6 +83,25 @@ AUSNAHMEN = {
     # NEU Build 643. Diese Ausnahme ist NICHT beim Schreiben des Werkzeugs
     # eingetragen worden, sondern weil PY01 im Regressionslauf angeschlagen
     # hat - die Pruefung hat getan, wofuer es sie gibt.
+    # NEU Build 776 - bei allen dreien schlug PY01 im Regressionslauf an.
+    "integritaetssonde": (
+        "Oeffnet ausschliesslich eine eigene KOPIE im Temp-Verzeichnis "
+        "schreibfaehig - damit SQLite ein mitkopiertes -journal einer "
+        "unterbrochenen Transaktion zurueckrollen kann und die Pruefung den "
+        "Zustand sieht, den auch das naechste Oeffnen des Originals sehen "
+        "wuerde. Eine nur lesende Verbindung scheitert an einem heissen "
+        "Journal (gemessen Build 776: mode=ro auf einer Kopie mit -journal "
+        "-> 'attempt to write a readonly database'). Das ORIGINAL wird nur "
+        "byteweise gelesen (SHA-256, Kopie)."),
+    "schadensanalyse": (
+        "Wie integritaetssonde: schreibfaehig geoeffnet wird nur die eigene "
+        "Kopie im Temp-Verzeichnis (Rueckrollen eines mitkopierten "
+        "-journal). Das Original wird nur byteweise gelesen."),
+    "sperrsonde": (
+        "Die Sperrprobe IST die Messung: BEGIN IMMEDIATE und BEGIN EXCLUSIVE "
+        "mit Wartezeit 0 brauchen eine schreibfaehige Verbindung; beide "
+        "werden sofort mit ROLLBACK beendet, es wird nichts geschrieben. "
+        "Die Abfrage des Journalmodus laeuft nur lesend (mode=ro)."),
     "diag_backup_verdraengung": (
         "Baut sich seinen Wegwerf-Bestand SELBST: eine Quelldatenbank mit "
         "Schema und Inhalt, in einem Verzeichnis, das das Werkzeug anlegt "

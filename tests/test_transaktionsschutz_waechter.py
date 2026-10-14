@@ -90,6 +90,13 @@ AUSNAHMEN = {
         "Eigene Verbindung auf search_index.db, 'with self._con'.",
     ("db/search_index_db.py", "optimiere"):
         "Eigene Verbindung auf search_index.db, 'with self._con'.",
+    # --- Build 776 -----------------------------------------------------------
+    ("db/reparatur/evidence_reparierer.py", "_reparieren_mit"):
+        "Schreibt ausschliesslich in die NEU angelegte Datei der Reparatur "
+        "(eigene Verbindung 'neu', isolation_level=None, explizites "
+        "BEGIN/COMMIT; die Datei wird bei einem SQLite-Fehler und bei "
+        "nicht bestandener Pruefung verworfen). Die "
+        "geteilte Verbindung des Webservers wird nie beruehrt.",
     ("db/tatzeit_repo.py", "_write"):
         "Rueckruf fuer EvidenceWriter.audited_write: laeuft in "
         "EvidenceWriter.transaction() (Lock fuer die ganze Dauer, BEGIN "

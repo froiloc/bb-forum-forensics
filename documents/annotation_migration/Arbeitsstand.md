@@ -40,9 +40,10 @@ naechsten Abschnitt. Umsortieren kann eine Maschine, Kontext erfinden nicht.
 
 ## Aktueller Stand
 
-**Build 775** — in dieser Akte unveraendert seit Build 770 (Builds 771 ff.
+**Build 776** — in dieser Akte unveraendert seit Build 770 (Builds 771 ff.
 bauen den Bildschleier, Build 774 den Transaktionsschutz, Build 775 korrigiert
-den Bildschleier, siehe Chronologie). Die Migration der Annotationen von `selection_json` 1.0.0 auf
+den Bildschleier, Build 776 nimmt die Reparaturwerkzeuge auf, siehe
+Chronologie). Die Migration der Annotationen von `selection_json` 1.0.0 auf
 2.0.0 ist **vorbereitet, aber nicht begonnen** — es ist noch kein Datensatz
 migriert.
 
@@ -298,5 +299,19 @@ gelassenen Transaktion.
 `exempt_css` jetzt auch im klaren Zustand. Das ist ein `<style>`-Element im
 Kopf (`#aiw-image-veil-page`), nicht im Viewport — am Seiteninhalt und an den
 XPath-Ausdruecken der Annotationen aendert sich nichts.
+
+**Messwerte.** Keine.
+
+### Build 776 — kein Fortschritt in dieser Akte (Reparaturwerkzeuge)
+
+**Entscheidungen.** Keine zur Annotationsmigration.
+
+**Erkenntnisse, die diese Akte beruehren.** `tools/evidence_reparatur.py`
+(Logik in `db/reparatur/`) uebernimmt aus dem Seitenscan NUR Zeilen der
+Tabellen `viewport_events` und `page_visits`. Annotationen, die ueber den Baum
+nicht mehr lesbar sind, werden gezaehlt, nicht wiederhergestellt — eine
+gefundene Fassung koennte eine alte, spaeter geaenderte sein. Fuer die
+Migration heisst das: eine reparierte Datei kann Annotationen weniger haben
+als die Sicherung; die Zahl steht im Reparaturprotokoll.
 
 **Messwerte.** Keine.
