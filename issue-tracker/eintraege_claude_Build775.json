@@ -1,0 +1,175 @@
+{
+ "issues": [
+  {
+   "id": "a8a8a5f2-2c30-498a-b03d-79ca22d83edf",
+   "type": "bug",
+   "title": "Bildschleier: Einschalten auf klarer Seite verschleiert auch Symbole",
+   "affected_version": "0.8.773",
+   "reporter": "Alex",
+   "reported_at": "2026-10-13T21:00:00+02:00",
+   "status": "review",
+   "priority": "high",
+   "severity": "major",
+   "resolved_in_version": "0.8.775",
+   "description": "Befund 13.10.2026 (PROD): Badges und Smileys aus /forum/img/ waren verschleiert. Ursache: server/blob_handler.py _bildschleier_umschlag lieferte exempt_css nur bei veiled=true. Auf einer klar geladenen Seite setzt toolbar/bildschleier.js beim Einschalten die Klasse SOFORT - ohne Ausnahmen dieser Seite. Der Test BSU01 hatte genau das als Sollverhalten festgeschrieben ('ausnahmen_nur_bei_schleier').\n\nBuild 775: exempt_css immer (die Regeln sind auf html.aiw-image-veil beschraenkt und wirken ohne die Klasse nicht); seiteAnwenden() setzt sie in beiden Zustaenden. BSU01 umgeschrieben (gewollte Verhaltensaenderung).",
+   "expected_behavior": "Symbole, Abzeichen und Smileys bleiben beim Einschalten unverschleiert.",
+   "related_to": [
+    "e113de83-4825-4792-ba25-24b87eac49a3",
+    "4a045334-62bf-4719-820e-39da1f0e68e4"
+   ],
+   "tags": [
+    "bildschleier",
+    "ausnahmen",
+    "build775"
+   ],
+   "updates": [
+    {
+     "timestamp": "2026-10-14T15:00:00+02:00",
+     "author": "Claude",
+     "action": "comment",
+     "comment": "BSU01, BS36; Gegenproben M10 (Server) und M11 (JS) rot."
+    }
+   ]
+  },
+  {
+   "id": "a8bb36cc-df02-4bf9-a229-02ca832db6d3",
+   "type": "bug",
+   "title": "Bildschleier: nach gescheitertem Einschalten nur per F5 zurueck",
+   "affected_version": "0.8.773",
+   "reporter": "Alex",
+   "reported_at": "2026-10-13T21:00:00+02:00",
+   "status": "review",
+   "priority": "high",
+   "severity": "major",
+   "resolved_in_version": "0.8.775",
+   "description": "Befund 13.10.2026 (PROD): 'Umschalten fehlgeschlagen: database is locked'. Nach gescheitertem EINschalten stand die Klasse, der gemeldete Zustand blieb 'klar': die Schaltflaeche zeigte 'klar', ein zweiter Klick versuchte erneut einzuschalten, zurueck ging es nur mit F5. Die 500-Antwort trug keinen Zustand.\n\nBuild 775: vierter Zustand 'lokal' (Klasse steht, gespeichert ist klar). Darstellung verschleiert + gestrichelter roter Rahmen (.is-local), Hinweis 'Nur lokal verschleiert - nicht gespeichert'. Klick hebt den lokalen Schleier ohne Request auf, der naechste Klick speichert erneut. Beim Blaettern in der Shell bleibt er, nach dem Neuladen gilt der gespeicherte Zustand. Server: 500-Antwort mit gespeichertem Zustand, auch bei unerwarteten Fehlern (forensic_api/bildschleier.py, _fehlerantwort). Hilfe: Kapitel Rechte/Policy, Abschnitt Bildschleier (Stand 775).",
+   "expected_behavior": "Nach einem gescheiterten Einschalten zeigt die Schaltflaeche den lokalen Schleier an und kann ihn ohne Neuladen aufheben.",
+   "related_to": [
+    "e113de83-4825-4792-ba25-24b87eac49a3",
+    "db1b69da-0983-4715-9831-ffcbc7f10d0c"
+   ],
+   "tags": [
+    "bildschleier",
+    "fehlerzustand",
+    "build775"
+   ],
+   "updates": [
+    {
+     "timestamp": "2026-10-14T15:00:00+02:00",
+     "author": "Claude",
+     "action": "comment",
+     "comment": "BS31-BS35, BS37, BSE01, BSE02; Gegenproben M12, M13, M14, M15 rot."
+    }
+   ]
+  },
+  {
+   "id": "a23826a1-8e80-4e19-ab7f-f33aa8eca18c",
+   "type": "improvement",
+   "title": "Bildschleier: Durchlauf des Befunds 13.10. als Integrationstest",
+   "affected_version": "0.8.774",
+   "reporter": "Claude",
+   "reported_at": "2026-10-14T15:00:00+02:00",
+   "status": "review",
+   "priority": "medium",
+   "resolved_in_version": "0.8.775",
+   "description": "tests/test_bildschleier_umschalten.py BSE03: evidence (main) und coordinator (cdb) auf EINER LockingConnection, gescheiterter Schreibvorgang auf viewport_events (TEMP-Trigger statt beschaedigter Datei), Lesung auf cdb, dann POST /_forensic/image-veil -> 200 und Wahl gespeichert. BSE04 als Gegenprobe: dieselbe Folge mit einer Schreibstelle ohne Schutz -> 500 'database is locked' nach ~5 s (busy_timeout wie in PROD), Rumpf meldet gespeichert 'klar'; nach rollback() -> 200. Der Aufbau bildet den Befund also nachweislich ab.",
+   "related_to": [
+    "db1b69da-0983-4715-9831-ffcbc7f10d0c",
+    "a8bb36cc-df02-4bf9-a229-02ca832db6d3"
+   ],
+   "tags": [
+    "bildschleier",
+    "integrationstest",
+    "transaktion",
+    "build775"
+   ]
+  },
+  {
+   "id": "5430fc2f-e261-4c6d-be23-f26bc33a32a4",
+   "type": "bug",
+   "title": "get_sort_index_after: Blockverschiebung durch fremdes rollback verloren",
+   "affected_version": "0.8.774",
+   "reporter": "Claude",
+   "reported_at": "2026-10-14T16:30:00+02:00",
+   "status": "review",
+   "priority": "high",
+   "severity": "major",
+   "resolved_in_version": "0.8.775",
+   "description": "Befund der unabhaengigen Durchsicht von Build 774 (14.10.2026, vor jeder Einspielung). db/evidence_db.py get_sort_index_after verschob Bloecke per UPDATE ohne commit; das commit kam erst aus dem spaeteren save_block (forensic_api/editor_block.py). Dazwischen ist der Lock frei. Seit Build 774 rollen gescheiterte Schreibvorgaenge anderer Threads zurueck (z. B. acquire_lock bei Konkurrenz um den Editor) und nahmen die Verschiebung mit. Gemessen: Bloecke b1=1000, b2=1001, b3=2000; Verschiebung nach b1; fremdes acquire_lock auf belegten Lock; save_block(1001) -> b2 und neuer Block beide 1001, Reihenfolge undefiniert. REGRESSION DURCH BUILD 774 - Build 774 darf deshalb NICHT allein eingespielt werden.\n\nBuild 775: eigener Schreibvorgang mit commit (scheitert save_block danach, bleibt eine harmlose Luecke von 2). Waechterregel R3: jede Funktion mit DML laeuft im Schreibvorgang, auch ohne eigenes commit (R1 sah nur Funktionen MIT commit).",
+   "related_to": [
+    "db1b69da-0983-4715-9831-ffcbc7f10d0c"
+   ],
+   "tags": [
+    "transaktion",
+    "berichtseditor",
+    "sort-index",
+    "regression",
+    "build775"
+   ],
+   "updates": [
+    {
+     "timestamp": "2026-10-14T16:30:00+02:00",
+     "author": "Claude",
+     "action": "comment",
+     "comment": "TS12, WT06; Gegenproben M16 (commit entfernt) und M16b (exakt Stand 774) rot. Erste Fassung von TS12 blieb bei M16 gruen (der Editor-Lock wurde nach der Verschiebung belegt und schrieb sie nebenbei fest) - Reihenfolge im Test korrigiert."
+    }
+   ]
+  },
+  {
+   "id": "e3a6e8b3-9bef-4d6a-b753-07116f5581ae",
+   "type": "improvement",
+   "title": "Sicherheitsnetz: Schnellpfad ohne Lock, verwaiste Transaktionen melden",
+   "affected_version": "0.8.774",
+   "reporter": "Claude",
+   "reported_at": "2026-10-14T16:30:00+02:00",
+   "status": "review",
+   "priority": "medium",
+   "resolved_in_version": "0.8.775",
+   "description": "Befunde der unabhaengigen Durchsicht: (1) sicherheitsnetz() nahm am Ende JEDES Requests den Verbindungs-Lock - auch statische Dateien warteten bis zu 5 s, wenn ein Schreibvorgang in einer Busy-Wartezeit hing. Jetzt Schnellpfad: ohne offene Transaktion kein Lock. (2) Ein Leck aus einem Thread, der kein Request ist (SSE, Poller, Timer), blieb stumm; nach dem Ende dieses Threads schliesst es niemand mehr. Jetzt Meldung ERROR 'verwaist', einmal je Transaktion. Zurueckgerollt wird weiterhin NUR im eroeffnenden Thread (Festlegung Alex 14.10.2026).",
+   "related_to": [
+    "c5d51309-a169-4798-a109-fecd20f7d594"
+   ],
+   "tags": [
+    "sicherheitsnetz",
+    "locking-connection",
+    "build775"
+   ],
+   "updates": [
+    {
+     "timestamp": "2026-10-14T16:30:00+02:00",
+     "author": "Claude",
+     "action": "comment",
+     "comment": "TS13, TS14; Gegenproben M17, M18 rot."
+    }
+   ]
+  },
+  {
+   "id": "6ef66b4b-343b-4618-b544-849cfd189d4a",
+   "type": "bug",
+   "title": "Bildschleier: Blaettern waehrend des Einschaltens entschleiert",
+   "affected_version": "0.8.772",
+   "reporter": "Claude",
+   "reported_at": "2026-10-14T16:30:00+02:00",
+   "status": "review",
+   "priority": "high",
+   "severity": "major",
+   "resolved_in_version": "0.8.775",
+   "description": "Befund der unabhaengigen Durchsicht (besteht seit Build 772): Waehrend das EINschalten noch gespeichert wurde (bis zu 5 s Busy-Wartezeit), entfernte ein Blaettern die Klasse, weil der Umschlag gespeichert 'klar' meldete - die neue Seite erschien unverschleiert, obwohl Schutz angefordert war. Dazu (4b): ein gescheitertes AUSschalten, dessen Antwort gespeichert 'klar' meldet, liess Klasse und Anzeige auseinanderlaufen. Build 775: _ausstehendEin haelt die Klasse bis zur Antwort; 'lokal' gilt allgemein (Klasse steht, gespeichert klar). Ausserdem: ein Fehler beim Berechnen der Ausnahmen laesst eine klare Seite nicht mehr scheitern (seit D1 werden sie auch dort berechnet).",
+   "related_to": [
+    "e113de83-4825-4792-ba25-24b87eac49a3"
+   ],
+   "tags": [
+    "bildschleier",
+    "build775"
+   ],
+   "updates": [
+    {
+     "timestamp": "2026-10-14T16:30:00+02:00",
+     "author": "Claude",
+     "action": "comment",
+     "comment": "BS38, BS39, BSU03; Gegenproben M19, M20, M21 rot."
+    }
+   ]
+  }
+ ]
+}

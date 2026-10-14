@@ -29,7 +29,7 @@
 #         CRLF, Escaping, Obergrenze
 #   BSd*  Dienst: interner Fehler -> internal_error (gesperrt), fehlender
 #         Pfad -> rbac_unavailable
-#   BSu*  Seitenumschlag: Ausnahmen nur bei Schleier
+#   BSu*  Seitenumschlag: Ausnahmen in beiden Zustaenden (Build 775, D1)
 #
 # MUTATIONSGEGENPROBEN (gefahren in Build 772, Ergebnis im build.json):
 #   M5  Ausschlusspruefung in der Regel entfernt          -> BS09 rot
@@ -498,16 +498,43 @@ class UmschlagTests(unittest.TestCase):
             page, head_data,
             '<img src="img/icons/a.gif"><img src="/forum/img/avatars/1.jpg">')[0]
 
-    def test_bsu01_ausnahmen_nur_bei_schleier(self):
-        _stub_setzen(BildschleierZustand(veiled=True, locked=False,
-                                         reason="chosen"))
-        u = self._umschlag({"base_href": "/forum/"})
-        self.assertTrue(u["veiled"])
-        self.assertIn('img[src="img/icons/a.gif"]', u["exempt_css"])
-        self.assertNotIn("avatars", u["exempt_css"])
-        _stub_setzen(BildschleierZustand(veiled=False, locked=False,
-                                         reason="default"))
-        u = self._umschlag({"base_href": "/forum/"})
+    def test_bsu01_ausnahmen_in_beiden_zustaenden(self):
+        # Build 775 (D1, Befund 13.10.2026): bis Build 774 hiess dieser Test
+        # 'ausnahmen_nur_bei_schleier' und verlangte im klaren Zustand
+        # exempt_css == "". Genau das verschleierte beim sofortigen
+        # Einschalten auf einer klar geladenen Seite auch Symbole und
+        # Abzeichen. GEWOLLTE VERHALTENSAENDERUNG: die Ausnahmen kommen
+        # immer; sie wirken nur unter html.aiw-image-veil.
+        for zustand in (BildschleierZustand(veiled=True, locked=False,
+                                            reason="chosen"),
+                        BildschleierZustand(veiled=False, locked=False,
+                                            reason="default")):
+            _stub_setzen(zustand)
+            u = self._umschlag({"base_href": "/forum/"})
+            self.assertEqual(u["veiled"], zustand.veiled)
+            self.assertIn('img[src="img/icons/a.gif"]', u["exempt_css"])
+            self.assertNotIn("avatars", u["exempt_css"])
+            self.assertTrue(u["exempt_css"].lstrip().startswith(
+                "html.aiw-image-veil"), u["exempt_css"][:80])
+
+    def test_bsu03_fehler_in_ausnahmen_klare_seite_bleibt(self):
+        # Build 775 (Befund der unabhaengigen Durchsicht): seit die Ausnahmen
+        # auch im klaren Zustand berechnet werden, darf ein Fehler dort eine
+        # klare Seite nicht scheitern lassen.
+        z = BildschleierZustand(veiled=False, locked=False, reason="default")
+        stub = _Stub(z)
+
+        def _wirft(*_a, **_k):
+            raise ValueError("kaputt")
+        stub.seitenausnahmen = types.SimpleNamespace(stylesheet=_wirft)
+        alt = bd.dienst
+        bd.dienst = lambda *_a, **_k: stub
+        try:
+            import server.blob_handler as bh_mod
+            with self.assertLogs(bh_mod.logger, level="ERROR"):
+                u = self._umschlag({"base_href": "/forum/"})
+        finally:
+            bd.dienst = alt
         self.assertFalse(u["veiled"])
         self.assertEqual(u["exempt_css"], "")
 

@@ -40,8 +40,9 @@ naechsten Abschnitt. Umsortieren kann eine Maschine, Kontext erfinden nicht.
 
 ## Aktueller Stand
 
-**Build 774** — in dieser Akte unveraendert seit Build 770 (Builds 771 ff.
-bauen den Bildschleier, Build 774 den Transaktionsschutz, siehe Chronologie). Die Migration der Annotationen von `selection_json` 1.0.0 auf
+**Build 775** — in dieser Akte unveraendert seit Build 770 (Builds 771 ff.
+bauen den Bildschleier, Build 774 den Transaktionsschutz, Build 775 korrigiert
+den Bildschleier, siehe Chronologie). Die Migration der Annotationen von `selection_json` 1.0.0 auf
 2.0.0 ist **vorbereitet, aber nicht begonnen** — es ist noch kein Datensatz
 migriert.
 
@@ -286,5 +287,16 @@ unveraendert — nachgewiesen per AST-Vergleich (alt gegen neu, nach Entfernen
 der Huelle gleich). Ein Migrationslauf, der ueber diese Funktionen schreibt,
 bekommt bei einem Fehler kuenftig ein sauberes `rollback()` statt einer offen
 gelassenen Transaktion.
+
+**Messwerte.** Keine.
+
+### Build 775 — kein Fortschritt in dieser Akte (Bildschleier, Korrekturen)
+
+**Entscheidungen.** Keine zur Annotationsmigration.
+
+**Erkenntnisse, die diese Akte beruehren.** Der Seitenumschlag traegt
+`exempt_css` jetzt auch im klaren Zustand. Das ist ein `<style>`-Element im
+Kopf (`#aiw-image-veil-page`), nicht im Viewport — am Seiteninhalt und an den
+XPath-Ausdruecken der Annotationen aendert sich nichts.
 
 **Messwerte.** Keine.

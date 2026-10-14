@@ -53,6 +53,12 @@ _STAND_H14 = 605
 #: steht damit auf 771; die uebrigen Kapitel dieser Datei bleiben, wo sie sind.
 _STAND_BILDSCHLEIER = 771
 
+#: Build 775: Abschnitt "Bildschleier im Forenviewer" ergaenzt um das
+#: Verhalten, wenn das Speichern scheitert (Befund 13.10.2026, D2) und um die
+#: sofort unverschleierten Symbole beim Einschalten (D1). Kapitel 'policy'
+#: steht damit auf 775.
+_STAND_BILDSCHLEIER_775 = 775
+
 
 # =============================================================================
 # 1) policy - "Rechte / Policy"
@@ -66,7 +72,7 @@ POLICY = Sichthilfe(
         "Rechtelage der Dienststelle, sonst nur die eigene."
     ),
     anker_praefixe=("policy", "policy_grants", "policy_assign"),
-    stand=_STAND_BILDSCHLEIER,
+    stand=_STAND_BILDSCHLEIER_775,
     abschnitte=(
         Abschnitt(
             "zweck", "Zweck und Motivation",
@@ -186,6 +192,24 @@ POLICY = Sichthilfe(
                 "immer verschleiert, wenn der Schleier wirkt.",
                 "Jedes Umschalten wird mit der handelnden Person im "
                 "Protokollbuch eingetragen.",
+                # Build 775 (D1, D2). Quelle: toolbar/bildschleier.js,
+                # forensic_api/bildschleier.py (_fehlerantwort).
+                "BEIM EINSCHALTEN WIRKT DER SCHLEIER SOFORT, noch bevor die "
+                "Wahl gespeichert ist; Symbole und Abzeichen bleiben dabei "
+                "unverschleiert. Danach wird die Seite neu geladen.",
+                "WENN DAS SPEICHERN SCHEITERT. Schlägt das Einschalten fehl, "
+                "bleiben die Bilder trotzdem verschleiert — aber nur in diesem "
+                "Fenster und nur bis zum Neuladen. Die Augen-Schaltfläche hat "
+                "dann einen gestrichelten roten Rahmen, und der Kurzhinweis "
+                "lautet „Nur lokal verschleiert — nicht gespeichert“, gefolgt "
+                "von der Fehlermeldung. Ein Klick hebt diesen lokalen Schleier "
+                "wieder auf; ein weiterer Klick versucht erneut zu speichern. "
+                "Bilder, die die Seitengestaltung als Hintergrund einsetzt, "
+                "werden im lokalen Schleier nicht ersetzt. Schlägt das "
+                "Ausschalten fehl, bleibt der Schleier stehen; meldet das "
+                "Werkzeug dabei, dass gespeichert „unverschleiert“ gilt, "
+                "erscheint derselbe Hinweis „Nur lokal verschleiert“. In allen "
+                "Fällen nennt der Kurzhinweis den Fehler — bitte melden.",
             ),
         ),
         Abschnitt(

@@ -3385,6 +3385,8 @@ li.aiw-translate-item.aux-part {
  *   .is-veiled  — verschleiert, umschaltbar: Auge verschwommen, farbig
  *   .is-clear   — klar, umschaltbar: Auge scharf, farbig
  * Dazu .is-busy (Speichern laeuft) und .is-error (Umschalten gescheitert).
+ * Build 775: .is-local — nur lokal verschleiert, nicht gespeichert (nach
+ *   gescheitertem Einschalten): wie .is-veiled, Rahmen gestrichelt.
  * Der Filter wirkt auf das Zeichen selbst; die Leiste liegt AUSSERHALB von
  * #forensic-viewport, die Grundregel des Schleiers trifft sie nicht.
  * ======================================================================== */
@@ -3408,6 +3410,7 @@ li.aiw-translate-item.aux-part {
 }
 #forensic-image-veil.is-busy   { cursor: progress; opacity: 0.7; }
 #forensic-image-veil.is-error  { border-color: #c0392b; }
+#forensic-image-veil.is-local  { border-style: dashed; border-color: #c0392b; }
 #forensic-image-veil:not(.is-locked):hover,
 #forensic-image-veil:not(.is-locked):focus-visible {
   border-color: currentColor;

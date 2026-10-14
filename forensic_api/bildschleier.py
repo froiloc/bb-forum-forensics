@@ -11,6 +11,8 @@
 #                                      -> 400 Rumpf unbrauchbar
 #                                      -> 403 Umschalten nicht zulaessig
 #                                         (gesperrt; Grund im Rumpf)
+#                                      -> 500 Speichern gescheitert; Rumpf
+#                                         mit gespeichertem Zustand (775)
 #     GET  /_forensic/image-veil.css   -> die Grundregel (alles verschleiern)
 #     GET  /_forensic/image-veil-placeholder.svg -> grauer Platzhalter fuer
 #                                      ersetzte Bildquellen in CSS (Build 773)
@@ -23,7 +25,10 @@
 #   Die Antwort-Schluessel sind englisch (externe Schnittstelle), die Texte
 #   fuer die Anwendung deutsch.
 #
-# Version: v0.8.772 · Build: 772 · 2026-10-09
+# Version: v0.8.775 · Build: 775 · 2026-10-14
+# Build 775: Die 500-Antwort beim Speichern traegt den gespeicherten Zustand
+#   (veiled, locked, reason, tooltip) zusaetzlich zu error/detail; auch ein
+#   unerwarteter Fehler antwortet so (Befund 13.10.2026, D2).
 # =============================================================================
 
 from __future__ import annotations
@@ -105,9 +110,31 @@ class BildschleierEndpoint:
             return
         except sqlite3.Error as exc:
             logger.error("Bildschleier: Speichern fehlgeschlagen: %s", exc)
-            _json(handler, 500, {"error": "store_failed", "detail": str(exc)})
+            _json(handler, 500, self._fehlerantwort(d, exc))
+            return
+        except Exception as exc:                            # noqa: BLE001
+            # Build 775: auch ein unerwarteter Fehler antwortet mit JSON und
+            # dem gespeicherten Zustand statt mit der allgemeinen 500-Seite
+            # des Servers — die Schaltflaeche braucht den Zustand, um richtig
+            # weiterzuarbeiten. Mit Traceback im Protokoll (Grundregel 1).
+            logger.exception("Bildschleier: Speichern fehlgeschlagen "
+                             "(unerwarteter Fehler)")
+            _json(handler, 500, self._fehlerantwort(d, exc))
             return
         _json(handler, 200, nachher.to_dict())
+
+    @staticmethod
+    def _fehlerantwort(d, exc: BaseException) -> dict:
+        """
+        Build 775 (D2): Die Fehlerantwort traegt den GESPEICHERTEN Zustand
+        (frisch gelesen; aktualisieren() wirft nie, im Zweifel liefert es
+        'verschleiert und gesperrt'). So weiss toolbar/bildschleier.js nach
+        einem gescheiterten Einschalten, dass gespeichert 'klar' gilt und der
+        Schleier nur lokal steht — und bietet das Aufheben an.
+        """
+        antwort = d.aktualisieren().to_dict()
+        antwort.update({"error": "store_failed", "detail": str(exc)})
+        return antwort
 
     # ---------------------------------------------------------- Platzhalter
     #: Build 773: neutrales Grau an Stelle einer ersetzten Bildquelle in CSS
