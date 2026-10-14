@@ -94,7 +94,10 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // KATALOGFOLGE geprueft wird; dass die Trennung greift, prueft
     // tests/unit/test_rechtetrennung_falluebersicht.test.js (RT01-RT04).
     expect(ids).toEqual(
-      ["dashboard", "faelle", "workload", "integrity", "audit", "promotion",
+      // Build 777: 'dbvorfaelle' haengt an ops.view und steht direkt nach
+      // 'audit'.
+      ["dashboard", "faelle", "workload", "integrity", "audit", "dbvorfaelle",
+       "promotion",
        "viewprefs"]);
   });
 
@@ -168,7 +171,8 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Build 559: 42 (neu: 'capacity_pflege' — Kapazitaetspflege,
     // Pflegeflaeche neben der Auswertung 'capacity').
     // Build 574: 43 (neu: 'faelle' — Fallübersicht).
-    expect(api.VIEW_CATALOG.length).toBe(43);
+    // Build 777: 44 (neu: 'dbvorfaelle' — Register Datenbank-Vorfaelle).
+    expect(api.VIEW_CATALOG.length).toBe(44);
   });
 
   // CN-QUERFUND (Build 478) --------------------------------------------------

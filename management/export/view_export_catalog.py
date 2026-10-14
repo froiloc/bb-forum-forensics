@@ -64,6 +64,7 @@
 #   Verjaehrungsvorbehalt als 'note'.
 # Build 546: 'viewprefs' in die Ausnahmeliste (Begruendung oben).
 # Version: v0.8.546 · Build: 546 · 2026-07-26
+#   Build 777: Export der Sicht 'dbvorfaelle'.
 # =============================================================================
 
 from __future__ import annotations
@@ -341,6 +342,15 @@ VIEW_EXPORTS: Tuple[ViewExportSpec, ...] = (
               "(Build 467). Dieses Dokument ist die Aktenfassung der aktuell "
               "angezeigten Seite."),
         sections=(SectionSpec("rows", "Belege"),),
+    ),
+    # Build 777: Register Datenbank-Vorfaelle. Gehoert in die Akte: ob die
+    # Arbeitsdatei eines Falls je beschaedigt, gesichert und ersetzt wurde,
+    # ist eine Frage, die spaeter gestellt werden kann. Exportiert wird der
+    # VOLLE Bestand (Filter 'alle', Vorgabe des Endpunkts) samt Puffer.
+    ViewExportSpec(
+        view_id="dbvorfaelle", label="Datenbank-Vorfälle",
+        api_path="/api/db_vorfaelle",
+        sections=(SectionSpec("vorfaelle", "Vorfälle"),),
     ),
     ViewExportSpec(
         view_id="promotion", label="Fremdforum-Promotion",

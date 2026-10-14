@@ -207,7 +207,8 @@ describe("Navigationssuche (Build 569)", () => {
       .map((v) => v.id);
     expect(ohne).toEqual([]);
     // Build 574: 43 (neu: 'faelle' — Fallübersicht).
-    expect(api.VIEW_CATALOG.length).toBe(43);
+    // Build 777: 44 (neu: 'dbvorfaelle' — Register Datenbank-Vorfaelle).
+    expect(api.VIEW_CATALOG.length).toBe(44);
   });
 
   // NS11 --------------------------------------------------------------------

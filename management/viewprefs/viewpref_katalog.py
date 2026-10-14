@@ -59,6 +59,7 @@
 #   m037_view_pref.py).
 #
 # Version: v0.8.545 · Build: 545 · 2026-07-26
+#   Build 777: Sicht 'dbvorfaelle' und Kachel 'db_vorfaelle'.
 # =============================================================================
 
 from __future__ import annotations
@@ -85,7 +86,7 @@ STEUERBARE_SICHTEN: Tuple[str, ...] = (
     "results", "stats", "planung", "annostats",
     "limitation", "matrix", "qs", "workload", "capacity", "support",
     "mycases", "myhistory",
-    "policy", "integrity", "audit", "handover", "retention",
+    "policy", "integrity", "audit", "dbvorfaelle", "handover", "retention",
     "promotion", "releases", "onboarding", "personnel",
     "crossref", "crossfindings", "alias", "merge", "search",
     # Build 574: die Falluebersicht. Steuerbar wie jede Arbeitssicht;
@@ -198,6 +199,17 @@ WIDGETS: Tuple[WidgetSpec, ...] = (
         beschreibung="Ergebnis der Kettenprüfung und die aktuelle Spitze — "
                      "der Betriebsblick für die Administration.",
         cap="ops.view", api_path="/api/integrity"),
+    # Build 777: Register Datenbank-Vorfaelle. Neben dem Kettenzustand der
+    # zweite Betriebsblick der Administration (Alex 14.10.2026: der Eintrag
+    # muss im Management sichtbar sein, "speziell fuer mich ist das ganz
+    # wichtig"). NICHT Werkseinstellung — die Werkseinstellung bleibt eine
+    # Kachel (Begruendung oben); wer ops.view hat, waehlt sie dazu.
+    WidgetSpec(
+        key="db_vorfaelle", label="Datenbank-Vorfälle",
+        beschreibung="Offene Vorfälle an Arbeitsdateien der Fälle (beim "
+                     "Öffnen beschädigt gefunden, gesichert, ersetzt) und "
+                     "was noch auf den Nachtrag wartet.",
+        cap="ops.view", api_path="/api/db_vorfaelle"),
 )
 
 _WIDGET_BY_KEY: Dict[str, WidgetSpec] = {w.key: w for w in WIDGETS}

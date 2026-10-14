@@ -24,6 +24,7 @@
 #   Betrieb.
 #
 # Version: v0.8.595 - Build: 595 - 2026-07-31
+#   Build 777: Kapitel 'dashboard' um die Kachel 'db_vorfaelle' ergaenzt.
 # =============================================================================
 
 from __future__ import annotations
@@ -33,6 +34,10 @@ from typing import Tuple
 from management.help.modell import Abschnitt, Kontexthilfe, Sichthilfe
 
 _STAND = 595
+
+#: Build 777: Kachel „Datenbank-Vorfälle“ im Kapitel 'dashboard' (Rechtelage
+#: und Kontexthilfe). Die uebrigen Kapitel dieser Datei bleiben auf 595.
+_STAND_DASHBOARD = 777
 
 
 # =============================================================================
@@ -49,7 +54,7 @@ DASHBOARD = Sichthilfe(
         "zugeteilt und nicht etwa ausgefallen; ausgefallene Kacheln sagen "
         "das ausdrücklich („Nicht abrufbar“)."
     ),
-    stand=_STAND,
+    stand=_STAND_DASHBOARD,
     abschnitte=(
         Abschnitt(
             "zweck", "Zweck und Motivation",
@@ -73,7 +78,7 @@ DASHBOARD = Sichthilfe(
                 "nextactions.view, Fällige Wiedervorlagen an external.view, "
                 "Fristen an limitation.view, Lastverteilung an "
                 "workload.view, Meine Aufträge an mycases.view, Zustand der "
-                "Audit-Kette an ops.view.",
+                "Audit-Kette und Datenbank-Vorfälle an ops.view.",
                 "Der Kachelwähler zeigt ausschließlich Kacheln, für die Sie "
                 "berechtigt sind. Er kann also nichts einblenden, was Ihnen "
                 "verwehrt ist — die Auswahl ordnet und blendet aus, sie "
@@ -238,6 +243,14 @@ DASHBOARD = Sichthilfe(
             "Protokollbuchs — der Betriebsblick. Recht: ops.view. Eine "
             "Meldung hier ist ein Betriebsvorfall.",
             verweis="dashboard#kachel"),
+        # Build 777: Kachel des Registers Datenbank-Vorfaelle.
+        Kontexthilfe(
+            "dashboard.kachel.db_vorfaelle", "Kachel „Datenbank-Vorfälle“",
+            "Zahl der offenen Vorfälle an Arbeitsdateien der Fälle, darunter "
+            "die offenen einzeln. Rot, solange ein Vorfall offen ist oder "
+            "noch auf seinen Nachtrag wartet. Recht: ops.view. Einzelheiten "
+            "in der Sicht „Datenbank-Vorfälle“.",
+            verweis="dbvorfaelle#zweck"),
 
         # Build 637 (Welle B5).
         Kontexthilfe(

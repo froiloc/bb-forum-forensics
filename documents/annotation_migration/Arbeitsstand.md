@@ -40,10 +40,10 @@ naechsten Abschnitt. Umsortieren kann eine Maschine, Kontext erfinden nicht.
 
 ## Aktueller Stand
 
-**Build 776** — in dieser Akte unveraendert seit Build 770 (Builds 771 ff.
+**Build 777** — in dieser Akte unveraendert seit Build 770 (Builds 771 ff.
 bauen den Bildschleier, Build 774 den Transaktionsschutz, Build 775 korrigiert
-den Bildschleier, Build 776 nimmt die Reparaturwerkzeuge auf, siehe
-Chronologie). Die Migration der Annotationen von `selection_json` 1.0.0 auf
+den Bildschleier, Build 776 nimmt die Reparaturwerkzeuge auf, Build 777 baut
+das Register der Datenbank-Vorfaelle, siehe Chronologie). Die Migration der Annotationen von `selection_json` 1.0.0 auf
 2.0.0 ist **vorbereitet, aber nicht begonnen** — es ist noch kein Datensatz
 migriert.
 
@@ -313,5 +313,20 @@ nicht mehr lesbar sind, werden gezaehlt, nicht wiederhergestellt — eine
 gefundene Fassung koennte eine alte, spaeter geaenderte sein. Fuer die
 Migration heisst das: eine reparierte Datei kann Annotationen weniger haben
 als die Sicherung; die Zahl steht im Reparaturprotokoll.
+
+**Messwerte.** Keine.
+
+### Build 777 — kein Fortschritt in dieser Akte (Register Datenbank-Vorfaelle)
+
+**Entscheidungen.** Keine zur Annotationsmigration.
+
+**Erkenntnisse, die diese Akte beruehren.** Ab Build 778 tauscht der
+Webserver eine beschaedigte `evidence_<uid>.db` beim Start selbst aus — auch
+dann, wenn die neue Datei NICHT freigegeben ist (Festlegung Alex 14.10.2026).
+Jeder solche Austausch steht als Vorfall im Register `db_vorfall`
+(coordinator.db, M041), mit Befund und der Zahl nicht geborgener Zeilen je
+Tabelle. Fuer die Migration heisst das: bevor ein Bestand migriert wird, ist
+im Register nachzusehen, ob seine Datei ersetzt wurde — eine ersetzte Datei
+kann Annotationen weniger haben als ihre Sicherung.
 
 **Messwerte.** Keine.

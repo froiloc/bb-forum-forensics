@@ -15,6 +15,8 @@
 #
 # Version: v0.7.469 · Build: 469 · 2026-07-20
 #   Build 771: IMAGE_VEIL_SET (Bildschleier, Tabelle person_image_veil, M040).
+#   Build 777: DB_VORFALL_ERFASST, DB_VORFALL_GEPRUEFT (Register Datenbank-
+#              Vorfaelle, Tabelle db_vorfall, M041).
 # =============================================================================
 
 from typing import FrozenSet
@@ -435,6 +437,22 @@ class EventType:
     #   subject_id, keine URL; der Beleg kann konstruktiv keinen tragen.
     IMAGE_VEIL_SET: str = "image_veil_set"
 
+    # --- Build 777 (Register Datenbank-Vorfaelle, Tabelle db_vorfall, M041) --
+    #   DB_VORFALL_ERFASST: ein Datenbankvorfall wurde ins Register
+    #   eingetragen (ab Build 778: Startpruefung der evidence_<uid>.db). EIN
+    #   Beleg je Vorfall, auch wenn er aus dem Puffer NACHGETRAGEN wird; der
+    #   Nachtrag ist idempotent ueber vorfall_uid (kein zweiter Beleg).
+    #   Payload: Kennung, Art, Ergebnis, Datei, Fall, Erkennungszeitpunkt,
+    #   'nachgetragen' und die SHA-256 des vollstaendigen Befunds — damit
+    #   haelt die Kette den Befund fest, ohne ihn zu doppeln.
+    #
+    #   DB_VORFALL_GEPRUEFT: eine Person mit 'wartung.durchfuehren' hat den
+    #   Vorfall als geprueft markiert. Payload: Kennung und Notiz. Der Schritt
+    #   ist einseitig; ein Zuruecknehmen gibt es nicht. Ein irrtuemlicher
+    #   Pruefvermerk bleibt samt Beleg stehen und wird nicht verdeckt.
+    DB_VORFALL_ERFASST: str = "db_vorfall_erfasst"
+    DB_VORFALL_GEPRUEFT: str = "db_vorfall_geprueft"
+
     # --- reserviert für spätere Builds (hier dokumentiert, noch nicht aktiv) ---
     # NOTIFICATION_SENT, RESTORE_PERFORMED
 
@@ -527,6 +545,9 @@ class EventType:
             VIEW_PREF_RESET,
             # --- Build 771 (Bildschleier) ---
             IMAGE_VEIL_SET,
+            # --- Build 777 (Register Datenbank-Vorfaelle) ---
+            DB_VORFALL_ERFASST,
+            DB_VORFALL_GEPRUEFT,
         }
     )
 

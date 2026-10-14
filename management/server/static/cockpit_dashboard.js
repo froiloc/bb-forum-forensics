@@ -60,6 +60,7 @@
 // Build 637 (Vorgang 17200856, Welle B5 - die letzte): HILFE-MARKEN
 //   fuer die eine verbliebenen Bedienelemente dieser Sicht.
 // Version: v0.8.637 · Build: 637 · 2026-08-01
+//   Build 777: Kachel 'db_vorfaelle' (reduceDbVorfaelle).
 // =============================================================================
 
 (function () {
@@ -394,6 +395,46 @@
         });
     }
 
+    // --- 1i) Datenbank-Vorfaelle (/api/db_vorfaelle, Build 777) -------------
+    // Kopf = Zahl der OFFENEN Vorfaelle. Rot, solange einer offen ist ODER
+    // einer im Puffer wartet ODER der Puffer nicht lesbar ist — jeder dieser
+    // Zustaende verlangt einen Blick. Die Zeilen nennen die offenen Vorfaelle,
+    // neueste zuerst (Reihenfolge des Servers).
+    function reduceDbVorfaelle(data, max) {
+        if (!data || data.fehler) { return fehlerModell(data && data.fehler); }
+        max = max || MAX_ZEILEN;
+        var z = data.zaehler || {};
+        var p = data.puffer || {};
+        var offen = (data.vorfaelle || []).filter(function (v) {
+            return v.status === 'offen';
+        });
+        var imPuffer = zahl(p.anzahl);
+        var unter = 'offen · ' + zahl(z.geprueft) + ' geprüft';
+        if (p.fehler) {
+            unter += ' · Puffer nicht lesbar';
+        } else if (imPuffer > 0) {
+            unter += ' · ' + imPuffer + ' warten auf Nachtrag';
+        }
+        var rot = zahl(z.offen) > 0 || imPuffer > 0 || !!p.fehler;
+        return modell({
+            kopf: String(zahl(z.offen)),
+            unterzeile: unter,
+            // FILTERT (nur offene) -> die Grundlage steht dabei (DB14).
+            grundlage: 'nur offene Vorfälle, neueste zuerst',
+            tonung: rot ? 'rot' : 'gruen',
+            zeilen: offen.slice(0, max).map(function (v) {
+                return {
+                    text: 'Fall ' + (v.subject_id === null
+                        || v.subject_id === undefined ? EM_DASH : v.subject_id)
+                        + ': ' + (v.ergebnis_klartext || v.ergebnis),
+                    stufe: v.ergebnis === 'repariert_freigegeben' ? 'gelb' : 'rot'
+                };
+            }),
+            gesamt: offen.length,
+            leer: offen.length === 0 && imPuffer === 0 && !p.fehler
+        });
+    }
+
     //: Zuordnung Kachel -> Reduzierer. Der Schluesselsatz spiegelt
     //  viewpref_katalog.WIDGETS; ein Test haelt beide gegeneinander, damit
     //  eine kuenftige Kachel nicht ohne Reduzierer bleibt (sie waere sonst
@@ -406,7 +447,8 @@
         fristen: reduceFristen,
         lastverteilung: reduceLastverteilung,
         meine_auftraege: reduceMeineAuftraege,
-        kettenzustand: reduceKettenzustand
+        kettenzustand: reduceKettenzustand,
+        db_vorfaelle: reduceDbVorfaelle
     };
 
     function reduziere(key, daten, max) {
@@ -758,6 +800,7 @@
         reduceLastverteilung: reduceLastverteilung,
         reduceMeineAuftraege: reduceMeineAuftraege,
         reduceKettenzustand: reduceKettenzustand,
+        reduceDbVorfaelle: reduceDbVorfaelle,
         aktiveKacheln: aktiveKacheln,
         renderDashboard: renderDashboard
     };

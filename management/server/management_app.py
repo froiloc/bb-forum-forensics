@@ -142,6 +142,7 @@
 #         darf nicht wie ein Bestaetigungsmangel aussehen). Rein lesend,
 #         keine Datenaenderung.
 # Version: v0.8.524 · Build: 524 · 2026-07-25
+#   Build 777: Register Datenbank-Vorfaelle - GET /api/db_vorfaelle (ops.view), POST /api/db_vorfaelle/pruefen (wartung.durchfuehren).
 # =============================================================================
 
 import hmac
@@ -316,6 +317,16 @@ from management.mentoring_notes.mentoring_notes_repo import (
 from management.ops.storage_overview import StorageOverview
 from management.ops.promotion_repo import PromotionError, PromotionRepo
 from management.ops.promotion_status import STORED_STATUSES
+# Build 777: Register Datenbank-Vorfaelle (Tabelle db_vorfall, M041).
+from management.db_vorfall.db_vorfall_fehler import DbVorfallFehler
+from management.db_vorfall.db_vorfall_meldung import ARTEN as DB_VORFALL_ARTEN
+from management.db_vorfall.db_vorfall_meldung import (
+    ERGEBNISSE as DB_VORFALL_ERGEBNISSE,
+)
+from management.db_vorfall.db_vorfall_puffer import DbVorfallPuffer
+from management.db_vorfall.db_vorfall_repo import (
+    STATUSWERTE as DB_VORFALL_STATUSWERTE, DbVorfallRepo,
+)
 from management.external.ad_directory import ADDirectory
 # Build 502 (AD-Abgleich, Bauplan Build501_502 §7): Cockpit-Anbindung des in
 # Build 501 gebauten Sync-Kerns (zweiter Bedienweg neben der CLI, mc E2).
@@ -464,6 +475,11 @@ CAP_MENTORING_NOTES_EDIT = "mentoring_notes.edit"
 # behaftet: die Uebernahme eines Kandidaten ist eine Leitungshandlung.
 CAP_OPS_VIEW = "ops.view"
 CAP_OPS_PROMOTE = "ops.promote"
+# Build 777: Register Datenbank-Vorfaelle. LESEN mit 'ops.view' (Zustand der
+# Anlage, wie Integritaet und Audit-Explorer); als geprueft MARKIEREN mit dem
+# bestehenden Wartungsrecht (Seed M014) — Festlegung Alex 14.10.2026. Kein
+# neues Recht, keine Migration fuer Rechte.
+CAP_WARTUNG = "wartung.durchfuehren"
 # Build 462: Externe Fallfreigabe (AP-2G). Lesen und Erteilen/Widerrufen sind
 # getrennte, nicht scope-behaftete Rechte (Leitungshandlung; Vier-Augen moeglich).
 CAP_RELEASE_VIEW = "release.view"
@@ -705,8 +721,15 @@ class ManagementApp:
                  default_db: Optional[str] = None,
                  ad_directory: Optional[ADDirectory] = None,
                  case_launcher: Optional[CaseLauncher] = None,
-                 ad_members_provider: Optional[Any] = None) -> None:
+                 ad_members_provider: Optional[Any] = None,
+                 vorfall_puffer_dir: Optional[str] = None) -> None:
         self._db_path = db_path
+        # Build 777: Pufferordner des Registers Datenbank-Vorfaelle.
+        # Injizierbar (Test); sonst beim ersten Abruf aus config.yaml
+        # (<backup.dest_dir>/defekt/ausstehende_vorfaelle). BEWUSST lazy: ein
+        # fehlendes backup.dest_dir soll die Sicht nicht verhindern, sondern
+        # IN ihr als Befund erscheinen (Muster AD-Abgleich, Build 502).
+        self._vorfall_puffer_dir = vorfall_puffer_dir
         # Build 502: Mitgliederquelle des AD-Abgleichs (F4-Muster, injizierbar:
         # Test = Mock, PROD = LdapGroupReader aus config.yaml). BEWUSST lazy —
         # erst beim ersten /api/adsync-Aufruf gebaut, damit ein Server ohne
@@ -1023,6 +1046,9 @@ class ManagementApp:
             return self._cases_detect(person_id)
         if path == "/api/promotion":
             return self._promotion(person_id)
+        # Build 777: Register Datenbank-Vorfaelle (ops.view).
+        if path == "/api/db_vorfaelle":
+            return self._db_vorfaelle(person_id, query)
         if path == "/api/audit":
             return self._audit(person_id, query)
         if path == "/api/audit/facets":
@@ -5431,6 +5457,123 @@ class ManagementApp:
         return Response.json(200, {"ok": True, **res})
 
     # ============================================================
+    # REGISTER DATENBANK-VORFAELLE (Build 777)
+    # ------------------------------------------------------------
+    #   Tabelle db_vorfall (coordinator.db, M041). Eintraege schreibt der
+    #   Webserver (ab Build 778: Startpruefung der evidence_<uid>.db) ueber
+    #   management/db_vorfall/db_vorfall_melder.py. Diese Sicht LIEST das
+    #   Register (ops.view) und markiert einen Vorfall als geprueft
+    #   (wartung.durchfuehren, auditiert, Notiz Pflicht). Zusaetzlich zaehlt
+    #   sie den PUFFER: Vorfaelle, die noch nicht im Register stehen, weil
+    #   coordinator.db beim Erkennen nicht erreichbar war — sonst waeren sie
+    #   bis zum naechsten Nachtrag unsichtbar (Grundregel 1).
+    # ============================================================
+    def _db_vorfall_puffer_info(self) -> Dict[str, Any]:
+        """Stand des Puffers; ein Fehler wird Befund, nicht Ausnahme."""
+        try:
+            if self._vorfall_puffer_dir is not None:
+                puffer = DbVorfallPuffer(self._vorfall_puffer_dir)
+            else:
+                from core.config_loader import ConfigLoader
+                puffer = DbVorfallPuffer.aus_konfiguration(ConfigLoader())
+            eintraege = puffer.eintraege()
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Puffer der Datenbank-Vorfaelle nicht lesbar")
+            return {"verzeichnis": None, "anzahl": None, "eintraege": [],
+                    "fehler": "%s: %s" % (type(exc).__name__, exc)}
+        liste = []
+        for pfad, meldung, fehler in eintraege:
+            liste.append({
+                "datei": pfad,
+                "vorfall_uid": meldung.vorfall_uid if meldung else None,
+                "erkannt_at": meldung.erkannt_at if meldung else None,
+                "ergebnis": meldung.ergebnis if meldung else None,
+                "subject_id": meldung.subject_id if meldung else None,
+                "fehler": fehler,
+            })
+        return {"verzeichnis": puffer.verzeichnis, "anzahl": len(liste),
+                "eintraege": liste, "fehler": None}
+
+    def _db_vorfaelle(self, person_id: int,
+                      query: Optional[Dict[str, Any]]) -> Response:
+        """
+        GET /api/db_vorfaelle?status=offen|geprueft|alle — Register, Zaehler,
+        Puffer. Recht 'ops.view'. Vorgabe: alle.
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_OPS_VIEW):
+            return self._forbidden(CAP_OPS_VIEW)
+        # Query in Listenform (QV01, _q1); ein Skalar wird ebenso angenommen.
+        status = str(self._q1(query, "status") or "alle").strip()
+        if status not in DB_VORFALL_STATUSWERTE + ("alle",):
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "status muss offen, geprueft oder alle sein."})
+        con = self._ro_con()
+        try:
+            repo = DbVorfallRepo(con)
+            zaehler = repo.zaehler()
+            vorfaelle = repo.liste(None if status == "alle" else status)
+            namen = {int(r[0]): r[1] for r in con.execute(
+                "SELECT id, display_name FROM person")}
+        except sqlite3.Error as exc:
+            logger.exception("Register Datenbank-Vorfaelle nicht lesbar")
+            return Response.json(500, {
+                "error": "db_vorfall_unavailable",
+                "detail": "%s (Migration M041 angewandt?)" % exc})
+        finally:
+            con.close()
+        for v in vorfaelle:
+            v["person_name"] = namen.get(v["person_id"]) \
+                if v["person_id"] is not None else None
+            v["geprueft_von_name"] = namen.get(v["geprueft_von"]) \
+                if v["geprueft_von"] is not None else None
+        return Response.json(200, {
+            "status_filter": status,
+            "zaehler": zaehler,
+            "vorfaelle": vorfaelle,
+            "puffer": self._db_vorfall_puffer_info(),
+            "kann_pruefen": policy.can(CAP_WARTUNG),
+            "arten": DB_VORFALL_ARTEN,
+            "ergebnisse": DB_VORFALL_ERGEBNISSE,
+        })
+
+    def _db_vorfall_pruefen(self, person_id: int,
+                            payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/db_vorfaelle/pruefen — {id, notiz}. Recht
+        'wartung.durchfuehren'. Das Repo prueft das Recht ein zweites Mal
+        (der Schreibweg haelt die Regel, gleich wer ihn ruft).
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_WARTUNG):
+            return self._forbidden(CAP_WARTUNG)
+        try:
+            vorfall_id = int(payload.get("id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "id fehlt/ungueltig."})
+        notiz = payload.get("notiz")
+        if not isinstance(notiz, str):
+            notiz = ""
+        con = self._rw_con()
+        try:
+            repo = DbVorfallRepo(con, CoordinatorWriter(con, AuditLog(con)))
+            seq = repo.als_geprueft(vorfall_id, actor_id=person_id,
+                                    notiz=notiz)
+        except DbVorfallFehler as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Pruefvermerk Datenbank-Vorfall fehlgeschlagen")
+            return Response.json(500, {"error": "db_vorfall_pruefen_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, "id": vorfall_id,
+                                   "audit_seq": seq})
+
+    # ============================================================
     # AUDIT-/REVISIONS-EXPLORER (Build 467, AP-2E, Idee 24) — REIN LESEND
     # ------------------------------------------------------------
     #   Durchblaetterbarer, filterbarer Zugriff auf den append-only audit_log
@@ -7845,6 +7988,10 @@ class ManagementApp:
         # Build 460 (AP-2G): Fremdforum-Promotion — auditierte Entscheidung.
         if path == "/api/promotion/decide":
             return self._promotion_decide(person_id, payload)
+        # Build 777: Datenbank-Vorfall als geprueft markieren (auditiert,
+        # wartung.durchfuehren).
+        if path == "/api/db_vorfaelle/pruefen":
+            return self._db_vorfall_pruefen(person_id, payload)
         # Build 462 (AP-2G): Externe Fallfreigabe — auditiert (AD-ACL + Unbedenkl.)
         if path == "/api/release/grant":
             return self._release_grant(person_id, payload)

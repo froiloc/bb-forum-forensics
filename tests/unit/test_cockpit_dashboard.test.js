@@ -58,6 +58,8 @@
  *          volle Wortlaut im title. Nichts verschwindet.
  *   DB26 — Build 573: kurzHinweis verdichtet '3 von 9 angezeigt' zu '3/9' und
  *          laesst Unbekanntes unveraendert durch.
+ *   DB27 — Build 777: reduceDbVorfaelle(): rot bei offenem Vorfall, bei
+ *          wartendem oder unlesbarem Puffer; nur offene Vorfaelle als Zeilen.
  *   DB22 — Build 572: AUCH DIE STECKPLATZ-KACHEL bekommt ihr Diagramm, und
  *          zwar VOR der eingebetteten Tabelle. Der Steckplatz-Zweig stieg
  *          vorher vor dem Diagrammblock aus der Funktion aus; DB18 fiel das
@@ -425,6 +427,19 @@ describe("cockpit_dashboard.js — Reduzierer (Build 547)", () => {
         },
         filtert: true,
       },
+      // Build 777: filtert auf 'offen' und schneidet ab.
+      db_vorfaelle: {
+        daten: {
+          zaehler: { offen: 9, geprueft: 1 },
+          puffer: { anzahl: 0, eintraege: [], fehler: null },
+          vorfaelle: viele(9, (i) => ({ id: i, subject_id: i,
+            status: "offen", ergebnis: "start_verweigert",
+            ergebnis_klartext: "Start verweigert" }))
+            .concat([{ id: 99, subject_id: 99, status: "geprueft",
+              ergebnis: "repariert_freigegeben" }]),
+        },
+        filtert: true,
+      },
     };
 
     Object.keys(proben).forEach((key) => {
@@ -444,6 +459,58 @@ describe("cockpit_dashboard.js — Reduzierer (Build 547)", () => {
       D.reduceFallampel({ count: 99, cases: [{ ampel: "rot" }] }).hinweis
     ).toBe("");
     expect(D.reduceKettenzustand({ ok: true, tip_seq: 1 }).hinweis).toBe("");
+  });
+
+  // DB27 ---------------------------------------------------------------------
+  // Build 777: Kachel Datenbank-Vorfaelle. Rot, solange etwas offen ist,
+  // etwas im Puffer wartet oder der Puffer nicht lesbar ist; nur offene
+  // Vorfaelle als Zeilen; ein leerer Puffer mit null offenen ist ein echter
+  // Leerbefund (gruen).
+  it("DB27: reduceDbVorfaelle — Ton, Zeilen, Puffer", () => {
+    const D = _api();
+    const ruhig = D.reduceDbVorfaelle({
+      zaehler: { offen: 0, geprueft: 3 },
+      puffer: { anzahl: 0, eintraege: [], fehler: null },
+      vorfaelle: [{ id: 1, status: "geprueft", subject_id: 5,
+        ergebnis: "repariert_freigegeben" }],
+    });
+    expect(ruhig.kopf).toBe("0");
+    expect(ruhig.tonung).toBe("gruen");
+    expect(ruhig.zeilen).toEqual([]);
+    expect(ruhig.leer).toBe(true);
+    expect(ruhig.unterzeile).toBe("offen · 3 geprüft");
+
+    const offen = D.reduceDbVorfaelle({
+      zaehler: { offen: 2, geprueft: 0 },
+      puffer: { anzahl: 0 },
+      vorfaelle: [
+        { id: 2, status: "offen", subject_id: 7,
+          ergebnis: "repariert_nicht_freigegeben",
+          ergebnis_klartext: "NICHT freigegeben" },
+        { id: 1, status: "offen", subject_id: null,
+          ergebnis: "repariert_freigegeben", ergebnis_klartext: "frei" },
+      ],
+    });
+    expect(offen.tonung).toBe("rot");
+    expect(offen.zeilen.map((z) => [z.text, z.stufe])).toEqual([
+      ["Fall 7: NICHT freigegeben", "rot"], ["Fall —: frei", "gelb"]]);
+
+    // Nur der Puffer wartet -> trotzdem rot und KEIN Leerbefund.
+    const puffer = D.reduceDbVorfaelle({
+      zaehler: { offen: 0, geprueft: 0 }, vorfaelle: [],
+      puffer: { anzahl: 2, eintraege: [{}, {}] },
+    });
+    expect(puffer.tonung).toBe("rot");
+    expect(puffer.leer).toBe(false);
+    expect(puffer.unterzeile).toContain("2 warten auf Nachtrag");
+
+    const blind = D.reduceDbVorfaelle({
+      zaehler: { offen: 0, geprueft: 0 }, vorfaelle: [],
+      puffer: { fehler: "PermissionError: x" },
+    });
+    expect(blind.tonung).toBe("rot");
+    expect(blind.leer).toBe(false);
+    expect(blind.unterzeile).toContain("Puffer nicht lesbar");
   });
 
   // DB15 ---------------------------------------------------------------------

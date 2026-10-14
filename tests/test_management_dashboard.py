@@ -278,9 +278,12 @@ class ManagementDashboardTests(unittest.TestCase):
         # damalige m040_fulltext_release vergeben, die in KEINER Datenbank
         # gelaufen ist (m036_fulltext_release.py, Kopf; mc 2026-07-26) — sie
         # ist also frei.
+        # Build 777: 41 kommt dazu (Register Datenbank-Vorfaelle, Tabelle
+        # db_vorfall). Rein additiv, nur coordinator.db, kein Recht, kein
+        # Grant.
         _ALLE = [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
                  19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-                 33, 34, 35, 36, 37, 38, 39, 40]
+                 33, 34, 35, 36, 37, 38, 39, 40, 41]
         self.assertEqual(self.applied,
                          sorted(_ALLE)
                          if 3 not in self.applied

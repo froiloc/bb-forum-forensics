@@ -33,6 +33,7 @@
 #   geprueft.
 #
 # Version: v0.8.637 - Build: 637 - 2026-08-01
+#   Build 777: Praefix 'dbvorfaelle'.
 # =============================================================================
 
 from __future__ import annotations
@@ -122,6 +123,8 @@ ANKER_PRAEFIXE: Dict[str, str] = {
     "myhistory": "myhistory",
     "personnel": "personnel",
     "promotion": "promotion",
+    # Build 777: Register Datenbank-Vorfaelle (tabelleAufbauen, SICHT).
+    "dbvorfaelle": "dbvorfaelle",
     "reports": "reports",
     "results": "results",
     "support": "support",
