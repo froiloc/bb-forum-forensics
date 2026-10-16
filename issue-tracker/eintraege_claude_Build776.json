@@ -1,0 +1,91 @@
+{
+ "issues": [
+  {
+   "id": "dc77bff1-dabe-4c9b-97a1-ab1070973587",
+   "type": "improvement",
+   "title": "Reparatur und Sonden als Werkzeuge im Bestand (db/reparatur, tools/)",
+   "affected_version": "0.8.775",
+   "reporter": "Claude",
+   "reported_at": "2026-10-14T18:30:00+02:00",
+   "status": "review",
+   "priority": "medium",
+   "resolved_in_version": "0.8.776",
+   "description": "Umsetzung zu Vorgang f61df99c ('Reparatur- und Pruefsonden als Werkzeuge in den Bestand aufnehmen'). Reparaturlogik als Modul db/reparatur/ (SeitenScanner, TabellenBergung, DefektSicherung, EvidenceReparierer, ReparaturZiel; eine Klasse je Datei), Kommandozeile tools/evidence_reparatur.py; Sonden tools/integritaetssonde.py, tools/schadensanalyse.py, tools/sperrsonde.py; Katalogeintraege mit gemessenen Beispielen. Abgleich gegen die in PROD eingesetzte Fassung 1.2 auf acht Testdateien: Protokoll und neue Datei inhaltsgleich. Vorgang f61df99c kann damit geschlossen werden, sobald der Build abgenommen ist.",
+   "related_to": [
+    "f61df99c-2757-4ffd-90f4-63ce004844c0",
+    "280ce9c4-506d-41bb-8406-f8beb3f1e20a"
+   ],
+   "tags": [
+    "werkzeug",
+    "reparatur",
+    "build776"
+   ],
+   "updates": [
+    {
+     "timestamp": "2026-10-14T18:30:00+02:00",
+     "author": "Claude",
+     "action": "comment",
+     "comment": "Tests ER01-ER12; Gegenproben M1-M7 rot (M4 und M7 erst nach Ergaenzung von ER11/ER12)."
+    }
+   ]
+  },
+  {
+   "id": "6d0c2a8e-3b0f-4b1e-9a77-1f7c2d5e7760",
+   "type": "improvement",
+   "title": "Defekt-Sicherung: keine zweite Kopie bei identischer SHA-256",
+   "affected_version": "0.8.775",
+   "reporter": "Alex",
+   "reported_at": "2026-10-14T17:26:00+02:00",
+   "status": "review",
+   "priority": "medium",
+   "resolved_in_version": "0.8.776",
+   "description": "Festlegung Alex 14.10.2026: Liegt im Ordner <backup.dest_dir>/defekt bereits eine Sicherung desselben Stamms mit identischen Pruefsummen (Datei und Begleitdateien), wird keine weitere Kopie angelegt. Die vorhandene Sicherung wird dabei NEU gehasht - eine .sha256-Datei allein ist kein Beleg dafuer, dass die Kopie noch stimmt (db/reparatur/defekt_sicherung.py).",
+   "related_to": [
+    "f61df99c-2757-4ffd-90f4-63ce004844c0",
+    "280ce9c4-506d-41bb-8406-f8beb3f1e20a"
+   ],
+   "tags": [
+    "reparatur",
+    "sicherung",
+    "build776"
+   ],
+   "updates": [
+    {
+     "timestamp": "2026-10-14T18:30:00+02:00",
+     "author": "Claude",
+     "action": "comment",
+     "comment": "ER04, ER04b; Gegenproben M1 (Abgleich aus) und M2 (nicht nachgerechnet) rot."
+    }
+   ]
+  },
+  {
+   "id": "0f4b7a91-58c2-4d2e-8f3a-6c1d9e2b7761",
+   "type": "bug",
+   "title": "schadensanalyse: Zuordnung verwaister Datensaetze nur ueber Zeilennummern",
+   "affected_version": "0.8.775",
+   "reporter": "Claude",
+   "reported_at": "2026-10-14T18:30:00+02:00",
+   "status": "review",
+   "priority": "medium",
+   "severity": "major",
+   "resolved_in_version": "0.8.776",
+   "description": "Die am 14.10.2026 gelieferte Fassung ordnete verwaiste Datensaetze nur ueber Zeilennummern zu und meldete in PROD 'report_anchors: 2 von 2 fehlenden Nummern liegen auf verwaisten Seiten'. Die Datensaetze hatten 2 Spalten (alte Fassungen von sqlite_sequence), report_anchors hat 5. Ab Build 776 wird per Signatur zugeordnet (Spaltenzahl und Speicherklassen je Spalte), und zwar ueber ALLE Tabellenblattseiten: bricht integrity_check bei jeder Grenze ab, gibt es keine Liste verwaister Seiten (gemessen an einer Testdatei) - die erste Fassung haette dann gar nichts gefunden.",
+   "related_to": [
+    "f61df99c-2757-4ffd-90f4-63ce004844c0"
+   ],
+   "tags": [
+    "werkzeug",
+    "schadensanalyse",
+    "build776"
+   ],
+   "updates": [
+    {
+     "timestamp": "2026-10-14T18:30:00+02:00",
+     "author": "Claude",
+     "action": "comment",
+     "comment": "ER10b, ER12; Gegenprobe M7 rot."
+    }
+   ]
+  }
+ ]
+}

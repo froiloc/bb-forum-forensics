@@ -93,6 +93,7 @@
 // Build 636 (Vorgang 17200856, Welle B4): HILFE-MARKEN fuer die
 //   vier Bedienelemente der Navigation (Praefix 'shell.') dieser Sicht.
 // Version: v0.8.636 · Build: 636 · 2026-08-01
+//   Build 777: Sicht 'dbvorfaelle' (Register Datenbank-Vorfaelle, ops.view).
 // =============================================================================
 
 (function () {
@@ -272,6 +273,13 @@
           stichworte: 'integritaet betrieb pruefsumme hashkette backup speicher system' },
         { id: 'audit',      cap: 'ops.view',             group: 'Administration', label: 'Audit-Explorer',
           stichworte: 'audit beleg protokoll kette nachweis revision ereignis' },
+        // Build 777: Register Datenbank-Vorfaelle. Gruppe 'Administration'
+        // neben Integritaet und Audit-Explorer: es zeigt den Zustand der
+        // ANLAGE (beschaedigte Datenbanken, Reparatur beim Start), keine
+        // Falldaten. Recht 'ops.view' (Festlegung Alex 14.10.2026); das
+        // Markieren als geprueft haengt am bestehenden 'wartung.durchfuehren'.
+        { id: 'dbvorfaelle', cap: 'ops.view',            group: 'Administration', label: 'Datenbank-Vorfälle',
+          stichworte: 'datenbank vorfall defekt beschaedigt reparatur startpruefung integritaet sicherung' },
         // Build 520 (AP-2G / Idee 30): Uebergabe-Protokoll (Frontend zu 520).
         // Gruppe 'Administration' DIREKT neben dem Audit-Explorer, denn es ist
         // dieselbe Art Werkzeug: eine LESART der unveraenderlichen Audit-Kette.
@@ -1035,7 +1043,11 @@
         // Alias-Suche (GET /api/names). Lebt im State und NICHT im
         // localStorage: es ist ein Abfrageergebnis, kein Bedienzustand — es
         // waere nach einem Neustart schlicht falsch.
-        aliasNamen: null
+        aliasNamen: null,
+        // Build 777: Statusfilter der Sicht Datenbank-Vorfaelle ('alle',
+        // 'offen', 'geprueft'). Nur fuer die Sitzung — wie navSuche ein
+        // Moment, keine Vorliebe.
+        dbvFilter: 'alle'
     };
 
     // fetchJson: kleiner Wrapper mit DEV-Logging und klarer Fehlermeldung.
@@ -2869,6 +2881,58 @@
         });
     }
 
+    // loadDbVorfaelle: REGISTER DATENBANK-VORFAELLE (Build 777).
+    //   GET  /api/db_vorfaelle?status=...  — Register, Zaehler, Puffer (ops.view)
+    //   POST /api/db_vorfaelle/pruefen     — Pruefvermerk (wartung.durchfuehren)
+    // KEIN optimistisches UI: nach dem Schreiben wird neu geladen; die
+    // Rueckmeldung wird ueber 'pendingMsg' durch den Reload getragen. Der
+    // gewaehlte Filter steht in state.dbvFilter und ueberlebt den Reload.
+    function loadDbVorfaelle(mainEl, pendingMsg) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitDbVorfaelle : null;
+        if (!mod) {
+            renderError(mainEl, 'Modul Datenbank-Vorfälle nicht geladen.');
+            return;
+        }
+        var filter = state.dbvFilter || 'alle';
+        fetchJson('/api/db_vorfaelle?status=' + encodeURIComponent(filter))
+            .then(function (data) {
+                cleanupView();
+                function after(text, isError) {
+                    loadDbVorfaelle(mainEl, { text: text, error: isError });
+                }
+                var view = mod.renderDbVorfaelle(mainEl, data, {
+                    onFilter: function (wert) {
+                        state.dbvFilter = wert;
+                        loadDbVorfaelle(mainEl);
+                    },
+                    onPruefen: function (body) {
+                        postJson('/api/db_vorfaelle/pruefen', body)
+                            .then(function (res) {
+                                after('Vorfall ' + res.id + ' als geprüft '
+                                    + 'markiert (Beleg #' + res.audit_seq
+                                    + ').', false);
+                            })
+                            .catch(function (err) {
+                                after('Fehler: ' + err.message + ' (es wurde '
+                                    + 'nichts geschrieben — die Liste zeigt den '
+                                    + 'tatsächlichen Stand).', true);
+                            });
+                    }
+                });
+                if (view && pendingMsg) {
+                    view.setResult(pendingMsg.text, pendingMsg.error);
+                }
+                log('DB-Vorfaelle gerendert:', (data.vorfaelle || []).length,
+                    'Zeile(n), Filter', filter);
+            }).catch(function (err) {
+                cleanupView();
+                renderError(mainEl, 'Datenbank-Vorfälle konnten nicht geladen '
+                    + 'werden: ' + err.message);
+            });
+    }
+
     // loadPromotion: FREMDFORUM-PROMOTION (Build 461, Frontend zu 460).
     //   GET  /api/promotion          — Kandidaten (forensic da, evidence fehlt)
     //                                  + ihr Promotions-Zustand (read, ops.view).
@@ -4454,6 +4518,8 @@
         stats: 1, planung: 1, annostats: 1, workload: 1, capacity: 1,
         support: 1, mycases: 1, myhistory: 1, policy: 1, integrity: 1,
         audit: 1, promotion: 1, releases: 1, onboarding: 1, personnel: 1,
+        // Build 777: Register Datenbank-Vorfaelle (view_export_catalog.py).
+        dbvorfaelle: 1,
         crossref: 1, crossfindings: 1, alias: 1, merge: 1,
         // Build 574: der vollstaendige Fallbestand an seinem neuen Ort.
         faelle: 1,
@@ -4758,6 +4824,8 @@
             loadAudit(mainEl, state.auditFilters, state.auditOffset);
         } else if (viewId === 'promotion') {
             loadPromotion(mainEl);
+        } else if (viewId === 'dbvorfaelle') {
+            loadDbVorfaelle(mainEl);
         } else if (viewId === 'releases') {
             loadReleases(mainEl);
         } else if (viewId === 'onboarding') {
@@ -4883,6 +4951,10 @@
                 // Neue Belege koennen dazugekommen sein -> Seite neu laden
                 // (gleiche Filter/Offset aus dem State).
                 loadAudit(undefined, state.auditFilters, state.auditOffset);
+            } else if (state.activeId === 'dbvorfaelle') {
+                // Ein Pruefvermerk (auch durch eine andere Person) erzeugt
+                // einen audit_log-Beleg -> Register neu laden.
+                loadDbVorfaelle();
             } else if (state.activeId === 'promotion') {
                 // Eine Entscheidung (auch durch eine andere Chefin) erzeugt einen
                 // audit_log-Beleg; zudem misst die Sicht die Platte -> der

@@ -40,9 +40,11 @@ naechsten Abschnitt. Umsortieren kann eine Maschine, Kontext erfinden nicht.
 
 ## Aktueller Stand
 
-**Build 775** — in dieser Akte unveraendert seit Build 770 (Builds 771 ff.
+**Build 778** — in dieser Akte unveraendert seit Build 770 (Builds 771 ff.
 bauen den Bildschleier, Build 774 den Transaktionsschutz, Build 775 korrigiert
-den Bildschleier, siehe Chronologie). Die Migration der Annotationen von `selection_json` 1.0.0 auf
+den Bildschleier, Build 776 nimmt die Reparaturwerkzeuge auf, Build 777 baut
+das Register der Datenbank-Vorfaelle, Build 778 die Startpruefung der
+evidence_<uid>.db, siehe Chronologie). Die Migration der Annotationen von `selection_json` 1.0.0 auf
 2.0.0 ist **vorbereitet, aber nicht begonnen** — es ist noch kein Datensatz
 migriert.
 
@@ -298,5 +300,47 @@ gelassenen Transaktion.
 `exempt_css` jetzt auch im klaren Zustand. Das ist ein `<style>`-Element im
 Kopf (`#aiw-image-veil-page`), nicht im Viewport — am Seiteninhalt und an den
 XPath-Ausdruecken der Annotationen aendert sich nichts.
+
+**Messwerte.** Keine.
+
+### Build 776 — kein Fortschritt in dieser Akte (Reparaturwerkzeuge)
+
+**Entscheidungen.** Keine zur Annotationsmigration.
+
+**Erkenntnisse, die diese Akte beruehren.** `tools/evidence_reparatur.py`
+(Logik in `db/reparatur/`) uebernimmt aus dem Seitenscan NUR Zeilen der
+Tabellen `viewport_events` und `page_visits`. Annotationen, die ueber den Baum
+nicht mehr lesbar sind, werden gezaehlt, nicht wiederhergestellt — eine
+gefundene Fassung koennte eine alte, spaeter geaenderte sein. Fuer die
+Migration heisst das: eine reparierte Datei kann Annotationen weniger haben
+als die Sicherung; die Zahl steht im Reparaturprotokoll.
+
+**Messwerte.** Keine.
+
+### Build 777 — kein Fortschritt in dieser Akte (Register Datenbank-Vorfaelle)
+
+**Entscheidungen.** Keine zur Annotationsmigration.
+
+**Erkenntnisse, die diese Akte beruehren.** Ab Build 778 tauscht der
+Webserver eine beschaedigte `evidence_<uid>.db` beim Start selbst aus — auch
+dann, wenn die neue Datei NICHT freigegeben ist (Festlegung Alex 14.10.2026).
+Jeder solche Austausch steht als Vorfall im Register `db_vorfall`
+(coordinator.db, M041), mit Befund und der Zahl nicht geborgener Zeilen je
+Tabelle. Fuer die Migration heisst das: bevor ein Bestand migriert wird, ist
+im Register nachzusehen, ob seine Datei ersetzt wurde — eine ersetzte Datei
+kann Annotationen weniger haben als ihre Sicherung.
+
+**Messwerte.** Keine.
+
+### Build 778 — kein Fortschritt in dieser Akte (Startpruefung evidence)
+
+**Entscheidungen.** Keine zur Annotationsmigration.
+
+**Erkenntnisse, die diese Akte beruehren.** Ab diesem Build kann eine
+`evidence_<uid>.db` beim Start ersetzt werden (Eintrag im Register
+`db_vorfall`, Build 777). Ein heisses Journal wird beim Start zurueckgerollt;
+der Zustand davor liegt samt Journal unter `<backup.dest_dir>/defekt`. Fuer
+die Migration: ein Bestand mit Eintrag 'repariert_nicht_freigegeben' ist vor
+der Migration mit seiner Sicherung abzugleichen.
 
 **Messwerte.** Keine.

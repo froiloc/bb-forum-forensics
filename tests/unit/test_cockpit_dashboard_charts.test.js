@@ -198,7 +198,8 @@ describe("Kacheldiagramme (Build 570)", () => {
   it("DC10: jede Kachel des Katalogs ist entschieden", () => {
     const { api } = _api();
     const keys = [..._katalog.matchAll(/key="([a-z_]+)"/g)].map((m) => m[1]);
-    expect(keys.length).toBe(8);
+    // Build 777: neun Kacheln (+ db_vorfaelle, Register Datenbank-Vorfaelle).
+    expect(keys.length).toBe(9);
     // Beispieldaten, mit denen jede Kachel eine Option liefern KANN.
     const proben = {
       fallampel: { count: 1, cases: [{ ampel: "rot" }] },
@@ -211,6 +212,8 @@ describe("Kacheldiagramme (Build 570)", () => {
                         max_active_cases: 10 },
       meine_auftraege: { count: 1, cases: [{ ampel: "gelb" }] },
       kettenzustand: { ok: true, tip_seq: 42 },
+      db_vorfaelle: { zaehler: { offen: 1, geprueft: 0 },
+                      vorfaelle: [{ status: "offen" }], puffer: { anzahl: 0 } },
     };
     keys.forEach((k) => {
       const opt = api.optionFuer(k, proben[k]);
@@ -224,6 +227,9 @@ describe("Kacheldiagramme (Build 570)", () => {
     // Der Zustand der Audit-Kette bekommt ausdruecklich KEINS.
     expect(api.optionFuer("kettenzustand", proben.kettenzustand)).toBeNull();
     expect(api.DIAGRAMMLOS.kettenzustand).toBeTruthy();
+    // Build 777: die Vorfallkachel ebenso (einzelne Auftraege, keine Verteilung).
+    expect(api.optionFuer("db_vorfaelle", proben.db_vorfaelle)).toBeNull();
+    expect(api.DIAGRAMMLOS.db_vorfaelle).toBeTruthy();
   });
 
   // DC11 --------------------------------------------------------------------

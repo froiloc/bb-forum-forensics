@@ -1,0 +1,62 @@
+{
+ "issues": [
+  {
+   "id": "a3e51c07-6b2d-4f19-8c4e-2d7b9f0e7771",
+   "type": "feature_request",
+   "title": "Register 'Datenbank-Vorfaelle' in coordinator.db mit Sicht im Management",
+   "affected_version": "0.8.776",
+   "reporter": "Alex",
+   "reported_at": "2026-10-14T17:40:00+02:00",
+   "status": "review",
+   "priority": "high",
+   "resolved_in_version": "0.8.777",
+   "description": "Festlegung Alex 14.10.2026: Eine Statusdatei waere ein Medienbruch; ein Vorfall an einer Datenbank gehoert als Eintrag in eine zentrale Datenbank und muss im Management sichtbar sein. Umgesetzt: Tabelle db_vorfall in coordinator.db (Migration M041, additiv, kein Recht, kein Grant), Schreibweg ausschliesslich ueber CoordinatorWriter mit Beleg DB_VORFALL_ERFASST (Payload mit SHA-256 des vollstaendigen Befunds), idempotent ueber vorfall_uid. Sicht 'Datenbank-Vorfaelle' (Gruppe Administration, Recht ops.view), Pruefvermerk mit wartung.durchfuehren (Notiz Pflicht, einseitig, Beleg DB_VORFALL_GEPRUEFT), Kachel 'db_vorfaelle', Akten-Export, Hilfekapitel 'dbvorfaelle'. Erster Melder ist die Startpruefung der evidence_<uid>.db (Build 778).",
+   "related_to": [
+    "280ce9c4-506d-41bb-8406-f8beb3f1e20a"
+   ],
+   "tags": [
+    "management",
+    "register",
+    "migration",
+    "build777"
+   ],
+   "updates": [
+    {
+     "timestamp": "2026-10-14T19:00:00+02:00",
+     "author": "Claude",
+     "action": "comment",
+     "comment": "Tests DV01-DV18 (Python), DV-JS01-09 und DB27 (vitest). Gegenproben N1b-N12, N8-N8c und J1-J5 rot. N1 (Vorabpruefung entfernt) blieb gruen: gleichwertige Mutante, die UNIQUE-Verletzung fuehrt zum selben Ergebnis; der Rueckweg selbst ist mit DV17/N1b belegt."
+    }
+   ]
+  },
+  {
+   "id": "b7d40e19-2c58-4a63-9f1b-5e8c3a6d7772",
+   "type": "feature_request",
+   "title": "Vorfall puffern, wenn coordinator.db unerreichbar ist; Nachtrag beim Start",
+   "affected_version": "0.8.776",
+   "reporter": "Alex",
+   "reported_at": "2026-10-14T17:40:00+02:00",
+   "status": "review",
+   "priority": "high",
+   "resolved_in_version": "0.8.777",
+   "description": "Festlegung 14.10.2026: Ist coordinator.db beim Erkennen nicht erreichbar, steht der Vorfall im Protokoll und wird spaeter eingetragen. Umgesetzt: DbVorfallMelder traegt ein, sonst Ablage als JSON in <backup.dest_dir>/defekt/ausstehende_vorfaelle (atomar: .tmp, fsync, os.replace), sonst vollstaendig ins Protokoll (CRITICAL). coordinator.db wird mit mode=rw geoeffnet und NIE angelegt. Nachtrag je Datei; eine Datei wird nur nach erfolgreichem Eintrag geloescht. Die Sicht zeigt den Puffer (wartende und unlesbare Dateien) immer an, die Kachel faerbt sich rot, solange etwas wartet. Den Nachtrag beim Start des Webservers verdrahtet Build 778.",
+   "related_to": [
+    "a3e51c07-6b2d-4f19-8c4e-2d7b9f0e7771",
+    "280ce9c4-506d-41bb-8406-f8beb3f1e20a"
+   ],
+   "tags": [
+    "register",
+    "puffer",
+    "build777"
+   ],
+   "updates": [
+    {
+     "timestamp": "2026-10-14T19:00:00+02:00",
+     "author": "Claude",
+     "action": "comment",
+     "comment": "DV08-DV11, DV13, DV16; Gegenproben N5 (mode=rwc), N6, N7, N11, N12 rot. N5 blieb im ersten Lauf GRUEN: der Test legte die fehlende coordinator.db in einen ebenfalls fehlenden Ordner, das verdeckte ein Anlegen. Test korrigiert."
+    }
+   ]
+  }
+ ]
+}

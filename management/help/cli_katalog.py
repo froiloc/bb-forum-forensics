@@ -308,6 +308,17 @@ _GEPRUEFT_717 = ("Build 717, 2026-08-13, gegen handgebaute "
                        "einen produktiven Sicherungssatz")
 
 
+#: Build 776: Nachweis fuer die vier Werkzeuge aus dem Befund vom 13./14.10.2026
+#: (evidence_reparatur, integritaetssonde, schadensanalyse, sperrsonde).
+#: Gefahren gegen kuenstlich beschaedigte Testdateien: abgeschnittenes
+#: Tabellenblatt mit zu niedrigem Zaehler, mehrfach verlinkte Seiten,
+#: beschaedigter annotations-Baum; dazu eine unversehrte Datei. Die
+#: Reparatur wurde zusaetzlich auf allen acht Testdateien gegen die in PROD
+#: eingesetzte Fassung 1.2 gehalten: Protokoll und neue Datei inhaltsgleich.
+_GEPRUEFT_776 = ("Build 776, 2026-10-14, gegen kuenstlich beschaedigte "
+                 "Testdateien unter /tmp, Python 3.13, SQLite 3.45")
+
+
 def _bsp(aufruf: str, wirkung: str, geprueft: str = _GEPRUEFT) -> CliBeispiel:
     """Kurzform fuer einen GEFAHRENEN Beispielaufruf."""
     return CliBeispiel(aufruf=aufruf, wirkung=wirkung, geprueft=geprueft)
@@ -6554,6 +6565,236 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "DIE LAUFZEIT HAENGT AN DER ZAHL DER MARKIERUNGEN MAL DER "
                 "ZAHL DER BEITRAEGE: fuer jede Markierung wird der Wortlaut "
                 "gegen jeden Beitrag der Seite gehalten.",
+            ),
+        ),
+    ),
+    # -------------------------------------------------------------------------
+    # Build 776: Werkzeuge aus dem Befund vom 13./14.10.2026 (Fall 2948078,
+    # 'database disk image is malformed' / 'database is locked').
+    # -------------------------------------------------------------------------
+    CliEintrag(
+        schluessel="evidence_reparatur",
+        pfad="tools/evidence_reparatur.py",
+        aufruf="python tools/evidence_reparatur.py (--uid <subject_id> | "
+               "<datei.db>) [--ziel <verzeichnis>]",
+        titel="Beschaedigte Ermittler-Datenbank neu aufbauen",
+        gruppe="Migration und Reparatur",
+        zweck="Aus einer beschaedigten evidence_<uid>.db eine neue Datei "
+              "aufbauen - mit allem, was sich lesen laesst - und jede nicht "
+              "geborgene Zeile im Protokoll zaehlen.",
+        art="schreibend",
+        datenbanken=(
+            "evidence_<uid>.db (lesend - das Original wird nur kopiert, "
+            "nie geoeffnet)",
+            "Sicherung, neue Datei und Protokoll im Zielordner "
+            "(schreibend; Vorgabe <backup.dest_dir>/defekt)",
+        ),
+        betrieb="Der Webserver DIESES Falls muss beendet sein - sonst kann "
+                "die Sicherung mitten in einem Schreibvorgang entstehen "
+                "(das Werkzeug erkennt das an abweichenden Pruefsummen und "
+                "bricht ab). Andere Faelle duerfen weiterlaufen.",
+        beleg=False,
+        ausgabe="Im Zielordner: <stamm>_defekt_<ts>.db (+ .sha256; bei "
+                "identischer SHA-256 wird eine vorhandene Sicherung "
+                "wiederverwendet), <stamm>_repariert_<ts>.db (+ .sha256), "
+                "<stamm>_reparatur_<ts>.txt und .json (nur Zahlen, keine "
+                "Feldinhalte).",
+        hinweis="DAS ORIGINAL WIRD NICHT AUSGETAUSCHT. Ist die neue Datei "
+                "freigegeben, stehen die Austauschbefehle am Ende des "
+                "Protokolls - erst nach Durchsicht ausfuehren. Der "
+                "Zielordner darf NICHT der Ordner des Originals sein: die "
+                "Dateien hiessen evidence_*.db und wuerden von anderen "
+                "Werkzeugen als Fall-Datenbanken gefunden. Die "
+                "Startpruefung des Webservers nutzt dieselbe Logik "
+                "(db/reparatur/) und tauscht ab Build 778 selbst aus.",
+        konfiguration=(
+            _k("paths.evidence_db_dir",
+               "Wo die Datei bei '--uid' gesucht wird "
+               "(evidence_<uid>.db darin).",
+               "./data/evidence/", "tools/evidence_reparatur.py, Z. 72-75"),
+            _k("backup.dest_dir",
+               "Ohne '--ziel' wird in '<backup.dest_dir>/defekt' "
+               "geschrieben - getrennt von den regulaeren Sicherungen.",
+               "./backups/", "db/reparatur/reparatur_ziel.py, Z. 60-71"),
+        ),
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/evidence_reparatur.py "
+                     "/tmp/f1/evidence_1.db --ziel /tmp/f1/defekt",
+                     "Testdatei mit beschaedigtem page_visits- und "
+                     "viewport_events-Baum: alle Zeilen geborgen, Protokoll "
+                     "'ERGEBNIS: Neue Datei bestanden und zum Austausch "
+                     "freigegeben', Austauschbefehle am Ende, "
+                     "Rueckgabewert 0.",
+                     _GEPRUEFT_776),
+                _bsp("python tools/evidence_reparatur.py "
+                     "/tmp/f2/evidence_2.db --ziel /tmp/f2/defekt",
+                     "Testdatei mit beschaedigtem annotations-Baum: neue "
+                     "Datei technisch in Ordnung, aber 'NICHT ZUM "
+                     "AUSTAUSCH FREIGEGEBEN', keine Austauschbefehle, "
+                     "Rueckgabewert 3.",
+                     _GEPRUEFT_776),
+            ),
+            exit_codes=(
+                (0, "neue Datei freigegeben (Austauschbefehle im Protokoll)"),
+                (1, "nichts Brauchbares erzeugt (Sicherung nicht stimmig, "
+                    "Arbeitskopie nicht lesbar oder neue Datei verworfen)"),
+                (2, "Aufruffehler, vor jedem Schreiben erkannt"),
+                (3, "neue Datei in Ordnung, aber nicht freigegeben - eine "
+                    "Tabelle mit Ermittlungsergebnissen war beschaedigt"),
+            ),
+            warnungen=(
+                "AUS DEM SEITENSCAN WERDEN NUR IN viewport_events UND "
+                "page_visits ZEILEN UEBERNOMMEN - dort wird nach dem "
+                "Einfuegen nie geaendert. In allen anderen Tabellen koennte "
+                "ein Fund die alte Fassung einer spaeter geaenderten Zeile "
+                "sein; er wird nur gezaehlt.",
+                "Der Zaehler in sqlite_sequence ist in einer beschaedigten "
+                "Datei nicht verlaesslich. Gesucht wird bis zur hoechsten "
+                "Nummer aus Zaehler, Vollscan und Seitenscan (Befund PROD "
+                "14.10.2026: report_opened Zeile 31 bei Zaehler 30).",
+            ),
+        ),
+    ),
+    CliEintrag(
+        schluessel="integritaetssonde",
+        pfad="tools/integritaetssonde.py",
+        aufruf="python tools/integritaetssonde.py (--uid <subject_id> | "
+               "<datei.db|verzeichnis> ...) [--protokoll-dir <verz>]",
+        titel="Integritaetspruefung auf Kopien",
+        gruppe="Diagnose",
+        zweck="Feststellen, welche Datenbank beschaedigt ist, ohne ein "
+              "Original zu oeffnen - und Meldungen den Tabellen zuordnen.",
+        art="lesend",
+        datenbanken=("die genannten Dateien bzw. alle Datenbanken des Falls "
+                     "(lesend - nur Bytes kopiert; geprueft wird die Kopie)",),
+        betrieb="Der Webserver des Falls sollte beendet sein. Laeuft er, "
+                "kann die Kopie mitten in einem Schreibvorgang entstehen; "
+                "das Werkzeug erkennt es am abweichenden SHA-256 und meldet "
+                "die Kopie als unbrauchbar.",
+        ausgabe="integritaetssonde_<zeitstempel>.txt im Arbeitsverzeichnis "
+                "(oder --protokoll-dir).",
+        konfiguration=(
+            _k("paths.evidence_db_dir", "Ort der evidence_<uid>.db bei '--uid'.",
+               "./data/evidence/", "tools/integritaetssonde.py, Z. 64"),
+            _k("paths.forensic_db_dir", "Ort der forensic_<uid>.db bei '--uid'.",
+               "./data/forensic/", "tools/integritaetssonde.py, Z. 65"),
+            _k("paths.assets_db_dir", "Ort der assets_<uid>.db bei '--uid'.",
+               "./data/assets/", "tools/integritaetssonde.py, Z. 66"),
+            _k("paths.coordinator_db", "coordinator.db bei '--uid'.",
+               "./data/coordinator.db", "tools/integritaetssonde.py, Z. 67"),
+            _k("paths.default_db", "default.db bei '--uid'.",
+               "./data/default.db", "tools/integritaetssonde.py, Z. 68"),
+            _k("paths.templates_db", "templates.db bei '--uid'.",
+               "./data/templates.db", "tools/integritaetssonde.py, Z. 69"),
+            _k("paths.translations_db", "translations.db bei '--uid'.",
+               "./data/translations.db", "tools/integritaetssonde.py, Z. 70"),
+        ),
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/integritaetssonde.py /tmp/k/evidence_5.db "
+                     "/tmp/k/evidence_6.db --protokoll-dir /tmp/k",
+                     "Eine Testdatei mit abgeschnittenem Tabellenblatt "
+                     "('quick_check bricht ab: database disk image is "
+                     "malformed', integrity_check bricht bei jeder Grenze "
+                     "ab) und eine unversehrte: 'Zusammenfassung: 1 ok, 1 "
+                     "mit Befund', Rueckgabewert 1.",
+                     _GEPRUEFT_776),
+            ),
+            exit_codes=(
+                (0, "alle geprueften Dateien ok (fehlende werden genannt, "
+                    "zaehlen aber nicht als Befund)"),
+                (1, "mindestens ein Befund oder eine unbrauchbare Kopie"),
+                (2, "Aufruffehler"),
+            ),
+            warnungen=(
+                "Die erste Fassung (13.10.2026) rief integrity_check ohne "
+                "Grenze auf - SQLite bricht dann nach 100 Meldungen ab, und "
+                "in PROD fehlten drei beschaedigte Tabellen im Befund. "
+                "Das Protokoll nennt deshalb die verwendete Grenze.",
+            ),
+        ),
+    ),
+    CliEintrag(
+        schluessel="schadensanalyse",
+        pfad="tools/schadensanalyse.py",
+        aufruf="python tools/schadensanalyse.py <datei.db> "
+               "[--protokoll-dir <verz>]",
+        titel="Schadensbild einer beschaedigten Datei (nur Zahlen)",
+        gruppe="Diagnose",
+        zweck="Feststellen, was in einer beschaedigten Datei verloren oder "
+              "gefaehrdet ist - ohne einen Feldinhalt auszugeben.",
+        art="lesend",
+        datenbanken=("die genannte Datei (lesend - nur Bytes kopiert; "
+                     "untersucht wird die Kopie)",),
+        betrieb="Der Webserver des Falls sollte beendet sein (sonst meldet "
+                "das Werkzeug die Kopie als unbrauchbar).",
+        ausgabe="schadensanalyse_<zeitstempel>.txt mit der ungekuerzten "
+                "integrity_check-Liste.",
+        hinweis="Ein per Signatur passender Datensatz ist ein MOEGLICHER "
+                "Fund, kein Beleg: er kann die alte Fassung einer spaeter "
+                "geaenderten oder geloeschten Zeile sein.",
+        konfiguration=KONFIG_KEINE,
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/schadensanalyse.py /tmp/k/evidence_5.db "
+                     "--protokoll-dir /tmp/k",
+                     "Testdatei mit abgeschnittenem Tabellenblatt: "
+                     "'page_visits NICHT VOLLSTAENDIG LESBAR ... (bis dahin "
+                     "2440 Zeilen)' und '60 passende Datensaetze nicht im "
+                     "Vollscan gelesen, rowid 2441..2500'. Rueckgabewert 0.",
+                     _GEPRUEFT_776),
+            ),
+            exit_codes=(
+                (0, "Analyse gelaufen (auch mit Befund - das ist das "
+                    "Ergebnis)"),
+                (1, "Kopie unbrauchbar oder nicht als SQLite lesbar"),
+                (2, "Aufruffehler"),
+            ),
+            warnungen=(
+                "Die erste Fassung (14.10.2026) ordnete verwaiste "
+                "Datensaetze nur ueber Zeilennummern zu und meldete "
+                "report_anchors-Funde, die alte Fassungen von "
+                "sqlite_sequence waren. Seit Build 776 zaehlt nur noch die "
+                "Signatur (Spaltenzahl und Speicherklassen).",
+            ),
+        ),
+    ),
+    CliEintrag(
+        schluessel="sperrsonde",
+        pfad="tools/sperrsonde.py",
+        aufruf="python tools/sperrsonde.py [--db <pfad.db>] "
+               "[--durchgaenge N] [--abstand S]",
+        titel="Wer sperrt eine SQLite-Datei?",
+        gruppe="Diagnose",
+        zweck="Bei 'database is locked' feststellen, ob eine Schreib- oder "
+              "eine Lesesperre die Datei haelt.",
+        art="lesend",
+        datenbanken=("die genannte Datei, Vorgabe coordinator.db (lesend: "
+                     "BEGIN IMMEDIATE/EXCLUSIVE mit Wartezeit 0, sofort "
+                     "ROLLBACK - es wird nichts geschrieben)",),
+        betrieb="WAEHREND des Betriebs - darum geht es. Die Probe haelt "
+                "eine Sperre nur fuer die Dauer eines BEGIN/ROLLBACK.",
+        konfiguration=(
+            _k("paths.coordinator_db",
+               "Die geprobte Datei, wenn '--db' fehlt.",
+               "./data/coordinator.db", "tools/sperrsonde.py, Z. 79"),
+        ),
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/sperrsonde.py --db /tmp/k/coordinator.db "
+                     "--durchgaenge 2 --abstand 0.2",
+                     "Waehrend ein zweiter Prozess eine Lesetransaktion "
+                     "offen haelt: 'IMMEDIATE=frei  EXCLUSIVE=GESPERRT "
+                     "(database is locked)' - also eine LESEsperre. "
+                     "Rueckgabewert 1. Ohne zweiten Prozess beide 'frei', "
+                     "Rueckgabewert 0.",
+                     _GEPRUEFT_776),
+            ),
+            exit_codes=(
+                (0, "in keinem Durchgang gesperrt"),
+                (1, "mindestens einmal gesperrt"),
+                (2, "Aufruffehler"),
             ),
         ),
     ),

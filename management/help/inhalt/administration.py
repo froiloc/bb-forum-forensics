@@ -35,6 +35,9 @@
 # Version: v0.8.605 - Build: 605 - 2026-07-31
 #   Build 771: Kapitel 'policy', Abschnitt 'bildschleier' (Recht
 #   imageveil.lift, Rolle researcher). Stand des Kapitels: 771.
+#   Build 777: Kapitel 'dbvorfaelle' (Register Datenbank-Vorfaelle, Recht
+#   ops.view; Pruefvermerk mit wartung.durchfuehren). Quelle:
+#   cockpit_dbvorfaelle.js, management/db_vorfall/.
 # =============================================================================
 
 from __future__ import annotations
@@ -52,6 +55,14 @@ _STAND_H14 = 605
 #: Policy (Recht 'imageveil.lift', Rolle 'researcher'). Das Kapitel 'policy'
 #: steht damit auf 771; die uebrigen Kapitel dieser Datei bleiben, wo sie sind.
 _STAND_BILDSCHLEIER = 771
+
+#: Build 777: Kapitel 'dbvorfaelle' (Register Datenbank-Vorfaelle) neu.
+_STAND_DBVORFAELLE = 777
+
+#: Build 778: die Startpruefung meldet tatsaechlich ein; Kapitel um das
+#: Ergebnis "unterbrochener Schreibvorgang", die Fehlerseite und den
+#: Supportmodus ergaenzt.
+_STAND_DBVORFAELLE_778 = 778
 
 #: Build 775: Abschnitt "Bildschleier im Forenviewer" ergaenzt um das
 #: Verhalten, wenn das Speichern scheitert (Befund 13.10.2026, D2) und um die
@@ -1180,8 +1191,244 @@ RELEASES = Sichthilfe(
 )
 
 
+# =============================================================================
+# 8) dbvorfaelle - "Datenbank-Vorfälle" (Build 777)
+# =============================================================================
+#
+# DIE HEIKELSTE AUSSAGE dieses Kapitels: eine Datei, die NICHT freigegeben
+# wurde, ist trotzdem eingesetzt (Festlegung Alex 14.10.2026: "Die Ermittler
+# MUESSEN ARBEITEN KOENNEN"). Das Kapitel sagt das im Zweck UND in den Grenzen,
+# damit niemand aus "eingesetzt" auf "geprueft" schliesst.
+
+DBVORFAELLE = Sichthilfe(
+    sicht="dbvorfaelle",
+    titel="Datenbank-Vorfälle",
+    recht_klartext=(
+        "Rechte: ops.view zum Lesen, wartung.durchfuehren zum Markieren als "
+        "geprüft. Ohne das zweite Recht zeigt die Sicht alles, bietet aber "
+        "keinen Prüfvermerk an."
+    ),
+    stand=_STAND_DBVORFAELLE_778,
+    abschnitte=(
+        Abschnitt(
+            "zweck", "Zweck und Motivation",
+            (
+                "Beim Öffnen eines Falls prüft das Werkzeug zuerst, ob die "
+                "Arbeitsdatei des Falls unversehrt ist. Ist sie beschädigt, "
+                "wird sie gesichert, aus allem Lesbaren neu aufgebaut und "
+                "gegen die neue Datei ausgetauscht — damit die Ermittlerin "
+                "oder der Ermittler weiterarbeiten kann. Jeder solche Vorfall "
+                "landet hier.",
+                "DIESE SICHT IST DIE BENACHRICHTIGUNG. Der Austausch geschieht "
+                "auch dann, wenn die neue Datei NICHT freigegeben ist, weil "
+                "Ermittlungsergebnisse betroffen waren. Gerade diese Vorfälle "
+                "müssen hier gelesen und geprüft werden.",
+                "Die beschädigte Datei geht dabei nicht verloren: sie liegt "
+                "unverändert im Ordner für beschädigte Dateien der "
+                "Sicherungsablage, zusammen mit dem Reparaturprotokoll.",
+            ),
+        ),
+        Abschnitt(
+            "rechte", "Rechtelage",
+            (
+                "ops.view zum Lesen — dasselbe Recht wie die Sichten zu "
+                "Integrität und Protokollbuch, denn es geht um den Zustand der "
+                "Anlage, nicht um Falldaten.",
+                "Das Markieren als geprüft braucht wartung.durchfuehren. Ohne "
+                "dieses Recht steht in der Aktionsspalte nur „Befund“, und die "
+                "Sicht sagt das ausdrücklich.",
+            ),
+        ),
+        Abschnitt(
+            "aufbau", "Aufbau der Sicht",
+            (
+                "Überschrift, Hinweiszeile, zwei Zähler (offen, geprüft), "
+                "darunter der Stand des Puffers, die Auswahl „Anzeigen“, die "
+                "Zeile für Rückmeldungen, das Feld für Befund oder Prüfvermerk "
+                "und die Liste.",
+                "DIE LISTE ZEIGT DEN NEUESTEN VORFALL OBEN. Die Farbe vor dem "
+                "Ergebnis sagt, wie dringend er ist: rot heißt „nicht "
+                "freigegeben“ oder „Start verweigert“, gelb heißt „repariert "
+                "und freigegeben“ oder „unterbrochener Schreibvorgang "
+                "zurückgerollt“.",
+                "DIE VIER ERGEBNISSE. „Repariert und ausgetauscht — "
+                "freigegeben“: die Datei war beschädigt, alle "
+                "Ermittlungsergebnisse sind vollständig übernommen. „Repariert "
+                "und ausgetauscht — NICHT freigegeben“: die Ermittlerin oder "
+                "der Ermittler arbeitet bereits mit der neuen Datei, aber "
+                "Ermittlungsergebnisse waren betroffen — hier ist zu prüfen, "
+                "was fehlt. „Unterbrochener Schreibvorgang zurückgerollt“: "
+                "das Werkzeug war mitten im Speichern beendet worden; der "
+                "unvollständige letzte Speichervorgang wurde verworfen, die "
+                "Datei ist unversehrt. „Start verweigert“: der Fall wurde "
+                "nicht geöffnet; die Ermittlerin oder der Ermittler hat dazu "
+                "eine Fehlerseite mit Hinweisen gesehen.",
+                "DER PUFFER: Konnte ein Vorfall beim Erkennen nicht eingetragen "
+                "werden, weil die zentrale Verwaltungsdatei gerade nicht "
+                "erreichbar war, wartet er in einem Pufferordner und wird beim "
+                "nächsten Öffnen irgendeines Falls nachgetragen. Bis dahin "
+                "steht er in der Pufferzeile — er ist also nie unsichtbar. "
+                "Ein nachgetragener Vorfall trägt in der Spalte „Erkannt“ den "
+                "Zusatz „(nachgetragen)“.",
+            ),
+        ),
+        Abschnitt(
+            "ablaeufe", "Arbeitsabläufe",
+            (),
+            liste=(
+                "Durchsicht: „Anzeigen: offen“ wählen und die Vorfälle von "
+                "oben abarbeiten, rote zuerst.",
+                "Befund lesen: „Befund“ öffnet die vollständige Aufstellung — "
+                "Prüfergebnis der Datei, Sicherung, Reparaturprotokoll und "
+                "die Zahl nicht geborgener Zeilen je Tabelle.",
+                "Bei „nicht freigegeben“: das Reparaturprotokoll im Ordner für "
+                "beschädigte Dateien lesen und mit der Ermittlerin oder dem "
+                "Ermittler des Falls klären, ob Ergebnisse nachzutragen sind.",
+                "Abschließen: „Als geprüft markieren“, in der Notiz festhalten, "
+                "was geprüft wurde, und bestätigen.",
+            ),
+        ),
+        Abschnitt(
+            "grenzen", "Grenzen und Zusicherungen",
+            (
+                "EINGESETZT HEISST NICHT GEPRÜFT. Auch eine nicht "
+                "freigegebene Datei wird eingesetzt, damit weitergearbeitet "
+                "werden kann. Ob dabei Ermittlungsergebnisse fehlen, klärt "
+                "erst die Prüfung hier.",
+                "DIE NOTIZ IST PFLICHT. Ohne sie wird nichts geschrieben. Ein "
+                "Prüfvermerk ohne Aussage wäre später nicht zu verteidigen.",
+                "„GEPRÜFT“ IST ENDGÜLTIG. Der Vermerk lässt sich nicht "
+                "zurücknehmen; ein Irrtum bleibt samt Beleg stehen.",
+                "Jeder Eintrag und jeder Prüfvermerk steht mit einem Beleg im "
+                "Protokollbuch. Der Beleg des Eintrags hält auch einen "
+                "Fingerabdruck des vollständigen Befunds fest; eine spätere "
+                "Änderung am Befund fiele damit auf.",
+                "IM SUPPORTMODUS WIRD NICHTS REPARIERT. Die Datei gehört dann "
+                "einer anderen Person, deren Fenster womöglich gerade offen "
+                "ist. Der Vorfall wird eingetragen, der Start verweigert; "
+                "repariert wird beim nächsten Öffnen durch die Ermittlerin "
+                "oder den Ermittler selbst.",
+                "Ist die Datei beim Öffnen von einem anderen Programm gesperrt "
+                "oder nicht lesbar (etwa weil das Netzlaufwerk kurz weg war), "
+                "wird NICHTS repariert: der Fall wird nicht geöffnet, und es "
+                "entsteht ein Eintrag „Start verweigert“, dessen Befund das "
+                "ausdrücklich sagt. Die Datei ist dann nicht beschädigt, nur "
+                "belegt oder gerade nicht erreichbar.",
+                "Endet das Werkzeug ausgerechnet zwischen dem Ersetzen der "
+                "Datei und dem Eintrag, wird der Vorfall beim nächsten Öffnen "
+                "irgendeines Falls nachgetragen; sein Befund trägt dann den "
+                "Vermerk „vorläufig“.",
+                "Ist der Pufferordner nicht lesbar, sagt die Pufferzeile das "
+                "in Rot — dann ist unbekannt, ob Vorfälle auf ihren Nachtrag "
+                "warten.",
+                "Eine leere Liste heißt: bisher wurde kein Vorfall "
+                "eingetragen. Die Sicht sagt auch das ausdrücklich.",
+            ),
+        ),
+        Abschnitt(
+            "verweise", "Querverweise",
+            (),
+            liste=(
+                "Integrität / Betrieb — der Zustand der lückenlosen Kette.",
+                "Audit-Explorer — die Belege zu jedem Eintrag und Prüfvermerk.",
+                "Fallübersicht — der betroffene Fall.",
+            ),
+        ),
+    ),
+    kontext=(
+        Kontexthilfe(
+            "dbvorfaelle.titel", "Datenbank-Vorfälle",
+            "Beschädigte Arbeitsdateien, die das Werkzeug beim Öffnen eines "
+            "Falls gefunden, gesichert und ersetzt hat.",
+            verweis="dbvorfaelle#zweck"),
+        Kontexthilfe(
+            "dbvorfaelle.kennzeile", "Was ein Vorfall ist",
+            "Ein Schaden an der Arbeitsdatei eines Falls samt Sicherung, "
+            "Reparatur und Ergebnis.",
+            verweis="dbvorfaelle#zweck"),
+        Kontexthilfe(
+            "dbvorfaelle.zahlen", "Zähler",
+            "Wie viele Vorfälle offen und wie viele geprüft sind. Rot, "
+            "solange ein Vorfall offen ist."),
+        Kontexthilfe(
+            "dbvorfaelle.puffer", "Puffer",
+            "Vorfälle, die noch auf ihren Nachtrag warten, weil die zentrale "
+            "Verwaltungsdatei beim Erkennen nicht erreichbar war.",
+            verweis="dbvorfaelle#aufbau"),
+        Kontexthilfe(
+            "dbvorfaelle.befund", "Befund",
+            "Die vollständige Aufstellung zum Vorfall, so wie das Werkzeug "
+            "sie beim Erkennen festgehalten hat.",
+            verweis="dbvorfaelle#ablaeufe"),
+        Kontexthilfe(
+            "dbvorfaelle.bedienung.filter", "Anzeigen",
+            "Alle Vorfälle, nur offene oder nur geprüfte."),
+        Kontexthilfe(
+            "dbvorfaelle.bedienung.befund", "Befund",
+            "Öffnet die vollständige Aufstellung dieses Vorfalls."),
+        Kontexthilfe(
+            "dbvorfaelle.bedienung.pruefen", "Als geprüft markieren",
+            "Öffnet das Feld für den Prüfvermerk. Erscheint nur an offenen "
+            "Vorfällen und nur mit dem Recht wartung.durchfuehren.",
+            verweis="dbvorfaelle#rechte"),
+        Kontexthilfe(
+            "dbvorfaelle.bedienung.notiz", "Notiz",
+            "Was geprüft wurde. Pflicht — ohne Notiz wird nichts "
+            "geschrieben.",
+            verweis="dbvorfaelle#grenzen"),
+        Kontexthilfe(
+            "dbvorfaelle.bedienung.bestaetigen", "Bestätigen",
+            "Schreibt den Prüfvermerk fest. Endgültig.",
+            verweis="dbvorfaelle#grenzen"),
+        Kontexthilfe(
+            "dbvorfaelle.bedienung.abbrechen", "Abbrechen",
+            "Schließt das Feld. Es wird nichts geschrieben."),
+        Kontexthilfe(
+            "dbvorfaelle.bedienung.schliessen", "Schließen",
+            "Schließt die Aufstellung des Befunds."),
+        Kontexthilfe(
+            "dbvorfaelle.spalte.erkannt", "Spalte „Erkannt“",
+            "Wann der Schaden festgestellt wurde (Weltzeit). "
+            "„(nachgetragen)“: der Vorfall kam erst später aus dem Puffer."),
+        Kontexthilfe(
+            "dbvorfaelle.spalte.subject_id", "Spalte „Fall“",
+            "Der Ermittlungsschlüssel des betroffenen Falls."),
+        Kontexthilfe(
+            "dbvorfaelle.spalte.ergebnis", "Spalte „Ergebnis“",
+            "Was das Werkzeug getan hat. Rot: nicht freigegeben oder Start "
+            "verweigert. Gelb: repariert und freigegeben.",
+            verweis="dbvorfaelle#aufbau"),
+        Kontexthilfe(
+            "dbvorfaelle.spalte.datei", "Spalte „Datei“",
+            "Die betroffene Arbeitsdatei, wie sie auf dem Rechner hieß."),
+        Kontexthilfe(
+            "dbvorfaelle.spalte.rechner", "Spalte „Rechner“",
+            "Auf welchem Rechner der Fall geöffnet wurde."),
+        Kontexthilfe(
+            "dbvorfaelle.spalte.person", "Spalte „Person“",
+            "Für wen der Fall geöffnet wurde."),
+        Kontexthilfe(
+            "dbvorfaelle.spalte.status", "Spalte „Status“",
+            "offen oder geprüft."),
+        Kontexthilfe(
+            "dbvorfaelle.spalte.aktion", "Aktionsspalte",
+            "„Befund“ und — an offenen Vorfällen, mit Recht — „Als geprüft "
+            "markieren“."),
+        Kontexthilfe(
+            "dbvorfaelle.werkzeug.filter_entfernen", "Filter zurücksetzen",
+            "Entfernt alle Spaltenfilter dieser Sicht auf einmal."),
+        Kontexthilfe(
+            "dbvorfaelle.werkzeug.trefferzahl", "Trefferanzeige",
+            "Nennt, wie viele Zeilen sichtbar sind; bei gesetztem Filter "
+            "„sichtbar von gesamt“."),
+    ),
+)
+
+
 #: Der Teilbestand dieser Nav-Gruppe - VOLLSTAENDIG seit Build 605.
 #: Reihenfolge = Katalogreihenfolge des VIEW_CATALOG.
+#: Build 777: DBVORFAELLE nach AUDIT (Stellung im VIEW_CATALOG).
 ADMINISTRATION: Tuple[Sichthilfe, ...] = (
-    POLICY, INTEGRITY, AUDIT, HANDOVER, RETENTION, PROMOTION, RELEASES,
+    POLICY, INTEGRITY, AUDIT, DBVORFAELLE, HANDOVER, RETENTION, PROMOTION,
+    RELEASES,
 )

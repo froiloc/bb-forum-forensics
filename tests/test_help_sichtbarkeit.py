@@ -13,7 +13,7 @@
 # HS02 - ein Recht -> genau die daran haengenden Sichten (Matrix)
 # HS03 - any-of: 'reports' erscheint mit approve ODER review
 # HS04 - unbekanntes Recht aendert nichts (kein Nebeneffekt)
-# HS05 - alle Rechte -> alle 43 Sichten
+# HS05 - alle Rechte -> alle 44 Sichten (Build 777: + dbvorfaelle)
 # HS06 - sichtbare_kapitel liefert in KATALOGREIHENFOLGE, nicht in
 #        Registerreihenfolge
 # HS07 - Kapitel ohne Recht erscheint NICHT, auch wenn es im Register liegt
@@ -73,7 +73,8 @@ def test_hs01_ohne_rechte_nur_viewprefs():
     ("caseoverview.view", {"faelle"}),
     ("assignment.edit", {"assignment", "cases"}),
     ("crossref.view", {"crossref", "crossfindings", "alias", "merge"}),
-    ("ops.view", {"integrity", "audit", "promotion"}),
+    # Build 777: + dbvorfaelle (Register Datenbank-Vorfaelle).
+    ("ops.view", {"integrity", "audit", "dbvorfaelle", "promotion"}),
     ("templates.edit", {"templates", "doctemplates", "modules"}),
     ("capacity.edit", {"capacity", "capacity_pflege"}),
     ("stats.export_sta", {"stats", "planung", "annostats"}),
@@ -106,7 +107,8 @@ def test_hs04_unbekanntes_recht_ohne_wirkung():
 
 def test_hs05_alle_rechte_alle_sichten():
     assert set(sichtbare_sicht_ids(ALLE_RECHTE)) == set(SICHT_IDS)
-    assert len(SICHT_IDS) == 43
+    # Build 777: 44 (+ dbvorfaelle).
+    assert len(SICHT_IDS) == 44
 
 
 # --- HS06 / HS07 / HS08 -------------------------------------------------------

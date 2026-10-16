@@ -189,6 +189,15 @@ WERKZEUGE_A: Dict[str, str] = {
 # Katalog - ein Werkzeug, dessen Grenze nur hier steht, hat sie nicht.
 
 WERKZEUGE_B: Dict[str, str] = {
+    # Build 776
+    "tools/evidence_reparatur.py":
+        "schreibt ausschliesslich in den Ordner fuer beschaedigte Dateien "
+        "(<backup.dest_dir>/defekt: Sicherung, neue Datei, Protokoll); das "
+        "Original wird nur byteweise kopiert, nie geoeffnet und nie "
+        "ausgetauscht. EINSCHRAENKUNG: Laeuft der Webserver des Falls, kann "
+        "die Sicherung mitten in einem Schreibvorgang entstehen - das "
+        "Werkzeug erkennt es am SHA-256-Abgleich und bricht ab, repariert "
+        "dann aber nichts",
     "management/search/index_cli.py":
         "Stufe B - schreibt ausschliesslich in search_index.db, die kein "
         "anderer Dienst offen haelt. ABER: eine gerade beschriebene "

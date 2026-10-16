@@ -49,6 +49,9 @@
 # Abhängigkeiten: argparse, sys — Stdlib + alle core/db/server-Module
 # Version: v0.7.469 · Build: 469 · 2026-07-20
 # Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Build 778: Schritt 6 prueft auch die evidence_db (Reparatur und Austausch
+#   beim Start, core/evidence_startpruefung.py); bei verweigertem Start und
+#   --open-browser oeffnet sich eine Fehlerseite (core/startfehlerseite.py).
 # =============================================================================
 
 from __future__ import annotations
@@ -504,13 +507,40 @@ def main() -> None:
     # ------------------------------------------------------------------
     from core.startup_checks import StartupChecker, StartupCheckError
 
+    # Build 778: Ein verweigerter Start war unsichtbar, wenn das Portal den
+    # Server ohne Konsole gestartet hat (case_launcher: DEVNULL). Mit
+    # --open-browser oeffnet sich deshalb eine Fehlerseite mit Hilfe. Auch
+    # ein UNERWARTETER Fehler der Pruefung (kein StartupCheckError) endet
+    # dort und im Protokoll — mit Traceback, nicht still.
+    def _start_verweigert(exc: BaseException) -> None:
+        if not args.open_browser:
+            return
+        from core.startfehlerseite import Startfehlerseite
+        _seite = Startfehlerseite.anzeigen(config, exc,
+                                           project_root=_PROJECT_ROOT)
+        if _seite:
+            print(f"[main] Fehlerseite: {_seite}", file=sys.stderr)
+
     try:
         checker = StartupChecker(context, config)
         checker.run_all()
     except StartupCheckError as exc:
         logger.error("Startprüfung fehlgeschlagen: %s", exc)
         print(f"[FEHLER] Startprüfung fehlgeschlagen:\n{exc}", file=sys.stderr)
+        _start_verweigert(exc)
         sys.exit(1)
+    except Exception as exc:                            # noqa: BLE001
+        logger.exception("Startprüfung: unerwarteter Fehler")
+        print(f"[FEHLER] Startprüfung: unerwarteter Fehler:\n"
+              f"{type(exc).__name__}: {exc}", file=sys.stderr)
+        _start_verweigert(exc)
+        sys.exit(1)
+
+    if checker.evidence_meldung is not None:
+        # Build 778: die Arbeitsdatei wurde beim Start behoben. Der Start geht
+        # weiter; die Leitung liest den Eintrag im Register.
+        print("[main] HINWEIS: Arbeitsdatei beim Start behoben — %s"
+              % checker.evidence_meldung.klartext(), file=sys.stderr)
 
     logger.info("Alle Startprüfungen bestanden.")
 

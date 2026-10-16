@@ -24,6 +24,7 @@
 #   (43 Eintraege, 11 Gruppen; Stand Build 587b / 232e314).
 #
 # Version: v0.8.588 - Build: 588 - 2026-07-31
+#   Build 777: Spiegel um 'dbvorfaelle' ergaenzt (44 Eintraege).
 # =============================================================================
 
 from __future__ import annotations
@@ -225,6 +226,12 @@ SICHT_KATALOG: Tuple[SichtEintrag, ...] = (
         "audit", "ops.view", (),
         "Administration", "Audit-Explorer",
         "audit beleg protokoll kette nachweis revision ereignis",
+        False),
+    # Build 777: Register Datenbank-Vorfaelle (Spiegel des VIEW_CATALOG).
+    SichtEintrag(
+        "dbvorfaelle", "ops.view", (),
+        "Administration", "Datenbank-Vorfälle",
+        "datenbank vorfall defekt beschaedigt reparatur startpruefung integritaet sicherung",
         False),
     SichtEintrag(
         "handover", "handover.view", (),

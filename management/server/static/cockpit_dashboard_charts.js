@@ -43,6 +43,7 @@
 //       aus wie ein nicht erhobener.
 //
 // Version: v0.8.570 · Build: 570 · 2026-07-29
+//   Build 777: 'db_vorfaelle' in DIAGRAMMLOS.
 // =============================================================================
 
 (function () {
@@ -78,6 +79,10 @@
     // niemand es fuer eine Luecke haelt und "nachtraegt".
     var DIAGRAMMLOS = {
         kettenzustand: 'Ja/Nein-Aussage: ein Diagramm waere Dekoration.',
+        // Build 777: wenige, einzeln zu lesende Vorfaelle — jede Zeile ist
+        // ein Auftrag; eine Verteilung daraus waere Dekoration.
+        db_vorfaelle: 'Einzelne Vorfaelle, je einer zu pruefen: eine '
+            + 'Verteilung waere Dekoration.',
         naechste_aktion: 'Die Arbeitsschlange IST die Aussage; sie bekommt '
             + 'einen Anteilsbalken statt eines Diagramms.'
     };
