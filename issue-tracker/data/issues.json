@@ -21041,6 +21041,290 @@
           "comment": "Importiert aus eintraege_claude_Build775.json"
         }
       ]
+    },
+    {
+      "id": "dc77bff1-dabe-4c9b-97a1-ab1070973587",
+      "type": "improvement",
+      "title": "Reparatur und Sonden als Werkzeuge im Bestand (db/reparatur, tools/)",
+      "affected_version": "0.8.775",
+      "reporter": "Claude",
+      "reported_at": "2026-10-14T18:30:00+02:00",
+      "status": "review",
+      "priority": "medium",
+      "resolved_in_version": "0.8.776",
+      "description": "Umsetzung zu Vorgang f61df99c ('Reparatur- und Pruefsonden als Werkzeuge in den Bestand aufnehmen'). Reparaturlogik als Modul db/reparatur/ (SeitenScanner, TabellenBergung, DefektSicherung, EvidenceReparierer, ReparaturZiel; eine Klasse je Datei), Kommandozeile tools/evidence_reparatur.py; Sonden tools/integritaetssonde.py, tools/schadensanalyse.py, tools/sperrsonde.py; Katalogeintraege mit gemessenen Beispielen. Abgleich gegen die in PROD eingesetzte Fassung 1.2 auf acht Testdateien: Protokoll und neue Datei inhaltsgleich. Vorgang f61df99c kann damit geschlossen werden, sobald der Build abgenommen ist.",
+      "related_to": [
+        "f61df99c-2757-4ffd-90f4-63ce004844c0",
+        "280ce9c4-506d-41bb-8406-f8beb3f1e20a"
+      ],
+      "tags": [
+        "werkzeug",
+        "reparatur",
+        "build776"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-10-14T18:30:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Tests ER01-ER12; Gegenproben M1-M7 rot (M4 und M7 erst nach Ergaenzung von ER11/ER12)."
+        },
+        {
+          "timestamp": "2026-10-16T12:55:11.189076+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build776.json"
+        }
+      ]
+    },
+    {
+      "id": "6d0c2a8e-3b0f-4b1e-9a77-1f7c2d5e7760",
+      "type": "improvement",
+      "title": "Defekt-Sicherung: keine zweite Kopie bei identischer SHA-256",
+      "affected_version": "0.8.775",
+      "reporter": "Alex",
+      "reported_at": "2026-10-14T17:26:00+02:00",
+      "status": "review",
+      "priority": "medium",
+      "resolved_in_version": "0.8.776",
+      "description": "Festlegung Alex 14.10.2026: Liegt im Ordner <backup.dest_dir>/defekt bereits eine Sicherung desselben Stamms mit identischen Pruefsummen (Datei und Begleitdateien), wird keine weitere Kopie angelegt. Die vorhandene Sicherung wird dabei NEU gehasht - eine .sha256-Datei allein ist kein Beleg dafuer, dass die Kopie noch stimmt (db/reparatur/defekt_sicherung.py).",
+      "related_to": [
+        "f61df99c-2757-4ffd-90f4-63ce004844c0",
+        "280ce9c4-506d-41bb-8406-f8beb3f1e20a"
+      ],
+      "tags": [
+        "reparatur",
+        "sicherung",
+        "build776"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-10-14T18:30:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "ER04, ER04b; Gegenproben M1 (Abgleich aus) und M2 (nicht nachgerechnet) rot."
+        },
+        {
+          "timestamp": "2026-10-16T12:55:11.189115+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build776.json"
+        }
+      ]
+    },
+    {
+      "id": "0f4b7a91-58c2-4d2e-8f3a-6c1d9e2b7761",
+      "type": "bug",
+      "title": "schadensanalyse: Zuordnung verwaister Datensaetze nur ueber Zeilennummern",
+      "affected_version": "0.8.775",
+      "reporter": "Claude",
+      "reported_at": "2026-10-14T18:30:00+02:00",
+      "status": "review",
+      "priority": "medium",
+      "severity": "major",
+      "resolved_in_version": "0.8.776",
+      "description": "Die am 14.10.2026 gelieferte Fassung ordnete verwaiste Datensaetze nur ueber Zeilennummern zu und meldete in PROD 'report_anchors: 2 von 2 fehlenden Nummern liegen auf verwaisten Seiten'. Die Datensaetze hatten 2 Spalten (alte Fassungen von sqlite_sequence), report_anchors hat 5. Ab Build 776 wird per Signatur zugeordnet (Spaltenzahl und Speicherklassen je Spalte), und zwar ueber ALLE Tabellenblattseiten: bricht integrity_check bei jeder Grenze ab, gibt es keine Liste verwaister Seiten (gemessen an einer Testdatei) - die erste Fassung haette dann gar nichts gefunden.",
+      "related_to": [
+        "f61df99c-2757-4ffd-90f4-63ce004844c0"
+      ],
+      "tags": [
+        "werkzeug",
+        "schadensanalyse",
+        "build776"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-10-14T18:30:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "ER10b, ER12; Gegenprobe M7 rot."
+        },
+        {
+          "timestamp": "2026-10-16T12:55:11.189130+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build776.json"
+        }
+      ]
+    },
+    {
+      "id": "a3e51c07-6b2d-4f19-8c4e-2d7b9f0e7771",
+      "type": "feature_request",
+      "title": "Register 'Datenbank-Vorfaelle' in coordinator.db mit Sicht im Management",
+      "affected_version": "0.8.776",
+      "reporter": "Alex",
+      "reported_at": "2026-10-14T17:40:00+02:00",
+      "status": "review",
+      "priority": "high",
+      "resolved_in_version": "0.8.777",
+      "description": "Festlegung Alex 14.10.2026: Eine Statusdatei waere ein Medienbruch; ein Vorfall an einer Datenbank gehoert als Eintrag in eine zentrale Datenbank und muss im Management sichtbar sein. Umgesetzt: Tabelle db_vorfall in coordinator.db (Migration M041, additiv, kein Recht, kein Grant), Schreibweg ausschliesslich ueber CoordinatorWriter mit Beleg DB_VORFALL_ERFASST (Payload mit SHA-256 des vollstaendigen Befunds), idempotent ueber vorfall_uid. Sicht 'Datenbank-Vorfaelle' (Gruppe Administration, Recht ops.view), Pruefvermerk mit wartung.durchfuehren (Notiz Pflicht, einseitig, Beleg DB_VORFALL_GEPRUEFT), Kachel 'db_vorfaelle', Akten-Export, Hilfekapitel 'dbvorfaelle'. Erster Melder ist die Startpruefung der evidence_<uid>.db (Build 778).",
+      "related_to": [
+        "280ce9c4-506d-41bb-8406-f8beb3f1e20a"
+      ],
+      "tags": [
+        "management",
+        "register",
+        "migration",
+        "build777"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-10-14T19:00:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Tests DV01-DV18 (Python), DV-JS01-09 und DB27 (vitest). Gegenproben N1b-N12, N8-N8c und J1-J5 rot. N1 (Vorabpruefung entfernt) blieb gruen: gleichwertige Mutante, die UNIQUE-Verletzung fuehrt zum selben Ergebnis; der Rueckweg selbst ist mit DV17/N1b belegt."
+        },
+        {
+          "timestamp": "2026-10-16T12:55:11.388046+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build777.json"
+        }
+      ]
+    },
+    {
+      "id": "b7d40e19-2c58-4a63-9f1b-5e8c3a6d7772",
+      "type": "feature_request",
+      "title": "Vorfall puffern, wenn coordinator.db unerreichbar ist; Nachtrag beim Start",
+      "affected_version": "0.8.776",
+      "reporter": "Alex",
+      "reported_at": "2026-10-14T17:40:00+02:00",
+      "status": "review",
+      "priority": "high",
+      "resolved_in_version": "0.8.777",
+      "description": "Festlegung 14.10.2026: Ist coordinator.db beim Erkennen nicht erreichbar, steht der Vorfall im Protokoll und wird spaeter eingetragen. Umgesetzt: DbVorfallMelder traegt ein, sonst Ablage als JSON in <backup.dest_dir>/defekt/ausstehende_vorfaelle (atomar: .tmp, fsync, os.replace), sonst vollstaendig ins Protokoll (CRITICAL). coordinator.db wird mit mode=rw geoeffnet und NIE angelegt. Nachtrag je Datei; eine Datei wird nur nach erfolgreichem Eintrag geloescht. Die Sicht zeigt den Puffer (wartende und unlesbare Dateien) immer an, die Kachel faerbt sich rot, solange etwas wartet. Den Nachtrag beim Start des Webservers verdrahtet Build 778.",
+      "related_to": [
+        "a3e51c07-6b2d-4f19-8c4e-2d7b9f0e7771",
+        "280ce9c4-506d-41bb-8406-f8beb3f1e20a"
+      ],
+      "tags": [
+        "register",
+        "puffer",
+        "build777"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-10-14T19:00:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "DV08-DV11, DV13, DV16; Gegenproben N5 (mode=rwc), N6, N7, N11, N12 rot. N5 blieb im ersten Lauf GRUEN: der Test legte die fehlende coordinator.db in einen ebenfalls fehlenden Ordner, das verdeckte ein Anlegen. Test korrigiert."
+        },
+        {
+          "timestamp": "2026-10-16T12:55:11.388074+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build777.json"
+        }
+      ]
+    },
+    {
+      "id": "c94f2a3e-7d18-4b06-a5e2-8f1b6c0d7781",
+      "type": "feature_request",
+      "title": "Startpruefung der evidence_<uid>.db: sichern, reparieren, austauschen",
+      "affected_version": "0.8.777",
+      "reporter": "Alex",
+      "reported_at": "2026-10-14T17:40:00+02:00",
+      "status": "review",
+      "priority": "high",
+      "resolved_in_version": "0.8.778",
+      "description": "Umsetzung zu Vorgang 280ce9c4. Festlegung Alex 14.10.2026: 'Was behebbar ist, soll automatisch behoben werden'; Austausch AUCH bei 'nicht freigegeben' ('Die Ermittler MUESSEN ARBEITEN KOENNEN'). core/evidence_startpruefung.py als letzte Pruefung des StartupChecker: integrity_check nur lesend; Schaden -> EvidenceReparierer (Sicherung nach <backup.dest_dir>/defekt, SHA-256) -> EvidenceAustausch (Original muss byte-gleich mit der Sicherung sein; Begleitdateien werden verschoben, nicht geloescht; os.replace atomar; Rueckweg bei Abbruch) -> erneute Pruefung -> Eintrag ins Register (Build 777) -> Start im selben Prozess. Heisses Journal: Zustand davor samt Journal gesichert, SQLite rollt zurueck, Eintrag 'journal_zurueckgerollt'. Supportmodus: nichts repariert, Eintrag, Start verweigert. Gesperrte Datei: Start verweigert, kein Eintrag. Jeder gescheiterte Schritt: Eintrag 'start_verweigert'.",
+      "related_to": [
+        "280ce9c4-506d-41bb-8406-f8beb3f1e20a",
+        "a3e51c07-6b2d-4f19-8c4e-2d7b9f0e7771"
+      ],
+      "tags": [
+        "startpruefung",
+        "reparatur",
+        "build778"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-10-14T19:30:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Tests ES01-ES17; Gegenproben P1-P15 rot. P12 (Nachpruefung nach dem Austausch aus) blieb im ersten Lauf GRUEN; ES15 kam hinzu. Vorgang 280ce9c4 kann geschlossen werden, sobald der Build in PROD abgenommen ist."
+        },
+        {
+          "timestamp": "2026-10-14T20:30:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Unabhaengige Durchsicht (separater Agent) vor der Auslieferung. Umgesetzt: (1) gesperrte Datei erzeugt jetzt einen Eintrag, wie vorgegeben (ES06 hatte das Gegenteil festgeschrieben); (2) DefektSicherung ueberschreibt nie (Zusatz _2...), die Sicherung vor dem Zurueckrollen heisst eigens *_vor_zurueckrollen_defekt_* (ES19, ES22); (3) Meldung und Fehlerseite nennen den wirklichen Zustand der Datei (unveraendert / zurueckgerollt / ersetzt, ES21); (4) Vormerkung im Puffer vor dem Austausch, Nachtrag nach Abbruch (ES18); (5) Einordnung nach SQLite-Fehlername, SQLITE_IOERR u. a. -> 'unklar' ohne Eingriff (ES20); (6) Austausch: Kopie im Rueckweg, Aufraeumen einzeln protokolliert (ES09); (7) Ausnahmeklassen in eigene Dateien (AustauschFehler, ReparaturZielFehler); (8) tools/evidence_reparatur.py: Austauschbefehle verschieben Original und Begleitdateien in den Ordner 'defekt' (ER08); (9) liegengebliebene Arbeitskopie der Reparatur wird gemeldet. Nicht umgesetzt, benannt: gleichzeitiger Start desselben Falls auf zwei Rechnern ist nur durch os.replace unter Windows abgesichert; relative backup.dest_dir loest Management und Webserver je gegen ihr Arbeitsverzeichnis auf."
+        },
+        {
+          "timestamp": "2026-10-16T12:55:11.589682+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build778.json"
+        }
+      ]
+    },
+    {
+      "id": "d05b3e71-9a24-4c17-b6f3-1e7a2d9c7782",
+      "type": "improvement",
+      "title": "Verweigerter Start oeffnet eine Fehlerseite mit Hilfe im Browser",
+      "affected_version": "0.8.777",
+      "reporter": "Alex",
+      "reported_at": "2026-10-14T17:40:00+02:00",
+      "status": "review",
+      "priority": "medium",
+      "resolved_in_version": "0.8.778",
+      "description": "Das Portal startet den Webserver ohne Konsole (case_launcher: stdout/stderr nach DEVNULL); ein verweigerter Start war bisher unsichtbar. Mit --open-browser (Portal und start.bat setzen es) schreibt main.py jetzt bei JEDEM Abbruch von Schritt 6 - StartupCheckError und unerwartete Ausnahme - eine eigenstaendige HTML-Seite in den Protokollordner (sonst temp) und oeffnet sie (core/startfehlerseite.py). Inhalt: was zu tun ist, Benachrichtigung der Leitung, vollstaendige Meldung, Pfad des Protokolls. Kein JavaScript, alle Texte maskiert.",
+      "related_to": [
+        "c94f2a3e-7d18-4b06-a5e2-8f1b6c0d7781"
+      ],
+      "tags": [
+        "startpruefung",
+        "bedienung",
+        "build778"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-10-14T19:30:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "ES12, ES16, ES17; Gegenproben P10, P14, P15 rot. Nicht in der VM geprueft: das tatsaechliche Oeffnen einer file:-Adresse im Browser der PROD-Umgebung."
+        },
+        {
+          "timestamp": "2026-10-16T12:55:11.589721+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build778.json"
+        }
+      ]
+    },
+    {
+      "id": "e16c4f82-0b35-4d28-87a4-2f8b3e0d7783",
+      "type": "bug",
+      "title": "Beschaedigte forensic_db fuehrte beim Start zum Traceback statt zur Meldung",
+      "affected_version": "0.8.777",
+      "reporter": "Claude",
+      "reported_at": "2026-10-14T17:40:00+02:00",
+      "status": "review",
+      "priority": "medium",
+      "severity": "minor",
+      "resolved_in_version": "0.8.778",
+      "description": "core/startup_checks.py fing in den drei forensic-Pruefungen nur sqlite3.OperationalError. 'file is not a database' und 'database disk image is malformed' sind sqlite3.DatabaseError (Oberklasse) und liefen als Traceback durch. Jetzt DatabaseError mit verstaendlicher Meldung; die forensic_db wird bewusst NICHT repariert (versiegelt, aus Stage 2 neu zu beziehen).",
+      "related_to": [
+        "280ce9c4-506d-41bb-8406-f8beb3f1e20a"
+      ],
+      "tags": [
+        "startpruefung",
+        "build778"
+      ],
+      "updates": [
+        {
+          "timestamp": "2026-10-14T19:30:00+02:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "ES11; Gegenprobe P9 rot."
+        },
+        {
+          "timestamp": "2026-10-16T12:55:11.589736+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build778.json"
+        }
+      ]
     }
   ]
 }
